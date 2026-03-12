@@ -1,0 +1,95 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import type { Cliente, ClienteInsert } from "@/types/cliente";
+
+export function useClientes(filters?: { estado?: string; search?: string }) {
+  return useQuery({
+    queryKey: ["clientes", filters],
+    queryFn: async () => {
+      let query = supabase
+        .from("clientes")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (filters?.estado && filters.estado !== "todos") {
+        query = query.eq("estado", filters.estado);
+      }
+      if (filters?.search) {
+        query = query.or(
+          `nombre_completo.ilike.%${filters.search}%,id_cliente.ilike.%${filters.search}%,telefono.ilike.%${filters.search}%`
+        );
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Cliente[];
+    },
+  });
+}
+
+export function useCliente(id: string | undefined) {
+  return useQuery({
+    queryKey: ["cliente", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from("clientes")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      return data as Cliente;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useCreateCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (cliente: ClienteInsert) => {
+      const { data, error } = await supabase
+        .from("clientes")
+        .insert(cliente)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Cliente;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    },
+  });
+}
+
+export function useUpdateCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: Partial<Cliente> & { id: string }) => {
+      const { data, error } = await supabase
+        .from("clientes")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Cliente;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    },
+  });
+}
+
+export function useDeleteCliente() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("clientes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clientes"] });
+    },
+  });
+}

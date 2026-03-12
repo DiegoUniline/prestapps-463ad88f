@@ -1,20 +1,15 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Filter } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Search, Filter, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const mockClientes = [
-  { id: "CLI-0001", nombre: "María García", telefono: "7777-1234", estado: "Activo", sexo: "Femenino", situacion: "Empleado", activo: true },
-  { id: "CLI-0002", nombre: "Carlos López", telefono: "7777-5678", estado: "En mora", sexo: "Masculino", situacion: "Independiente", activo: true },
-  { id: "CLI-0003", nombre: "Ana Martínez", telefono: "7777-9012", estado: "Activo", sexo: "Femenino", situacion: "Empleado", activo: true },
-  { id: "CLI-0004", nombre: "José Rodríguez", telefono: "7777-3456", estado: "Bloqueado", sexo: "Masculino", situacion: "Desempleado", activo: false },
-  { id: "CLI-0005", nombre: "Laura Sánchez", telefono: "7777-7890", estado: "Activo", sexo: "Femenino", situacion: "Pensionado", activo: true },
-];
+import { useClientes, useUpdateCliente } from "@/hooks/useClientes";
+import { toast } from "sonner";
 
 const estadoColors: Record<string, string> = {
   Activo: "bg-success text-success-foreground",
@@ -27,19 +22,24 @@ export default function ClientesPage() {
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("todos");
   const navigate = useNavigate();
+  const { data: clientes, isLoading } = useClientes({ search, estado: estadoFilter });
+  const updateCliente = useUpdateCliente();
 
-  const filtered = mockClientes.filter((c) => {
-    const matchSearch = c.nombre.toLowerCase().includes(search.toLowerCase()) || c.id.includes(search);
-    const matchEstado = estadoFilter === "todos" || c.estado === estadoFilter;
-    return matchSearch && matchEstado;
-  });
+  const handleToggleActivo = (id: string, activo: boolean) => {
+    updateCliente.mutate(
+      { id, activo: !activo },
+      { onSuccess: () => toast.success(`Cliente ${!activo ? "activado" : "desactivado"}`) }
+    );
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Clientes</h1>
-          <p className="text-muted-foreground text-sm">{mockClientes.length} clientes registrados</p>
+          <p className="text-muted-foreground text-sm">
+            {clientes?.length ?? 0} clientes registrados
+          </p>
         </div>
         <Button onClick={() => navigate("/clientes/nuevo")}>
           <Plus className="h-4 w-4 mr-2" />
@@ -51,7 +51,7 @@ export default function ClientesPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nombre o ID..."
+            placeholder="Buscar por nombre, ID o teléfono..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -72,29 +72,65 @@ export default function ClientesPage() {
         </Select>
       </div>
 
-      <div className="grid gap-3">
-        {filtered.map((cliente) => (
-          <Card key={cliente.id} className="cursor-pointer hover:border-primary/30 transition-colors">
-            <CardContent className="py-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                    {cliente.nombre.split(" ").map((n) => n[0]).join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{cliente.nombre}</p>
-                    <span className="text-xs text-muted-foreground">{cliente.id}</span>
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : clientes?.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">No se encontraron clientes</p>
+            <Button variant="outline" className="mt-4" onClick={() => navigate("/clientes/nuevo")}>
+              <Plus className="h-4 w-4 mr-2" />
+              Crear primer cliente
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-3">
+          {clientes?.map((cliente) => (
+            <Card
+              key={cliente.id}
+              className="cursor-pointer hover:border-primary/30 transition-colors"
+              onClick={() => navigate(`/clientes/${cliente.id}`)}
+            >
+              <CardContent className="py-4">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-10 w-10">
+                    {cliente.foto_cliente ? (
+                      <AvatarImage src={cliente.foto_cliente} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                      {cliente.nombre_completo
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{cliente.nombre_completo}</p>
+                      <span className="text-xs text-muted-foreground">{cliente.id_cliente}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {cliente.telefono || "Sin teléfono"} · {cliente.situacion_laboral || "—"}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">{cliente.telefono} · {cliente.situacion}</p>
+                  <Badge className={estadoColors[cliente.estado] || "bg-muted text-muted-foreground"}>
+                    {cliente.estado}
+                  </Badge>
+                  <Switch
+                    checked={cliente.activo}
+                    onCheckedChange={() => handleToggleActivo(cliente.id, cliente.activo)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
                 </div>
-                <Badge className={estadoColors[cliente.estado]}>{cliente.estado}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
