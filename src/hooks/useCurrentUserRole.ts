@@ -13,42 +13,41 @@ interface CurrentUserRole {
 }
 
 async function fetchUserRole(userId: string) {
-  // Get role
-  const { data: roleData } = await supabase
+  // Get role from user_roles
+  const roleResult = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
     .maybeSingle();
 
-  const role: AppRole = (roleData?.role as AppRole) || "cobrador";
+  const role: AppRole = (roleResult.data?.role as AppRole) || "cobrador";
 
   let cobradorId: string | null = null;
   let rutaIds: string[] = [];
 
   if (role === "cobrador") {
-    // user_id column added via migration, cast to bypass generated types
-    const { data: cobData } = await (supabase
-      .from("cobradores")
-      .select("id")
-      .eq("user_id" as any, userId)
-      .maybeSingle() as any);
-    cobradorId = cobData?.id || null;
+    // user_id column on cobradores (added via migration, not in generated types)
+    // Use rpc or raw approach to avoid type issues
+    const { data } = await supabase.rpc("get_cobrador_by_user" as any, { p_user_id: userId });
+    if (data && (data as any).length > 0) {
+      cobradorId = (data as any)[0].id;
+    }
 
     if (cobradorId) {
-      const { data: rutaData } = await supabase
+      const rutaResult = await supabase
         .from("rutas")
         .select("id")
         .eq("cobrador_id", cobradorId);
-      rutaIds = (rutaData || []).map((r: any) => r.id);
+      rutaIds = (rutaResult.data || []).map((r) => r.id);
     }
   }
 
   if (role === "supervisor") {
-    const { data: supData } = await supabase
+    const supResult = await supabase
       .from("supervisor_rutas")
       .select("ruta_id")
       .eq("supervisor_id", userId);
-    rutaIds = (supData || []).map((r: any) => r.ruta_id);
+    rutaIds = (supResult.data || []).map((r) => r.ruta_id);
   }
 
   return { role, profileId: userId, cobradorId, rutaIds };
