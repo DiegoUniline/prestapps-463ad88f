@@ -120,7 +120,9 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
 
 export default function PrestamosPage() {
   const navigate = useNavigate();
-  const { data: prestamos = [], isLoading, isError } = usePrestamos();
+  const { role, rutaIds, cobradorId } = useCurrentUserRole();
+  const roleFilters = role === "admin" ? undefined : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId };
+  const { data: prestamos = [], isLoading, isError } = usePrestamos(roleFilters);
   const { data: cajasRaw = [] } = useCajasOptions();
   const { data: rutasRaw = [] } = useRutasOptions();
 
