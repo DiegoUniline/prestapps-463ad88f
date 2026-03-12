@@ -331,7 +331,7 @@ export default function PrestamoDetallePage() {
                       {showOptional && optionalCols.map((h) => (
                         <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
                       ))}
-                      <TableHead className="border-b border-[hsl(220,14%,91%)] px-3 py-2" />
+                      <TableHead className="border-b border-[hsl(220,14%,91%)] px-3 py-2 w-[120px] text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)]">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
