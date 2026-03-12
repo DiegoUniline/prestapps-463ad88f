@@ -215,10 +215,14 @@ export default function CajasPage() {
   const salidas = movimientos.filter((m) => m.tipo === "salida").reduce((s, m) => s + Number(m.monto), 0);
 
   const kpis = [
-    { label: "Saldo Total", value: $$(totalSaldo), icon: Wallet, accent: "text-primary" },
-    { label: "Cajas", value: String(cajas.length), icon: DollarSign, accent: "text-[hsl(217,91%,60%)]" },
-    { label: "Entradas", value: $$(entradas), icon: TrendingUp, accent: "text-success" },
-    { label: "Salidas", value: $$(salidas), icon: TrendingDown, accent: "text-destructive" },
+    { label: "Saldo en Cajas", value: $$(totalSaldo), icon: Wallet, accent: "text-primary" },
+    { label: "Préstamos Activos", value: String(g.activos), icon: FileText, accent: "text-[hsl(217,91%,60%)]" },
+    { label: "Monto Colocado", value: $$(g.colocado), icon: DollarSign, accent: "text-foreground" },
+    { label: "Por Cobrar", value: $$(g.porCobrar), icon: TrendingUp, accent: "text-warning" },
+    { label: "Ganancia Proyectada", value: $$(g.gananciaProyectada), icon: PiggyBank, accent: "text-success" },
+    { label: `En Mora (${g.enMora})`, value: $$(g.moraTotal), icon: AlertTriangle, accent: "text-destructive" },
+    { label: "Entradas", value: $$(entradas), icon: ArrowDownLeft, accent: "text-success" },
+    { label: "Salidas", value: $$(salidas), icon: ArrowUpRight, accent: "text-destructive" },
   ];
 
   // Filter movimientos by selected caja
