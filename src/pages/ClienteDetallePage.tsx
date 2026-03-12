@@ -371,38 +371,38 @@ function ClientePrestamosSection({ clienteId }: { clienteId: string }) {
   return (
     <Card>
       <CardHeader><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Historial de Préstamos</CardTitle></CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         {isLoading ? (
           <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : !prestamos?.length ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No hay préstamos registrados para este cliente</p>
+          <p className="text-[13px] text-muted-foreground py-8 text-center">No hay préstamos registrados para este cliente</p>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Modalidad</TableHead>
-                <TableHead className="text-right">Monto</TableHead>
-                <TableHead className="text-center">Cuotas</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
-                <TableHead className="text-right">Mora</TableHead>
-                <TableHead>Caja</TableHead>
-                <TableHead>Estado</TableHead>
+              <TableRow className="bg-table-header hover:bg-table-header border-b">
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Fecha</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Modalidad</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Monto</TableHead>
+                <TableHead className="text-center text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cuotas</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Saldo</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Mora</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Caja</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {prestamos.map((p: any) => (
-                <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/prestamos/${p.id}`)}>
-                  <TableCell className="text-xs">{p.fecha_registro || "—"}</TableCell>
-                  <TableCell className="text-xs capitalize">{p.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"}</TableCell>
-                  <TableCell className="text-right font-semibold">{$$(Number(p.monto_solicitado))}</TableCell>
-                  <TableCell className="text-center text-xs">{p.cuotasPagadas}/{p.totalCuotas}</TableCell>
-                  <TableCell className="text-right">{$$(p.saldo)}</TableCell>
-                  <TableCell className="text-right">
-                    <span className={p.mora > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>{$$(p.mora)}</span>
+                <TableRow key={p.id} className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors" onClick={() => navigate(`/prestamos/${p.id}`)}>
+                  <TableCell className="text-[12px] px-3">{p.fecha_registro || "—"}</TableCell>
+                  <TableCell className="text-[13px] px-3 capitalize">{p.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"}</TableCell>
+                  <TableCell className="text-right font-semibold text-[13px] px-3">{$$(Number(p.monto_solicitado))}</TableCell>
+                  <TableCell className="text-center text-[12px] px-3">{p.cuotasPagadas}/{p.totalCuotas}</TableCell>
+                  <TableCell className="text-right text-[13px] px-3">{$$(p.saldo)}</TableCell>
+                  <TableCell className="text-right px-3">
+                    <span className={p.mora > 0 ? "text-destructive font-semibold text-[13px]" : "text-muted-foreground text-[13px]"}>{$$(p.mora)}</span>
                   </TableCell>
-                  <TableCell className="text-xs">{p.caja}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-[12px] px-3">{p.caja}</TableCell>
+                  <TableCell className="px-3">
                     <Badge className={estadoPrestamoColors[p.estado] || "bg-muted text-muted-foreground"}>{p.estado}</Badge>
                   </TableCell>
                 </TableRow>
