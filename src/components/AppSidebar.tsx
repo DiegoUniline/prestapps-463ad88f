@@ -30,6 +30,8 @@ import {
   MessageSquare,
   Users2,
   Star,
+  Receipt,
+  Percent,
 } from "lucide-react";
 
 const mainNav = [
@@ -45,6 +47,8 @@ const mainNav = [
 
 const adminNav = [
   { title: "Cajas", url: "/cajas", icon: Wallet, roles: ["admin"] },
+  { title: "Gastos", url: "/gastos", icon: Receipt, roles: ["admin"] },
+  { title: "Comisiones", url: "/comisiones", icon: Percent, roles: ["admin"] },
   { title: "Cobradores", url: "/cobradores", icon: UserCheck, roles: ["admin"] },
   { title: "Rutas", url: "/rutas", icon: Route, roles: ["admin"] },
   { title: "Reportes", url: "/reportes", icon: FileText, roles: ["admin", "supervisor"] },
