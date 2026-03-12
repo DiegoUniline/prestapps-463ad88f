@@ -143,8 +143,6 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         if (fullPaid) updateData.fecha_pagada = new Date().toISOString().slice(0, 10);
         if (descuentoNum > 0) updateData.descuento_mora = descuentoNum;
         const { error: amortErr } = await supabase.from("amortizacion").update(updateData).eq("id", d.cuotaId);
-          fecha_pagada: fullPaid ? new Date().toISOString().slice(0, 10) : undefined,
-        }).eq("id", d.cuotaId);
         if (amortErr) throw amortErr;
       }
 
