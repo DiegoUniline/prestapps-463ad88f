@@ -303,6 +303,7 @@ export default function PrestamoDetallePage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setReasignarOpen(true)}>Reasignar Ruta / Cobrador</DropdownMenuItem>
                 <DropdownMenuItem>Imprimir tabla</DropdownMenuItem>
                 <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive">Cancelar préstamo</DropdownMenuItem>
