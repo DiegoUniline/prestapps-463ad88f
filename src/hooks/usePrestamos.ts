@@ -90,6 +90,7 @@ async function fetchPrestamos(): Promise<PrestamoListItem[]> {
       estado: p.estado || "Activo",
       fechaRegistro: p.fecha_registro || "",
       fechaPrimerPago: p.fecha_primer_pago || "",
+      tieneAtraso: amort.tieneAtraso,
     };
   });
 }
