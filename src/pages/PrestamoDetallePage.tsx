@@ -666,6 +666,7 @@ export default function PrestamoDetallePage() {
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
         rutaId={prestamo.ruta_id}
         cobradorId={prestamo.cobrador_id}
+        montoInicial={selectedCuota ? Number(selectedCuota.saldo_total || 0) : undefined}
       />
 
       {/* Promesa Modal */}
