@@ -150,7 +150,7 @@ export default function NuevoPrestamoPage() {
         .insert({
           cliente_id: clienteId,
           monto_solicitado: monto,
-          monto_total_pagar: totalConCuotaFinal,
+          monto_total_pagar: montoTotalPagar,
           tasa_interes: tasa,
           num_cuotas: cuotas,
           frecuencia: frecuencia as any,
