@@ -359,7 +359,7 @@ export default function NuevoPrestamoPage() {
         </Card>
 
         {/* RIGHT — Live preview */}
-        <Card className="lg:col-span-3">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Vista previa de Amortización</CardTitle>
           </CardHeader>
