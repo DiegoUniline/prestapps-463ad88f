@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, Loader2, Users, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useClientes, useUpdateCliente } from "@/hooks/useClientes";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -142,7 +143,8 @@ export default function ClientesPage() {
   const [estadoFilter, setEstadoFilter] = useState("todos");
   const [searchEC, setSearchEC] = useState("");
   const navigate = useNavigate();
-  const { data: clientes, isLoading } = useClientes({ search, estado: estadoFilter });
+  const { empresaId } = useEmpresa();
+  const { data: clientes, isLoading } = useClientes({ search, estado: estadoFilter, empresaId });
   const updateCliente = useUpdateCliente();
   const { data: estados, isLoading: loadingEC } = useEstadosCuenta();
 

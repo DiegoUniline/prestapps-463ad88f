@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import PrestamosPage from "@/pages/PrestamosPage";
@@ -25,33 +26,35 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/prestamos" element={<PrestamosPage />} />
-              <Route path="/prestamos/nuevo" element={<NuevoPrestamoPage />} />
-              <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
-              <Route path="/pagos" element={<PagosPage />} />
-              <Route path="/promesas" element={<PromesasPage />} />
-              <Route path="/clientes" element={<ClientesPage />} />
-              <Route path="/clientes/:id" element={<ClienteDetallePage />} />
-              <Route path="/cajas" element={<CajasPage />} />
-              <Route path="/cajas/:id" element={<CajasPage />} />
-              <Route path="/rutas" element={<RutasPage />} />
-              <Route path="/rutas/:id" element={<RutasPage />} />
-              <Route path="/cobradores" element={<CobradoresPage />} />
-              <Route path="/reportes" element={<ReportesPage />} />
-              <Route path="/usuarios" element={<UsuariosPage />} />
-              <Route path="/usuarios/:id" element={<UsuariosPage />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <EmpresaProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/prestamos" element={<PrestamosPage />} />
+                <Route path="/prestamos/nuevo" element={<NuevoPrestamoPage />} />
+                <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
+                <Route path="/pagos" element={<PagosPage />} />
+                <Route path="/promesas" element={<PromesasPage />} />
+                <Route path="/clientes" element={<ClientesPage />} />
+                <Route path="/clientes/:id" element={<ClienteDetallePage />} />
+                <Route path="/cajas" element={<CajasPage />} />
+                <Route path="/cajas/:id" element={<CajasPage />} />
+                <Route path="/rutas" element={<RutasPage />} />
+                <Route path="/rutas/:id" element={<RutasPage />} />
+                <Route path="/cobradores" element={<CobradoresPage />} />
+                <Route path="/reportes" element={<ReportesPage />} />
+                <Route path="/usuarios" element={<UsuariosPage />} />
+                <Route path="/usuarios/:id" element={<UsuariosPage />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </EmpresaProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
