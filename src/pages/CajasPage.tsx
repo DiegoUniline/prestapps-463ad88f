@@ -43,6 +43,68 @@ function useMovimientos() {
   });
 }
 
+// Stats from prestamos + amortizacion per caja
+function usePrestamosByCaja() {
+  return useQuery({
+    queryKey: ["prestamos-by-caja"],
+    queryFn: async () => {
+      const { data: prestamos, error } = await supabase
+        .from("prestamos")
+        .select("id, caja_id, monto_solicitado, monto_total_pagar, estado")
+        .not("estado", "in", '("Cancelado")');
+      if (error) throw error;
+      if (!prestamos || prestamos.length === 0) return { global: { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 }, byCaja: {} as Record<string, any> };
+
+      const ids = prestamos.map((p) => p.id);
+      const { data: amortData } = await supabase
+        .from("amortizacion")
+        .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento")
+        .in("prestamo_id", ids);
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Per-prestamo aggregation
+      const prestamoAgg: Record<string, { saldo: number; mora: number; tieneAtraso: boolean }> = {};
+      for (const a of amortData || []) {
+        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, tieneAtraso: false };
+        prestamoAgg[a.prestamo_id].saldo += Number(a.saldo_total || 0);
+        prestamoAgg[a.prestamo_id].mora += Number(a.saldo_mora || 0);
+        if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
+          prestamoAgg[a.prestamo_id].tieneAtraso = true;
+        }
+      }
+
+      // Global + per-caja stats
+      const byCaja: Record<string, { activos: number; colocado: number; totalPagar: number; porCobrar: number; gananciaProyectada: number; enMora: number; moraTotal: number }> = {};
+      let global = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+
+      for (const p of prestamos) {
+        const cajaKey = p.caja_id || "sin-caja";
+        if (!byCaja[cajaKey]) byCaja[cajaKey] = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, tieneAtraso: false };
+        const isActive = p.estado !== "Liquidado";
+        const monto = Number(p.monto_solicitado || 0);
+        const totalPagar = Number(p.monto_total_pagar || 0);
+        const ganancia = totalPagar - monto;
+
+        if (isActive) {
+          global.activos++; byCaja[cajaKey].activos++;
+        }
+        global.colocado += monto; byCaja[cajaKey].colocado += monto;
+        global.totalPagar += totalPagar; byCaja[cajaKey].totalPagar += totalPagar;
+        global.porCobrar += agg.saldo; byCaja[cajaKey].porCobrar += agg.saldo;
+        global.gananciaProyectada += ganancia; byCaja[cajaKey].gananciaProyectada += ganancia;
+        if (agg.tieneAtraso) {
+          global.enMora++; byCaja[cajaKey].enMora++;
+          global.moraTotal += agg.mora; byCaja[cajaKey].moraTotal += agg.mora;
+        }
+      }
+
+      return { global, byCaja };
+    },
+  });
+}
+
 // ── Modal types ───────────────────────────────────────────────────
 type ModalType = "depositar" | "retirar" | "transferir" | "nueva-caja" | null;
 
