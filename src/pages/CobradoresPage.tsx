@@ -54,11 +54,11 @@ function useCortes(empresaId: string) {
   });
 }
 
-function useCajas() {
+function useCajas(empresaId: string) {
   return useQuery({
-    queryKey: ["cajas-all"],
+    queryKey: ["cajas-all", empresaId],
     queryFn: async () => {
-      const { data } = await supabase.from("cajas").select("id, nombre, saldo_actual").order("nombre");
+      const { data } = await supabase.from("cajas").select("id, nombre, saldo_actual").eq("empresa_id", empresaId).order("nombre");
       return data || [];
     },
   });

@@ -21,11 +21,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // ── Data hooks ────────────────────────────────────────────────────
-function useCajas() {
+function useCajas(empresaId: string) {
   return useQuery({
-    queryKey: ["cajas-page"],
+    queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cajas").select("*").order("nombre");
+      const { data, error } = await supabase.from("cajas").select("*").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
       return data || [];
     },

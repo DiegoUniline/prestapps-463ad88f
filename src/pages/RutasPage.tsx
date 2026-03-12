@@ -23,13 +23,14 @@ interface Ruta {
   prestamosCount: number;
 }
 
-function useRutas() {
+function useRutas(empresaId: string) {
   return useQuery({
-    queryKey: ["rutas-page"],
+    queryKey: ["rutas-page", empresaId],
     queryFn: async () => {
       const { data: rutas, error } = await supabase
         .from("rutas")
         .select("id, nombre, descripcion, cobrador_id, created_at")
+        .eq("empresa_id", empresaId)
         .order("nombre");
       if (error) throw error;
 

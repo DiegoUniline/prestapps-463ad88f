@@ -32,7 +32,8 @@ const statusBadge: Record<string, string> = {
 };
 
 export default function PromesasPage() {
-  const { data: promesas = [], isLoading } = usePromesasAll();
+  const { empresaId } = useEmpresa();
+  const { data: promesas = [], isLoading } = usePromesasAll(empresaId);
 
   const totalPromesas = promesas.length;
   const pendientes = promesas.filter((p) => p.status === "Pendiente").length;
