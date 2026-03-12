@@ -212,24 +212,40 @@ export default function WhatsAppConfigPage() {
               <div className="space-y-4">
                 <div>
                   <Label>API Token</Label>
-                  <div className="relative mt-1">
-                    <Input
-                      type={showToken ? "text" : "password"}
-                      placeholder="Tu API Token de WhatsAPI"
-                      value={form.api_token}
-                      onChange={(e) => setForm({ ...form, api_token: e.target.value })}
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full w-10"
-                      onClick={() => setShowToken(!showToken)}
-                    >
-                      {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                  {!editingToken && form.api_token ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type={showToken ? "text" : "password"}
+                        value={form.api_token}
+                        disabled
+                        className="opacity-70"
+                      />
+                      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShowToken(!showToken)}>
+                        {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                      <Button variant="outline" size="sm" className="shrink-0" onClick={() => setEditingToken(true)}>
+                        Editar
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type={showToken ? "text" : "password"}
+                        placeholder="Ingresa tu API Token de WhatsAPI"
+                        value={form.api_token}
+                        onChange={(e) => setForm({ ...form, api_token: e.target.value })}
+                        autoFocus
+                      />
+                      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShowToken(!showToken)}>
+                        {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                      {editingToken && (
+                        <Button variant="outline" size="sm" className="shrink-0" onClick={() => { setEditingToken(false); setShowToken(false); }}>
+                          Listo
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label>URL del API</Label>
