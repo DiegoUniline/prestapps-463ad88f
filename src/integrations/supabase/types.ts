@@ -513,6 +513,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      recalcular_mora: { Args: { p_prestamo_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "supervisor" | "cobrador"
