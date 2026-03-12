@@ -29,6 +29,7 @@ import {
   Building2,
   MessageSquare,
   Users2,
+  Star,
 } from "lucide-react";
 
 const mainNav = [
@@ -39,6 +40,7 @@ const mainNav = [
   { title: "Promesas", url: "/promesas", icon: CalendarCheck, roles: ["admin", "supervisor", "cobrador"] },
   { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "supervisor"] },
   { title: "CRM Cobranza", url: "/crm", icon: Users2, roles: ["admin", "supervisor"] },
+  { title: "Lead Scoring", url: "/scoring", icon: Star, roles: ["admin", "supervisor"] },
 ];
 
 const adminNav = [

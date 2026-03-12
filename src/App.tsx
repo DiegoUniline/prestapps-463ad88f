@@ -28,6 +28,7 @@ import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
 import EmpresasPage from "@/pages/EmpresasPage";
 import WhatsAppConfigPage from "@/pages/WhatsAppConfigPage";
 import CrmCobranzaPage from "@/pages/CrmCobranzaPage";
+import LeadScoringPage from "@/pages/LeadScoringPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -70,6 +71,7 @@ const App = () => (
                   <Route path="/empresas" element={<RoleGuard allowed={["admin"]}><EmpresasPage /></RoleGuard>} />
                   <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]}><WhatsAppConfigPage /></RoleGuard>} />
                   <Route path="/crm" element={<RoleGuard allowed={["admin", "supervisor"]}><CrmCobranzaPage /></RoleGuard>} />
+                  <Route path="/scoring" element={<RoleGuard allowed={["admin", "supervisor"]}><LeadScoringPage /></RoleGuard>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
