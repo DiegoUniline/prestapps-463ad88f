@@ -380,14 +380,12 @@ export default function PrestamoDetallePage() {
                             </>
                           )}
 
-                          <TableCell className="px-3">
-                            {hoveredRow === c.num_cuota && status !== "Pagada" ? (
-                              <div className="flex gap-2 text-[11px]">
-                                {["Pagar", "Promesa", ...(!c.avisado ? ["Avisar"] : [])].map(action => (
-                                  <button key={action} className="text-muted-foreground hover:text-primary transition-colors">{action}</button>
-                                ))}
-                              </div>
-                            ) : null}
+                          <TableCell className="px-3 w-[120px]">
+                            <div className={cn("flex gap-2 text-[11px] transition-opacity", hoveredRow === c.num_cuota && status !== "Pagada" ? "opacity-100" : "opacity-0 pointer-events-none")}>
+                              {["Pagar", "Promesa", ...(!c.avisado ? ["Avisar"] : [])].map(action => (
+                                <button key={action} className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap">{action}</button>
+                              ))}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
