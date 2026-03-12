@@ -61,6 +61,7 @@ export default function NuevoPrestamoPage() {
   const { data: clientes = [] } = useClientesOptions(empresaId);
   const { data: cajas = [] } = useCajasOptions(empresaId);
   const { data: rutas = [] } = useRutasOptions(empresaId);
+  const geo = useGeoLocation();
 
   const [clienteId, setClienteId] = useState("");
   const [montoSolicitado, setMontoSolicitado] = useState("");
