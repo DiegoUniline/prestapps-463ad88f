@@ -451,9 +451,90 @@ export default function CajasPage() {
           <h2 className="text-[14px] font-semibold">
             Kardex {selectedCaja ? `— ${cajas.find(c => c.id === selectedCaja)?.nombre}` : "— Todos los movimientos"}
           </h2>
-          {selectedCaja && (
-            <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setSelectedCaja(null)}>
-              Ver todos
+          <div className="flex items-center gap-1">
+            {selectedCaja && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setSelectedCaja(null)}>
+                Ver todos
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Kardex filter bar */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          {/* Categoría dropdown */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn(
+                "h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-border hover:bg-primary/5",
+                selCategoria.size > 0 && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
+              )}>
+                Categoría
+                {selCategoria.size > 0 && (
+                  <span className="ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary-foreground/20 text-[10px] font-bold px-1">
+                    {selCategoria.size}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="start">
+              <div className="space-y-0.5">
+                {kardexCategories.map((cat) => (
+                  <label key={cat} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-[13px]">
+                    <Checkbox checked={selCategoria.has(cat)} onCheckedChange={() => {
+                      const next = new Set(selCategoria);
+                      next.has(cat) ? next.delete(cat) : next.add(cat);
+                      setSelCategoria(next);
+                    }} />
+                    <span>{cat}</span>
+                  </label>
+                ))}
+              </div>
+              {selCategoria.size > 0 && (
+                <Button variant="ghost" size="sm" className="w-full mt-1.5 h-7 text-xs" onClick={() => setSelCategoria(new Set())}>Limpiar</Button>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          {/* Fecha Desde */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn(
+                "h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-border hover:bg-primary/5",
+                kardexDesde && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
+              )}>
+                <CalendarIcon className="h-3 w-3" />
+                {kardexDesde ? format(kardexDesde, "dd/MM/yy") : "Desde"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={kardexDesde} onSelect={setKardexDesde} className="p-3 pointer-events-auto" />
+              {kardexDesde && <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => setKardexDesde(undefined)}>Limpiar</Button></div>}
+            </PopoverContent>
+          </Popover>
+
+          {/* Fecha Hasta */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={cn(
+                "h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-border hover:bg-primary/5",
+                kardexHasta && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
+              )}>
+                <CalendarIcon className="h-3 w-3" />
+                {kardexHasta ? format(kardexHasta, "dd/MM/yy") : "Hasta"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={kardexHasta} onSelect={setKardexHasta} className="p-3 pointer-events-auto" />
+              {kardexHasta && <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => setKardexHasta(undefined)}>Limpiar</Button></div>}
+            </PopoverContent>
+          </Popover>
+
+          <div className="flex-1" />
+          <p className="text-[12px] text-muted-foreground">{filteredMov.length} movimiento{filteredMov.length !== 1 ? "s" : ""}</p>
+          {totalKardexFilters > 0 && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" onClick={clearKardexFilters}>
+              <X className="h-3 w-3 mr-1" />Limpiar
             </Button>
           )}
         </div>
