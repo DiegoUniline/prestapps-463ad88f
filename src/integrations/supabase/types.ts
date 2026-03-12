@@ -342,6 +342,67 @@ export type Database = {
           },
         ]
       }
+      crm_gestiones: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          empresa_id: string | null
+          fecha_seguimiento: string | null
+          id: string
+          notas: string | null
+          prestamo_id: string
+          registrado_por: string | null
+          resultado: string
+          tipo_gestion: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          empresa_id?: string | null
+          fecha_seguimiento?: string | null
+          id?: string
+          notas?: string | null
+          prestamo_id: string
+          registrado_por?: string | null
+          resultado: string
+          tipo_gestion: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          empresa_id?: string | null
+          fecha_seguimiento?: string | null
+          id?: string
+          notas?: string | null
+          prestamo_id?: string
+          registrado_por?: string | null
+          resultado?: string
+          tipo_gestion?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_gestiones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_gestiones_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_gestiones_prestamo_id_fkey"
+            columns: ["prestamo_id"]
+            isOneToOne: false
+            referencedRelation: "prestamos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresas: {
         Row: {
           activa: boolean
@@ -867,6 +928,135 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      whatsapp_config: {
+        Row: {
+          activo: boolean
+          api_token: string
+          api_url: string
+          aviso_dia_antes: boolean
+          aviso_vencido: boolean
+          created_at: string | null
+          empresa_id: string
+          enviar_recibo_pago: boolean
+          id: string
+        }
+        Insert: {
+          activo?: boolean
+          api_token?: string
+          api_url?: string
+          aviso_dia_antes?: boolean
+          aviso_vencido?: boolean
+          created_at?: string | null
+          empresa_id: string
+          enviar_recibo_pago?: boolean
+          id?: string
+        }
+        Update: {
+          activo?: boolean
+          api_token?: string
+          api_url?: string
+          aviso_dia_antes?: boolean
+          aviso_vencido?: boolean
+          created_at?: string | null
+          empresa_id?: string
+          enviar_recibo_pago?: boolean
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_log: {
+        Row: {
+          created_at: string | null
+          empresa_id: string | null
+          error_detalle: string | null
+          id: string
+          imagen_url: string | null
+          mensaje: string | null
+          referencia_id: string | null
+          status: string
+          telefono: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string | null
+          empresa_id?: string | null
+          error_detalle?: string | null
+          id?: string
+          imagen_url?: string | null
+          mensaje?: string | null
+          referencia_id?: string | null
+          status?: string
+          telefono: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string | null
+          empresa_id?: string | null
+          error_detalle?: string | null
+          id?: string
+          imagen_url?: string | null
+          mensaje?: string | null
+          referencia_id?: string | null
+          status?: string
+          telefono?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          empresa_id: string
+          id: string
+          mensaje: string
+          nombre: string
+          tipo: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          empresa_id: string
+          id?: string
+          mensaje?: string
+          nombre?: string
+          tipo: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          empresa_id?: string
+          id?: string
+          mensaje?: string
+          nombre?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_templates_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

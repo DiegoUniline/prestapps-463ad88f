@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Eye, EyeOff } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -69,7 +70,6 @@ export default function WhatsAppConfigPage() {
 
   const [form, setForm] = useState({
     api_token: "",
-    api_url: "https://itxrxxoykvxpwflndvea.supabase.co/functions/v1/api-proxy",
     enviar_recibo_pago: true,
     aviso_dia_antes: false,
     aviso_vencido: false,
@@ -80,7 +80,6 @@ export default function WhatsAppConfigPage() {
     if (config) {
       setForm({
         api_token: config.api_token || "",
-        api_url: config.api_url || "https://itxrxxoykvxpwflndvea.supabase.co/functions/v1/api-proxy",
         enviar_recibo_pago: config.enviar_recibo_pago ?? true,
         aviso_dia_antes: config.aviso_dia_antes ?? false,
         aviso_vencido: config.aviso_vencido ?? false,
@@ -161,6 +160,7 @@ export default function WhatsAppConfigPage() {
 
   // ── Send reminders manually ────────────────
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [showToken, setShowToken] = useState(false);
 
   const sendReminders = async (type: "dia_antes" | "vencido") => {
     setSendingReminder(type);
@@ -208,23 +208,34 @@ export default function WhatsAppConfigPage() {
               <CardDescription>Ingresa tu API Token y configura las opciones de envío</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
                   <Label>API Token</Label>
-                  <Input
-                    type="password"
-                    placeholder="Tu API Token de WhatsAPI"
-                    value={form.api_token}
-                    onChange={(e) => setForm({ ...form, api_token: e.target.value })}
-                    className="mt-1"
-                  />
+                  <div className="relative mt-1">
+                    <Input
+                      type={showToken ? "text" : "password"}
+                      placeholder="Tu API Token de WhatsAPI"
+                      value={form.api_token}
+                      onChange={(e) => setForm({ ...form, api_token: e.target.value })}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full w-10"
+                      onClick={() => setShowToken(!showToken)}
+                    >
+                      {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <Label>URL del API</Label>
                   <Input
-                    value={form.api_url}
-                    onChange={(e) => setForm({ ...form, api_url: e.target.value })}
-                    className="mt-1"
+                    value="https://itxrxxoykvxpwflndvea.supabase.co/functions/v1/api-proxy"
+                    disabled
+                    className="mt-1 opacity-60"
                   />
                 </div>
               </div>
