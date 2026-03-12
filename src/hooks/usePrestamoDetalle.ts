@@ -11,7 +11,7 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
         .from("prestamos")
         .select(`
           *,
-          clientes ( id, id_cliente, nombre_completo ),
+          clientes ( id, id_cliente, nombre_completo, dni, direccion, telefono ),
           cajas ( id, nombre ),
           rutas ( id, nombre )
         `)
