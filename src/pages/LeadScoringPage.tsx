@@ -389,6 +389,7 @@ export default function LeadScoringPage() {
             <SelectItem value="Regular">Regular</SelectItem>
             <SelectItem value="Riesgoso">Riesgoso</SelectItem>
             <SelectItem value="Crítico">Crítico</SelectItem>
+            <SelectItem value="Nuevo">Nuevo (sin historial)</SelectItem>
           </SelectContent>
         </Select>
       </div>
