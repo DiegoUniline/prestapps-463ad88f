@@ -7,11 +7,98 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Pencil, Save, X, Trash2, MapPin, Loader2 } from "lucide-react";
 import { useCliente, useCreateCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useClientes";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ClienteInsert } from "@/types/cliente";
 
+const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function useClientePrestamos(clienteId: string | undefined) {
+  return useQuery({
+    queryKey: ["cliente-prestamos", clienteId],
+    queryFn: async () => {
+      if (!clienteId) return [];
+      const { data: prestamos, error } = await supabase
+        .from("prestamos")
+        .select(`
+          id, monto_solicitado, monto_total_pagar, num_cuotas, estado,
+          fecha_registro, fecha_primer_pago, frecuencia, modalidad,
+          cajas ( nombre ), rutas ( nombre )
+        `)
+        .eq("cliente_id", clienteId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      // Get amortization summary per prestamo
+      const ids = (prestamos || []).map((p) => p.id);
+      if (ids.length === 0) return [];
+
+      const { data: amort } = await supabase
+        .from("amortizacion")
+        .select("prestamo_id, saldo_total, saldo_mora, status")
+        .in("prestamo_id", ids);
+
+      const amortMap: Record<string, { saldo: number; mora: number; pagadas: number; total: number }> = {};
+      for (const a of amort || []) {
+        if (!amortMap[a.prestamo_id]) amortMap[a.prestamo_id] = { saldo: 0, mora: 0, pagadas: 0, total: 0 };
+        amortMap[a.prestamo_id].saldo += Number(a.saldo_total || 0);
+        amortMap[a.prestamo_id].mora += Number(a.saldo_mora || 0);
+        amortMap[a.prestamo_id].total += 1;
+        if (a.status === "Pagada") amortMap[a.prestamo_id].pagadas += 1;
+      }
+
+      return (prestamos || []).map((p: any) => ({
+        ...p,
+        caja: p.cajas?.nombre || "—",
+        ruta: p.rutas?.nombre || "—",
+        saldo: amortMap[p.id]?.saldo || 0,
+        mora: amortMap[p.id]?.mora || 0,
+        cuotasPagadas: amortMap[p.id]?.pagadas || 0,
+        totalCuotas: amortMap[p.id]?.total || p.num_cuotas,
+      }));
+    },
+    enabled: !!clienteId,
+  });
+}
+
+function useClientePagos(clienteId: string | undefined) {
+  return useQuery({
+    queryKey: ["cliente-pagos", clienteId],
+    queryFn: async () => {
+      if (!clienteId) return [];
+      // Get prestamo IDs for this client
+      const { data: prestamos } = await supabase
+        .from("prestamos")
+        .select("id")
+        .eq("cliente_id", clienteId);
+      const ids = (prestamos || []).map((p) => p.id);
+      if (ids.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from("pagos")
+        .select(`*, cajas ( nombre )`)
+        .in("prestamo_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!clienteId,
+  });
+}
+
+const estadoPrestamoColors: Record<string, string> = {
+  Activo: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  "Al día": "bg-success text-success-foreground",
+  Vencido: "bg-destructive text-destructive-foreground",
+  Liquidado: "bg-muted text-muted-foreground",
+  Cancelado: "bg-muted text-muted-foreground",
+  Juridico: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+};
 const emptyForm: ClienteInsert = {
   nombre_completo: "",
   telefono: "",
