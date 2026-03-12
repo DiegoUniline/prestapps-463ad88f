@@ -29,19 +29,30 @@ export function useCurrentUserRole(): CurrentUserRole {
 
       const role: AppRole = (roleData?.role as AppRole) || "cobrador";
 
-      // Get cobrador_id if cobrador — match via cobradores.user_id
+      // Get cobrador_id if cobrador — match via rutas.cobrador_id linked to cobradores
+      // We look up cobradores where user_id matches (added via migration)
       let cobradorId: string | null = null;
+      let rutaIds: string[] = [];
+
       if (role === "cobrador") {
+        // Query cobradores with a raw filter for user_id (column added via migration, not in generated types)
         const { data: cobData } = await supabase
           .from("cobradores")
           .select("id")
-          .eq("user_id", userId!)
+          .eq("user_id" as any, userId!)
           .maybeSingle();
-        cobradorId = cobData?.id || null;
+        cobradorId = (cobData as any)?.id || null;
+
+        // Get routes assigned to this cobrador
+        if (cobradorId) {
+          const { data: rutaData } = await supabase
+            .from("rutas")
+            .select("id")
+            .eq("cobrador_id", cobradorId);
+          rutaIds = (rutaData || []).map((r) => r.id);
+        }
       }
 
-      // Get supervised ruta_ids if supervisor
-      let rutaIds: string[] = [];
       if (role === "supervisor") {
         const { data: supData } = await supabase
           .from("supervisor_rutas")
@@ -50,11 +61,7 @@ export function useCurrentUserRole(): CurrentUserRole {
         rutaIds = (supData || []).map((r) => r.ruta_id);
       }
 
-      // Admin sees all — get all ruta IDs for convenience
-      if (role === "admin") {
-        rutaIds = []; // empty = no filter
-      }
-
+      // Admin: empty rutaIds means no filter (show all)
       return { role, profileId: userId!, cobradorId, rutaIds };
     },
   });
