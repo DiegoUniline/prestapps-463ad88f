@@ -17,6 +17,7 @@ export interface PrestamoListItem {
   estado: string;
   fechaRegistro: string;
   fechaPrimerPago: string;
+  tieneAtraso: boolean;
 }
 
 async function fetchPrestamos(): Promise<PrestamoListItem[]> {
