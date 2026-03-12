@@ -104,6 +104,7 @@ export default function PrestamoDetallePage() {
   const { data: pagosRaw = [] } = usePagos(isNew ? undefined : id);
   const { data: promesasRaw = [] } = usePromesas(isNew ? undefined : id);
   const { data: cajasAll = [] } = useCajas();
+  const { data: rutasAll = [] } = useRutasOptions();
 
   if (isNew) { navigate("/prestamos"); return null; }
 
