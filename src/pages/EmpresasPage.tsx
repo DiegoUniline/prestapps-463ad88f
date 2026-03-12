@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Pencil, Building2, Phone, MapPin, FileText } from "lucide-react";
+import { Plus, Pencil, Building2, UserPlus } from "lucide-react";
 
 interface Empresa {
   id: string;
@@ -31,9 +32,17 @@ interface EmpresaForm {
   telefono: string;
   direccion: string;
   activa: boolean;
+  // Admin user fields (only for new)
+  adminEmail: string;
+  adminPassword: string;
+  adminNombre: string;
+  adminTelefono: string;
 }
 
-const emptyForm: EmpresaForm = { nombre: "", ruc: "", telefono: "", direccion: "", activa: true };
+const emptyForm: EmpresaForm = {
+  nombre: "", ruc: "", telefono: "", direccion: "", activa: true,
+  adminEmail: "", adminPassword: "", adminNombre: "", adminTelefono: "",
+};
 
 export default function EmpresasPage() {
   const queryClient = useQueryClient();
@@ -45,44 +54,82 @@ export default function EmpresasPage() {
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ["empresas-config"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("empresas")
-        .select("*")
-        .order("nombre");
+      const { data, error } = await supabase.from("empresas").select("*").order("nombre");
       if (error) throw error;
       return data as Empresa[];
+    },
+  });
+
+  // Fetch admin users per empresa
+  const { data: adminMap = {} } = useQuery({
+    queryKey: ["empresas-admins"],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke("manage-users", {
+        body: { action: "list" },
+      });
+      const map: Record<string, { nombre: string; email: string }[]> = {};
+      for (const u of data || []) {
+        if (u.rol === "admin") {
+          const eid = u.empresa_id || "00000000-0000-0000-0000-000000000001";
+          if (!map[eid]) map[eid] = [];
+          map[eid].push({ nombre: u.nombre_completo, email: u.email });
+        }
+      }
+      return map;
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.nombre.trim()) throw new Error("El nombre es requerido");
+
       if (editId) {
-        const { error } = await supabase
-          .from("empresas")
-          .update({
-            nombre: form.nombre.trim(),
-            ruc: form.ruc || null,
-            telefono: form.telefono || null,
-            direccion: form.direccion || null,
-            activa: form.activa,
-          })
-          .eq("id", editId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("empresas").insert({
+        // Update empresa only
+        const { error } = await supabase.from("empresas").update({
           nombre: form.nombre.trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
           activa: form.activa,
-        });
+        }).eq("id", editId);
         if (error) throw error;
+      } else {
+        // Validate admin fields
+        if (!form.adminEmail.trim()) throw new Error("El correo del administrador es requerido");
+        if (!form.adminPassword || form.adminPassword.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
+        if (!form.adminNombre.trim()) throw new Error("El nombre del administrador es requerido");
+
+        // 1. Create empresa
+        const { data: newEmpresa, error: empError } = await supabase.from("empresas").insert({
+          nombre: form.nombre.trim(),
+          ruc: form.ruc || null,
+          telefono: form.telefono || null,
+          direccion: form.direccion || null,
+          activa: form.activa,
+        }).select("id").single();
+        if (empError) throw empError;
+
+        // 2. Create admin user for this empresa
+        const { data: result, error: fnError } = await supabase.functions.invoke("manage-users", {
+          body: {
+            action: "create",
+            email: form.adminEmail.trim(),
+            password: form.adminPassword,
+            nombre_completo: form.adminNombre.trim(),
+            telefono: form.adminTelefono || null,
+            rol: "Admin",
+            activo: true,
+            empresa_id: newEmpresa.id,
+          },
+        });
+        if (fnError) throw fnError;
+        if (result?.error) throw new Error(result.error);
       }
     },
     onSuccess: () => {
-      toast.success(editId ? "Empresa actualizada" : "Empresa creada");
+      toast.success(editId ? "Empresa actualizada" : "Empresa y administrador creados");
       queryClient.invalidateQueries({ queryKey: ["empresas-config"] });
+      queryClient.invalidateQueries({ queryKey: ["empresas-admins"] });
       queryClient.invalidateQueries({ queryKey: ["empresas"] });
       setOpen(false);
       setEditId(null);
@@ -105,6 +152,7 @@ export default function EmpresasPage() {
       telefono: e.telefono || "",
       direccion: e.direccion || "",
       activa: e.activa,
+      adminEmail: "", adminPassword: "", adminNombre: "", adminTelefono: "",
     });
     setOpen(true);
   };
@@ -122,7 +170,7 @@ export default function EmpresasPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
-          <p className="text-sm text-muted-foreground">Gestiona las empresas que usan el sistema</p>
+          <p className="text-sm text-muted-foreground">Gestiona las empresas y sus administradores</p>
         </div>
         <Button onClick={openNew} className="gap-2">
           <Plus className="h-4 w-4" /> Nueva Empresa
@@ -137,7 +185,7 @@ export default function EmpresasPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>RUC / NIT</TableHead>
                 <TableHead>Teléfono</TableHead>
-                <TableHead>Dirección</TableHead>
+                <TableHead>Administrador</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="w-16"></TableHead>
               </TableRow>
@@ -145,40 +193,52 @@ export default function EmpresasPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Cargando...
-                  </TableCell>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
                 </TableRow>
               ) : empresas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No hay empresas registradas
-                  </TableCell>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
                 </TableRow>
               ) : (
-                empresas.map((e) => (
-                  <TableRow key={e.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        {e.nombre}
-                      </div>
-                    </TableCell>
-                    <TableCell>{e.ruc || "—"}</TableCell>
-                    <TableCell>{e.telefono || "—"}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{e.direccion || "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant={e.activa ? "default" : "secondary"}>
-                        {e.activa ? "Activa" : "Inactiva"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(e)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                empresas.map((e) => {
+                  const admins = adminMap[e.id] || [];
+                  return (
+                    <TableRow key={e.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-muted-foreground" />
+                          {e.nombre}
+                        </div>
+                      </TableCell>
+                      <TableCell>{e.ruc || "—"}</TableCell>
+                      <TableCell>{e.telefono || "—"}</TableCell>
+                      <TableCell>
+                        {admins.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {admins.map((a, i) => (
+                              <div key={i} className="text-sm">
+                                <span className="font-medium">{a.nombre}</span>
+                                <span className="text-muted-foreground ml-1 text-xs">({a.email})</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Sin admin</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={e.activa ? "default" : "secondary"}>
+                          {e.activa ? "Activa" : "Inactiva"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(e)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -186,55 +246,71 @@ export default function EmpresasPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editId ? "Editar Empresa" : "Nueva Empresa"}</DialogTitle>
+            <DialogTitle>{editId ? "Editar Empresa" : "Nueva Empresa + Administrador"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            {/* Empresa fields */}
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Building2 className="h-4 w-4" /> Datos de la Empresa
+            </div>
             <div className="space-y-2">
               <Label>Nombre *</Label>
-              <Input
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                placeholder="Nombre de la empresa"
-              />
+              <Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Nombre de la empresa" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>RUC / NIT</Label>
-                <Input
-                  value={form.ruc}
-                  onChange={(e) => setForm({ ...form, ruc: e.target.value })}
-                  placeholder="0000-000000-000-0"
-                />
+                <Input value={form.ruc} onChange={(e) => setForm({ ...form, ruc: e.target.value })} placeholder="0000-000000-000-0" />
               </div>
               <div className="space-y-2">
                 <Label>Teléfono</Label>
-                <Input
-                  value={form.telefono}
-                  onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-                  placeholder="+503 0000-0000"
-                />
+                <Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} placeholder="+503 0000-0000" />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Dirección</Label>
-              <Textarea
-                value={form.direccion}
-                onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-                placeholder="Dirección de la empresa"
-                rows={2}
-              />
+              <Textarea value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} placeholder="Dirección" rows={2} />
             </div>
             <div className="flex items-center gap-3">
               <Switch checked={form.activa} onCheckedChange={(v) => setForm({ ...form, activa: v })} />
               <Label>Empresa activa</Label>
             </div>
+
+            {/* Admin user fields — only for new empresa */}
+            {!editId && (
+              <>
+                <Separator />
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                  <UserPlus className="h-4 w-4" /> Administrador de la Empresa
+                </div>
+                <p className="text-xs text-muted-foreground">Este usuario será el admin de la empresa. Todos los usuarios y datos que cree pertenecerán a esta empresa.</p>
+                <div className="space-y-2">
+                  <Label>Nombre completo *</Label>
+                  <Input value={form.adminNombre} onChange={(e) => setForm({ ...form, adminNombre: e.target.value })} placeholder="Nombre del administrador" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Correo electrónico *</Label>
+                    <Input type="email" value={form.adminEmail} onChange={(e) => setForm({ ...form, adminEmail: e.target.value })} placeholder="admin@empresa.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Contraseña *</Label>
+                    <Input type="password" value={form.adminPassword} onChange={(e) => setForm({ ...form, adminPassword: e.target.value })} placeholder="Min. 6 caracteres" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Teléfono</Label>
+                  <Input value={form.adminTelefono} onChange={(e) => setForm({ ...form, adminTelefono: e.target.value })} placeholder="+503 0000-0000" />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              {saveMutation.isPending ? "Guardando..." : editId ? "Actualizar" : "Crear"}
+              {saveMutation.isPending ? "Guardando..." : editId ? "Actualizar" : "Crear Empresa + Admin"}
             </Button>
           </DialogFooter>
         </DialogContent>
