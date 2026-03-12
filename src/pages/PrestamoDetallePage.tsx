@@ -338,8 +338,15 @@ export default function PrestamoDetallePage() {
                 cliente ? <Link to={`/clientes/${cliente.id}`} className="text-primary hover:underline font-medium">{cliente.nombre_completo}</Link> : "—"
               } />
               <SidebarField label="EMPRESA" value={dashStr(prestamo.empresa)} />
-              <SidebarField label="COBRADOR" value="—" />
-              <SidebarField label="RUTA" value={ruta?.nombre || "—"} />
+              <SidebarField label="COBRADOR" value={prestamo.cobrador_id || "—"} />
+              <SidebarField label="RUTA" value={
+                <span className="flex items-center gap-1.5">
+                  {ruta?.nombre || "—"}
+                  <button onClick={() => setReasignarOpen(true)} className="text-primary hover:text-primary/80 transition-colors" title="Reasignar">
+                    <Route className="h-3 w-3" />
+                  </button>
+                </span>
+              } />
               <SidebarField label="GENERADO POR" value="—" />
               <SidebarField label="F. REGISTRO" value={prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—"} />
               <SidebarField label="F. PRIMER PAGO" value={prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—"} />
