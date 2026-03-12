@@ -249,6 +249,16 @@ export default function PrestamosPage() {
         ))}
       </div>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-muted">
+          <TabsTrigger value="todos">Todos <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.todos})</span></TabsTrigger>
+          <TabsTrigger value="vigentes">Vigentes <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.vigentes})</span></TabsTrigger>
+          <TabsTrigger value="atrasados">Atrasados <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.atrasados})</span></TabsTrigger>
+          <TabsTrigger value="liquidados">Liquidados <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.liquidados})</span></TabsTrigger>
+        </TabsList>
+        <TabsContent value={activeTab} className="space-y-5 mt-4">
+
       {/* Search bar centered — Odoo style */}
       <div className="hidden md:flex justify-center">
         <div className="relative w-full max-w-sm">
