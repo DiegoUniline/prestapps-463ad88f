@@ -29,6 +29,7 @@ import {
   Building2,
   MessageSquare,
   Users2,
+  Star,
 } from "lucide-react";
 
 const mainNav = [
