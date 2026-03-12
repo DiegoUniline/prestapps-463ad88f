@@ -74,6 +74,8 @@ const App = () => (
                   <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]}><WhatsAppConfigPage /></RoleGuard>} />
                   <Route path="/crm" element={<RoleGuard allowed={["admin", "supervisor"]}><CrmCobranzaPage /></RoleGuard>} />
                   <Route path="/scoring" element={<RoleGuard allowed={["admin", "supervisor"]}><LeadScoringPage /></RoleGuard>} />
+                  <Route path="/gastos" element={<RoleGuard allowed={["admin"]}><GastosPage /></RoleGuard>} />
+                  <Route path="/comisiones" element={<RoleGuard allowed={["admin"]}><ComisionesPage /></RoleGuard>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
