@@ -92,48 +92,6 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
   );
 }
 
-// --- Date range dropdown ---
-function DateRangeDropdown({ from, to, onFromChange, onToChange, onClear }: {
-  from: Date | undefined; to: Date | undefined;
-  onFromChange: (d: Date | undefined) => void; onToChange: (d: Date | undefined) => void; onClear: () => void;
-}) {
-  const hasValue = from || to;
-  const label = from && to
-    ? `${format(from, "dd/MM/yy")} – ${format(to, "dd/MM/yy")}`
-    : from ? `Desde ${format(from, "dd/MM/yy")}` : to ? `Hasta ${format(to, "dd/MM/yy")}` : "Fecha Registro";
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm"
-          className={cn(
-            "h-9 gap-1.5 text-sm font-medium whitespace-nowrap",
-            hasValue && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
-          )}>
-          <CalendarIcon className="h-3.5 w-3.5" />
-          {label}
-          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-4" align="start">
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Desde</p>
-            <Calendar mode="single" selected={from} onSelect={onFromChange} className="p-0 pointer-events-auto" />
-          </div>
-          <div className="border-t pt-3">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Hasta</p>
-            <Calendar mode="single" selected={to} onSelect={onToChange} className="p-0 pointer-events-auto" />
-          </div>
-          {hasValue && (
-            <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={onClear}>Limpiar fechas</Button>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 // --- Filters rendered inside mobile sheet ---
 function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta, setSelRuta, selCobrador, setSelCobrador,
   regDesde, setRegDesde, regHasta, setRegHasta, clearAll }: any) {
@@ -250,17 +208,49 @@ export default function PrestamosPage() {
         <Button onClick={() => navigate("/prestamos/nuevo")}><Plus className="h-4 w-4 mr-2" />Nuevo</Button>
       </div>
 
+      {/* Search bar centered — Odoo style */}
+      <div className="hidden md:flex justify-center">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Buscar por cliente, ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-10 text-sm" />
+        </div>
+      </div>
+
       {/* DESKTOP filter bar — single row */}
       <div className="hidden md:flex items-center gap-2 w-full">
         <MultiFilterDropdown label="Estado" options={estadoOptions} selected={selEstado} onChange={setSelEstado} />
         <MultiFilterDropdown label="Caja" options={uniqueVals("caja")} selected={selCaja} onChange={setSelCaja} />
         <MultiFilterDropdown label="Ruta" options={uniqueVals("ruta")} selected={selRuta} onChange={setSelRuta} />
         <MultiFilterDropdown label="Cobrador" options={uniqueVals("cobrador")} selected={selCobrador} onChange={setSelCobrador} />
-        <DateRangeDropdown from={regDesde} to={regHasta} onFromChange={setRegDesde} onToChange={setRegHasta} onClear={() => { setRegDesde(undefined); setRegHasta(undefined); }} />
-        <div className="relative flex-1 min-w-[160px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-sm" />
-        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm"
+              className={cn("h-9 gap-1.5 text-sm font-medium whitespace-nowrap", regDesde && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground")}>
+              <CalendarIcon className="h-3.5 w-3.5" />
+              {regDesde ? format(regDesde, "dd/MM/yy") : "Desde"}
+              <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={regDesde} onSelect={setRegDesde} className="p-3 pointer-events-auto" />
+            {regDesde && <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => setRegDesde(undefined)}>Limpiar</Button></div>}
+          </PopoverContent>
+        </Popover>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm"
+              className={cn("h-9 gap-1.5 text-sm font-medium whitespace-nowrap", regHasta && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground")}>
+              <CalendarIcon className="h-3.5 w-3.5" />
+              {regHasta ? format(regHasta, "dd/MM/yy") : "Hasta"}
+              <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={regHasta} onSelect={setRegHasta} className="p-3 pointer-events-auto" />
+            {regHasta && <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => setRegHasta(undefined)}>Limpiar</Button></div>}
+          </PopoverContent>
+        </Popover>
+        <div className="flex-1" />
         {hasFilters && (
           <Button variant="ghost" size="sm" className="h-9 text-xs whitespace-nowrap shrink-0" onClick={clearAll}>
             <X className="h-3.5 w-3.5 mr-1" />Limpiar
