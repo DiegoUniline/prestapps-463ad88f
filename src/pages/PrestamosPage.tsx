@@ -6,26 +6,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, FileText, TrendingUp, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
-interface Prestamo {
-  id: string; cliente: string; montoSolicitado: number; montoPagar: number;
-  cuotasPagadas: number; totalCuotas: number; caja: string; ruta: string;
-  cobrador: string; saldo: number; mora: number; estado: string;
-  fechaRegistro: string; fechaPrimerPago: string;
-}
-
-const mockPrestamos: Prestamo[] = [
-  { id: "PRE-0001", cliente: "María García", montoSolicitado: 10000, montoPagar: 12000, cuotasPagadas: 3, totalCuotas: 12, caja: "Caja Principal", ruta: "Ruta Centro", cobrador: "Pedro Ruiz", saldo: 9000, mora: 0, estado: "Activo", fechaRegistro: "2026-01-15", fechaPrimerPago: "2026-01-22" },
-  { id: "PRE-0002", cliente: "Carlos López", montoSolicitado: 25000, montoPagar: 32500, cuotasPagadas: 7, totalCuotas: 24, caja: "Caja Principal", ruta: "Ruta Norte", cobrador: "Juan Torres", saldo: 21800, mora: 1200, estado: "Vencido", fechaRegistro: "2025-11-01", fechaPrimerPago: "2025-11-08" },
-  { id: "PRE-0003", cliente: "Ana Martínez", montoSolicitado: 5000, montoPagar: 6000, cuotasPagadas: 1, totalCuotas: 6, caja: "Caja Secundaria", ruta: "Ruta Centro", cobrador: "Pedro Ruiz", saldo: 5000, mora: 0, estado: "Al día", fechaRegistro: "2026-03-01", fechaPrimerPago: "2026-03-08" },
-  { id: "PRE-0004", cliente: "José Rodríguez", montoSolicitado: 15000, montoPagar: 19500, cuotasPagadas: 12, totalCuotas: 12, caja: "Caja Principal", ruta: "Ruta Sur", cobrador: "Miguel Ángel", saldo: 0, mora: 0, estado: "Liquidado", fechaRegistro: "2025-06-10", fechaPrimerPago: "2025-06-17" },
-  { id: "PRE-0005", cliente: "Laura Sánchez", montoSolicitado: 8000, montoPagar: 10400, cuotasPagadas: 5, totalCuotas: 18, caja: "Caja Reserva", ruta: "Ruta Este", cobrador: "Pedro Ruiz", saldo: 7200, mora: 350, estado: "Activo", fechaRegistro: "2025-12-20", fechaPrimerPago: "2025-12-27" },
-  { id: "PRE-0006", cliente: "Roberto Díaz", montoSolicitado: 12000, montoPagar: 15600, cuotasPagadas: 0, totalCuotas: 12, caja: "Caja Principal", ruta: "Ruta Norte", cobrador: "Juan Torres", saldo: 15600, mora: 2400, estado: "Juridico", fechaRegistro: "2025-09-05", fechaPrimerPago: "2025-09-12" },
-];
+import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
 
 const estadoBadge: Record<string, string> = {
   Activo: "bg-badge-activo text-badge-activo-foreground",
@@ -36,8 +22,7 @@ const estadoBadge: Record<string, string> = {
   Juridico: "bg-badge-juridico text-badge-juridico-foreground",
 };
 
-type SortKey = keyof Prestamo;
-const uniqueVals = (key: keyof Prestamo) => [...new Set(mockPrestamos.map((p) => String(p[key])))];
+type SortKey = keyof PrestamoListItem;
 const estadoOptions = ["Activo", "Vencido", "Al día", "Liquidado", "Juridico", "Cancelado"];
 
 // --- Multi-select dropdown filter ---
@@ -88,7 +73,7 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
 }
 
 // --- Filters for mobile sheet ---
-function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta, setSelRuta, selCobrador, setSelCobrador,
+function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta, setSelRuta, cajasOpts, rutasOpts,
   regDesde, setRegDesde, regHasta, setRegHasta, clearAll }: any) {
   return (
     <div className="space-y-4">
@@ -103,7 +88,7 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
       </div>
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Caja</p>
-        {uniqueVals("caja").map((o) => (
+        {(cajasOpts || []).map((o: string) => (
           <label key={o} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-[13px]">
             <Checkbox checked={selCaja.has(o)} onCheckedChange={() => { const n = new Set(selCaja); n.has(o) ? n.delete(o) : n.add(o); setSelCaja(n); }} />
             <span>{o}</span>
@@ -112,18 +97,9 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
       </div>
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Ruta</p>
-        {uniqueVals("ruta").map((o) => (
+        {(rutasOpts || []).map((o: string) => (
           <label key={o} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-[13px]">
             <Checkbox checked={selRuta.has(o)} onCheckedChange={() => { const n = new Set(selRuta); n.has(o) ? n.delete(o) : n.add(o); setSelRuta(n); }} />
-            <span>{o}</span>
-          </label>
-        ))}
-      </div>
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Cobrador</p>
-        {uniqueVals("cobrador").map((o) => (
-          <label key={o} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-[13px]">
-            <Checkbox checked={selCobrador.has(o)} onCheckedChange={() => { const n = new Set(selCobrador); n.has(o) ? n.delete(o) : n.add(o); setSelCobrador(n); }} />
             <span>{o}</span>
           </label>
         ))}
@@ -142,13 +118,19 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
 
 export default function PrestamosPage() {
   const navigate = useNavigate();
+  const { data: prestamos = [], isLoading, isError } = usePrestamos();
+  const { data: cajasRaw = [] } = useCajasOptions();
+  const { data: rutasRaw = [] } = useRutasOptions();
+
+  const cajasOpts = cajasRaw.map((c) => c.nombre);
+  const rutasOpts = rutasRaw.map((r) => r.nombre);
+
   const [search, setSearch] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   const [selEstado, setSelEstado] = useState<Set<string>>(new Set());
   const [selCaja, setSelCaja] = useState<Set<string>>(new Set());
   const [selRuta, setSelRuta] = useState<Set<string>>(new Set());
-  const [selCobrador, setSelCobrador] = useState<Set<string>>(new Set());
   const [regDesde, setRegDesde] = useState<Date>();
   const [regHasta, setRegHasta] = useState<Date>();
 
@@ -167,24 +149,28 @@ export default function PrestamosPage() {
     return sortDir === "asc" ? <ArrowUp className="h-3 w-3 text-primary" /> : <ArrowDown className="h-3 w-3 text-primary" />;
   };
 
-  const totalActiveFilters = selEstado.size + selCaja.size + selRuta.size + selCobrador.size + (regDesde ? 1 : 0) + (regHasta ? 1 : 0);
+  const totalActiveFilters = selEstado.size + selCaja.size + selRuta.size + (regDesde ? 1 : 0) + (regHasta ? 1 : 0);
   const hasFilters = totalActiveFilters > 0 || search;
 
   const clearAll = () => {
-    setSearch(""); setSelEstado(new Set()); setSelCaja(new Set()); setSelRuta(new Set()); setSelCobrador(new Set());
+    setSearch(""); setSelEstado(new Set()); setSelCaja(new Set()); setSelRuta(new Set());
     setRegDesde(undefined); setRegHasta(undefined); setSortKey(null); setSortDir(null);
   };
 
   const filtered = useMemo(() => {
-    let data = mockPrestamos.filter((p) => {
-      if (search && !p.cliente.toLowerCase().includes(search.toLowerCase()) && !p.id.toLowerCase().includes(search.toLowerCase())) return false;
+    let data = prestamos.filter((p) => {
+      if (search) {
+        const q = search.toLowerCase();
+        if (!p.cliente.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return false;
+      }
       if (selEstado.size > 0 && !selEstado.has(p.estado)) return false;
       if (selCaja.size > 0 && !selCaja.has(p.caja)) return false;
       if (selRuta.size > 0 && !selRuta.has(p.ruta)) return false;
-      if (selCobrador.size > 0 && !selCobrador.has(p.cobrador)) return false;
-      const reg = new Date(p.fechaRegistro);
-      if (regDesde && reg < regDesde) return false;
-      if (regHasta && reg > regHasta) return false;
+      if (p.fechaRegistro) {
+        const reg = new Date(p.fechaRegistro);
+        if (regDesde && reg < regDesde) return false;
+        if (regHasta && reg > regHasta) return false;
+      }
       return true;
     });
     if (sortKey && sortDir) {
@@ -195,7 +181,7 @@ export default function PrestamosPage() {
       });
     }
     return data;
-  }, [search, selEstado, selCaja, selRuta, selCobrador, regDesde, regHasta, sortKey, sortDir]);
+  }, [prestamos, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
 
   const toggleRow = (id: string) => {
     const next = new Set(selectedRows);
@@ -208,11 +194,11 @@ export default function PrestamosPage() {
     else setSelectedRows(new Set(filtered.map((p) => p.id)));
   };
 
-  // KPI data
-  const totalPrestamos = mockPrestamos.length;
-  const montoColocado = mockPrestamos.reduce((s, p) => s + p.montoSolicitado, 0);
-  const porCobrar = mockPrestamos.reduce((s, p) => s + p.saldo, 0);
-  const morosos = mockPrestamos.filter((p) => p.mora > 0);
+  // KPI data from all prestamos (not just filtered)
+  const totalPrestamos = prestamos.length;
+  const montoColocado = prestamos.reduce((s, p) => s + p.montoSolicitado, 0);
+  const porCobrar = prestamos.reduce((s, p) => s + p.saldo, 0);
+  const morosos = prestamos.filter((p) => p.mora > 0);
   const totalMora = morosos.reduce((s, p) => s + p.mora, 0);
 
   const kpis = [
@@ -240,7 +226,7 @@ export default function PrestamosPage() {
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
               <k.icon className={cn("h-4 w-4", k.accent)} />
             </div>
-            <p className="text-lg font-semibold mt-1">{k.value}</p>
+            <p className="text-lg font-semibold mt-1">{isLoading ? "—" : k.value}</p>
           </div>
         ))}
       </div>
@@ -256,9 +242,8 @@ export default function PrestamosPage() {
       {/* DESKTOP filter bar */}
       <div className="hidden md:flex items-center gap-2 bg-filter-bar border border-filter-bar-border rounded-lg px-3 py-2">
         <MultiFilterDropdown label="Estado" options={estadoOptions} selected={selEstado} onChange={setSelEstado} />
-        <MultiFilterDropdown label="Caja" options={uniqueVals("caja")} selected={selCaja} onChange={setSelCaja} />
-        <MultiFilterDropdown label="Ruta" options={uniqueVals("ruta")} selected={selRuta} onChange={setSelRuta} />
-        <MultiFilterDropdown label="Cobrador" options={uniqueVals("cobrador")} selected={selCobrador} onChange={setSelCobrador} />
+        <MultiFilterDropdown label="Caja" options={cajasOpts} selected={selCaja} onChange={setSelCaja} />
+        <MultiFilterDropdown label="Ruta" options={rutasOpts} selected={selRuta} onChange={setSelRuta} />
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm"
@@ -312,7 +297,7 @@ export default function PrestamosPage() {
           <SheetContent side="left" className="overflow-y-auto">
             <SheetHeader><SheetTitle>Filtros</SheetTitle></SheetHeader>
             <div className="mt-4">
-              <FiltersContent {...{ selEstado, setSelEstado, selCaja, setSelCaja, selRuta, setSelRuta, selCobrador, setSelCobrador, regDesde, setRegDesde, regHasta, setRegHasta, clearAll }} />
+              <FiltersContent {...{ selEstado, setSelEstado, selCaja, setSelCaja, selRuta, setSelRuta, cajasOpts, rutasOpts, regDesde, setRegDesde, regHasta, setRegHasta, clearAll }} />
             </div>
           </SheetContent>
         </Sheet>
@@ -341,9 +326,9 @@ export default function PrestamosPage() {
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
               </TableHead>
               {([
-                ["id", "ID"], ["cliente", "Cliente"], ["fechaRegistro", "F. Registro"], ["fechaPrimerPago", "F. 1er Pago"],
+                ["cliente", "Cliente"], ["fechaRegistro", "F. Registro"], ["fechaPrimerPago", "F. 1er Pago"],
                 ["montoSolicitado", "Prestado"], ["montoPagar", "A Pagar"], ["cuotasPagadas", "Cuotas"],
-                ["caja", "Caja"], ["ruta", "Ruta"], ["cobrador", "Cobrador"],
+                ["caja", "Caja"], ["ruta", "Ruta"],
                 ["saldo", "Saldo"], ["mora", "Mora"], ["estado", "Estado"],
               ] as [SortKey, string][]).map(([key, label]) => (
                 <TableHead
@@ -357,8 +342,18 @@ export default function PrestamosPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={12} className="px-3 py-3">
+                    <Skeleton className="h-4 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : isError ? (
+              <TableRow><TableCell colSpan={12} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}
@@ -371,16 +366,14 @@ export default function PrestamosPage() {
                 <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
                 </TableCell>
-                <TableCell className="font-mono text-[12px] text-muted-foreground px-3">{p.id}</TableCell>
                 <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">{p.cliente}</TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{format(new Date(p.fechaRegistro), "dd/MM/yyyy")}</TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{format(new Date(p.fechaPrimerPago), "dd/MM/yyyy")}</TableCell>
+                <TableCell className="text-[12px] text-muted-foreground px-3">{p.fechaRegistro ? format(new Date(p.fechaRegistro), "dd/MM/yyyy") : "—"}</TableCell>
+                <TableCell className="text-[12px] text-muted-foreground px-3">{p.fechaPrimerPago ? format(new Date(p.fechaPrimerPago), "dd/MM/yyyy") : "—"}</TableCell>
                 <TableCell className="text-right text-[13px] px-3">${p.montoSolicitado.toLocaleString()}</TableCell>
                 <TableCell className="text-right text-[13px] px-3">${p.montoPagar.toLocaleString()}</TableCell>
                 <TableCell className="text-[13px] px-3">{p.cuotasPagadas}/{p.totalCuotas}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.ruta}</TableCell>
-                <TableCell className="text-[12px] whitespace-nowrap px-3">{p.cobrador}</TableCell>
                 <TableCell className="text-right font-medium text-[13px] px-3">${p.saldo.toLocaleString()}</TableCell>
                 <TableCell className={cn("text-right font-bold text-[13px] px-3", p.mora > 0 ? "text-destructive" : "text-muted-foreground")}>
                   {p.mora > 0 ? `$${p.mora.toLocaleString()}` : "$0"}
