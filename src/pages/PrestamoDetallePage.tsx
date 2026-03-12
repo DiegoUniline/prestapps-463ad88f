@@ -632,6 +632,19 @@ export default function PrestamoDetallePage() {
         }))}
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
       />
+
+      {/* Promesa Modal */}
+      {selectedCuota && (
+        <PromesaModal
+          open={promesaOpen}
+          onOpenChange={setPromesaOpen}
+          prestamoId={prestamo.id}
+          cuotaNum={selectedCuota.num_cuota}
+          cuotaId={selectedCuota.id}
+          saldoTotal={Number(selectedCuota.saldo_total || 0)}
+          fechaVencimiento={format(new Date(selectedCuota.fecha_vencimiento), "dd/MM/yyyy")}
+        />
+      )}
     </div>
   );
 }
