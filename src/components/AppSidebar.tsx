@@ -27,6 +27,8 @@ import {
   UserCheck,
   ClipboardCheck,
   Building2,
+  MessageSquare,
+  Users2,
 } from "lucide-react";
 
 const mainNav = [
