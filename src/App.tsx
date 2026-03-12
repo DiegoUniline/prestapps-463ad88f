@@ -7,11 +7,11 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import PrestamosPage from "@/pages/PrestamosPage";
-import NuevoPrestamoPage from "@/pages/NuevoPrestamoPage";
-import NuevoClientePage from "@/pages/NuevoClientePage";
+import PrestamoDetallePage from "@/pages/PrestamoDetallePage";
 import PagosPage from "@/pages/PagosPage";
 import PromesasPage from "@/pages/PromesasPage";
 import ClientesPage from "@/pages/ClientesPage";
+import ClienteDetallePage from "@/pages/ClienteDetallePage";
 import CajasPage from "@/pages/CajasPage";
 import RutasPage from "@/pages/RutasPage";
 import ReportesPage from "@/pages/ReportesPage";
@@ -31,16 +31,18 @@ const App = () => (
             <Route element={<AppLayout />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/prestamos" element={<PrestamosPage />} />
-              <Route path="/prestamos/nuevo" element={<NuevoPrestamoPage />} />
+              <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
               <Route path="/pagos" element={<PagosPage />} />
               <Route path="/promesas" element={<PromesasPage />} />
               <Route path="/clientes" element={<ClientesPage />} />
-              <Route path="/clientes/nuevo" element={<NuevoClientePage />} />
-              <Route path="/clientes/:id" element={<NuevoClientePage />} />
+              <Route path="/clientes/:id" element={<ClienteDetallePage />} />
               <Route path="/cajas" element={<CajasPage />} />
+              <Route path="/cajas/:id" element={<CajasPage />} />
               <Route path="/rutas" element={<RutasPage />} />
+              <Route path="/rutas/:id" element={<RutasPage />} />
               <Route path="/reportes" element={<ReportesPage />} />
               <Route path="/usuarios" element={<UsuariosPage />} />
+              <Route path="/usuarios/:id" element={<UsuariosPage />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
