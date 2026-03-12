@@ -18,6 +18,9 @@ interface Cuota {
   saldo_interes: number;
   saldo_capital: number;
   saldo_total: number;
+  mora_pagada: number;
+  interes_pagado: number;
+  capital_pagado: number;
   status: string;
   fecha_vencimiento: string;
 }
