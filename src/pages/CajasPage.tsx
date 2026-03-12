@@ -46,7 +46,7 @@ function useKardex() {
   return useQuery({
     queryKey: ["kardex-all"],
     queryFn: async () => {
-      // 1) Movimientos de caja (depósitos, retiros, transferencias, desembolsos)
+      // 1) Movimientos de caja
       const { data: movs, error: movErr } = await supabase
         .from("movimientos_caja")
         .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
@@ -62,7 +62,18 @@ function useKardex() {
         .limit(500);
       if (pagErr) throw pagErr;
 
+      // 3) Préstamos (desembolsos) — siempre mostrar como salida
+      const { data: prestamos, error: preErr } = await supabase
+        .from("prestamos")
+        .select("id, monto_solicitado, created_at, fecha_registro, caja_id, cajas ( nombre ), clientes ( nombre_completo )")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (preErr) throw preErr;
+
       const entries: KardexEntry[] = [];
+
+      // Track movimiento prestamo_ids to avoid duplicates
+      const movPrestamoIds = new Set((movs || []).filter(m => m.prestamo_id).map(m => m.prestamo_id));
 
       // Map movimientos
       for (const m of movs || []) {
@@ -74,6 +85,7 @@ function useKardex() {
         if (concepto.toLowerCase().includes("desembolso") || concepto.toLowerCase().includes("préstamo")) {
           categoria = m.tipo === "salida" ? "Desembolso" : "Cobro";
         }
+        if (concepto.toLowerCase().includes("pago")) categoria = "Cobro";
 
         entries.push({
           id: `mov-${m.id}`,
@@ -90,13 +102,14 @@ function useKardex() {
         });
       }
 
-      // Map pagos as cobros (entrada)
+      // Map pagos as cobros — skip if already in movimientos
+      const pagoPrestamoAmounts = new Set<string>();
       for (const p of pagos || []) {
         const prestamo = p.prestamos as any;
         const cliente = prestamo?.clientes as any;
-        // Skip if a matching movimiento_caja already exists for this pago
-        const alreadyInMovs = entries.some(e => e.concepto.includes(prestamo?.id?.slice(0, 8) || "NONE") && e.categoria !== "Desembolso" && Math.abs(e.monto - Number(p.monto_recibido)) < 0.01);
-        if (alreadyInMovs) continue;
+        const key = `${p.prestamo_id}-${Number(p.monto_recibido).toFixed(2)}-${p.created_at}`;
+        if (pagoPrestamoAmounts.has(key)) continue;
+        pagoPrestamoAmounts.add(key);
 
         entries.push({
           id: `pago-${p.id}`,
@@ -110,6 +123,27 @@ function useKardex() {
           cajaId: p.caja_id || "",
           usuario: "",
           monto: Number(p.monto_recibido || 0),
+        });
+      }
+
+      // Map préstamos as desembolsos — skip if already tracked via movimientos_caja
+      for (const pr of prestamos || []) {
+        if (movPrestamoIds.has(pr.id)) continue; // already has a movimiento
+        const cliente = (pr as any).clientes as any;
+        const caja = (pr as any).cajas as any;
+
+        entries.push({
+          id: `pre-${pr.id}`,
+          fecha: pr.created_at || pr.fecha_registro || "",
+          tipo: "salida",
+          categoria: "Desembolso",
+          concepto: `Desembolso préstamo — ${$$(Number(pr.monto_solicitado))}`,
+          cliente: cliente?.nombre_completo || "",
+          prestamo: `PRE-${pr.id.slice(0, 8)}`,
+          caja: caja?.nombre || "—",
+          cajaId: pr.caja_id || "",
+          usuario: "",
+          monto: Number(pr.monto_solicitado || 0),
         });
       }
 
