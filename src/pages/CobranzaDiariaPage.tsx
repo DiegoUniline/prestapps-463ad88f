@@ -212,10 +212,23 @@ export default function CobranzaDiariaPage() {
     return Array.from(map, ([id, nombre]) => ({ id, nombre }));
   }, [cuotas]);
 
+  // Role-based pre-filter
+  const { role, rutaIds: roleRutaIds, cobradorId: roleCobradorId } = useCurrentUserRole();
+  const roleCuotas = useMemo(() => {
+    if (!cuotas) return [];
+    if (role === "admin") return cuotas;
+    if (role === "supervisor" && roleRutaIds.length > 0) {
+      return cuotas.filter((c) => c.rutaId && roleRutaIds.includes(c.rutaId));
+    }
+    if (role === "cobrador" && roleCobradorId) {
+      return cuotas.filter((c) => c.cobradorId === roleCobradorId);
+    }
+    return [];
+  }, [cuotas, role, roleRutaIds, roleCobradorId]);
+
   // Filter
   const filtered = useMemo(() => {
-    if (!cuotas) return [];
-    return cuotas.filter((c) => {
+    return roleCuotas.filter((c) => {
       if (!showVencidas && c.fechaVencimiento < fechaStr && !c.pagada) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -228,7 +241,7 @@ export default function CobranzaDiariaPage() {
       if (filtroEstado === "vencidas" && (c.pagada || c.diasAtraso === 0)) return false;
       return true;
     });
-  }, [cuotas, search, filtroRuta, filtroCobrador, filtroEstado, showVencidas, fechaStr]);
+  }, [roleCuotas, search, filtroRuta, filtroCobrador, filtroEstado, showVencidas, fechaStr]);
 
   // KPIs
   const kpis = useMemo(() => {
