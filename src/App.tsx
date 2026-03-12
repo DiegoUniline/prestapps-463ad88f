@@ -5,7 +5,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
+import LoginPage from "@/pages/LoginPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import PrestamosPage from "@/pages/PrestamosPage";
 import PrestamoDetallePage from "@/pages/PrestamoDetallePage";
@@ -27,36 +31,40 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
-      <EmpresaProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route element={<AppLayout />}>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/prestamos" element={<PrestamosPage />} />
-                <Route path="/prestamos/nuevo" element={<NuevoPrestamoPage />} />
-                <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
-              <Route path="/pagos" element={<PagosPage />} />
-              <Route path="/cobranza" element={<CobranzaDiariaPage />} />
-                <Route path="/promesas" element={<PromesasPage />} />
-                <Route path="/clientes" element={<ClientesPage />} />
-                <Route path="/clientes/:id" element={<ClienteDetallePage />} />
-                <Route path="/cajas" element={<CajasPage />} />
-                <Route path="/cajas/:id" element={<CajasPage />} />
-                <Route path="/rutas" element={<RutasPage />} />
-                <Route path="/rutas/:id" element={<RutasPage />} />
-                <Route path="/cobradores" element={<CobradoresPage />} />
-                <Route path="/reportes" element={<ReportesPage />} />
-                <Route path="/usuarios" element={<UsuariosPage />} />
-                <Route path="/usuarios/:id" element={<UsuariosPage />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </EmpresaProvider>
+      <AuthProvider>
+        <EmpresaProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/prestamos" element={<PrestamosPage />} />
+                  <Route path="/prestamos/nuevo" element={<NuevoPrestamoPage />} />
+                  <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
+                  <Route path="/pagos" element={<PagosPage />} />
+                  <Route path="/cobranza" element={<CobranzaDiariaPage />} />
+                  <Route path="/promesas" element={<PromesasPage />} />
+                  <Route path="/clientes" element={<ClientesPage />} />
+                  <Route path="/clientes/:id" element={<ClienteDetallePage />} />
+                  <Route path="/cajas" element={<CajasPage />} />
+                  <Route path="/cajas/:id" element={<CajasPage />} />
+                  <Route path="/rutas" element={<RutasPage />} />
+                  <Route path="/rutas/:id" element={<RutasPage />} />
+                  <Route path="/cobradores" element={<CobradoresPage />} />
+                  <Route path="/reportes" element={<ReportesPage />} />
+                  <Route path="/usuarios" element={<UsuariosPage />} />
+                  <Route path="/usuarios/:id" element={<UsuariosPage />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </EmpresaProvider>
+      </AuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
