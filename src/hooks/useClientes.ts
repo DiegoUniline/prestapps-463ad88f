@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Cliente, ClienteInsert } from "@/types/cliente";
 
-export function useClientes(filters?: { estado?: string; search?: string }) {
+export function useClientes(filters?: { estado?: string; search?: string; empresaId?: string }) {
   return useQuery({
     queryKey: ["clientes", filters],
     queryFn: async () => {
@@ -11,6 +11,9 @@ export function useClientes(filters?: { estado?: string; search?: string }) {
         .select("*")
         .order("created_at", { ascending: false });
 
+      if (filters?.empresaId) {
+        query = query.eq("empresa_id" as any, filters.empresaId);
+      }
       if (filters?.estado && filters.estado !== "todos") {
         query = query.eq("estado", filters.estado);
       }
@@ -47,10 +50,10 @@ export function useCliente(id: string | undefined) {
 export function useCreateCliente() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (cliente: ClienteInsert) => {
+    mutationFn: async (cliente: ClienteInsert & { empresa_id?: string }) => {
       const { data, error } = await supabase
         .from("clientes")
-        .insert(cliente)
+        .insert(cliente as any)
         .select()
         .single();
       if (error) throw error;
