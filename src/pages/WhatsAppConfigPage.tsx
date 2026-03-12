@@ -210,23 +210,34 @@ export default function WhatsAppConfigPage() {
               <CardDescription>Ingresa tu API Token y configura las opciones de envío</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
                   <Label>API Token</Label>
-                  <Input
-                    type="password"
-                    placeholder="Tu API Token de WhatsAPI"
-                    value={form.api_token}
-                    onChange={(e) => setForm({ ...form, api_token: e.target.value })}
-                    className="mt-1"
-                  />
+                  <div className="relative mt-1">
+                    <Input
+                      type={showToken ? "text" : "password"}
+                      placeholder="Tu API Token de WhatsAPI"
+                      value={form.api_token}
+                      onChange={(e) => setForm({ ...form, api_token: e.target.value })}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full w-10"
+                      onClick={() => setShowToken(!showToken)}
+                    >
+                      {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <Label>URL del API</Label>
                   <Input
-                    value={form.api_url}
-                    onChange={(e) => setForm({ ...form, api_url: e.target.value })}
-                    className="mt-1"
+                    value="https://itxrxxoykvxpwflndvea.supabase.co/functions/v1/api-proxy"
+                    disabled
+                    className="mt-1 opacity-60"
                   />
                 </div>
               </div>
