@@ -2,12 +2,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -19,19 +19,19 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     if (action === "create") {
-      const { email, password, nombre_completo, telefono, direccion, rol, porcentaje_comision, activo } = body;
+      const {
+        email, password, nombre_completo, telefono, direccion, rol,
+        porcentaje_comision, activo, empresa_id,
+        comision_tipo, comision_cobros_equipo, comision_prestamos,
+        bono_meta_monto, bono_meta_objetivo, rutas_asignadas
+      } = body;
 
-      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
+        email, password, email_confirm: true,
       });
       if (authError) throw authError;
-
       const userId = authData.user.id;
 
-      // Create profile
       const { error: profileError } = await supabase.from("profiles").insert({
         id: userId,
         nombre_completo,
@@ -39,17 +39,25 @@ Deno.serve(async (req) => {
         direccion: direccion || null,
         porcentaje_comision: porcentaje_comision || 0,
         activo: activo ?? true,
+        empresa_id: empresa_id || "00000000-0000-0000-0000-000000000001",
+        comision_tipo: comision_tipo || "ninguna",
+        comision_cobros_equipo: comision_cobros_equipo || 0,
+        comision_prestamos: comision_prestamos || 0,
+        bono_meta_monto: bono_meta_monto || 0,
+        bono_meta_objetivo: bono_meta_objetivo || 0,
       });
       if (profileError) throw profileError;
 
-      // Assign role
       const roleMap: Record<string, string> = { Admin: "admin", Supervisor: "supervisor", Cobrador: "cobrador" };
       const dbRole = roleMap[rol] || "cobrador";
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: userId,
-        role: dbRole,
-      });
+      const { error: roleError } = await supabase.from("user_roles").insert({ user_id: userId, role: dbRole });
       if (roleError) throw roleError;
+
+      // Assign supervisor routes
+      if (dbRole === "supervisor" && rutas_asignadas?.length) {
+        const rows = rutas_asignadas.map((ruta_id: string) => ({ supervisor_id: userId, ruta_id }));
+        await supabase.from("supervisor_rutas").insert(rows);
+      }
 
       return new Response(JSON.stringify({ success: true, user_id: userId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -57,29 +65,40 @@ Deno.serve(async (req) => {
     }
 
     if (action === "update") {
-      const { user_id, nombre_completo, telefono, direccion, rol, porcentaje_comision, activo, password } = body;
+      const {
+        user_id, nombre_completo, telefono, direccion, rol,
+        porcentaje_comision, activo, password, empresa_id,
+        comision_tipo, comision_cobros_equipo, comision_prestamos,
+        bono_meta_monto, bono_meta_objetivo, rutas_asignadas
+      } = body;
 
-      // Update profile
       const { error: profileError } = await supabase.from("profiles").update({
         nombre_completo,
         telefono: telefono || null,
         direccion: direccion || null,
         porcentaje_comision: porcentaje_comision || 0,
         activo: activo ?? true,
+        empresa_id: empresa_id || "00000000-0000-0000-0000-000000000001",
+        comision_tipo: comision_tipo || "ninguna",
+        comision_cobros_equipo: comision_cobros_equipo || 0,
+        comision_prestamos: comision_prestamos || 0,
+        bono_meta_monto: bono_meta_monto || 0,
+        bono_meta_objetivo: bono_meta_objetivo || 0,
       }).eq("id", user_id);
       if (profileError) throw profileError;
 
-      // Update role
       const roleMap: Record<string, string> = { Admin: "admin", Supervisor: "supervisor", Cobrador: "cobrador" };
       const dbRole = roleMap[rol] || "cobrador";
       await supabase.from("user_roles").delete().eq("user_id", user_id);
-      const { error: roleError } = await supabase.from("user_roles").insert({
-        user_id: user_id,
-        role: dbRole,
-      });
-      if (roleError) throw roleError;
+      await supabase.from("user_roles").insert({ user_id, role: dbRole });
 
-      // Update password if provided
+      // Update supervisor routes
+      await supabase.from("supervisor_rutas").delete().eq("supervisor_id", user_id);
+      if (dbRole === "supervisor" && rutas_asignadas?.length) {
+        const rows = rutas_asignadas.map((ruta_id: string) => ({ supervisor_id: user_id, ruta_id }));
+        await supabase.from("supervisor_rutas").insert(rows);
+      }
+
       if (password) {
         const { error: pwError } = await supabase.auth.admin.updateUserById(user_id, { password });
         if (pwError) throw pwError;
@@ -100,33 +119,35 @@ Deno.serve(async (req) => {
     }
 
     if (action === "list") {
-      // Get all profiles
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("nombre_completo");
+      const { empresa_id } = body;
+
+      let query = supabase.from("profiles").select("*").order("nombre_completo");
+      if (empresa_id) query = query.eq("empresa_id", empresa_id);
+      const { data: profiles, error } = await query;
       if (error) throw error;
 
-      // Get roles
       const { data: roles } = await supabase.from("user_roles").select("*");
       const roleMap: Record<string, string> = {};
-      for (const r of (roles || [])) {
-        roleMap[r.user_id] = r.role;
-      }
+      for (const r of (roles || [])) roleMap[r.user_id] = r.role;
 
-      // Get emails from auth
       const { data: authUsers, error: authErr } = await supabase.auth.admin.listUsers();
       if (authErr) throw authErr;
-
       const emailMap: Record<string, string> = {};
-      for (const u of authUsers.users) {
-        emailMap[u.id] = u.email || "";
+      for (const u of authUsers.users) emailMap[u.id] = u.email || "";
+
+      // Get supervisor routes
+      const { data: supRutas } = await supabase.from("supervisor_rutas").select("supervisor_id, ruta_id");
+      const rutasMap: Record<string, string[]> = {};
+      for (const sr of (supRutas || [])) {
+        if (!rutasMap[sr.supervisor_id]) rutasMap[sr.supervisor_id] = [];
+        rutasMap[sr.supervisor_id].push(sr.ruta_id);
       }
 
       const result = (profiles || []).map((p: any) => ({
         ...p,
         email: emailMap[p.id] || "",
         rol: roleMap[p.id] || "cobrador",
+        rutas_asignadas: rutasMap[p.id] || [],
       }));
 
       return new Response(JSON.stringify(result), {
@@ -135,13 +156,11 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ error: "Unknown action" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
