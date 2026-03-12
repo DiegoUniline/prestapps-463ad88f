@@ -355,15 +355,11 @@ export default function ClienteDetallePage() {
         </Card>
       </div>
 
-      {/* Sub-table: Préstamos del cliente — placeholder for future */}
-      {!isNew && (
-        <Card>
-          <CardHeader><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Historial de Préstamos</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground py-4 text-center">No hay préstamos registrados para este cliente</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Préstamos del cliente */}
+      {!isNew && <ClientePrestamosSection clienteId={id!} />}
+
+      {/* Últimos pagos */}
+      {!isNew && <ClientePagosSection clienteId={id!} />}
     </div>
   );
 }
