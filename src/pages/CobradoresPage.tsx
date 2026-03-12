@@ -28,11 +28,11 @@ interface Cobrador {
   created_at: string | null;
 }
 
-function useCobradores() {
+function useCobradores(empresaId: string) {
   return useQuery({
-    queryKey: ["cobradores"],
+    queryKey: ["cobradores", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("cobradores").select("*").order("nombre");
+      const { data, error } = await (supabase.from as any)("cobradores").select("*").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
       return (data || []) as Cobrador[];
     },
