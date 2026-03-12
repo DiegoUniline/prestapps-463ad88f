@@ -30,6 +30,8 @@ import {
   MessageSquare,
   Users2,
   Star,
+  Receipt,
+  Percent,
 } from "lucide-react";
 
 const mainNav = [
