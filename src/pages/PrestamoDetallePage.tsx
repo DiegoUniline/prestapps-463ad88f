@@ -461,6 +461,28 @@ export default function PrestamoDetallePage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      <PagoModal
+        open={pagoOpen}
+        onOpenChange={setPagoOpen}
+        prestamoId={p.id}
+        cuotasPendientes={amort.filter((c) => c.saldo_total > 0).map((c) => ({
+          num_cuota: c.num_cuota,
+          saldo_mora: c.saldo_mora,
+          saldo_interes: c.saldo_interes,
+          saldo_capital: c.saldo_capital,
+          saldo_total: c.saldo_total,
+          status: c.status,
+          fecha_vencimiento: c.fecha_vencimiento,
+        }))}
+        cajas={[
+          { id: "caja-1", nombre: "Caja Principal" },
+          { id: "caja-2", nombre: "Caja Secundaria" },
+          { id: "caja-3", nombre: "Banco BAC" },
+          { id: "caja-4", nombre: "Banco Agrícola" },
+        ]}
+      />
     </div>
   );
 }
