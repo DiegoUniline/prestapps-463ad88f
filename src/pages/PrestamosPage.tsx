@@ -1,16 +1,17 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const mockPrestamos = [
-  { id: "PRE-0001", cliente: "María García", monto: "$10,000", cuotas: "3/12", estado: "Activo", mora: "$0" },
-  { id: "PRE-0002", cliente: "Carlos López", monto: "$25,000", cuotas: "7/24", estado: "Vencido", mora: "$1,200" },
-  { id: "PRE-0003", cliente: "Ana Martínez", monto: "$5,000", cuotas: "1/6", estado: "Al día", mora: "$0" },
-  { id: "PRE-0004", cliente: "José Rodríguez", monto: "$15,000", cuotas: "12/12", estado: "Liquidado", mora: "$0" },
-  { id: "PRE-0005", cliente: "Laura Sánchez", monto: "$8,000", cuotas: "5/18", estado: "Activo", mora: "$350" },
+  { id: "PRE-0001", cliente: "María García", monto: 10000, cuotasPagadas: 3, totalCuotas: 12, estado: "Activo", mora: 0 },
+  { id: "PRE-0002", cliente: "Carlos López", monto: 25000, cuotasPagadas: 7, totalCuotas: 24, estado: "Vencido", mora: 1200 },
+  { id: "PRE-0003", cliente: "Ana Martínez", monto: 5000, cuotasPagadas: 1, totalCuotas: 6, estado: "Al día", mora: 0 },
+  { id: "PRE-0004", cliente: "José Rodríguez", monto: 15000, cuotasPagadas: 12, totalCuotas: 12, estado: "Liquidado", mora: 0 },
+  { id: "PRE-0005", cliente: "Laura Sánchez", monto: 8000, cuotasPagadas: 5, totalCuotas: 18, estado: "Activo", mora: 350 },
 ];
 
 const estadoColors: Record<string, string> = {
@@ -24,46 +25,51 @@ const estadoColors: Record<string, string> = {
 
 export default function PrestamosPage() {
   const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+
+  const filtered = mockPrestamos.filter(
+    (p) => p.cliente.toLowerCase().includes(search.toLowerCase()) || p.id.includes(search.toUpperCase())
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Préstamos</h1>
-          <p className="text-muted-foreground text-sm">Gestión de préstamos activos</p>
-        </div>
+        <h1 className="text-2xl font-bold">Préstamos</h1>
         <Button onClick={() => navigate("/prestamos/nuevo")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo Préstamo
+          <Plus className="h-4 w-4 mr-2" />Nuevo
         </Button>
       </div>
 
-      <div className="relative">
+      <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Buscar por cliente o ID..." className="pl-9" />
+        <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
       </div>
 
-      <div className="grid gap-3">
-        {mockPrestamos.map((p) => (
-          <Card key={p.id} className="cursor-pointer hover:border-primary/30 transition-colors">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{p.cliente}</p>
-                      <span className="text-xs text-muted-foreground">{p.id}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Monto: {p.monto} · Cuotas: {p.cuotas} · Mora: {p.mora}
-                    </p>
-                  </div>
-                </div>
-                <Badge className={estadoColors[p.estado]}>{p.estado}</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead className="text-right">Monto</TableHead>
+              <TableHead>Cuotas</TableHead>
+              <TableHead className="text-right">Mora</TableHead>
+              <TableHead>Estado</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map((p) => (
+              <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/prestamos/${p.id}`)}>
+                <TableCell className="font-mono text-xs">{p.id}</TableCell>
+                <TableCell className="font-medium">{p.cliente}</TableCell>
+                <TableCell className="text-right">${p.monto.toLocaleString()}</TableCell>
+                <TableCell>{p.cuotasPagadas}/{p.totalCuotas}</TableCell>
+                <TableCell className="text-right">${p.mora.toLocaleString()}</TableCell>
+                <TableCell><Badge className={estadoColors[p.estado]}>{p.estado}</Badge></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
