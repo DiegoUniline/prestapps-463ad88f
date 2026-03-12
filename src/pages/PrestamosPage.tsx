@@ -416,6 +416,9 @@ export default function PrestamosPage() {
           </TableBody>
         </Table>
       </div>
+
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
