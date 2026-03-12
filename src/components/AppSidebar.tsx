@@ -24,10 +24,12 @@ import {
   CalendarCheck,
   Settings,
   UserCheck,
+  ClipboardCheck,
 } from "lucide-react";
 
 const mainNav = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Cobranza Diaria", url: "/cobranza", icon: ClipboardCheck },
   { title: "Préstamos", url: "/prestamos", icon: CreditCard },
   { title: "Pagos", url: "/pagos", icon: HandCoins },
   { title: "Promesas", url: "/promesas", icon: CalendarCheck },
