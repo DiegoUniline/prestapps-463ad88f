@@ -241,6 +241,7 @@ export type Database = {
           nombre: string
           porcentaje_comision: number
           telefono: string | null
+          user_id: string | null
         }
         Insert: {
           activo?: boolean
@@ -251,6 +252,7 @@ export type Database = {
           nombre: string
           porcentaje_comision?: number
           telefono?: string | null
+          user_id?: string | null
         }
         Update: {
           activo?: boolean
@@ -261,6 +263,7 @@ export type Database = {
           nombre?: string
           porcentaje_comision?: number
           telefono?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -870,6 +873,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_cobrador_by_user: {
+        Args: { p_user_id: string }
+        Returns: {
+          id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
