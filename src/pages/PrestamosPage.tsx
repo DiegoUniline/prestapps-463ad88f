@@ -210,59 +210,27 @@ export default function PrestamosPage() {
         <Button onClick={() => navigate("/prestamos/nuevo")}><Plus className="h-4 w-4 mr-2" />Nuevo</Button>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards — Power BI style */}
       {(() => {
         const totalPrestamos = mockPrestamos.length;
         const montoColocado = mockPrestamos.reduce((s, p) => s + p.montoSolicitado, 0);
         const porCobrar = mockPrestamos.reduce((s, p) => s + p.saldo, 0);
         const morosos = mockPrestamos.filter((p) => p.mora > 0);
         const totalMora = morosos.reduce((s, p) => s + p.mora, 0);
+        const kpis = [
+          { label: "Total Préstamos", value: String(totalPrestamos), color: "border-l-primary" },
+          { label: "Monto Colocado", value: `$${montoColocado.toLocaleString()}`, color: "border-l-success" },
+          { label: "Por Cobrar", value: `$${porCobrar.toLocaleString()}`, color: "border-l-warning" },
+          { label: `En Mora (${morosos.length})`, value: `$${totalMora.toLocaleString()}`, color: "border-l-destructive" },
+        ];
         return (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-none shadow-sm bg-gradient-to-br from-primary/10 to-primary/5">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Total Préstamos</p>
-                  <p className="text-2xl font-bold tracking-tight">{totalPrestamos}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-gradient-to-br from-success/10 to-success/5">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/15 text-success">
-                  <DollarSign className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Monto Colocado</p>
-                  <p className="text-2xl font-bold tracking-tight">${montoColocado.toLocaleString()}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-gradient-to-br from-accent/40 to-accent/10">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                  <TrendingUp className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">Por Cobrar</p>
-                  <p className="text-2xl font-bold tracking-tight">${porCobrar.toLocaleString()}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-gradient-to-br from-destructive/10 to-destructive/5">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive">
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">En Mora ({morosos.length})</p>
-                  <p className="text-2xl font-bold tracking-tight">${totalMora.toLocaleString()}</p>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {kpis.map((k) => (
+              <div key={k.label} className={cn("bg-card rounded-md border border-l-[3px] px-4 py-3", k.color)}>
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
+                <p className="text-xl font-semibold mt-0.5">{k.value}</p>
+              </div>
+            ))}
           </div>
         );
       })()}
