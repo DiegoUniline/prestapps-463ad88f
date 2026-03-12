@@ -52,6 +52,7 @@ const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigit
 export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId, montoInicial }: PagoModalProps) {
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
+  const geo = useGeoLocation();
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("Efectivo");
