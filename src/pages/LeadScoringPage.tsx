@@ -39,6 +39,16 @@ function calcularScore(data: {
   saldoActual: number;
   montoHistorico: number;
 }): { score: number; nivel: ClienteScore["nivel"]; recomendacion: string; icono: ClienteScore["icono"] } {
+  // Sin préstamos = cliente nuevo, no evaluable
+  if (data.totalPrestamos === 0) {
+    return {
+      score: -1,
+      nivel: "Nuevo",
+      recomendacion: "⚪ Sin historial crediticio. Cliente nuevo — evaluar capacidad de pago antes de otorgar primer préstamo.",
+      icono: "avales",
+    };
+  }
+
   let score = 50; // Base
 
   // 1. Historial de pagos a tiempo (0-35 pts)
