@@ -80,7 +80,6 @@ export default function WhatsAppConfigPage() {
     if (config) {
       setForm({
         api_token: config.api_token || "",
-        api_url: config.api_url || "https://itxrxxoykvxpwflndvea.supabase.co/functions/v1/api-proxy",
         enviar_recibo_pago: config.enviar_recibo_pago ?? true,
         aviso_dia_antes: config.aviso_dia_antes ?? false,
         aviso_vencido: config.aviso_vencido ?? false,
