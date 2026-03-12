@@ -275,13 +275,13 @@ export default function PrestamoDetallePage() {
           <div className="flex items-center gap-2">
             {/* Document buttons */}
             <div className="flex items-center gap-1 mr-1 border-r border-border pr-3">
-              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Estado de Cuenta" onClick={() => handlePdf("estado")}>
+              <Button variant="secondary" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Estado de Cuenta" onClick={() => handlePdf("estado")}>
                 <FileText className="h-3.5 w-3.5 mr-1.5" />Estado de Cuenta
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Contrato" onClick={() => handlePdf("contrato")}>
+              <Button variant="secondary" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Contrato" onClick={() => handlePdf("contrato")}>
                 <FileSignature className="h-3.5 w-3.5 mr-1.5" />Contrato
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Recibo de Pagos" onClick={() => handlePdf("pagos")}>
+              <Button variant="secondary" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Recibo de Pagos" onClick={() => handlePdf("pagos")}>
                 <Receipt className="h-3.5 w-3.5 mr-1.5" />Pagos
               </Button>
             </div>
