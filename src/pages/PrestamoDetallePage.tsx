@@ -10,6 +10,7 @@ import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck,
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
+import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
 
 // ── Badge colors ──────────────────────────────────────────────────
 const estadoBadge: Record<string, string> = {
@@ -170,6 +171,65 @@ export default function PrestamoDetallePage() {
     Incumplida: "border-[hsl(0,72%,51%)] text-[hsl(0,72%,51%)]",
   };
 
+  // PDF data builder
+  const pdfPrestamo = {
+    id: prestamo.id,
+    clienteNombre: cliente?.nombre_completo || "—",
+    clienteDni: cliente?.dni || "",
+    clienteDireccion: cliente?.direccion || "",
+    clienteTelefono: cliente?.telefono || "",
+    empresa: prestamo.empresa || "—",
+    modalidad: prestamo.modalidad,
+    montoSolicitado: Number(prestamo.monto_solicitado),
+    montoTotalPagar: Number(prestamo.monto_total_pagar || 0),
+    numCuotas: prestamo.num_cuotas,
+    frecuencia: prestamo.frecuencia,
+    tasaInteres: Number(prestamo.tasa_interes || 0),
+    cuotaCalculada: Number(prestamo.cuota_calculada || 0),
+    cuotaRedondeada: Number(prestamo.cuota_redondeada || 0),
+    gastosLegales: Number(prestamo.gastos_legales || 0),
+    tipoMora: prestamo.tipo_mora || "porcentaje",
+    valorMora: Number(prestamo.valor_mora || 0),
+    estado,
+    fechaRegistro: prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—",
+    fechaPrimerPago: prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—",
+    caja: caja?.nombre || "—",
+    ruta: ruta?.nombre || "—",
+    notas: prestamo.notas || "",
+  };
+
+  const pdfCuotas = amort.map(c => ({
+    num_cuota: c.num_cuota,
+    capital: Number(c.capital || 0),
+    interes: Number(c.interes || 0),
+    capital_interes: Number(c.capital_interes || 0),
+    fecha_vencimiento: c.fecha_vencimiento,
+    dias_atraso: Number(c.dias_atraso || 0),
+    mora: Number(c.mora || 0),
+    saldo_total: Number(c.saldo_total || 0),
+    status: c.status || "Pendiente",
+    fecha_pagada: c.fecha_pagada,
+    capital_pagado: Number(c.capital_pagado || 0),
+    interes_pagado: Number(c.interes_pagado || 0),
+    mora_pagada: Number(c.mora_pagada || 0),
+  }));
+
+  const pdfPagos = pagosRaw.map(p => ({
+    created_at: p.created_at || "",
+    monto_recibido: Number(p.monto_recibido),
+    aplicado_mora: Number(p.aplicado_mora || 0),
+    aplicado_interes: Number(p.aplicado_interes || 0),
+    aplicado_capital: Number(p.aplicado_capital || 0),
+    metodo_pago: p.metodo_pago || "Efectivo",
+    cajaNombre: (p.cajas as any)?.nombre || "—",
+  }));
+
+  const handlePdf = (type: "estado" | "contrato" | "pagos") => {
+    if (type === "estado") generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
+    else if (type === "contrato") generarContrato(pdfPrestamo, pdfCuotas);
+    else generarReciboPagos(pdfPrestamo, pdfPagos);
+  };
+
   return (
     <div>
       {/* ── HEADER ────────────────────────────────────────────── */}
@@ -191,13 +251,13 @@ export default function PrestamoDetallePage() {
           <div className="flex items-center gap-2">
             {/* Document buttons */}
             <div className="flex items-center gap-1 mr-1 border-r border-border pr-3">
-              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Estado de Cuenta">
+              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Estado de Cuenta" onClick={() => handlePdf("estado")}>
                 <FileText className="h-3.5 w-3.5 mr-1.5" />Estado de Cuenta
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Contrato">
+              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Contrato" onClick={() => handlePdf("contrato")}>
                 <FileSignature className="h-3.5 w-3.5 mr-1.5" />Contrato
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Recibo de Pagos">
+              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Recibo de Pagos" onClick={() => handlePdf("pagos")}>
                 <Receipt className="h-3.5 w-3.5 mr-1.5" />Pagos
               </Button>
             </div>
