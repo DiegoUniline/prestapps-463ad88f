@@ -16,7 +16,7 @@ interface ClienteScore {
   id_cliente: string;
   nombre_completo: string;
   score: number; // 0–100
-  nivel: "Excelente" | "Bueno" | "Regular" | "Riesgoso" | "Crítico";
+  nivel: "Excelente" | "Bueno" | "Regular" | "Riesgoso" | "Crítico" | "Nuevo";
   recomendacion: string;
   icono: "prestar" | "aumentar" | "avales" | "no_prestar" | "vencimiento";
   totalPrestamos: number;
@@ -39,6 +39,16 @@ function calcularScore(data: {
   saldoActual: number;
   montoHistorico: number;
 }): { score: number; nivel: ClienteScore["nivel"]; recomendacion: string; icono: ClienteScore["icono"] } {
+  // Sin préstamos = cliente nuevo, no evaluable
+  if (data.totalPrestamos === 0) {
+    return {
+      score: -1,
+      nivel: "Nuevo",
+      recomendacion: "⚪ Sin historial crediticio. Cliente nuevo — evaluar capacidad de pago antes de otorgar primer préstamo.",
+      icono: "avales",
+    };
+  }
+
   let score = 50; // Base
 
   // 1. Historial de pagos a tiempo (0-35 pts)
@@ -227,9 +237,19 @@ const nivelConfig: Record<string, { color: string; bg: string }> = {
   Regular: { color: "text-amber-700 dark:text-amber-400", bg: "bg-amber-100 dark:bg-amber-900/40 border-amber-200 dark:border-amber-800" },
   Riesgoso: { color: "text-orange-700 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-900/40 border-orange-200 dark:border-orange-800" },
   Crítico: { color: "text-red-700 dark:text-red-400", bg: "bg-red-100 dark:bg-red-900/40 border-red-200 dark:border-red-800" },
+  Nuevo: { color: "text-slate-600 dark:text-slate-400", bg: "bg-slate-100 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800" },
 };
 
 function ScoreBar({ score }: { score: number }) {
+  if (score < 0) {
+    return (
+      <div className="flex items-center gap-2 min-w-[120px]">
+        <div className="flex-1 h-2 rounded-full bg-muted" />
+        <span className="text-xs font-medium text-muted-foreground w-8 text-right">N/A</span>
+      </div>
+    );
+  }
+
   const color =
     score >= 85 ? "bg-emerald-500" :
     score >= 70 ? "bg-blue-500" :
@@ -279,8 +299,9 @@ export default function LeadScoringPage() {
 
   // Summary stats
   const totals = useMemo(() => {
-    if (!scores?.length) return { avg: 0, excelentes: 0, buenos: 0, regulares: 0, riesgosos: 0, criticos: 0 };
-    const avg = Math.round(scores.reduce((s, c) => s + c.score, 0) / scores.length);
+    if (!scores?.length) return { avg: 0, excelentes: 0, buenos: 0, regulares: 0, riesgosos: 0, criticos: 0, nuevos: 0 };
+    const conScore = scores.filter((s) => s.score >= 0);
+    const avg = conScore.length > 0 ? Math.round(conScore.reduce((s, c) => s + c.score, 0) / conScore.length) : 0;
     return {
       avg,
       excelentes: scores.filter((s) => s.nivel === "Excelente").length,
@@ -288,6 +309,7 @@ export default function LeadScoringPage() {
       regulares: scores.filter((s) => s.nivel === "Regular").length,
       riesgosos: scores.filter((s) => s.nivel === "Riesgoso").length,
       criticos: scores.filter((s) => s.nivel === "Crítico").length,
+      nuevos: scores.filter((s) => s.nivel === "Nuevo").length,
     };
   }, [scores]);
 
@@ -301,7 +323,7 @@ export default function LeadScoringPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Score Promedio</p>
           <p className="text-2xl font-bold mt-1">{totals.avg}</p>
@@ -341,6 +363,13 @@ export default function LeadScoringPage() {
           </div>
           <p className="text-2xl font-bold mt-1">{totals.criticos}</p>
         </div>
+        <div className="border rounded-lg p-3 bg-card">
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full bg-slate-400" />
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Nuevos</p>
+          </div>
+          <p className="text-2xl font-bold mt-1">{totals.nuevos}</p>
+        </div>
       </div>
 
       {/* Filters */}
@@ -360,6 +389,7 @@ export default function LeadScoringPage() {
             <SelectItem value="Regular">Regular</SelectItem>
             <SelectItem value="Riesgoso">Riesgoso</SelectItem>
             <SelectItem value="Crítico">Crítico</SelectItem>
+            <SelectItem value="Nuevo">Nuevo (sin historial)</SelectItem>
           </SelectContent>
         </Select>
       </div>
