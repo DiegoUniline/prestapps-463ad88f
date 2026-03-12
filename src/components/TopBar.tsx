@@ -14,8 +14,10 @@ export function TopBar() {
   const { theme, toggleTheme } = useTheme();
   const { empresaId, empresas, setEmpresaId } = useEmpresa();
   const { user, signOut } = useAuth();
+  const { role } = useCurrentUserRole();
 
   const initials = user?.email?.slice(0, 2).toUpperCase() || "??";
+  const roleLabel: Record<string, string> = { admin: "Admin", supervisor: "Supervisor", cobrador: "Cobrador" };
 
   return (
     <header className="h-14 border-b flex items-center justify-between px-4 bg-card shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
