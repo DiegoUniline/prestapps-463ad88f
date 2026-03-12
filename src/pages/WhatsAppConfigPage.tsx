@@ -161,6 +161,7 @@ export default function WhatsAppConfigPage() {
   // ── Send reminders manually ────────────────
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [showToken, setShowToken] = useState(false);
+  const [editingToken, setEditingToken] = useState(false);
 
   const sendReminders = async (type: "dia_antes" | "vencido") => {
     setSendingReminder(type);
