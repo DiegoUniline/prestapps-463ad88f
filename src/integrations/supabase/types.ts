@@ -199,6 +199,93 @@ export type Database = {
         }
         Relationships: []
       }
+      cobradores: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          efectivo_en_mano: number
+          id: string
+          nombre: string
+          porcentaje_comision: number
+          telefono: string | null
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          efectivo_en_mano?: number
+          id?: string
+          nombre: string
+          porcentaje_comision?: number
+          telefono?: string | null
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          efectivo_en_mano?: number
+          id?: string
+          nombre?: string
+          porcentaje_comision?: number
+          telefono?: string | null
+        }
+        Relationships: []
+      }
+      cortes: {
+        Row: {
+          caja_id: string
+          cobrador_id: string
+          created_at: string | null
+          id: string
+          monto_comision: number
+          monto_depositado: number
+          monto_efectivo: number
+          periodo_desde: string | null
+          periodo_hasta: string | null
+          porcentaje_usado: number
+          total_cobrado: number
+        }
+        Insert: {
+          caja_id: string
+          cobrador_id: string
+          created_at?: string | null
+          id?: string
+          monto_comision?: number
+          monto_depositado?: number
+          monto_efectivo?: number
+          periodo_desde?: string | null
+          periodo_hasta?: string | null
+          porcentaje_usado?: number
+          total_cobrado?: number
+        }
+        Update: {
+          caja_id?: string
+          cobrador_id?: string
+          created_at?: string | null
+          id?: string
+          monto_comision?: number
+          monto_depositado?: number
+          monto_efectivo?: number
+          periodo_desde?: string | null
+          periodo_hasta?: string | null
+          porcentaje_usado?: number
+          total_cobrado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cortes_caja_id_fkey"
+            columns: ["caja_id"]
+            isOneToOne: false
+            referencedRelation: "cajas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cortes_cobrador_id_fkey"
+            columns: ["cobrador_id"]
+            isOneToOne: false
+            referencedRelation: "cobradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       movimientos_caja: {
         Row: {
           caja_id: string
