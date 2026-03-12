@@ -84,8 +84,8 @@ export default function NuevoPrestamoPage() {
   const cuotaCalculada = cuotas > 0 ? montoTotalPagar / cuotas : 0;
   const cuotaFinal = cuotaOverride ? parseFloat(cuotaOverride) || cuotaCalculada : Math.ceil(cuotaCalculada);
 
-  // Recalcular total si se cambió la cuota manualmente
-  const totalConCuotaFinal = cuotaFinal * cuotas;
+  // Recalcular total real (última cuota se ajusta)
+  const totalConCuotaFinal = montoTotalPagar; // el total real no cambia, solo la distribución
 
   // Tabla de amortización en tiempo real
   const amortizacion = useMemo((): CuotaPreview[] => {
@@ -93,21 +93,31 @@ export default function NuevoPrestamoPage() {
     const baseDate = fechaPrimerPago || new Date();
 
     if (modalidad === "fijo") {
-      const capitalPorCuota = monto / cuotas;
-      const interesPorCuota = cuotaFinal - capitalPorCuota;
+      // Las primeras n-1 cuotas son cuotaFinal, la última es el remanente
+      const totalInteres = montoTotalPagar - monto;
+      const interesPorCuota = totalInteres / cuotas;
+      const capitalPorCuotaNormal = cuotaFinal - interesPorCuota;
+
       let saldo = monto;
-      return Array.from({ length: cuotas }, (_, i) => {
-        const cap = i === cuotas - 1 ? saldo : capitalPorCuota;
-        saldo -= cap;
-        return {
+      const rows: CuotaPreview[] = [];
+
+      for (let i = 0; i < cuotas; i++) {
+        const isLast = i === cuotas - 1;
+        const capital = isLast ? saldo : Math.min(capitalPorCuotaNormal, saldo);
+        const interes = isLast ? (saldo * totalInteres / monto) : interesPorCuota;
+        const cuotaVal = isLast ? capital + interes : cuotaFinal;
+        saldo = Math.max(0, saldo - capital);
+
+        rows.push({
           num: i + 1,
           fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
-          capital: Math.round(cap * 100) / 100,
-          interes: Math.round(interesPorCuota * 100) / 100,
-          cuota: Math.round(cuotaFinal * 100) / 100,
-          saldo: Math.max(0, Math.round(saldo * 100) / 100),
-        };
-      });
+          capital: Math.round(capital * 100) / 100,
+          interes: Math.round(interes * 100) / 100,
+          cuota: Math.round(cuotaVal * 100) / 100,
+          saldo: Math.round(saldo * 100) / 100,
+        });
+      }
+      return rows;
     } else {
       // Saldos insolutos
       const tasaPeriodo = tasa / 100 / cuotas;
@@ -140,7 +150,7 @@ export default function NuevoPrestamoPage() {
         .insert({
           cliente_id: clienteId,
           monto_solicitado: monto,
-          monto_total_pagar: totalConCuotaFinal,
+          monto_total_pagar: montoTotalPagar,
           tasa_interes: tasa,
           num_cuotas: cuotas,
           frecuencia: frecuencia as any,
@@ -173,7 +183,7 @@ export default function NuevoPrestamoPage() {
   });
 
   return (
-    <div className="space-y-5 max-w-4xl mx-auto">
+    <div className="space-y-5">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/prestamos")}>
           <ArrowLeft className="h-4 w-4" />
@@ -181,9 +191,9 @@ export default function NuevoPrestamoPage() {
         <h1 className="text-xl font-semibold">Nuevo Préstamo</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* LEFT — Form */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Datos del Préstamo</CardTitle>
           </CardHeader>
@@ -349,7 +359,7 @@ export default function NuevoPrestamoPage() {
         </Card>
 
         {/* RIGHT — Live preview */}
-        <Card className="lg:col-span-3">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Vista previa de Amortización</CardTitle>
           </CardHeader>
