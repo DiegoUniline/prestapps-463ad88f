@@ -32,7 +32,7 @@ export function useAmortizacion(prestamoId: string | undefined) {
       if (!prestamoId) return [];
 
       // Recalculate mora/vencimientos before fetching
-      await supabase.rpc("recalcular_mora", { p_prestamo_id: prestamoId });
+      await (supabase.rpc as any)("recalcular_mora", { p_prestamo_id: prestamoId });
 
       const { data, error } = await supabase
         .from("amortizacion")
