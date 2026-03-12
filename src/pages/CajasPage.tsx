@@ -264,27 +264,56 @@ export default function CajasPage() {
         ))}
       </div>
 
-      {/* Cajas cards */}
+      {/* Cajas cards with per-caja stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)
-        ) : cajas.map((c) => (
-          <div
-            key={c.id}
-            className={cn(
-              "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
-              selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
-            )}
-            onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
-          >
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-[14px]">{c.nombre}</p>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
+          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-lg" />)
+        ) : cajas.map((c) => {
+          const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+          return (
+            <div
+              key={c.id}
+              className={cn(
+                "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
+                selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
+              )}
+              onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
+            >
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-[14px]">{c.nombre}</p>
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold mt-1">{$$(Number(c.saldo_actual || 0))}</p>
+              {c.descripcion && <p className="text-[12px] text-muted-foreground mt-0.5">{c.descripcion}</p>}
+              <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Activos</p>
+                  <p className="text-[13px] font-semibold">{cs.activos}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Colocado</p>
+                  <p className="text-[13px] font-semibold">{$$(cs.colocado)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Por Cobrar</p>
+                  <p className="text-[13px] font-semibold">{$$(cs.porCobrar)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ganancia</p>
+                  <p className="text-[13px] font-semibold text-success">{$$(cs.gananciaProyectada)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">En Mora</p>
+                  <p className={cn("text-[13px] font-semibold", cs.enMora > 0 ? "text-destructive" : "")}>{cs.enMora}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Mora $</p>
+                  <p className={cn("text-[13px] font-semibold", cs.moraTotal > 0 ? "text-destructive" : "")}>{$$(cs.moraTotal)}</p>
+                </div>
+              </div>
             </div>
-            <p className="text-2xl font-bold mt-1">{$$(Number(c.saldo_actual || 0))}</p>
-            {c.descripcion && <p className="text-[12px] text-muted-foreground mt-1">{c.descripcion}</p>}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Movimientos table */}
