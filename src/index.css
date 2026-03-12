@@ -8,10 +8,10 @@
   :root {
     --font-sans: 'Inter', system-ui, sans-serif;
 
-    --background: 0 0% 100%;
+    --background: 0 0% 94%;
     --foreground: 0 0% 7%;
 
-    --card: 0 0% 98%;
+    --card: 0 0% 100%;
     --card-foreground: 0 0% 7%;
 
     --popover: 0 0% 100%;
@@ -20,13 +20,13 @@
     --primary: 345 88% 51%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96%;
+    --secondary: 220 14% 96%;
     --secondary-foreground: 0 0% 7%;
 
-    --muted: 0 0% 96%;
+    --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
 
-    --accent: 0 0% 96%;
+    --accent: 220 14% 96%;
     --accent-foreground: 0 0% 7%;
 
     --destructive: 0 72% 51%;
@@ -35,33 +35,55 @@
     --success: 142 72% 37%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 32 95% 44%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 345 88% 51%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
+
+    /* Odoo-specific tokens */
+    --table-header: 220 14% 97%;
+    --table-header-foreground: 220 9% 46%;
+    --table-hover: 345 100% 97%;
+    --table-selected: 345 100% 93%;
+    --filter-bar: 0 0% 100%;
+    --filter-bar-border: 214 32% 91%;
+
+    /* Badge tokens */
+    --badge-activo: 142 76% 94%;
+    --badge-activo-foreground: 142 72% 35%;
+    --badge-vencido: 0 93% 94%;
+    --badge-vencido-foreground: 0 72% 51%;
+    --badge-aldia: 217 91% 95%;
+    --badge-aldia-foreground: 217 91% 60%;
+    --badge-juridico: 45 93% 94%;
+    --badge-juridico-foreground: 38 92% 50%;
+    --badge-liquidado: 220 14% 96%;
+    --badge-liquidado-foreground: 220 9% 46%;
+    --badge-cancelado: 220 14% 96%;
+    --badge-cancelado-foreground: 220 9% 56%;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 7%;
     --sidebar-primary: 345 88% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;
-    --sidebar-accent-foreground: 0 0% 7%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 345 100% 97%;
+    --sidebar-accent-foreground: 345 88% 51%;
+    --sidebar-border: 214 32% 91%;
     --sidebar-ring: 345 88% 51%;
   }
 
   .dark {
-    --background: 0 0% 4%;
+    --background: 0 0% 5%;
     --foreground: 0 0% 96%;
 
-    --card: 0 0% 8%;
+    --card: 0 0% 10%;
     --card-foreground: 0 0% 96%;
 
-    --popover: 0 0% 8%;
+    --popover: 0 0% 10%;
     --popover-foreground: 0 0% 96%;
 
     --primary: 345 88% 51%;
@@ -71,7 +93,7 @@
     --secondary-foreground: 0 0% 96%;
 
     --muted: 0 0% 12%;
-    --muted-foreground: 220 9% 46%;
+    --muted-foreground: 220 9% 56%;
 
     --accent: 0 0% 12%;
     --accent-foreground: 0 0% 96%;
@@ -82,19 +104,41 @@
     --success: 142 72% 37%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 32 95% 44%;
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
     --ring: 345 88% 51%;
 
-    --sidebar-background: 0 0% 6%;
+    /* Odoo-specific tokens — dark */
+    --table-header: 0 0% 9%;
+    --table-header-foreground: 220 9% 56%;
+    --table-hover: 0 0% 12%;
+    --table-selected: 345 50% 12%;
+    --filter-bar: 0 0% 7%;
+    --filter-bar-border: 0 0% 16%;
+
+    /* Badge tokens — dark */
+    --badge-activo: 142 40% 16%;
+    --badge-activo-foreground: 142 72% 55%;
+    --badge-vencido: 0 50% 16%;
+    --badge-vencido-foreground: 0 72% 65%;
+    --badge-aldia: 217 50% 16%;
+    --badge-aldia-foreground: 217 91% 70%;
+    --badge-juridico: 38 50% 16%;
+    --badge-juridico-foreground: 38 92% 60%;
+    --badge-liquidado: 0 0% 14%;
+    --badge-liquidado-foreground: 0 0% 50%;
+    --badge-cancelado: 0 0% 14%;
+    --badge-cancelado-foreground: 0 0% 45%;
+
+    --sidebar-background: 0 0% 7%;
     --sidebar-foreground: 0 0% 96%;
     --sidebar-primary: 345 88% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-accent: 345 50% 12%;
+    --sidebar-accent-foreground: 345 88% 60%;
     --sidebar-border: 0 0% 12%;
     --sidebar-ring: 345 88% 51%;
   }
