@@ -11,16 +11,16 @@ import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 
 export default function LoginPage() {
   const { user, loading: authLoading } = useAuth();
-
-  // Redirect if already logged in
-  if (!authLoading && user) {
-    return <Navigate to="/" replace />;
-  }
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState<"login" | "forgot">("login");
+
+  // Redirect if already logged in
+  if (!authLoading && user) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
