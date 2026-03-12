@@ -250,7 +250,7 @@ export default function CobradoresPage() {
       }
 
       // 4) Reset cobrador cash to 0
-      await supabase.from("cobradores").update({ efectivo_en_mano: 0 }).eq("id", selectedCobrador.id);
+      await (supabase.from as any)("cobradores").update({ efectivo_en_mano: 0 }).eq("id", selectedCobrador.id);
 
       toast.success(`Corte realizado: ${$$(corteDeposito)} depositado, ${$$(corteComision)} comisión`);
       invalidate();
