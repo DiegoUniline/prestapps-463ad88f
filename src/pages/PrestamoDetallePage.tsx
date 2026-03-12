@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import { PagoModal } from "@/components/PagoModal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -135,6 +136,7 @@ export default function PrestamoDetallePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("amortizacion");
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [pagoOpen, setPagoOpen] = useState(false);
 
   if (isNew) {
     // Redirect to creation form (keep existing logic or navigate)
@@ -191,7 +193,7 @@ export default function PrestamoDetallePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" className="h-8 text-[13px]">
+          <Button size="sm" className="h-8 text-[13px]" onClick={() => setPagoOpen(true)}>
             <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-[13px]">
@@ -459,6 +461,28 @@ export default function PrestamoDetallePage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      <PagoModal
+        open={pagoOpen}
+        onOpenChange={setPagoOpen}
+        prestamoId={p.id}
+        cuotasPendientes={amort.filter((c) => c.saldo_total > 0).map((c) => ({
+          num_cuota: c.num_cuota,
+          saldo_mora: c.saldo_mora,
+          saldo_interes: c.saldo_interes,
+          saldo_capital: c.saldo_capital,
+          saldo_total: c.saldo_total,
+          status: c.status,
+          fecha_vencimiento: c.fecha_vencimiento,
+        }))}
+        cajas={[
+          { id: "caja-1", nombre: "Caja Principal" },
+          { id: "caja-2", nombre: "Caja Secundaria" },
+          { id: "caja-3", nombre: "Banco BAC" },
+          { id: "caja-4", nombre: "Banco Agrícola" },
+        ]}
+      />
     </div>
   );
 }
