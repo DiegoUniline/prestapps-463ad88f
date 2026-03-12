@@ -25,6 +25,7 @@ import ReportesPage from "@/pages/ReportesPage";
 import UsuariosPage from "@/pages/UsuariosPage";
 import CobradoresPage from "@/pages/CobradoresPage";
 import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
+import EmpresasPage from "@/pages/EmpresasPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
                   <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><CobradoresPage /></RoleGuard>} />
                   <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
                   <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
+                  <Route path="/empresas" element={<RoleGuard allowed={["admin"]}><EmpresasPage /></RoleGuard>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
