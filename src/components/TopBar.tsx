@@ -1,14 +1,19 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { Moon, Sun, Bell, Building2 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Moon, Sun, Bell, Building2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function TopBar() {
   const { theme, toggleTheme } = useTheme();
   const { empresaId, empresas, setEmpresaId } = useEmpresa();
+  const { user, signOut } = useAuth();
+
+  const initials = user?.email?.slice(0, 2).toUpperCase() || "??";
 
   return (
     <header className="h-14 border-b flex items-center justify-between px-4 bg-card shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
@@ -38,8 +43,16 @@ export function TopBar() {
           <Bell className="h-4 w-4" />
         </Button>
         <Avatar className="h-8 w-8">
-          <AvatarFallback className="bg-primary text-primary-foreground text-xs">AD</AvatarFallback>
+          <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
         </Avatar>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" onClick={signOut}>
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Cerrar sesión</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );
