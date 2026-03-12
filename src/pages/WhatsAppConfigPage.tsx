@@ -70,7 +70,6 @@ export default function WhatsAppConfigPage() {
 
   const [form, setForm] = useState({
     api_token: "",
-    api_url: "https://itxrxxoykvxpwflndvea.supabase.co/functions/v1/api-proxy",
     enviar_recibo_pago: true,
     aviso_dia_antes: false,
     aviso_vencido: false,
