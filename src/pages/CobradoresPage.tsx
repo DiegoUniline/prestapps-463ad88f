@@ -206,7 +206,7 @@ export default function CobradoresPage() {
 
     try {
       // 1) Insert corte record
-      const { error: corteErr } = await supabase.from("cortes").insert({
+      const { error: corteErr } = await (supabase.from as any)("cortes").insert({
         cobrador_id: selectedCobrador.id,
         caja_id: corteCajaId,
         monto_efectivo: selectedCobrador.efectivo_en_mano,
