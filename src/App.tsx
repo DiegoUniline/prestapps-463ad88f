@@ -65,6 +65,7 @@ const App = () => (
                   <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><CobradoresPage /></RoleGuard>} />
                   <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
                   <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
+                  <Route path="/empresas" element={<RoleGuard allowed={["admin"]}><EmpresasPage /></RoleGuard>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
