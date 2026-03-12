@@ -95,6 +95,7 @@ export default function PrestamoDetallePage() {
   const [promesaOpen, setPromesaOpen] = useState(false);
   const [selectedCuota, setSelectedCuota] = useState<any>(null);
   const [showOptional, setShowOptional] = useState(false);
+  const [reasignarOpen, setReasignarOpen] = useState(false);
 
   const isNew = !id || id === "nuevo";
 
