@@ -363,3 +363,98 @@ export default function ClienteDetallePage() {
     </div>
   );
 }
+
+function ClientePrestamosSection({ clienteId }: { clienteId: string }) {
+  const navigate = useNavigate();
+  const { data: prestamos, isLoading } = useClientePrestamos(clienteId);
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Historial de Préstamos</CardTitle></CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : !prestamos?.length ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">No hay préstamos registrados para este cliente</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Modalidad</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-center">Cuotas</TableHead>
+                <TableHead className="text-right">Saldo</TableHead>
+                <TableHead className="text-right">Mora</TableHead>
+                <TableHead>Caja</TableHead>
+                <TableHead>Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {prestamos.map((p: any) => (
+                <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/prestamos/${p.id}`)}>
+                  <TableCell className="text-xs">{p.fecha_registro || "—"}</TableCell>
+                  <TableCell className="text-xs capitalize">{p.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"}</TableCell>
+                  <TableCell className="text-right font-semibold">{$$(Number(p.monto_solicitado))}</TableCell>
+                  <TableCell className="text-center text-xs">{p.cuotasPagadas}/{p.totalCuotas}</TableCell>
+                  <TableCell className="text-right">{$$(p.saldo)}</TableCell>
+                  <TableCell className="text-right">
+                    <span className={p.mora > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>{$$(p.mora)}</span>
+                  </TableCell>
+                  <TableCell className="text-xs">{p.caja}</TableCell>
+                  <TableCell>
+                    <Badge className={estadoPrestamoColors[p.estado] || "bg-muted text-muted-foreground"}>{p.estado}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ClientePagosSection({ clienteId }: { clienteId: string }) {
+  const { data: pagos, isLoading } = useClientePagos(clienteId);
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Últimos Pagos</CardTitle></CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : !pagos?.length ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">No hay pagos registrados</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-right">Capital</TableHead>
+                <TableHead className="text-right">Interés</TableHead>
+                <TableHead className="text-right">Mora</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Caja</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pagos.map((p: any) => (
+                <TableRow key={p.id}>
+                  <TableCell className="text-xs">{p.created_at ? new Date(p.created_at).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="text-right font-semibold">{$$(Number(p.monto_recibido))}</TableCell>
+                  <TableCell className="text-right text-xs">{$$(Number(p.aplicado_capital || 0))}</TableCell>
+                  <TableCell className="text-right text-xs">{$$(Number(p.aplicado_interes || 0))}</TableCell>
+                  <TableCell className="text-right text-xs">{$$(Number(p.aplicado_mora || 0))}</TableCell>
+                  <TableCell className="text-xs">{p.metodo_pago || "—"}</TableCell>
+                  <TableCell className="text-xs">{p.cajas?.nombre || "—"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
