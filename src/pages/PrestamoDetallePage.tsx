@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell } from "lucide-react";
+import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell, Receipt, FileSignature } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
@@ -189,6 +189,19 @@ export default function PrestamoDetallePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Document buttons */}
+            <div className="flex items-center gap-1 mr-1 border-r border-border pr-3">
+              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Estado de Cuenta">
+                <FileText className="h-3.5 w-3.5 mr-1.5" />Estado de Cuenta
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Contrato">
+                <FileSignature className="h-3.5 w-3.5 mr-1.5" />Contrato
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Recibo de Pagos">
+                <Receipt className="h-3.5 w-3.5 mr-1.5" />Pagos
+              </Button>
+            </div>
+            {/* Action buttons */}
             <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => setPagoOpen(true)}>
               <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
             </Button>
