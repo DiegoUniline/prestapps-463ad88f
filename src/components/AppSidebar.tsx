@@ -43,6 +43,7 @@ const adminNav = [
   { title: "Rutas", url: "/rutas", icon: Route, roles: ["admin"] },
   { title: "Reportes", url: "/reportes", icon: FileText, roles: ["admin", "supervisor"] },
   { title: "Usuarios", url: "/usuarios", icon: Settings, roles: ["admin"] },
+  { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"] },
 ];
 
 export function AppSidebar() {
