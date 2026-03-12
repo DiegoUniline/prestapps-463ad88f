@@ -130,10 +130,18 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         const newSaldoTotal = newSaldoMora + newSaldoInteres + newSaldoCapital;
         const fullPaid = newSaldoTotal < 0.01;
 
-        const { error: amortErr } = await supabase.from("amortizacion").update({
-          mora_pagada: (cuota.saldo_mora - newSaldoMora) + (Number((cuota as any).mora_pagada) || 0),
-          interes_pagado: (cuota.saldo_interes - newSaldoInteres) + (Number((cuota as any).interes_pagado) || 0),
-          capital_pagado: (cuota.saldo_capital - newSaldoCapital) + (Number((cuota as any).capital_pagado) || 0),
+        const updateData: Record<string, any> = {
+          mora_pagada: cuota.mora_pagada + d.mora,
+          interes_pagado: cuota.interes_pagado + d.interes,
+          capital_pagado: cuota.capital_pagado + d.capital,
+          saldo_mora: newSaldoMora,
+          saldo_interes: newSaldoInteres,
+          saldo_capital: newSaldoCapital,
+          saldo_total: newSaldoTotal,
+          status: fullPaid ? "Pagada" : "Parcial",
+        };
+        if (fullPaid) updateData.fecha_pagada = new Date().toISOString().slice(0, 10);
+        if (descuentoNum > 0) updateData.descuento_mora = descuentoNum;
           saldo_mora: newSaldoMora,
           saldo_interes: newSaldoInteres,
           saldo_capital: newSaldoCapital,
