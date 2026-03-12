@@ -28,17 +28,94 @@ function useCajas() {
   });
 }
 
-function useMovimientos() {
+interface KardexEntry {
+  id: string;
+  fecha: string;
+  tipo: "entrada" | "salida";
+  categoria: string; // Cobro, Desembolso, Depósito, Retiro, Transferencia
+  concepto: string;
+  cliente: string;
+  prestamo: string;
+  caja: string;
+  cajaId: string;
+  usuario: string;
+  monto: number;
+}
+
+function useKardex() {
   return useQuery({
-    queryKey: ["movimientos-all"],
+    queryKey: ["kardex-all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1) Movimientos de caja (depósitos, retiros, transferencias, desembolsos)
+      const { data: movs, error: movErr } = await supabase
         .from("movimientos_caja")
-        .select("*, cajas ( nombre )")
+        .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
         .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data || [];
+        .limit(500);
+      if (movErr) throw movErr;
+
+      // 2) Pagos (cobros)
+      const { data: pagos, error: pagErr } = await supabase
+        .from("pagos")
+        .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (pagErr) throw pagErr;
+
+      const entries: KardexEntry[] = [];
+
+      // Map movimientos
+      for (const m of movs || []) {
+        const prestamo = m.prestamos as any;
+        const cliente = prestamo?.clientes as any;
+        const concepto = m.concepto || "";
+        let categoria = m.tipo === "entrada" ? "Depósito" : "Retiro";
+        if (concepto.toLowerCase().includes("transferencia")) categoria = "Transferencia";
+        if (concepto.toLowerCase().includes("desembolso") || concepto.toLowerCase().includes("préstamo")) {
+          categoria = m.tipo === "salida" ? "Desembolso" : "Cobro";
+        }
+
+        entries.push({
+          id: `mov-${m.id}`,
+          fecha: m.created_at || "",
+          tipo: m.tipo as "entrada" | "salida",
+          categoria,
+          concepto: concepto || (m.tipo === "entrada" ? "Depósito" : "Retiro"),
+          cliente: cliente?.nombre_completo || "",
+          prestamo: prestamo?.id ? `PRE-${prestamo.id.slice(0, 8)}` : "",
+          caja: (m.cajas as any)?.nombre || "—",
+          cajaId: m.caja_id,
+          usuario: "",
+          monto: Number(m.monto || 0),
+        });
+      }
+
+      // Map pagos as cobros (entrada)
+      for (const p of pagos || []) {
+        const prestamo = p.prestamos as any;
+        const cliente = prestamo?.clientes as any;
+        // Skip if a matching movimiento_caja already exists for this pago
+        const alreadyInMovs = entries.some(e => e.concepto.includes(prestamo?.id?.slice(0, 8) || "NONE") && e.categoria !== "Desembolso" && Math.abs(e.monto - Number(p.monto_recibido)) < 0.01);
+        if (alreadyInMovs) continue;
+
+        entries.push({
+          id: `pago-${p.id}`,
+          fecha: p.created_at || "",
+          tipo: "entrada",
+          categoria: "Cobro",
+          concepto: `Cobro cuota — ${$$(Number(p.monto_recibido))}`,
+          cliente: cliente?.nombre_completo || "",
+          prestamo: prestamo?.id ? `PRE-${prestamo.id.slice(0, 8)}` : "",
+          caja: (p.cajas as any)?.nombre || "—",
+          cajaId: p.caja_id || "",
+          usuario: "",
+          monto: Number(p.monto_recibido || 0),
+        });
+      }
+
+      // Sort by date descending
+      entries.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      return entries;
     },
   });
 }
@@ -112,7 +189,7 @@ type ModalType = "depositar" | "retirar" | "transferir" | "nueva-caja" | null;
 export default function CajasPage() {
   const queryClient = useQueryClient();
   const { data: cajas = [], isLoading } = useCajas();
-  const { data: movimientos = [] } = useMovimientos();
+  const { data: kardex = [] } = useKardex();
   const { data: prestamoStats } = usePrestamosByCaja();
   const g = prestamoStats?.global || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
   const byCaja = prestamoStats?.byCaja || {};
@@ -135,8 +212,9 @@ export default function CajasPage() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
-    queryClient.invalidateQueries({ queryKey: ["movimientos-all"] });
+    queryClient.invalidateQueries({ queryKey: ["kardex-all"] });
     queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
+    queryClient.invalidateQueries({ queryKey: ["prestamos-by-caja"] });
   };
 
   // ── Create caja ─────────────────────────────────────────────────
@@ -211,8 +289,8 @@ export default function CajasPage() {
 
   // ── KPIs ────────────────────────────────────────────────────────
   const totalSaldo = cajas.reduce((s, c) => s + Number(c.saldo_actual || 0), 0);
-  const entradas = movimientos.filter((m) => m.tipo === "entrada").reduce((s, m) => s + Number(m.monto), 0);
-  const salidas = movimientos.filter((m) => m.tipo === "salida").reduce((s, m) => s + Number(m.monto), 0);
+  const entradas = kardex.filter((m) => m.tipo === "entrada").reduce((s, m) => s + m.monto, 0);
+  const salidas = kardex.filter((m) => m.tipo === "salida").reduce((s, m) => s + m.monto, 0);
 
   const kpis = [
     { label: "Saldo en Cajas", value: $$(totalSaldo), icon: Wallet, accent: "text-primary" },
@@ -225,10 +303,10 @@ export default function CajasPage() {
     { label: "Salidas", value: $$(salidas), icon: ArrowUpRight, accent: "text-destructive" },
   ];
 
-  // Filter movimientos by selected caja
+  // Filter kardex by selected caja
   const filteredMov = selectedCaja
-    ? movimientos.filter((m) => m.caja_id === selectedCaja)
-    : movimientos;
+    ? kardex.filter((m) => m.cajaId === selectedCaja)
+    : kardex;
 
   return (
     <div className="space-y-5">
@@ -316,11 +394,11 @@ export default function CajasPage() {
         })}
       </div>
 
-      {/* Movimientos table */}
+      {/* Kardex table */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-[14px] font-semibold">
-            Movimientos {selectedCaja ? `— ${cajas.find(c => c.id === selectedCaja)?.nombre}` : ""}
+            Kardex {selectedCaja ? `— ${cajas.find(c => c.id === selectedCaja)?.nombre}` : "— Todos los movimientos"}
           </h2>
           {selectedCaja && (
             <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setSelectedCaja(null)}>
@@ -332,33 +410,52 @@ export default function CajasPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-table-header hover:bg-table-header border-b">
-                <TableHead className="w-10 text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Tipo</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Concepto</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Caja</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Fecha</TableHead>
-                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Monto</TableHead>
+                {["", "Fecha", "Categoría", "Concepto", "Cliente", "Préstamo", "Caja"].map((h) => (
+                  <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">{h}</TableHead>
+                ))}
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">Entrada</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">Salida</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredMov.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-[13px]">Sin movimientos</TableCell></TableRow>
-              ) : filteredMov.map((m) => (
-                <TableRow key={m.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
-                  <TableCell className="px-3">
-                    <div className={cn("h-6 w-6 rounded-full flex items-center justify-center", m.tipo === "entrada" ? "bg-success/10" : "bg-destructive/10")}>
-                      {m.tipo === "entrada" ? <ArrowDownLeft className="h-3 w-3 text-success" /> : <ArrowUpRight className="h-3 w-3 text-destructive" />}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-[13px] px-3">{m.concepto || "—"}</TableCell>
-                  <TableCell className="text-[12px] text-muted-foreground px-3">{(m.cajas as any)?.nombre || "—"}</TableCell>
-                  <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">
-                    {m.created_at ? format(new Date(m.created_at), "dd/MM/yyyy HH:mm") : "—"}
-                  </TableCell>
-                  <TableCell className={cn("text-right font-medium text-[13px] px-3", m.tipo === "entrada" ? "text-success" : "text-destructive")}>
-                    {m.tipo === "entrada" ? "+" : "-"}{$$(Number(m.monto))}
-                  </TableCell>
-                </TableRow>
-              ))}
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-[13px]">Sin movimientos</TableCell></TableRow>
+              ) : filteredMov.map((m) => {
+                const catColors: Record<string, string> = {
+                  Cobro: "bg-success/10 text-success",
+                  Desembolso: "bg-[hsl(217,91%,60%)]/10 text-[hsl(217,91%,60%)]",
+                  "Depósito": "bg-primary/10 text-primary",
+                  Retiro: "bg-destructive/10 text-destructive",
+                  Transferencia: "bg-warning/10 text-warning",
+                };
+                return (
+                  <TableRow key={m.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
+                    <TableCell className="px-3 w-10">
+                      <div className={cn("h-6 w-6 rounded-full flex items-center justify-center", m.tipo === "entrada" ? "bg-success/10" : "bg-destructive/10")}>
+                        {m.tipo === "entrada" ? <ArrowDownLeft className="h-3 w-3 text-success" /> : <ArrowUpRight className="h-3 w-3 text-destructive" />}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">
+                      {m.fecha ? format(new Date(m.fecha), "dd/MM/yyyy HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="px-3">
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", catColors[m.categoria] || "bg-muted text-muted-foreground")}>
+                        {m.categoria}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-[13px] px-3 max-w-[200px] truncate">{m.concepto}</TableCell>
+                    <TableCell className="text-[13px] px-3 whitespace-nowrap">{m.cliente || <span className="text-muted-foreground/40">—</span>}</TableCell>
+                    <TableCell className="text-[12px] text-muted-foreground px-3 font-mono">{m.prestamo || <span className="text-muted-foreground/40">—</span>}</TableCell>
+                    <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{m.caja}</TableCell>
+                    <TableCell className="text-right font-medium text-[13px] px-3 text-success">
+                      {m.tipo === "entrada" ? `+${$$(m.monto)}` : ""}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-[13px] px-3 text-destructive">
+                      {m.tipo === "salida" ? `-${$$(m.monto)}` : ""}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
