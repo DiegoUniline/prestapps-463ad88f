@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // ── Data hooks ────────────────────────────────────────────────────
-function useCajas() {
+function useCajas(empresaId: string) {
   return useQuery({
-    queryKey: ["cajas-page"],
+    queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cajas").select("*").order("nombre");
+      const { data, error } = await supabase.from("cajas").select("*").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
       return data || [];
     },
@@ -225,7 +226,8 @@ type ModalType = "depositar" | "retirar" | "transferir" | "nueva-caja" | null;
 // ── Component ─────────────────────────────────────────────────────
 export default function CajasPage() {
   const queryClient = useQueryClient();
-  const { data: cajas = [], isLoading } = useCajas();
+  const { empresaId } = useEmpresa();
+  const { data: cajas = [], isLoading } = useCajas(empresaId);
   const { data: kardex = [] } = useKardex();
   const { data: prestamoStats } = usePrestamosByCaja();
   const g = prestamoStats?.global || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };

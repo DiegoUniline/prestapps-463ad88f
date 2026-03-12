@@ -30,9 +30,43 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("empresa_id");
-    if (stored) setEmpresaId(stored);
+    // Listen for auth changes to auto-set empresa from profile
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        // Get user's empresa_id from profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("empresa_id")
+          .eq("id", session.user.id)
+          .single();
 
+        if (profile?.empresa_id) {
+          setEmpresaId(profile.empresa_id);
+          localStorage.setItem("empresa_id", profile.empresa_id);
+        }
+      }
+    });
+
+    // Initial load: check profile first, then localStorage fallback
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("empresa_id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profile?.empresa_id) {
+          setEmpresaId(profile.empresa_id);
+          localStorage.setItem("empresa_id", profile.empresa_id);
+        }
+      } else {
+        const stored = localStorage.getItem("empresa_id");
+        if (stored) setEmpresaId(stored);
+      }
+    });
+
+    // Load empresas list
     (supabase.from as any)("empresas")
       .select("id, nombre")
       .eq("activa", true)
@@ -41,6 +75,8 @@ export function EmpresaProvider({ children }: { children: ReactNode }) {
         setEmpresas(data || []);
         setLoading(false);
       });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSetEmpresa = (id: string) => {

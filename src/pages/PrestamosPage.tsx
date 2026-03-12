@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -121,10 +122,11 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
 export default function PrestamosPage() {
   const navigate = useNavigate();
   const { role, rutaIds, cobradorId } = useCurrentUserRole();
-  const roleFilters = role === "admin" ? undefined : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId };
+  const { empresaId } = useEmpresa();
+  const roleFilters = role === "admin" ? { empresaId } : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId, empresaId };
   const { data: prestamos = [], isLoading, isError } = usePrestamos(roleFilters);
-  const { data: cajasRaw = [] } = useCajasOptions();
-  const { data: rutasRaw = [] } = useRutasOptions();
+  const { data: cajasRaw = [] } = useCajasOptions(empresaId);
+  const { data: rutasRaw = [] } = useRutasOptions(empresaId);
 
   const cajasOpts = cajasRaw.map((c) => c.nombre);
   const rutasOpts = rutasRaw.map((r) => r.nombre);

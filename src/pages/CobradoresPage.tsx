@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -27,23 +28,24 @@ interface Cobrador {
   created_at: string | null;
 }
 
-function useCobradores() {
+function useCobradores(empresaId: string) {
   return useQuery({
-    queryKey: ["cobradores"],
+    queryKey: ["cobradores", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("cobradores").select("*").order("nombre");
+      const { data, error } = await (supabase.from as any)("cobradores").select("*").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
       return (data || []) as Cobrador[];
     },
   });
 }
 
-function useCortes() {
+function useCortes(empresaId: string) {
   return useQuery({
-    queryKey: ["cortes"],
+    queryKey: ["cortes", empresaId],
     queryFn: async () => {
       const { data, error } = await (supabase.from as any)("cortes")
         .select("*, cobradores ( nombre ), cajas ( nombre )")
+        .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -52,11 +54,11 @@ function useCortes() {
   });
 }
 
-function useCajas() {
+function useCajas(empresaId: string) {
   return useQuery({
-    queryKey: ["cajas-all"],
+    queryKey: ["cajas-all", empresaId],
     queryFn: async () => {
-      const { data } = await supabase.from("cajas").select("id, nombre, saldo_actual").order("nombre");
+      const { data } = await supabase.from("cajas").select("id, nombre, saldo_actual").eq("empresa_id", empresaId).order("nombre");
       return data || [];
     },
   });
@@ -82,9 +84,10 @@ type ModalType = "nuevo" | "corte" | null;
 // ── Component ─────────────────────────────────────────────────────
 export default function CobradoresPage() {
   const queryClient = useQueryClient();
-  const { data: cobradores = [], isLoading } = useCobradores();
-  const { data: cortes = [] } = useCortes();
-  const { data: cajas = [] } = useCajas();
+  const { empresaId } = useEmpresa();
+  const { data: cobradores = [], isLoading } = useCobradores(empresaId);
+  const { data: cortes = [] } = useCortes(empresaId);
+  const { data: cajas = [] } = useCajas(empresaId);
 
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalType>(null);

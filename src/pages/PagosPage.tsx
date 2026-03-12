@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +34,9 @@ interface PagoListItem {
 type SortKey = keyof PagoListItem;
 
 // ── Data hook ─────────────────────────────────────────────────────
-function usePagosAll() {
+function usePagosAll(empresaId: string) {
   return useQuery({
-    queryKey: ["pagos-all"],
+    queryKey: ["pagos-all", empresaId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pagos")
@@ -45,6 +46,7 @@ function usePagosAll() {
           cajas ( nombre ),
           prestamos!pagos_prestamo_id_fkey ( id, clientes ( nombre_completo ), rutas ( nombre ) )
         `)
+        .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -131,9 +133,10 @@ function MetodoDot({ metodo }: { metodo: string }) {
 
 // ── Component ─────────────────────────────────────────────────────
 export default function PagosPage() {
-  const { data: pagos = [], isLoading, isError } = usePagosAll();
-  const { data: cajasRaw = [] } = useCajasOptions();
-  const { data: rutasRaw = [] } = useRutasOptions();
+  const { empresaId } = useEmpresa();
+  const { data: pagos = [], isLoading, isError } = usePagosAll(empresaId);
+  const { data: cajasRaw = [] } = useCajasOptions(empresaId);
+  const { data: rutasRaw = [] } = useRutasOptions(empresaId);
 
   const cajasOpts = cajasRaw.map((c) => c.nombre);
   const rutasOpts = rutasRaw.map((r) => r.nombre);

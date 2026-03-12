@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,13 +9,14 @@ import { cn } from "@/lib/utils";
 
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-function usePromesasAll() {
+function usePromesasAll(empresaId: string) {
   return useQuery({
-    queryKey: ["promesas-all"],
+    queryKey: ["promesas-all", empresaId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("promesas_pago")
         .select(`*, prestamos!promesas_pago_prestamo_id_fkey ( clientes ( nombre_completo ) )`)
+        .eq("empresa_id", empresaId)
         .order("fecha_prometida", { ascending: true });
       if (error) throw error;
       return data || [];
@@ -30,7 +32,8 @@ const statusBadge: Record<string, string> = {
 };
 
 export default function PromesasPage() {
-  const { data: promesas = [], isLoading } = usePromesasAll();
+  const { empresaId } = useEmpresa();
+  const { data: promesas = [], isLoading } = usePromesasAll(empresaId);
 
   const totalPromesas = promesas.length;
   const pendientes = promesas.filter((p) => p.status === "Pendiente").length;

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,13 +23,14 @@ interface Ruta {
   prestamosCount: number;
 }
 
-function useRutas() {
+function useRutas(empresaId: string) {
   return useQuery({
-    queryKey: ["rutas-page"],
+    queryKey: ["rutas-page", empresaId],
     queryFn: async () => {
       const { data: rutas, error } = await supabase
         .from("rutas")
         .select("id, nombre, descripcion, cobrador_id, created_at")
+        .eq("empresa_id", empresaId)
         .order("nombre");
       if (error) throw error;
 
@@ -71,7 +73,8 @@ function useCobradores() {
 
 function RutasListPage() {
   const navigate = useNavigate();
-  const { data: rutas = [], isLoading } = useRutas();
+  const { empresaId } = useEmpresa();
+  const { data: rutas = [], isLoading } = useRutas(empresaId);
 
   return (
     <div className="space-y-5">

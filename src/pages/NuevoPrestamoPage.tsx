@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,14 +18,15 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 
-function useClientesOptions() {
+function useClientesOptions(empresaId: string) {
   return useQuery({
-    queryKey: ["clientes-options"],
+    queryKey: ["clientes-options", empresaId],
     queryFn: async () => {
       const { data } = await supabase
         .from("clientes")
         .select("id, nombre_completo, id_cliente")
         .eq("activo", true)
+        .eq("empresa_id", empresaId)
         .order("nombre_completo");
       return data || [];
     },
@@ -53,10 +55,11 @@ function calcNextDate(base: Date, frecuencia: string, n: number): Date {
 export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { empresaId } = useEmpresa();
 
-  const { data: clientes = [] } = useClientesOptions();
-  const { data: cajas = [] } = useCajasOptions();
-  const { data: rutas = [] } = useRutasOptions();
+  const { data: clientes = [] } = useClientesOptions(empresaId);
+  const { data: cajas = [] } = useCajasOptions(empresaId);
+  const { data: rutas = [] } = useRutasOptions(empresaId);
 
   const [clienteId, setClienteId] = useState("");
   const [montoSolicitado, setMontoSolicitado] = useState("");
