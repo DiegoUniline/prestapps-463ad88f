@@ -91,19 +91,23 @@ function UsuariosListPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-      <div className="border rounded-lg overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Usuario</TableHead><TableHead>Email</TableHead><TableHead>Rol</TableHead><TableHead>Comisión</TableHead><TableHead className="text-center">Activo</TableHead>
+            <TableRow className="bg-table-header hover:bg-table-header border-b">
+              <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Usuario</TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Email</TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Rol</TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Comisión</TableHead>
+              <TableHead className="text-center text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Activo</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? Array.from({ length: 4 }).map((_, i) => (
-              <TableRow key={i}>{Array.from({ length: 5 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-24" /></TableCell>)}</TableRow>
+              <TableRow key={i}>{Array.from({ length: 5 }).map((_, j) => <TableCell key={j} className="px-3"><Skeleton className="h-4 w-24" /></TableCell>)}</TableRow>
             )) : filtered.map((u) => (
-              <TableRow key={u.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/usuarios/${u.id}`)}>
-                <TableCell>
+              <TableRow key={u.id} className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors" onClick={() => navigate(`/usuarios/${u.id}`)}>
+                <TableCell className="px-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                       {u.foto_url && <AvatarImage src={u.foto_url} />}
@@ -111,17 +115,17 @@ function UsuariosListPage() {
                         {u.nombre_completo.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="font-medium">{u.nombre_completo}</span>
+                    <span className="font-medium text-[13px]">{u.nombre_completo}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                <TableCell><Badge className={rolColors[u.rol] || rolColors.cobrador}>{rolLabels[u.rol] || u.rol}</Badge></TableCell>
-                <TableCell>{u.porcentaje_comision}%</TableCell>
-                <TableCell className="text-center">{u.activo ? "✓" : "✗"}</TableCell>
+                <TableCell className="text-muted-foreground text-[13px] px-3">{u.email}</TableCell>
+                <TableCell className="px-3"><Badge className={rolColors[u.rol] || rolColors.cobrador}>{rolLabels[u.rol] || u.rol}</Badge></TableCell>
+                <TableCell className="text-[13px] px-3">{u.porcentaje_comision}%</TableCell>
+                <TableCell className="text-center text-[13px] px-3">{u.activo ? "✓" : "✗"}</TableCell>
               </TableRow>
             ))}
             {!isLoading && filtered.length === 0 && (
-              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No hay usuarios</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-[13px]">No hay usuarios</TableCell></TableRow>
             )}
           </TableBody>
         </Table>

@@ -213,38 +213,38 @@ export default function ClientesPage() {
           {isLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                    <TableHead>Documento</TableHead>
-                    <TableHead>Situación</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-center">Activo</TableHead>
+                  <TableRow className="bg-table-header hover:bg-table-header border-b">
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">ID</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Nombre</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Teléfono</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Documento</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Situación</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Estado</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 text-center">Activo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {clientes?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">
                         No se encontraron clientes
                       </TableCell>
                     </TableRow>
                   ) : (
                     clientes?.map((c) => (
-                      <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clientes/${c.id}`)}>
-                        <TableCell className="font-mono text-xs">{c.id_cliente}</TableCell>
-                        <TableCell className="font-medium">{c.nombre_completo}</TableCell>
-                        <TableCell>{c.telefono || "—"}</TableCell>
-                        <TableCell>{c.dni || "—"}</TableCell>
-                        <TableCell>{c.situacion_laboral || "—"}</TableCell>
-                        <TableCell>
+                      <TableRow key={c.id} className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors" onClick={() => navigate(`/clientes/${c.id}`)}>
+                        <TableCell className="font-mono text-[12px] px-3">{c.id_cliente}</TableCell>
+                        <TableCell className="font-medium text-[13px] px-3">{c.nombre_completo}</TableCell>
+                        <TableCell className="text-[13px] px-3">{c.telefono || "—"}</TableCell>
+                        <TableCell className="text-[13px] px-3">{c.dni || "—"}</TableCell>
+                        <TableCell className="text-[13px] px-3">{c.situacion_laboral || "—"}</TableCell>
+                        <TableCell className="px-3">
                           <Badge className={estadoColors[c.estado] || "bg-muted text-muted-foreground"}>{c.estado}</Badge>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center px-3">
                           <Switch checked={c.activo} onClick={(e) => handleToggleActivo(e, c.id, c.activo)} />
                         </TableCell>
                       </TableRow>
@@ -284,22 +284,22 @@ export default function ClientesPage() {
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead className="text-right">Saldo Total</TableHead>
-                    <TableHead className="text-center">Cuotas Vencidas</TableHead>
-                    <TableHead className="text-right">Saldo Moroso</TableHead>
-                    <TableHead>Cobrador</TableHead>
+                  <TableRow className="bg-table-header hover:bg-table-header border-b">
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">ID</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cliente</TableHead>
+                    <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Saldo Total</TableHead>
+                    <TableHead className="text-center text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cuotas Vencidas</TableHead>
+                    <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Saldo Moroso</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cobrador</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEstados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-[13px]">
                         No hay estados de cuenta
                       </TableCell>
                     </TableRow>
@@ -307,25 +307,25 @@ export default function ClientesPage() {
                     filteredEstados.map((ec) => (
                       <TableRow
                         key={ec.cliente_id}
-                        className="cursor-pointer hover:bg-muted/50"
+                        className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors"
                         onClick={() => navigate(`/clientes/${ec.cliente_id}`)}
                       >
-                        <TableCell className="font-mono text-xs">{ec.id_cliente}</TableCell>
-                        <TableCell className="font-medium">{ec.nombre_completo}</TableCell>
-                        <TableCell className="text-right font-semibold">{$$(ec.saldo_total)}</TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="font-mono text-[12px] px-3">{ec.id_cliente}</TableCell>
+                        <TableCell className="font-medium text-[13px] px-3">{ec.nombre_completo}</TableCell>
+                        <TableCell className="text-right font-semibold text-[13px] px-3">{$$(ec.saldo_total)}</TableCell>
+                        <TableCell className="text-center px-3">
                           {ec.cuotas_vencidas > 0 ? (
                             <Badge variant="destructive">{ec.cuotas_vencidas}</Badge>
                           ) : (
-                            <span className="text-muted-foreground">0</span>
+                            <span className="text-muted-foreground text-[13px]">0</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <span className={ec.saldo_moroso > 0 ? "text-destructive font-semibold" : "text-muted-foreground"}>
+                        <TableCell className="text-right px-3">
+                          <span className={ec.saldo_moroso > 0 ? "text-destructive font-semibold text-[13px]" : "text-muted-foreground text-[13px]"}>
                             {$$(ec.saldo_moroso)}
                           </span>
                         </TableCell>
-                        <TableCell>{ec.cobrador_nombre || "—"}</TableCell>
+                        <TableCell className="text-[13px] px-3">{ec.cobrador_nombre || "—"}</TableCell>
                       </TableRow>
                     ))
                   )}
