@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -127,6 +128,7 @@ export default function PrestamosPage() {
 
   const [search, setSearch] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("todos");
 
   const [selEstado, setSelEstado] = useState<Set<string>>(new Set());
   const [selCaja, setSelCaja] = useState<Set<string>>(new Set());
@@ -157,8 +159,17 @@ export default function PrestamosPage() {
     setRegDesde(undefined); setRegHasta(undefined); setSortKey(null); setSortDir(null);
   };
 
+  // Tab-based pre-filter
+  const tabFiltered = useMemo(() => {
+    if (activeTab === "todos") return prestamos;
+    if (activeTab === "vigentes") return prestamos.filter((p) => p.estado === "Activo" || p.estado === "Al día");
+    if (activeTab === "atrasados") return prestamos.filter((p) => p.estado === "Vencido" || p.estado === "Juridico");
+    if (activeTab === "liquidados") return prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado");
+    return prestamos;
+  }, [prestamos, activeTab]);
+
   const filtered = useMemo(() => {
-    let data = prestamos.filter((p) => {
+    let data = tabFiltered.filter((p) => {
       if (search) {
         const q = search.toLowerCase();
         if (!p.cliente.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return false;
@@ -181,7 +192,7 @@ export default function PrestamosPage() {
       });
     }
     return data;
-  }, [prestamos, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
+  }, [tabFiltered, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
 
   const toggleRow = (id: string) => {
     const next = new Set(selectedRows);
@@ -208,6 +219,13 @@ export default function PrestamosPage() {
     { label: `En Mora (${morosos.length})`, value: `$${totalMora.toLocaleString()}`, icon: AlertTriangle, accent: "text-destructive" },
   ];
 
+  const tabCounts = useMemo(() => ({
+    todos: prestamos.length,
+    vigentes: prestamos.filter((p) => p.estado === "Activo" || p.estado === "Al día").length,
+    atrasados: prestamos.filter((p) => p.estado === "Vencido" || p.estado === "Juridico").length,
+    liquidados: prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado").length,
+  }), [prestamos]);
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -230,6 +248,16 @@ export default function PrestamosPage() {
           </div>
         ))}
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-muted">
+          <TabsTrigger value="todos">Todos <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.todos})</span></TabsTrigger>
+          <TabsTrigger value="vigentes">Vigentes <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.vigentes})</span></TabsTrigger>
+          <TabsTrigger value="atrasados">Atrasados <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.atrasados})</span></TabsTrigger>
+          <TabsTrigger value="liquidados">Liquidados <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.liquidados})</span></TabsTrigger>
+        </TabsList>
+        <TabsContent value={activeTab} className="space-y-5 mt-4">
 
       {/* Search bar centered — Odoo style */}
       <div className="hidden md:flex justify-center">
@@ -388,6 +416,9 @@ export default function PrestamosPage() {
           </TableBody>
         </Table>
       </div>
+
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
