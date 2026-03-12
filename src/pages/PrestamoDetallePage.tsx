@@ -380,12 +380,22 @@ export default function PrestamoDetallePage() {
                             </>
                           )}
 
-                          <TableCell className="px-3 w-[120px]">
-                            <div className={cn("flex gap-2 text-[11px] transition-opacity", hoveredRow === c.num_cuota && status !== "Pagada" ? "opacity-100" : "opacity-0 pointer-events-none")}>
-                              {["Pagar", "Promesa", ...(!c.avisado ? ["Avisar"] : [])].map(action => (
-                                <button key={action} className="text-muted-foreground hover:text-primary transition-colors whitespace-nowrap">{action}</button>
-                              ))}
-                            </div>
+                          <TableCell className="px-3 w-[90px]">
+                            {status !== "Pagada" && (
+                              <div className="flex items-center gap-1">
+                                <button title="Pagar" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                  <HandCoins className="h-3.5 w-3.5" />
+                                </button>
+                                <button title="Promesa" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                  <CalendarCheck className="h-3.5 w-3.5" />
+                                </button>
+                                {!c.avisado && (
+                                  <button title="Avisar" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                    <Bell className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
