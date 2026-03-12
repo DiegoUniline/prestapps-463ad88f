@@ -19,6 +19,7 @@ import RutasPage from "@/pages/RutasPage";
 import ReportesPage from "@/pages/ReportesPage";
 import UsuariosPage from "@/pages/UsuariosPage";
 import CobradoresPage from "@/pages/CobradoresPage";
+import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
