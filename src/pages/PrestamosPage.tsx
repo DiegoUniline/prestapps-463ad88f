@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
