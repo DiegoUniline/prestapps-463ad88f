@@ -46,6 +46,7 @@ export function TopBar() {
         <Button variant="ghost" size="icon">
           <Bell className="h-4 w-4" />
         </Button>
+        <Badge variant="secondary" className="text-[10px] h-6">{roleLabel[role] || role}</Badge>
         <Avatar className="h-8 w-8">
           <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
         </Avatar>
