@@ -651,6 +651,7 @@ export default function PrestamoDetallePage() {
         onOpenChange={setPagoOpen}
         prestamoId={prestamo.id}
         cuotasPendientes={amort.filter((c) => (c.saldo_total || 0) > 0).map((c) => ({
+          id: c.id,
           num_cuota: c.num_cuota,
           saldo_mora: Number(c.saldo_mora || 0),
           saldo_interes: Number(c.saldo_interes || 0),

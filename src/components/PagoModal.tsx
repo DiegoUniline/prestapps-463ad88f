@@ -1,4 +1,7 @@
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { HandCoins, Info } from "lucide-react";
+import { HandCoins, Info, Loader2 } from "lucide-react";
 
 interface Cuota {
+  id: string;
   num_cuota: number;
   saldo_mora: number;
   saldo_interes: number;
@@ -19,6 +23,7 @@ interface Cuota {
 }
 
 interface PaymentDistribution {
+  cuotaId: string;
   cuota: number;
   mora: number;
   interes: number;
@@ -39,15 +44,17 @@ interface PagoModalProps {
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId }: PagoModalProps) {
+  const queryClient = useQueryClient();
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("Efectivo");
   const [cajaId, setCajaId] = useState(cajas[0]?.id || "");
+  const [saving, setSaving] = useState(false);
 
   const totalAdeudado = cuotasPendientes.reduce((s, c) => s + c.saldo_total, 0);
   const montoNum = parseFloat(montoRecibido) || 0;
   const descuentoNum = parseFloat(descuento) || 0;
-  const montoEfectivo = montoNum + descuentoNum; // total que se aplica a las cuotas
+  const montoEfectivo = montoNum + descuentoNum;
 
   // Distribute payment across installments (mora → interés → capital order)
   const distribution = useMemo((): PaymentDistribution[] => {
@@ -61,17 +68,14 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
       let mora = 0, interes = 0, capital = 0;
 
-      // 1) Mora
       if (c.saldo_mora > 0 && remaining > 0) {
         mora = Math.min(c.saldo_mora, remaining);
         remaining -= mora;
       }
-      // 2) Interés
       if (c.saldo_interes > 0 && remaining > 0) {
         interes = Math.min(c.saldo_interes, remaining);
         remaining -= interes;
       }
-      // 3) Capital
       if (c.saldo_capital > 0 && remaining > 0) {
         capital = Math.min(c.saldo_capital, remaining);
         remaining -= capital;
@@ -79,7 +83,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
       const total = mora + interes + capital;
       if (total > 0) {
-        result.push({ cuota: c.num_cuota, mora, interes, capital, total });
+        result.push({ cuotaId: c.id, cuota: c.num_cuota, mora, interes, capital, total });
       }
     }
 
@@ -94,24 +98,94 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
     return Math.abs(d.total - c.saldo_total) < 0.01;
   }).length;
 
-  const canSubmit = montoNum > 0 && cajaId && distribution.length > 0;
+  const canSubmit = montoNum > 0 && cajaId && distribution.length > 0 && !saving;
 
-  const handleSubmit = () => {
-    // TODO: connect to Supabase — include ruta + cobrador
-    console.log({
-      prestamoId,
-      montoRecibido: montoNum,
-      descuento: descuentoNum,
-      montoEfectivo,
-      metodo,
-      cajaId,
-      rutaId: rutaId || null,
-      cobradorId: cobradorId || null,
-      distribution,
-    });
-    onOpenChange(false);
-    setMontoRecibido("");
-    setDescuento("");
+  const handleSubmit = async () => {
+    setSaving(true);
+    try {
+      // 1) Insert one pago row per cuota touched
+      for (const d of distribution) {
+        const { error: pagoErr } = await supabase.from("pagos").insert({
+          prestamo_id: prestamoId,
+          cuota_id: d.cuotaId,
+          monto_recibido: d.total,
+          aplicado_mora: d.mora,
+          aplicado_interes: d.interes,
+          aplicado_capital: d.capital,
+          metodo_pago: metodo as any,
+          caja_id: cajaId,
+          ruta_id: rutaId || null,
+          cobrador_id: cobradorId || null,
+        });
+        if (pagoErr) throw pagoErr;
+
+        // 2) Update amortizacion saldos for this cuota
+        const cuota = cuotasPendientes.find((c) => c.id === d.cuotaId)!;
+        const newSaldoMora = Math.max(0, cuota.saldo_mora - d.mora);
+        const newSaldoInteres = Math.max(0, cuota.saldo_interes - d.interes);
+        const newSaldoCapital = Math.max(0, cuota.saldo_capital - d.capital);
+        const newSaldoTotal = newSaldoMora + newSaldoInteres + newSaldoCapital;
+        const fullPaid = newSaldoTotal < 0.01;
+
+        const { error: amortErr } = await supabase.from("amortizacion").update({
+          mora_pagada: (cuota.saldo_mora - newSaldoMora) + (Number((cuota as any).mora_pagada) || 0),
+          interes_pagado: (cuota.saldo_interes - newSaldoInteres) + (Number((cuota as any).interes_pagado) || 0),
+          capital_pagado: (cuota.saldo_capital - newSaldoCapital) + (Number((cuota as any).capital_pagado) || 0),
+          saldo_mora: newSaldoMora,
+          saldo_interes: newSaldoInteres,
+          saldo_capital: newSaldoCapital,
+          saldo_total: newSaldoTotal,
+          descuento_mora: descuentoNum > 0 ? descuentoNum : undefined,
+          status: fullPaid ? "Pagada" : "Parcial",
+          fecha_pagada: fullPaid ? new Date().toISOString().slice(0, 10) : undefined,
+        }).eq("id", d.cuotaId);
+        if (amortErr) throw amortErr;
+      }
+
+      // 3) Insert movimiento_caja (entrada)
+      const { error: movErr } = await supabase.from("movimientos_caja").insert({
+        caja_id: cajaId,
+        tipo: "entrada",
+        monto: montoNum,
+        prestamo_id: prestamoId,
+        concepto: `Pago préstamo PRE-${prestamoId.slice(0, 8)}`,
+      });
+      if (movErr) throw movErr;
+
+      // 4) Update caja balance
+      const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", cajaId).single();
+      if (cajaData) {
+        await supabase.from("cajas").update({
+          saldo_actual: (Number(cajaData.saldo_actual) || 0) + montoNum,
+        }).eq("id", cajaId);
+      }
+
+      // 5) Check if all cuotas are paid → update prestamo estado
+      const { data: remaining } = await supabase
+        .from("amortizacion")
+        .select("id")
+        .eq("prestamo_id", prestamoId)
+        .not("status", "eq", "Pagada");
+      
+      if (remaining && remaining.length === 0) {
+        await supabase.from("prestamos").update({ estado: "Liquidado" }).eq("id", prestamoId);
+      }
+
+      // Invalidate queries to refresh UI
+      queryClient.invalidateQueries({ queryKey: ["amortizacion", prestamoId] });
+      queryClient.invalidateQueries({ queryKey: ["pagos", prestamoId] });
+      queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", prestamoId] });
+      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
+
+      toast.success(`Pago de ${$$(montoNum)} registrado correctamente`);
+      onOpenChange(false);
+      setMontoRecibido("");
+      setDescuento("");
+    } catch (err: any) {
+      toast.error("Error al registrar pago: " + (err.message || err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -120,7 +194,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle className="flex items-center gap-2 text-base">
             <HandCoins className="h-4 w-4 text-primary" />
-            Registrar Pago — {prestamoId}
+            Registrar Pago
           </DialogTitle>
         </DialogHeader>
 
@@ -270,12 +344,12 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         </div>
 
         <DialogFooter className="px-5 py-3 border-t bg-secondary/30">
-          <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
           <Button size="sm" className="h-8 text-[13px]" disabled={!canSubmit} onClick={handleSubmit}>
-            <HandCoins className="h-3.5 w-3.5 mr-1.5" />
-            Confirmar Pago
+            {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <HandCoins className="h-3.5 w-3.5 mr-1.5" />}
+            {saving ? "Procesando..." : "Confirmar Pago"}
           </Button>
         </DialogFooter>
       </DialogContent>
