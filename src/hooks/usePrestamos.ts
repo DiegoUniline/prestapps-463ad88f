@@ -69,7 +69,7 @@ async function fetchPrestamos(): Promise<PrestamoListItem[]> {
   }
 
   return prestamos.map((p) => {
-    const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0 };
+    const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false };
     const cliente = p.clientes as any;
     const caja = p.cajas as any;
     const ruta = p.rutas as any;
