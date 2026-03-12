@@ -136,6 +136,7 @@ export default function PrestamoDetallePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("amortizacion");
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [pagoOpen, setPagoOpen] = useState(false);
 
   if (isNew) {
     // Redirect to creation form (keep existing logic or navigate)
