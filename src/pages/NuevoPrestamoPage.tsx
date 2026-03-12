@@ -191,7 +191,7 @@ export default function NuevoPrestamoPage() {
         <h1 className="text-xl font-semibold">Nuevo Préstamo</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* LEFT — Form */}
         <Card className="lg:col-span-2">
           <CardHeader>
