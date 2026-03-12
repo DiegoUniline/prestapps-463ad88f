@@ -170,7 +170,9 @@ export default function NuevoPrestamoPage() {
           notas: notas || null,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
-        })
+          gps_lat: geo.lat,
+          gps_lng: geo.lng,
+        } as any)
         .select("id")
         .single();
 
