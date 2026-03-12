@@ -511,6 +511,39 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          direccion: string | null
+          foto_url: string | null
+          id: string
+          nombre_completo: string
+          porcentaje_comision: number
+          telefono: string | null
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          direccion?: string | null
+          foto_url?: string | null
+          id: string
+          nombre_completo?: string
+          porcentaje_comision?: number
+          telefono?: string | null
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          direccion?: string | null
+          foto_url?: string | null
+          id?: string
+          nombre_completo?: string
+          porcentaje_comision?: number
+          telefono?: string | null
+        }
+        Relationships: []
+      }
       promesas_pago: {
         Row: {
           created_at: string | null
