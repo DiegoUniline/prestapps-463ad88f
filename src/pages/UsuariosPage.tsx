@@ -63,7 +63,7 @@ function useRutas(empresaId: string) {
   return useQuery({
     queryKey: ["rutas-list", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("rutas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
+      const { data, error } = await (supabase.from as any)("rutas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
       return (data || []) as Ruta[];
     },
