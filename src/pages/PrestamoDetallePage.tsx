@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText } from "lucide-react";
+import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
@@ -21,37 +21,18 @@ const estadoBadge: Record<string, string> = {
   Juridico: "bg-badge-juridico text-badge-juridico-foreground",
 };
 
-const cuotaStatusBadge: Record<string, string> = {
-  Pagada: "bg-badge-activo text-badge-activo-foreground",
-  Vencida: "bg-badge-vencido text-badge-vencido-foreground",
-  Prometida: "bg-badge-juridico text-badge-juridico-foreground",
-  Parcial: "bg-badge-aldia text-badge-aldia-foreground",
-  Pendiente: "bg-secondary text-muted-foreground",
-};
-
-const cuotaRowBg: Record<string, string> = {
-  Pagada: "bg-[hsl(142_76%_97%)]",
-  Vencida: "bg-[hsl(0_93%_97%)]",
-  Prometida: "bg-[hsl(45_93%_97%)]",
-  Parcial: "bg-[hsl(217_91%_97%)]",
-  Pendiente: "",
-};
-
-const metodoBadge: Record<string, string> = {
-  Efectivo: "bg-badge-activo text-badge-activo-foreground",
-  Transferencia: "bg-badge-aldia text-badge-aldia-foreground",
-  Otro: "bg-secondary text-muted-foreground",
-};
-
-const promesaStatusBadge: Record<string, string> = {
-  Pendiente: "bg-badge-juridico text-badge-juridico-foreground",
-  Cumplida: "bg-badge-activo text-badge-activo-foreground",
-  Incumplida: "bg-badge-vencido text-badge-vencido-foreground",
-};
-
 // ── Helpers ───────────────────────────────────────────────────────
 const $$ = (n: number | null | undefined) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const muted0 = (n: number | null | undefined) => (n || 0) === 0 ? "text-muted-foreground/50" : "";
+const dash = (n: number | null | undefined) => (n || 0) === 0 ? "—" : null;
+const dashStr = (s: string | null | undefined) => s || "—";
+
+const activityColors: Record<string, string> = {
+  pago: "bg-[hsl(142,72%,37%)]",
+  registro: "bg-[hsl(220,9%,70%)]",
+  promesa: "bg-[hsl(38,92%,50%)]",
+  promesa_incumplida: "bg-[hsl(0,72%,51%)]",
+  estado: "bg-[hsl(220,9%,70%)]",
+};
 
 const activityIcon: Record<string, typeof CreditCard> = {
   registro: FileText,
@@ -61,6 +42,41 @@ const activityIcon: Record<string, typeof CreditCard> = {
   estado: Activity,
 };
 
+// ── Status badge (outline style) ──────────────────────────────────
+function CuotaStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    Pagada: "border-[hsl(142,72%,37%)] text-[hsl(142,72%,37%)]",
+    Vencida: "border-[hsl(0,72%,51%)] text-[hsl(0,72%,51%)]",
+    Parcial: "border-[hsl(217,91%,60%)] text-[hsl(217,91%,60%)]",
+    Prometida: "border-[hsl(38,92%,50%)] text-[hsl(38,92%,50%)]",
+    Pendiente: "border-transparent text-[hsl(220,9%,60%)]",
+  };
+  return (
+    <span className={cn(
+      "inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium whitespace-nowrap border",
+      styles[status] || styles.Pendiente
+    )}>
+      {status === "Pagada" && <Check className="h-3 w-3 mr-0.5" />}
+      {status}
+    </span>
+  );
+}
+
+// ── Metodo dot ────────────────────────────────────────────────────
+function MetodoDot({ metodo }: { metodo: string }) {
+  const color = metodo === "Efectivo" ? "bg-[hsl(142,72%,37%)]" : metodo === "Transferencia" ? "bg-[hsl(217,91%,60%)]" : "bg-muted-foreground";
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12px]">
+      <span className={cn("h-2 w-2 rounded-full", color)} />
+      {metodo}
+    </span>
+  );
+}
+
+// ── Default & optional columns ────────────────────────────────────
+const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "Mora", "Saldo Total", "Status", "F.Pagada"];
+const optionalCols = ["Cap.Pag.", "Int.Pag.", "Mora Pag.", "S.Cap", "S.Int", "S.Mora", "Desc.Mora", "Avisado"];
+
 // ── Component ─────────────────────────────────────────────────────
 export default function PrestamoDetallePage() {
   const { id } = useParams();
@@ -68,6 +84,7 @@ export default function PrestamoDetallePage() {
   const [tab, setTab] = useState("amortizacion");
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [pagoOpen, setPagoOpen] = useState(false);
+  const [showOptional, setShowOptional] = useState(false);
 
   const isNew = !id || id === "nuevo";
 
@@ -77,14 +94,11 @@ export default function PrestamoDetallePage() {
   const { data: promesasRaw = [] } = usePromesas(isNew ? undefined : id);
   const { data: cajasAll = [] } = useCajas();
 
-  if (isNew) {
-    navigate("/prestamos");
-    return null;
-  }
+  if (isNew) { navigate("/prestamos"); return null; }
 
   if (loadingPrestamo) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-5 p-6">
         <Skeleton className="h-8 w-64" />
         <div className="grid grid-cols-6 gap-3">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>
         <Skeleton className="h-[400px]" />
@@ -112,14 +126,18 @@ export default function PrestamoDetallePage() {
   const saldoMoroso = amort.reduce((s, c) => s + Number(c.saldo_mora || 0), 0);
   const proximaCuota = amort.find((c) => c.status === "Pendiente" || c.status === "Prometida");
   const ultimoPago = pagosRaw.length > 0 ? pagosRaw[pagosRaw.length - 1] : null;
+  const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
+
+  const estado = prestamo.estado || "Activo";
+  const shortId = prestamo.id?.slice(0, 8) || id;
 
   const kpis = [
-    { label: "Monto Prestado", value: $$(prestamo.monto_solicitado), color: "" },
-    { label: "Total a Pagar", value: $$(prestamo.monto_total_pagar), color: "" },
-    { label: "Total Pagado", value: $$(totalPagado), color: "text-success" },
-    { label: "Saldo Pendiente", value: $$(saldoPendiente), color: "text-badge-aldia-foreground" },
-    { label: "Cuotas Vencidas", value: String(cuotasVencidas), extra: `${cuotasVencidas} cuotas`, color: "text-destructive" },
-    { label: "Saldo Moroso", value: $$(saldoMoroso), color: saldoMoroso > 0 ? "text-destructive" : "text-success" },
+    { label: "Monto Prestado", value: $$(prestamo.monto_solicitado), color: "text-foreground" },
+    { label: "Total a Pagar", value: $$(prestamo.monto_total_pagar), color: "text-foreground" },
+    { label: "Total Pagado", value: $$(totalPagado), color: "text-[hsl(142,72%,37%)]" },
+    { label: "Saldo Pendiente", value: $$(saldoPendiente), color: "text-[hsl(217,91%,60%)]" },
+    { label: "Cuotas Vencidas", value: String(cuotasVencidas), color: cuotasVencidas > 0 ? "text-destructive" : "text-foreground" },
+    { label: "Saldo Moroso", value: $$(saldoMoroso), color: saldoMoroso > 0 ? "text-destructive" : "text-foreground" },
   ];
 
   // Pagos totals
@@ -128,7 +146,7 @@ export default function PrestamoDetallePage() {
   const totalPagosInteres = pagosRaw.reduce((s, pg) => s + Number(pg.aplicado_interes || 0), 0);
   const totalPagosCapital = pagosRaw.reduce((s, pg) => s + Number(pg.aplicado_capital || 0), 0);
 
-  // Build activity timeline from pagos + promesas
+  // Activity timeline
   const actividad = [
     { tipo: "registro", desc: "Préstamo registrado", usuario: "—", fecha: prestamo.created_at || prestamo.fecha_registro || "" },
     ...pagosRaw.map((pg) => ({
@@ -145,115 +163,135 @@ export default function PrestamoDetallePage() {
     })),
   ].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
-  const estado = prestamo.estado || "Activo";
-  const shortId = id?.slice(0, 8) || id;
+  // Promesas status badge
+  const promesaStatusStyle: Record<string, string> = {
+    Pendiente: "border-[hsl(38,92%,50%)] text-[hsl(38,92%,50%)]",
+    Cumplida: "border-[hsl(142,72%,37%)] text-[hsl(142,72%,37%)]",
+    Incumplida: "border-[hsl(0,72%,51%)] text-[hsl(0,72%,51%)]",
+  };
 
   return (
-    <div className="space-y-5">
-      {/* ── Header ────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/prestamos")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
+    <div>
+      {/* ── HEADER ────────────────────────────────────────────── */}
+      <div className="bg-card px-6 py-5 border-b border-border">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground mb-1">
               <Link to="/prestamos" className="hover:text-foreground transition-colors">Préstamos</Link>
               <span>/</span>
-              <span className="text-foreground">{shortId}</span>
+              <span className="text-foreground">PRE-{shortId}</span>
             </div>
-            <div className="flex items-center gap-2.5 mt-0.5">
-              <h1 className="text-xl font-semibold">Préstamo</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold tracking-tight">Préstamo PRE-{shortId}</h1>
               <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-medium", estadoBadge[estado])}>
                 {estado}
               </span>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" className="h-8 text-[13px]" onClick={() => setPagoOpen(true)}>
-            <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 text-[13px]">
-            <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Imprimir tabla</DropdownMenuItem>
-              <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">Cancelar préstamo</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      {/* ── KPI Cards ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {kpis.map((k) => (
-          <div key={k.label} className="bg-card rounded-lg border border-border px-4 py-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
-            <p className={cn("text-lg font-semibold mt-0.5", k.color)}>{k.value}</p>
-            {k.extra && <p className="text-[11px] text-muted-foreground">{k.extra}</p>}
+          <div className="flex items-center gap-2">
+            <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => setPagoOpen(true)}>
+              <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 text-[13px]">
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>Imprimir tabla</DropdownMenuItem>
+                <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">Cancelar préstamo</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        ))}
+        </div>
       </div>
 
-      {/* ── Two columns ───────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
-        {/* LEFT — Info cards */}
-        <div className="space-y-4">
-          <div className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
-            <div className="px-4 py-3 border-b"><p className="text-[13px] font-semibold">Datos del Préstamo</p></div>
-            <div className="px-4 py-3 space-y-2.5">
-              <InfoRow label="Cliente" value={
+      {/* ── KPI CARDS ─────────────────────────────────────────── */}
+      <div className="bg-card px-6 py-4 border-b border-border">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {kpis.map((k) => (
+            <div key={k.label} className="border border-[hsl(220,14%,91%)] rounded-lg px-4 py-3">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-[hsl(220,9%,60%)]">{k.label}</p>
+              <p className={cn("text-[22px] font-bold mt-0.5 leading-tight", k.color)}>{k.value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── BODY — 2 columns ──────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row min-h-[600px]">
+
+        {/* LEFT SIDEBAR (28%) */}
+        <div className="lg:w-[28%] bg-[hsl(210,20%,98%)] border-r border-[hsl(220,14%,91%)] p-5 space-y-5">
+
+          {/* Datos del Préstamo */}
+          <div>
+            <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Datos del Préstamo</h3>
+            <div className="space-y-2.5">
+              <SidebarField label="CLIENTE" value={
                 cliente ? <Link to={`/clientes/${cliente.id}`} className="text-primary hover:underline font-medium">{cliente.nombre_completo}</Link> : "—"
               } />
-              <InfoRow label="Empresa" value={prestamo.empresa || "—"} />
-              <InfoRow label="Cobrador" value="—" />
-              <InfoRow label="Ruta" value={ruta?.nombre || "—"} />
-              <InfoRow label="F. Registro" value={prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—"} />
-              <InfoRow label="F. Primer Pago" value={prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—"} />
-              <InfoRow label="Caja" value={caja?.nombre || "—"} />
+              <SidebarField label="EMPRESA" value={dashStr(prestamo.empresa)} />
+              <SidebarField label="COBRADOR" value="—" />
+              <SidebarField label="RUTA" value={ruta?.nombre || "—"} />
+              <SidebarField label="GENERADO POR" value="—" />
+              <SidebarField label="F. REGISTRO" value={prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—"} />
+              <SidebarField label="F. PRIMER PAGO" value={prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—"} />
+              <SidebarField label="CAJA" value={caja?.nombre || "—"} />
             </div>
           </div>
 
-          <div className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
-            <div className="px-4 py-3 border-b"><p className="text-[13px] font-semibold">Configuración del Crédito</p></div>
-            <div className="px-4 py-3 space-y-2.5">
-              <InfoRow label="Modalidad" value={prestamo.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"} />
-              <InfoRow label="Monto solicitado" value={$$(prestamo.monto_solicitado)} />
-              <InfoRow label="Cuotas" value={`${prestamo.num_cuotas} — ${prestamo.frecuencia}`} />
-              <InfoRow label="Tasa de interés" value={prestamo.tasa_interes ? `${prestamo.tasa_interes}%` : "—"} />
-              <InfoRow label="Cuota estándar" value={$$(prestamo.cuota_calculada)} />
-              <InfoRow label="Cuota redondeada" value={prestamo.cuota_redondeada ? $$(prestamo.cuota_redondeada) : "—"} />
-              <InfoRow label="Tipo mora" value={prestamo.tipo_mora ? `${prestamo.tipo_mora} — ${prestamo.valor_mora}${prestamo.tipo_mora === "porcentaje" ? "%" : ""}` : "—"} />
-              <InfoRow label="Gastos legales" value={$$(prestamo.gastos_legales)} />
+          <div className="border-t border-[hsl(220,14%,91%)]" />
+
+          {/* Configuración del Crédito */}
+          <div>
+            <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Configuración del Crédito</h3>
+            <div className="space-y-2.5">
+              <SidebarField label="MODALIDAD" value={prestamo.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"} />
+              <SidebarField label="MONTO SOLICITADO" value={$$(prestamo.monto_solicitado)} />
+              <SidebarField label="CUOTAS — FRECUENCIA" value={`${prestamo.num_cuotas} — ${prestamo.frecuencia}`} />
+              <SidebarField label="TASA DE INTERÉS" value={prestamo.tasa_interes ? `${prestamo.tasa_interes}%` : "—"} />
+              <SidebarField label="CUOTA ESTÁNDAR" value={$$(prestamo.cuota_calculada)} />
+              <SidebarField label="CUOTA REDONDEADA" value={prestamo.cuota_redondeada ? $$(prestamo.cuota_redondeada) : "—"} />
+              <SidebarField label="TIPO MORA / VALOR" value={prestamo.tipo_mora ? `${prestamo.tipo_mora} — ${prestamo.valor_mora}${prestamo.tipo_mora === "porcentaje" ? "%" : ""}` : "—"} />
+              <SidebarField label="GASTOS LEGALES" value={$$(prestamo.gastos_legales)} />
             </div>
           </div>
 
-          <div className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
-            <div className="px-4 py-3 border-b"><p className="text-[13px] font-semibold">Estado del Préstamo</p></div>
-            <div className="px-4 py-3 space-y-2.5">
-              <InfoRow label="Estado" value={
+          <div className="border-t border-[hsl(220,14%,91%)]" />
+
+          {/* Estado del Préstamo */}
+          <div>
+            <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Estado del Préstamo</h3>
+            <div className="space-y-2.5">
+              <SidebarField label="ESTADO" value={
                 <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[12px] font-medium", estadoBadge[estado])}>{estado}</span>
               } />
-              {cuotasVencidas > 0 && <InfoRow label="Días en mora" value={<span className="text-destructive font-semibold">{amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0)} días</span>} />}
-              {proximaCuota && <InfoRow label="Próxima cuota" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />}
-              {ultimoPago && <InfoRow label="Último pago" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />}
-              {prestamo.notas && <InfoRow label="Notas" value={prestamo.notas} />}
+              {cuotasVencidas > 0 && (
+                <SidebarField label="DÍAS EN MORA" value={<span className="text-destructive font-bold text-[15px]">{diasMora}</span>} />
+              )}
+              {proximaCuota && (
+                <SidebarField label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />
+              )}
+              {ultimoPago && (
+                <SidebarField label="ÚLTIMO PAGO" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />
+              )}
+              {prestamo.notas && (
+                <SidebarField label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
+              )}
             </div>
           </div>
         </div>
 
-        {/* RIGHT — Tabs */}
-        <div className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)] overflow-hidden">
+        {/* RIGHT CONTENT (72%) */}
+        <div className="lg:w-[72%] bg-card">
           <Tabs value={tab} onValueChange={setTab}>
-            <div className="border-b px-4">
+            <div className="border-b border-border px-5">
               <TabsList className="bg-transparent h-auto p-0 gap-0">
                 {[
                   { value: "amortizacion", label: "Amortización" },
@@ -264,7 +302,7 @@ export default function PrestamoDetallePage() {
                   <TabsTrigger
                     key={t.value}
                     value={t.value}
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-[13px] font-medium"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-[13px] font-medium text-muted-foreground data-[state=active]:text-foreground"
                   >
                     {t.label}
                   </TabsTrigger>
@@ -272,20 +310,33 @@ export default function PrestamoDetallePage() {
               </TabsList>
             </div>
 
-            {/* TAB: Amortización */}
+            {/* ── TAB: Amortización ──────────────────────────── */}
             <TabsContent value="amortizacion" className="m-0">
+              {/* Toggle optional columns */}
+              <div className="flex justify-end px-4 py-2">
+                <button
+                  onClick={() => setShowOptional(!showOptional)}
+                  className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                >
+                  {showOptional ? "Menos columnas" : "Más columnas"} <ChevronDown className={cn("h-3 w-3 transition-transform", showOptional && "rotate-180")} />
+                </button>
+              </div>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-table-header hover:bg-table-header">
-                      {["#", "Capital", "Interés", "Cuota", "F. Venc.", "Días", "Mora", "Cap. Pag.", "Int. Pag.", "Mora Pag.", "S. Cap.", "S. Int.", "S. Mora", "S. Total", "Status", "F. Pagada", ""].map((h) => (
-                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2 whitespace-nowrap">{h}</TableHead>
+                    <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
+                      {defaultCols.map((h) => (
+                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
                       ))}
+                      {showOptional && optionalCols.map((h) => (
+                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
+                      ))}
+                      <TableHead className="border-b border-[hsl(220,14%,91%)] px-3 py-2" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {amort.length === 0 ? (
-                      <TableRow><TableCell colSpan={17} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas</TableCell></TableRow>
                     ) : amort.map((c) => {
                       const status = c.status || "Pendiente";
                       const isNext = proximaCuota?.num_cuota === c.num_cuota;
@@ -293,44 +344,50 @@ export default function PrestamoDetallePage() {
                         <TableRow
                           key={c.num_cuota}
                           className={cn(
-                            "border-b border-border/50 transition-colors",
-                            cuotaRowBg[status],
+                            "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)] transition-colors",
                             isNext && "border-l-[3px] border-l-primary",
                           )}
                           onMouseEnter={() => setHoveredRow(c.num_cuota)}
                           onMouseLeave={() => setHoveredRow(null)}
                         >
                           <TableCell className="px-3 text-[13px] font-medium">{c.num_cuota}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", muted0(c.capital))}>{$$(c.capital)}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", muted0(c.interes))}>{$$(c.interes)}</TableCell>
+                          <TableCell className="px-3 text-[12px]">{dash(c.capital) || $$(c.capital)}</TableCell>
+                          <TableCell className="px-3 text-[12px]">{dash(c.interes) || $$(c.interes)}</TableCell>
                           <TableCell className="px-3 text-[13px] font-medium">{$$(c.capital_interes)}</TableCell>
                           <TableCell className="px-3 text-[12px] whitespace-nowrap">{format(new Date(c.fecha_vencimiento), "dd/MM/yy")}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", (c.dias_atraso || 0) > 0 ? "text-destructive font-bold" : muted0(c.dias_atraso))}>{c.dias_atraso || 0}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", (c.mora || 0) > 0 ? "text-destructive font-bold" : muted0(c.mora))}>{$$(c.mora)}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", muted0(c.capital_pagado))}>{$$(c.capital_pagado)}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", muted0(c.interes_pagado))}>{$$(c.interes_pagado)}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", muted0(c.mora_pagada))}>{$$(c.mora_pagada)}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", muted0(c.saldo_capital))}>{$$(c.saldo_capital)}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", muted0(c.saldo_interes))}>{$$(c.saldo_interes)}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", (c.saldo_mora || 0) > 0 ? "text-destructive font-bold" : muted0(c.saldo_mora))}>{$$(c.saldo_mora)}</TableCell>
-                          <TableCell className="px-3 text-[13px] font-medium">{$$(c.saldo_total)}</TableCell>
-                          <TableCell className="px-3">
-                            <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium whitespace-nowrap", cuotaStatusBadge[status])}>
-                              {status === "Pagada" && <Check className="h-3 w-3 mr-0.5" />}
-                              {status}
-                            </span>
+                          <TableCell className={cn("px-3 text-[12px]", (c.dias_atraso || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
+                            {(c.dias_atraso || 0) > 0 ? c.dias_atraso : "—"}
                           </TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", (c.mora || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
+                            {(c.mora || 0) > 0 ? $$(c.mora) : "—"}
+                          </TableCell>
+                          <TableCell className="px-3 text-[13px] font-medium">{dash(c.saldo_total) || $$(c.saldo_total)}</TableCell>
+                          <TableCell className="px-3"><CuotaStatusBadge status={status} /></TableCell>
                           <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
-                            {c.fecha_pagada ? format(new Date(c.fecha_pagada), "dd/MM/yy") : "—"}
+                            {c.fecha_pagada ? format(new Date(c.fecha_pagada), "dd/MM/yy") : <span className="text-[hsl(220,14%,83%)]">—</span>}
                           </TableCell>
+
+                          {showOptional && (
+                            <>
+                              <TableCell className="px-3 text-[12px]">{dash(c.capital_pagado) || $$(c.capital_pagado)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(c.interes_pagado) || $$(c.interes_pagado)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(c.mora_pagada) || $$(c.mora_pagada)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(c.saldo_capital) || $$(c.saldo_capital)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(c.saldo_interes) || $$(c.saldo_interes)}</TableCell>
+                              <TableCell className={cn("px-3 text-[12px]", (c.saldo_mora || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>{dash(c.saldo_mora) || $$(c.saldo_mora)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(c.descuento_mora) || $$(c.descuento_mora)}</TableCell>
+                              <TableCell className="px-3 text-[12px] text-muted-foreground">{c.avisado ? "Sí" : "No"}</TableCell>
+                            </>
+                          )}
+
                           <TableCell className="px-3">
-                            {hoveredRow === c.num_cuota && status !== "Pagada" && (
-                              <div className="flex gap-1">
-                                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">Pagar</Button>
-                                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">Promesa</Button>
-                                {!c.avisado && <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">Avisar</Button>}
+                            {hoveredRow === c.num_cuota && status !== "Pagada" ? (
+                              <div className="flex gap-2 text-[11px]">
+                                {["Pagar", "Promesa", ...(!c.avisado ? ["Avisar"] : [])].map(action => (
+                                  <button key={action} className="text-muted-foreground hover:text-primary transition-colors">{action}</button>
+                                ))}
                               </div>
-                            )}
+                            ) : null}
                           </TableCell>
                         </TableRow>
                       );
@@ -340,45 +397,46 @@ export default function PrestamoDetallePage() {
               </div>
             </TabsContent>
 
-            {/* TAB: Pagos */}
+            {/* ── TAB: Pagos ─────────────────────────────────── */}
             <TabsContent value="pagos" className="m-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-table-header hover:bg-table-header">
-                      {["Fecha", "Monto", "A Mora", "A Interés", "A Capital", "Caja", "Método"].map((h) => (
-                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2 whitespace-nowrap">{h}</TableHead>
+                    <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
+                      {["Fecha", "Recibo", "Monto", "→ Mora", "→ Interés", "→ Capital", "Caja", "Método", "Por"].map((h) => (
+                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {pagosRaw.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">Sin pagos registrados</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-[13px]">Sin pagos registrados</TableCell></TableRow>
                     ) : (
                       <>
-                        {pagosRaw.map((pg) => {
+                        {pagosRaw.map((pg, i) => {
                           const cajaName = (pg.cajas as any)?.nombre || "—";
                           return (
-                            <TableRow key={pg.id} className="border-b border-border/50">
+                            <TableRow key={pg.id} className="border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]">
                               <TableCell className="px-3 text-[12px]">{pg.created_at ? format(new Date(pg.created_at), "dd/MM/yyyy") : "—"}</TableCell>
+                              <TableCell className="px-3 text-[12px] text-muted-foreground">#{i + 1}</TableCell>
                               <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pg.monto_recibido))}</TableCell>
-                              <TableCell className={cn("px-3 text-[12px]", muted0(pg.aplicado_mora))}>{$$(pg.aplicado_mora)}</TableCell>
-                              <TableCell className={cn("px-3 text-[12px]", muted0(pg.aplicado_interes))}>{$$(pg.aplicado_interes)}</TableCell>
-                              <TableCell className={cn("px-3 text-[12px]", muted0(pg.aplicado_capital))}>{$$(pg.aplicado_capital)}</TableCell>
+                              <TableCell className={cn("px-3 text-[12px]", (pg.aplicado_mora || 0) > 0 ? "text-destructive" : "text-[hsl(220,14%,83%)]")}>{(pg.aplicado_mora || 0) > 0 ? $$(pg.aplicado_mora) : "—"}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(pg.aplicado_interes) || $$(pg.aplicado_interes)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(pg.aplicado_capital) || $$(pg.aplicado_capital)}</TableCell>
                               <TableCell className="px-3 text-[12px] text-muted-foreground">{cajaName}</TableCell>
-                              <TableCell className="px-3">
-                                <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", metodoBadge[pg.metodo_pago || "Efectivo"])}>{pg.metodo_pago || "Efectivo"}</span>
-                              </TableCell>
+                              <TableCell className="px-3"><MetodoDot metodo={pg.metodo_pago || "Efectivo"} /></TableCell>
+                              <TableCell className="px-3 text-[12px] text-muted-foreground">—</TableCell>
                             </TableRow>
                           );
                         })}
-                        <TableRow className="bg-table-header hover:bg-table-header font-semibold">
+                        <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)] font-semibold border-t border-[hsl(220,14%,91%)]">
                           <TableCell className="px-3 text-[12px]">Totales</TableCell>
+                          <TableCell className="px-3" />
                           <TableCell className="px-3 text-[13px]">{$$(totalPagosMonto)}</TableCell>
                           <TableCell className="px-3 text-[12px]">{$$(totalPagosMora)}</TableCell>
                           <TableCell className="px-3 text-[12px]">{$$(totalPagosInteres)}</TableCell>
                           <TableCell className="px-3 text-[12px]">{$$(totalPagosCapital)}</TableCell>
-                          <TableCell colSpan={2} />
+                          <TableCell colSpan={3} />
                         </TableRow>
                       </>
                     )}
@@ -387,30 +445,37 @@ export default function PrestamoDetallePage() {
               </div>
             </TabsContent>
 
-            {/* TAB: Promesas */}
+            {/* ── TAB: Promesas ───────────────────────────────── */}
             <TabsContent value="promesas" className="m-0">
-              <div className="flex justify-end px-4 py-2 border-b">
-                <Button size="sm" className="h-7 text-[12px]"><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
+              <div className="flex justify-end px-5 py-2.5 border-b border-border">
+                <Button variant="outline" size="sm" className="h-7 text-[12px]"><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
               </div>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-table-header hover:bg-table-header">
-                      {["F. Prometida", "Monto", "Notas", "Status"].map((h) => (
-                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2 whitespace-nowrap">{h}</TableHead>
+                    <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
+                      {["Cuota #", "F. Prometida", "Monto", "Notas", "Status", "Creado", "Acción"].map((h) => (
+                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {promesasRaw.length === 0 ? (
-                      <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-[13px]">Sin promesas</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">Sin promesas</TableCell></TableRow>
                     ) : promesasRaw.map((pr) => (
-                      <TableRow key={pr.id} className="border-b border-border/50">
+                      <TableRow key={pr.id} className="border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]">
+                        <TableCell className="px-3 text-[12px]">{pr.cuota_id ? "—" : "—"}</TableCell>
                         <TableCell className="px-3 text-[12px]">{format(new Date(pr.fecha_prometida), "dd/MM/yyyy")}</TableCell>
-                        <TableCell className="px-3 text-[13px]">{$$(Number(pr.monto_prometido))}</TableCell>
+                        <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pr.monto_prometido))}</TableCell>
                         <TableCell className="px-3 text-[12px] text-muted-foreground max-w-[200px] truncate">{pr.notas || "—"}</TableCell>
                         <TableCell className="px-3">
-                          <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", promesaStatusBadge[pr.status || "Pendiente"])}>{pr.status || "Pendiente"}</span>
+                          <span className={cn("inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border", promesaStatusStyle[pr.status || "Pendiente"] || promesaStatusStyle.Pendiente)}>
+                            {pr.status || "Pendiente"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-3 text-[12px] text-muted-foreground">{pr.created_at ? format(new Date(pr.created_at), "dd/MM/yyyy") : "—"}</TableCell>
+                        <TableCell className="px-3">
+                          <button className="text-[11px] text-muted-foreground hover:text-primary transition-colors">Editar</button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -419,20 +484,18 @@ export default function PrestamoDetallePage() {
               </div>
             </TabsContent>
 
-            {/* TAB: Actividad */}
-            <TabsContent value="actividad" className="m-0 p-4">
+            {/* ── TAB: Actividad ──────────────────────────────── */}
+            <TabsContent value="actividad" className="m-0 p-5">
               <div className="relative">
-                <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
-                <div className="space-y-4">
+                <div className="absolute left-[11px] top-3 bottom-3 w-px bg-border" />
+                <div className="space-y-5">
                   {actividad.length === 0 ? (
                     <p className="text-[13px] text-muted-foreground pl-10">Sin actividad registrada</p>
                   ) : actividad.slice().reverse().map((a, i) => {
-                    const Icon = activityIcon[a.tipo] || Activity;
+                    const dotColor = activityColors[a.tipo] || "bg-muted-foreground";
                     return (
-                      <div key={i} className="relative pl-10">
-                        <div className="absolute left-[9px] top-1 h-7 w-7 rounded-full bg-secondary flex items-center justify-center border border-border">
-                          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                        </div>
+                      <div key={i} className="relative pl-8">
+                        <div className={cn("absolute left-[7px] top-1.5 h-2.5 w-2.5 rounded-full", dotColor)} />
                         <div>
                           <p className="text-[13px]">{a.desc}</p>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -469,12 +532,12 @@ export default function PrestamoDetallePage() {
   );
 }
 
-// ── Small info row component ──────────────────────────────────────
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+// ── Sidebar field component ───────────────────────────────────────
+function SidebarField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      <span className="text-[12px] uppercase tracking-wider text-muted-foreground shrink-0">{label}</span>
-      <span className="text-[13px] text-right">{value}</span>
+    <div>
+      <p className="text-[11px] uppercase tracking-wider text-[hsl(220,9%,60%)] font-medium">{label}</p>
+      <p className="text-[13px] text-foreground mt-0.5">{value}</p>
     </div>
   );
 }
