@@ -128,6 +128,7 @@ export default function PrestamosPage() {
 
   const [search, setSearch] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState("todos");
 
   const [selEstado, setSelEstado] = useState<Set<string>>(new Set());
   const [selCaja, setSelCaja] = useState<Set<string>>(new Set());
