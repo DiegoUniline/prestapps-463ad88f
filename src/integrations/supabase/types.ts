@@ -536,6 +536,8 @@ export type Database = {
           created_at: string | null
           cuota_id: string | null
           empresa_id: string | null
+          gps_lat: number | null
+          gps_lng: number | null
           id: string
           metodo_pago: Database["public"]["Enums"]["metodo_pago"] | null
           monto_recibido: number
@@ -552,6 +554,8 @@ export type Database = {
           created_at?: string | null
           cuota_id?: string | null
           empresa_id?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
           id?: string
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
           monto_recibido: number
@@ -568,6 +572,8 @@ export type Database = {
           created_at?: string | null
           cuota_id?: string | null
           empresa_id?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
           id?: string
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
           monto_recibido?: number
@@ -629,6 +635,8 @@ export type Database = {
           frecuencia: Database["public"]["Enums"]["frecuencia_pago"]
           gastos_legales: number | null
           generado_por: string | null
+          gps_lat: number | null
+          gps_lng: number | null
           id: string
           modalidad: Database["public"]["Enums"]["prestamo_modalidad"]
           monto_solicitado: number
@@ -655,6 +663,8 @@ export type Database = {
           frecuencia?: Database["public"]["Enums"]["frecuencia_pago"]
           gastos_legales?: number | null
           generado_por?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
           id?: string
           modalidad: Database["public"]["Enums"]["prestamo_modalidad"]
           monto_solicitado: number
@@ -681,6 +691,8 @@ export type Database = {
           frecuencia?: Database["public"]["Enums"]["frecuencia_pago"]
           gastos_legales?: number | null
           generado_por?: string | null
+          gps_lat?: number | null
+          gps_lng?: number | null
           id?: string
           modalidad?: Database["public"]["Enums"]["prestamo_modalidad"]
           monto_solicitado?: number
