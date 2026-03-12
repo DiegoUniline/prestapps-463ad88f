@@ -221,8 +221,8 @@ export default function PrestamosPage() {
 
   const tabCounts = useMemo(() => ({
     todos: prestamos.length,
-    vigentes: prestamos.filter((p) => (p.estado === "Activo" || p.estado === "Al día") && p.mora <= 0).length,
-    atrasados: prestamos.filter((p) => p.estado === "Vencido" || p.estado === "Juridico" || p.mora > 0).length,
+    vigentes: prestamos.filter((p) => !p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
+    atrasados: prestamos.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
     liquidados: prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado").length,
   }), [prestamos]);
 
