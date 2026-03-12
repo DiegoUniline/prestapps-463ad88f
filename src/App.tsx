@@ -29,6 +29,8 @@ import EmpresasPage from "@/pages/EmpresasPage";
 import WhatsAppConfigPage from "@/pages/WhatsAppConfigPage";
 import CrmCobranzaPage from "@/pages/CrmCobranzaPage";
 import LeadScoringPage from "@/pages/LeadScoringPage";
+import GastosPage from "@/pages/GastosPage";
+import ComisionesPage from "@/pages/ComisionesPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
