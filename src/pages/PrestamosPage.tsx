@@ -159,8 +159,17 @@ export default function PrestamosPage() {
     setRegDesde(undefined); setRegHasta(undefined); setSortKey(null); setSortDir(null);
   };
 
+  // Tab-based pre-filter
+  const tabFiltered = useMemo(() => {
+    if (activeTab === "todos") return prestamos;
+    if (activeTab === "vigentes") return prestamos.filter((p) => p.estado === "Activo" || p.estado === "Al día");
+    if (activeTab === "atrasados") return prestamos.filter((p) => p.estado === "Vencido" || p.estado === "Juridico");
+    if (activeTab === "liquidados") return prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado");
+    return prestamos;
+  }, [prestamos, activeTab]);
+
   const filtered = useMemo(() => {
-    let data = prestamos.filter((p) => {
+    let data = tabFiltered.filter((p) => {
       if (search) {
         const q = search.toLowerCase();
         if (!p.cliente.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return false;
@@ -183,7 +192,7 @@ export default function PrestamosPage() {
       });
     }
     return data;
-  }, [prestamos, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
+  }, [tabFiltered, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
 
   const toggleRow = (id: string) => {
     const next = new Set(selectedRows);
