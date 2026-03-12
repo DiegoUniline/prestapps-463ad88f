@@ -288,8 +288,8 @@ export default function CajasPage() {
 
   // ── KPIs ────────────────────────────────────────────────────────
   const totalSaldo = cajas.reduce((s, c) => s + Number(c.saldo_actual || 0), 0);
-  const entradas = movimientos.filter((m) => m.tipo === "entrada").reduce((s, m) => s + Number(m.monto), 0);
-  const salidas = movimientos.filter((m) => m.tipo === "salida").reduce((s, m) => s + Number(m.monto), 0);
+  const entradas = kardex.filter((m) => m.tipo === "entrada").reduce((s, m) => s + m.monto, 0);
+  const salidas = kardex.filter((m) => m.tipo === "salida").reduce((s, m) => s + m.monto, 0);
 
   const kpis = [
     { label: "Saldo en Cajas", value: $$(totalSaldo), icon: Wallet, accent: "text-primary" },
@@ -302,10 +302,10 @@ export default function CajasPage() {
     { label: "Salidas", value: $$(salidas), icon: ArrowUpRight, accent: "text-destructive" },
   ];
 
-  // Filter movimientos by selected caja
+  // Filter kardex by selected caja
   const filteredMov = selectedCaja
-    ? movimientos.filter((m) => m.caja_id === selectedCaja)
-    : movimientos;
+    ? kardex.filter((m) => m.cajaId === selectedCaja)
+    : kardex;
 
   return (
     <div className="space-y-5">
