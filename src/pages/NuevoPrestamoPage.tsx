@@ -193,7 +193,7 @@ export default function NuevoPrestamoPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* LEFT — Form */}
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base">Datos del Préstamo</CardTitle>
           </CardHeader>
