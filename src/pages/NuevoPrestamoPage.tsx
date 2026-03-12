@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ export default function NuevoPrestamoPage() {
   const { data: clientes = [] } = useClientesOptions(empresaId);
   const { data: cajas = [] } = useCajasOptions(empresaId);
   const { data: rutas = [] } = useRutasOptions(empresaId);
+  const geo = useGeoLocation();
 
   const [clienteId, setClienteId] = useState("");
   const [montoSolicitado, setMontoSolicitado] = useState("");
@@ -168,7 +170,9 @@ export default function NuevoPrestamoPage() {
           notas: notas || null,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
-        })
+          gps_lat: geo.lat,
+          gps_lng: geo.lng,
+        } as any)
         .select("id")
         .single();
 

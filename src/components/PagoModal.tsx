@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
@@ -51,6 +52,7 @@ const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigit
 export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId, montoInicial }: PagoModalProps) {
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
+  const geo = useGeoLocation();
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("Efectivo");
@@ -203,7 +205,9 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           caja_id: cajaId,
           ruta_id: rutaId || null,
           cobrador_id: cobradorId || null,
-        });
+          gps_lat: geo.lat,
+          gps_lng: geo.lng,
+        } as any);
         if (pagoErr) throw pagoErr;
 
         // 2) Update amortizacion saldos for this cuota
