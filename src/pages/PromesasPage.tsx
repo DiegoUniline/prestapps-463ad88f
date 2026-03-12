@@ -9,13 +9,14 @@ import { cn } from "@/lib/utils";
 
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-function usePromesasAll() {
+function usePromesasAll(empresaId: string) {
   return useQuery({
-    queryKey: ["promesas-all"],
+    queryKey: ["promesas-all", empresaId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("promesas_pago")
         .select(`*, prestamos!promesas_pago_prestamo_id_fkey ( clientes ( nombre_completo ) )`)
+        .eq("empresa_id", empresaId)
         .order("fecha_prometida", { ascending: true });
       if (error) throw error;
       return data || [];
