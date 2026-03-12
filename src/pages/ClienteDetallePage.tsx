@@ -421,34 +421,34 @@ function ClientePagosSection({ clienteId }: { clienteId: string }) {
   return (
     <Card>
       <CardHeader><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Últimos Pagos</CardTitle></CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         {isLoading ? (
           <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : !pagos?.length ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No hay pagos registrados</p>
+          <p className="text-[13px] text-muted-foreground py-8 text-center">No hay pagos registrados</p>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                <TableHead className="text-right">Monto</TableHead>
-                <TableHead className="text-right">Capital</TableHead>
-                <TableHead className="text-right">Interés</TableHead>
-                <TableHead className="text-right">Mora</TableHead>
-                <TableHead>Método</TableHead>
-                <TableHead>Caja</TableHead>
+              <TableRow className="bg-table-header hover:bg-table-header border-b">
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Fecha</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Monto</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Capital</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Interés</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Mora</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Método</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Caja</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pagos.map((p: any) => (
-                <TableRow key={p.id}>
-                  <TableCell className="text-xs">{p.created_at ? new Date(p.created_at).toLocaleDateString() : "—"}</TableCell>
-                  <TableCell className="text-right font-semibold">{$$(Number(p.monto_recibido))}</TableCell>
-                  <TableCell className="text-right text-xs">{$$(Number(p.aplicado_capital || 0))}</TableCell>
-                  <TableCell className="text-right text-xs">{$$(Number(p.aplicado_interes || 0))}</TableCell>
-                  <TableCell className="text-right text-xs">{$$(Number(p.aplicado_mora || 0))}</TableCell>
-                  <TableCell className="text-xs">{p.metodo_pago || "—"}</TableCell>
-                  <TableCell className="text-xs">{p.cajas?.nombre || "—"}</TableCell>
+                <TableRow key={p.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
+                  <TableCell className="text-[12px] px-3">{p.created_at ? new Date(p.created_at).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="text-right font-semibold text-[13px] px-3">{$$(Number(p.monto_recibido))}</TableCell>
+                  <TableCell className="text-right text-[12px] px-3">{$$(Number(p.aplicado_capital || 0))}</TableCell>
+                  <TableCell className="text-right text-[12px] px-3">{$$(Number(p.aplicado_interes || 0))}</TableCell>
+                  <TableCell className="text-right text-[12px] px-3">{$$(Number(p.aplicado_mora || 0))}</TableCell>
+                  <TableCell className="text-[12px] px-3">{p.metodo_pago || "—"}</TableCell>
+                  <TableCell className="text-[12px] px-3">{p.cajas?.nombre || "—"}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

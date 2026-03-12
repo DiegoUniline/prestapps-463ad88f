@@ -17,25 +17,28 @@ const mockRutas = [
 function RutasListPage() {
   const navigate = useNavigate();
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Rutas</h1>
-        <Button onClick={() => navigate("/rutas/nuevo")}><Plus className="h-4 w-4 mr-2" />Nuevo</Button>
+        <h1 className="text-xl font-semibold">Rutas</h1>
+        <Button size="sm" className="h-8 text-[13px]" onClick={() => navigate("/rutas/nuevo")}><Plus className="h-3.5 w-3.5 mr-1.5" />Nueva Ruta</Button>
       </div>
-      <div className="border rounded-lg overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Nombre</TableHead><TableHead>Cobrador</TableHead><TableHead>Descripción</TableHead><TableHead className="text-right">Préstamos</TableHead>
+            <TableRow className="bg-table-header hover:bg-table-header border-b">
+              <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Nombre</TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cobrador</TableHead>
+              <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Descripción</TableHead>
+              <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Préstamos</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {mockRutas.map((r) => (
-              <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/rutas/${r.id}`)}>
-                <TableCell className="font-medium"><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />{r.nombre}</div></TableCell>
-                <TableCell>{r.cobrador}</TableCell>
-                <TableCell className="text-muted-foreground">{r.descripcion}</TableCell>
-                <TableCell className="text-right">{r.prestamos}</TableCell>
+              <TableRow key={r.id} className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors" onClick={() => navigate(`/rutas/${r.id}`)}>
+                <TableCell className="font-medium text-[13px] px-3"><div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />{r.nombre}</div></TableCell>
+                <TableCell className="text-[13px] px-3">{r.cobrador}</TableCell>
+                <TableCell className="text-muted-foreground text-[13px] px-3">{r.descripcion}</TableCell>
+                <TableCell className="text-right text-[13px] px-3">{r.prestamos}</TableCell>
               </TableRow>
             ))}
           </TableBody>
