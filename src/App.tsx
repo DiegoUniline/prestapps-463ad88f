@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { EmpresaProvider } from "@/contexts/EmpresaContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import RoleGuard from "@/components/RoleGuard";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
@@ -41,23 +42,28 @@ const App = () => (
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                  {/* Accesible a todos los roles */}
                   <Route path="/" element={<DashboardPage />} />
+                  <Route path="/cobranza" element={<CobranzaDiariaPage />} />
                   <Route path="/prestamos" element={<PrestamosPage />} />
-                  <Route path="/prestamos/nuevo" element={<NuevoPrestamoPage />} />
                   <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
                   <Route path="/pagos" element={<PagosPage />} />
-                  <Route path="/cobranza" element={<CobranzaDiariaPage />} />
                   <Route path="/promesas" element={<PromesasPage />} />
-                  <Route path="/clientes" element={<ClientesPage />} />
-                  <Route path="/clientes/:id" element={<ClienteDetallePage />} />
-                  <Route path="/cajas" element={<CajasPage />} />
-                  <Route path="/cajas/:id" element={<CajasPage />} />
-                  <Route path="/rutas" element={<RutasPage />} />
-                  <Route path="/rutas/:id" element={<RutasPage />} />
-                  <Route path="/cobradores" element={<CobradoresPage />} />
-                  <Route path="/reportes" element={<ReportesPage />} />
-                  <Route path="/usuarios" element={<UsuariosPage />} />
-                  <Route path="/usuarios/:id" element={<UsuariosPage />} />
+
+                  {/* Admin y Supervisor */}
+                  <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]}><ClientesPage /></RoleGuard>} />
+                  <Route path="/clientes/:id" element={<RoleGuard allowed={["admin", "supervisor"]}><ClienteDetallePage /></RoleGuard>} />
+                  <Route path="/reportes" element={<RoleGuard allowed={["admin", "supervisor"]}><ReportesPage /></RoleGuard>} />
+
+                  {/* Solo Admin */}
+                  <Route path="/prestamos/nuevo" element={<RoleGuard allowed={["admin"]}><NuevoPrestamoPage /></RoleGuard>} />
+                  <Route path="/cajas" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
+                  <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
+                  <Route path="/rutas" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
+                  <Route path="/rutas/:id" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
+                  <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><CobradoresPage /></RoleGuard>} />
+                  <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
+                  <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

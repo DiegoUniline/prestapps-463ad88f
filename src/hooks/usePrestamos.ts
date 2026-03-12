@@ -11,7 +11,9 @@ export interface PrestamoListItem {
   totalCuotas: number;
   caja: string;
   ruta: string;
+  rutaId: string | null;
   cobrador: string;
+  cobradorId: string | null;
   saldo: number;
   mora: number;
   estado: string;
@@ -20,9 +22,13 @@ export interface PrestamoListItem {
   tieneAtraso: boolean;
 }
 
-async function fetchPrestamos(): Promise<PrestamoListItem[]> {
-  // Fetch prestamos with joins
-  const { data: prestamos, error } = await supabase
+interface FetchFilters {
+  rutaIds?: string[];
+  cobradorId?: string | null;
+}
+
+async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[]> {
+  let query = supabase
     .from("prestamos")
     .select(`
       id,
@@ -42,11 +48,22 @@ async function fetchPrestamos(): Promise<PrestamoListItem[]> {
     `)
     .order("created_at", { ascending: false });
 
+  // Apply role-based filters
+  if (filters?.rutaIds && filters.rutaIds.length > 0) {
+    query = query.in("ruta_id", filters.rutaIds);
+  }
+  if (filters?.cobradorId) {
+    query = query.eq("cobrador_id", filters.cobradorId);
+  }
+
+  const { data: prestamos, error } = await query;
+
   if (error) throw error;
   if (!prestamos) return [];
 
-  // Fetch amortization data for saldo/mora/cuotas pagadas
   const ids = prestamos.map((p) => p.id);
+  if (ids.length === 0) return [];
+  
   const { data: amortData } = await supabase
     .from("amortizacion")
     .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
@@ -54,7 +71,6 @@ async function fetchPrestamos(): Promise<PrestamoListItem[]> {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // Group amort by prestamo
   const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number; tieneAtraso: boolean }> = {};
   for (const a of amortData || []) {
     if (!amortByPrestamo[a.prestamo_id]) {
@@ -84,7 +100,9 @@ async function fetchPrestamos(): Promise<PrestamoListItem[]> {
       totalCuotas: p.num_cuotas,
       caja: caja?.nombre || "—",
       ruta: ruta?.nombre || "—",
-      cobrador: "—", // TODO: join to profiles/users
+      rutaId: p.ruta_id,
+      cobrador: "—",
+      cobradorId: p.cobrador_id,
       saldo: amort.saldo,
       mora: amort.mora,
       estado: p.estado || "Activo",
@@ -95,10 +113,10 @@ async function fetchPrestamos(): Promise<PrestamoListItem[]> {
   });
 }
 
-export function usePrestamos() {
+export function usePrestamos(filters?: FetchFilters) {
   return useQuery({
-    queryKey: ["prestamos-list"],
-    queryFn: fetchPrestamos,
+    queryKey: ["prestamos-list", filters?.rutaIds, filters?.cobradorId],
+    queryFn: () => fetchPrestamos(filters),
   });
 }
 

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -119,7 +120,9 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
 
 export default function PrestamosPage() {
   const navigate = useNavigate();
-  const { data: prestamos = [], isLoading, isError } = usePrestamos();
+  const { role, rutaIds, cobradorId } = useCurrentUserRole();
+  const roleFilters = role === "admin" ? undefined : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId };
+  const { data: prestamos = [], isLoading, isError } = usePrestamos(roleFilters);
   const { data: cajasRaw = [] } = useCajasOptions();
   const { data: rutasRaw = [] } = useRutasOptions();
 
