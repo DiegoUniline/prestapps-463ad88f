@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell, Receipt, FileSignature } from "lucide-react";
+import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell, Receipt, FileSignature, MapPin, Phone } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
@@ -248,11 +248,28 @@ export default function PrestamoDetallePage() {
               <span>/</span>
               <span className="text-foreground">PRE-{shortId}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold tracking-tight">Préstamo PRE-{shortId}</h1>
+            <div className="flex items-center gap-3 mt-0.5">
+              <h1 className="text-xl font-bold tracking-tight">
+                {cliente ? (
+                  <Link to={`/clientes/${cliente.id}`} className="hover:text-primary transition-colors">{cliente.nombre_completo}</Link>
+                ) : "Cliente"}
+              </h1>
               <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-medium", estadoBadge[estado])}>
                 {estado}
               </span>
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-[13px] text-muted-foreground">
+              {cliente?.direccion && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />{cliente.direccion}
+                </span>
+              )}
+              {cliente?.telefono && (
+                <a href={`tel:${cliente.telefono}`} className="flex items-center gap-1 hover:text-primary transition-colors">
+                  <Phone className="h-3.5 w-3.5" />{cliente.telefono}
+                </a>
+              )}
+              <span className="text-[11px] text-muted-foreground/60">PRE-{shortId}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
