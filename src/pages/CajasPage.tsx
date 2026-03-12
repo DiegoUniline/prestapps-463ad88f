@@ -212,8 +212,9 @@ export default function CajasPage() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
-    queryClient.invalidateQueries({ queryKey: ["movimientos-all"] });
+    queryClient.invalidateQueries({ queryKey: ["kardex-all"] });
     queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
+    queryClient.invalidateQueries({ queryKey: ["prestamos-by-caja"] });
   };
 
   // ── Create caja ─────────────────────────────────────────────────
