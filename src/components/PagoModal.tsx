@@ -42,6 +42,7 @@ interface PagoModalProps {
   cajas: { id: string; nombre: string }[];
   rutaId?: string | null;
   cobradorId?: string | null;
+  montoInicial?: number;
 }
 
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
