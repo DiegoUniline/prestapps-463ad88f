@@ -205,7 +205,9 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           caja_id: cajaId,
           ruta_id: rutaId || null,
           cobrador_id: cobradorId || null,
-        });
+          gps_lat: geo.lat,
+          gps_lng: geo.lng,
+        } as any);
         if (pagoErr) throw pagoErr;
 
         // 2) Update amortizacion saldos for this cuota
