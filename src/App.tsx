@@ -26,6 +26,8 @@ import UsuariosPage from "@/pages/UsuariosPage";
 import CobradoresPage from "@/pages/CobradoresPage";
 import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
 import EmpresasPage from "@/pages/EmpresasPage";
+import WhatsAppConfigPage from "@/pages/WhatsAppConfigPage";
+import CrmCobranzaPage from "@/pages/CrmCobranzaPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
