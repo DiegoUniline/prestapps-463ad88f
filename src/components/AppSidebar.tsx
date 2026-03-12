@@ -23,6 +23,7 @@ import {
   HandCoins,
   CalendarCheck,
   Settings,
+  UserCheck,
 } from "lucide-react";
 
 const mainNav = [
