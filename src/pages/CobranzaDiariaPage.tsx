@@ -151,11 +151,11 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
   });
 }
 
-function useCajasAll() {
+function useCajasAll(empresaId: string) {
   return useQuery({
-    queryKey: ["cajas-all"],
+    queryKey: ["cajas-all", empresaId],
     queryFn: async () => {
-      const { data } = await supabase.from("cajas").select("id, nombre").order("nombre");
+      const { data } = await supabase.from("cajas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
       return data || [];
     },
   });
