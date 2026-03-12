@@ -37,9 +37,9 @@ const tooltipStyle = {
 };
 
 // ── Data fetching ─────────────────────────────────────────────────
-function useDashboardData() {
+function useDashboardData(empresaId: string) {
   return useQuery({
-    queryKey: ["dashboard"],
+    queryKey: ["dashboard", empresaId],
     queryFn: async () => {
       const today = new Date().toISOString().slice(0, 10);
       const [
@@ -47,14 +47,14 @@ function useDashboardData() {
         { data: cajas }, { data: cobradores }, { data: rutas },
         { data: clientes }, { data: promesas },
       ] = await Promise.all([
-        supabase.from("prestamos").select("id, monto_solicitado, monto_total_pagar, estado, fecha_registro, cobrador_id, ruta_id, caja_id, frecuencia, num_cuotas, tasa_interes, clientes(nombre_completo)"),
-        supabase.from("amortizacion").select("prestamo_id, num_cuota, capital, interes, capital_interes, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento, mora, capital_pagado, interes_pagado, mora_pagada"),
-        supabase.from("pagos").select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, created_at, cobrador_id, prestamo_id, caja_id, ruta_id"),
-        supabase.from("cajas").select("id, nombre, saldo_actual"),
-        (supabase.from as any)("cobradores").select("id, nombre, efectivo_en_mano, activo, porcentaje_comision"),
-        supabase.from("rutas").select("id, nombre, cobrador_id"),
-        supabase.from("clientes").select("id, estado, created_at"),
-        supabase.from("promesas_pago").select("id, monto_prometido, fecha_prometida, status"),
+        supabase.from("prestamos").select("id, monto_solicitado, monto_total_pagar, estado, fecha_registro, cobrador_id, ruta_id, caja_id, frecuencia, num_cuotas, tasa_interes, clientes(nombre_completo)").eq("empresa_id", empresaId),
+        supabase.from("amortizacion").select("prestamo_id, num_cuota, capital, interes, capital_interes, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento, mora, capital_pagado, interes_pagado, mora_pagada").eq("empresa_id", empresaId),
+        supabase.from("pagos").select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, created_at, cobrador_id, prestamo_id, caja_id, ruta_id").eq("empresa_id", empresaId),
+        supabase.from("cajas").select("id, nombre, saldo_actual").eq("empresa_id", empresaId),
+        (supabase.from as any)("cobradores").select("id, nombre, efectivo_en_mano, activo, porcentaje_comision").eq("empresa_id", empresaId),
+        supabase.from("rutas").select("id, nombre, cobrador_id").eq("empresa_id", empresaId),
+        supabase.from("clientes").select("id, estado, created_at").eq("empresa_id", empresaId),
+        supabase.from("promesas_pago").select("id, monto_prometido, fecha_prometida, status").eq("empresa_id", empresaId),
       ]);
       return {
         prestamos: prestamos || [], amort: amort || [], pagos: pagos || [],
