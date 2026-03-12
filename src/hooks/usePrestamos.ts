@@ -49,18 +49,23 @@ async function fetchPrestamos(): Promise<PrestamoListItem[]> {
   const ids = prestamos.map((p) => p.id);
   const { data: amortData } = await supabase
     .from("amortizacion")
-    .select("prestamo_id, saldo_total, saldo_mora, status")
+    .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
     .in("prestamo_id", ids);
 
+  const today = new Date().toISOString().slice(0, 10);
+
   // Group amort by prestamo
-  const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number }> = {};
+  const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number; tieneAtraso: boolean }> = {};
   for (const a of amortData || []) {
     if (!amortByPrestamo[a.prestamo_id]) {
-      amortByPrestamo[a.prestamo_id] = { saldo: 0, mora: 0, pagadas: 0 };
+      amortByPrestamo[a.prestamo_id] = { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false };
     }
     amortByPrestamo[a.prestamo_id].saldo += Number(a.saldo_total || 0);
     amortByPrestamo[a.prestamo_id].mora += Number(a.saldo_mora || 0);
     if (a.status === "Pagada") amortByPrestamo[a.prestamo_id].pagadas += 1;
+    if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
+      amortByPrestamo[a.prestamo_id].tieneAtraso = true;
+    }
   }
 
   return prestamos.map((p) => {
