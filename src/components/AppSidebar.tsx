@@ -32,6 +32,7 @@ import {
   Star,
   Receipt,
   Percent,
+  MapPin,
 } from "lucide-react";
 
 const mainNav = [
