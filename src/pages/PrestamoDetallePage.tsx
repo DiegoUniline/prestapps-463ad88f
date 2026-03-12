@@ -15,6 +15,7 @@ import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck,
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
+import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
 
 // ── Badge colors ──────────────────────────────────────────────────
