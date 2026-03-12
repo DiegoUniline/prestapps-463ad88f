@@ -42,8 +42,7 @@ function useCortes() {
   return useQuery({
     queryKey: ["cortes"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("cortes")
+      const { data, error } = await (supabase.from as any)("cortes")
         .select("*, cobradores ( nombre ), cajas ( nombre )")
         .order("created_at", { ascending: false })
         .limit(100);
