@@ -170,6 +170,33 @@ export default function NuevoPrestamoPage() {
         .single();
 
       if (error) throw error;
+
+      // Insertar cuotas de amortización
+      if (amortizacion.length > 0) {
+        const baseDate = fechaPrimerPago || new Date();
+        const cuotasInsert = amortizacion.map((c) => ({
+          prestamo_id: data.id,
+          num_cuota: c.num,
+          capital: c.capital,
+          interes: c.interes,
+          capital_interes: c.cuota,
+          fecha_vencimiento: format(calcNextDate(baseDate, frecuencia, c.num - 1), "yyyy-MM-dd"),
+          saldo_capital: c.capital,
+          saldo_interes: c.interes,
+          saldo_total: c.cuota,
+          status: "Pendiente" as const,
+        }));
+
+        const { error: amortError } = await supabase
+          .from("amortizacion")
+          .insert(cuotasInsert);
+
+        if (amortError) {
+          console.error("Error insertando amortización:", amortError);
+          toast.error("Préstamo creado pero hubo error al generar cuotas");
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {
