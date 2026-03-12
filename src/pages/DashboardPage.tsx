@@ -1,20 +1,26 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area, LineChart, Line,
+  PieChart, Pie, Cell, Legend, AreaChart, Area,
 } from "recharts";
 import {
   DollarSign, TrendingUp, AlertTriangle, Clock, Users, Wallet,
   CalendarClock, Landmark, ArrowRight, Percent, ShieldAlert,
   Target, BarChart3, Activity, CircleDollarSign, Scale, TrendingDown,
   Banknote, PiggyBank, Receipt, ArrowUpRight, ArrowDownRight,
+  CalendarIcon, Filter, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,18 +42,13 @@ function useDashboardData() {
     queryFn: async () => {
       const today = new Date().toISOString().slice(0, 10);
       const [
-        { data: prestamos },
-        { data: amort },
-        { data: pagos },
-        { data: cajas },
-        { data: cobradores },
-        { data: rutas },
-        { data: clientes },
-        { data: promesas },
+        { data: prestamos }, { data: amort }, { data: pagos },
+        { data: cajas }, { data: cobradores }, { data: rutas },
+        { data: clientes }, { data: promesas },
       ] = await Promise.all([
         supabase.from("prestamos").select("id, monto_solicitado, monto_total_pagar, estado, fecha_registro, cobrador_id, ruta_id, caja_id, frecuencia, num_cuotas, tasa_interes, clientes(nombre_completo)"),
         supabase.from("amortizacion").select("prestamo_id, num_cuota, capital, interes, capital_interes, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento, mora, capital_pagado, interes_pagado, mora_pagada"),
-        supabase.from("pagos").select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, created_at, cobrador_id, prestamo_id"),
+        supabase.from("pagos").select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, created_at, cobrador_id, prestamo_id, caja_id, ruta_id"),
         supabase.from("cajas").select("id, nombre, saldo_actual"),
         (supabase.from as any)("cobradores").select("id, nombre, efectivo_en_mano, activo, porcentaje_comision"),
         supabase.from("rutas").select("id, nombre, cobrador_id"),
@@ -77,7 +78,6 @@ const PIE_COLORS = [
   "hsl(var(--destructive))", "hsl(217, 91%, 60%)", "hsl(280, 67%, 55%)",
 ];
 
-// ── KPI Card ──────────────────────────────────────────────────────
 function KPI({ title, value, icon: Icon, accent, sub, trend }: {
   title: string; value: string; icon: any; accent: string; sub?: string; trend?: "up" | "down" | null;
 }) {
@@ -89,14 +89,27 @@ function KPI({ title, value, icon: Icon, accent, sub, trend }: {
       </div>
       <div className="flex items-baseline gap-1.5 mt-1">
         <p className="text-lg font-semibold">{value}</p>
-        {trend && (
-          trend === "up"
-            ? <ArrowUpRight className="h-3.5 w-3.5 text-success" />
-            : <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
-        )}
+        {trend && (trend === "up" ? <ArrowUpRight className="h-3.5 w-3.5 text-success" /> : <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />)}
       </div>
       {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
     </div>
+  );
+}
+
+// ── Date picker helper ────────────────────────────────────────────
+function DatePick({ value, onChange, placeholder }: { value: Date | undefined; onChange: (d: Date | undefined) => void; placeholder: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className={cn("h-8 text-[12px] justify-start gap-1.5 min-w-[130px]", !value && "text-muted-foreground")}>
+          <CalendarIcon className="h-3.5 w-3.5" />
+          {value ? format(value, "dd/MM/yyyy") : placeholder}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar mode="single" selected={value} onSelect={onChange} initialFocus className={cn("p-3 pointer-events-auto")} />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -104,33 +117,79 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useDashboardData();
 
+  // ── Filter state ────────────────────────────────────────────────
+  const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
+  const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
+  const [filtroRuta, setFiltroRuta] = useState<string>("__all__");
+  const [filtroCobrador, setFiltroCobrador] = useState<string>("__all__");
+  const [filtroCaja, setFiltroCaja] = useState<string>("__all__");
+
+  const hasFilters = fechaDesde || fechaHasta || filtroRuta !== "__all__" || filtroCobrador !== "__all__" || filtroCaja !== "__all__";
+
+  const clearFilters = () => {
+    setFechaDesde(undefined); setFechaHasta(undefined);
+    setFiltroRuta("__all__"); setFiltroCobrador("__all__"); setFiltroCaja("__all__");
+  };
+
+  // Quick date presets
+  const setPreset = (days: number) => {
+    const now = new Date();
+    const from = new Date(); from.setDate(now.getDate() - days);
+    setFechaDesde(from); setFechaHasta(now);
+  };
+
   const stats = useMemo(() => {
     if (!data) return null;
-    const { prestamos, amort, pagos, cajas, cobradores, rutas, clientes, promesas, today } = data;
+    const { prestamos: allPrestamos, amort: allAmort, pagos: allPagos, cajas, cobradores, rutas, clientes, promesas, today } = data;
+
+    // ── Apply filters ─────────────────────────────────────────────
+    const desdeStr = fechaDesde ? fechaDesde.toISOString().slice(0, 10) : null;
+    const hastaStr = fechaHasta ? fechaHasta.toISOString().slice(0, 10) : null;
+
+    // Filter prestamos by ruta, cobrador, caja, and date
+    let prestamos = allPrestamos.filter(p => {
+      if (filtroRuta !== "__all__" && p.ruta_id !== filtroRuta) return false;
+      if (filtroCobrador !== "__all__" && p.cobrador_id !== filtroCobrador) return false;
+      if (filtroCaja !== "__all__" && p.caja_id !== filtroCaja) return false;
+      if (desdeStr && (p.fecha_registro || "") < desdeStr) return false;
+      if (hastaStr && (p.fecha_registro || "") > hastaStr) return false;
+      return true;
+    });
+
+    const prestamoIds = new Set(prestamos.map(p => p.id));
+
+    // Filter amort to matching prestamos
+    let amort = allAmort.filter(a => prestamoIds.has(a.prestamo_id));
+
+    // Filter pagos by date range + matching prestamos + cobrador/ruta/caja
+    let pagos = allPagos.filter(p => {
+      if (!prestamoIds.has(p.prestamo_id)) return false;
+      if (filtroCobrador !== "__all__" && p.cobrador_id !== filtroCobrador) return false;
+      if (filtroCaja !== "__all__" && p.caja_id !== filtroCaja) return false;
+      if (filtroRuta !== "__all__" && p.ruta_id !== filtroRuta) return false;
+      const pDate = (p.created_at || "").slice(0, 10);
+      if (desdeStr && pDate < desdeStr) return false;
+      if (hastaStr && pDate > hastaStr) return false;
+      return true;
+    });
 
     // ── Categorías de préstamos ───────────────────────────────────
     const activos = prestamos.filter(p => ["Activo", "Al día", "Vencido"].includes(p.estado || ""));
     const liquidados = prestamos.filter(p => p.estado === "Liquidado");
-    const cancelados = prestamos.filter(p => p.estado === "Cancelado");
     const juridicos = prestamos.filter(p => p.estado === "Juridico");
 
     const capitalColocado = activos.reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
     const totalPagar = activos.reduce((s, p) => s + Number(p.monto_total_pagar || 0), 0);
     const interesEsperado = totalPagar - capitalColocado;
 
-    // Capital total histórico colocado
-    const capitalHistorico = prestamos.reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
-
     const activeIds = new Set(activos.map(p => p.id));
     const amortActivos = amort.filter(a => activeIds.has(a.prestamo_id));
 
-    // Saldo por cobrar
     const saldoPorCobrar = amortActivos.filter(a => a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_total || 0), 0);
     const saldoCapital = amortActivos.filter(a => a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_capital || 0), 0);
     const saldoInteres = amortActivos.filter(a => a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_interes || 0), 0);
     const moraTotal = amortActivos.reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
 
-    // Capital recuperado
     const capitalRecuperado = amortActivos.reduce((s, a) => s + Number(a.capital_pagado || 0), 0);
     const interesRecuperado = amortActivos.reduce((s, a) => s + Number(a.interes_pagado || 0), 0);
     const moraRecuperada = amortActivos.reduce((s, a) => s + Number(a.mora_pagada || 0), 0);
@@ -140,26 +199,22 @@ export default function DashboardPage() {
     const cuotasPagadas = amortActivos.filter(a => a.status === "Pagada").length;
     const totalCuotas = amortActivos.length;
     const prestamosVencidos = prestamos.filter(p => p.estado === "Vencido").length;
-
-    // Monto vencido (saldo de cuotas vencidas)
     const montoVencido = amortActivos.filter(a => a.fecha_vencimiento < today && a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_total || 0), 0);
 
-    // Cobrado total
     const totalCobrado = pagos.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
     const capitalCobrado = pagos.reduce((s, p) => s + Number(p.aplicado_capital || 0), 0);
     const interesCobrado = pagos.reduce((s, p) => s + Number(p.aplicado_interes || 0), 0);
     const moraCobrada = pagos.reduce((s, p) => s + Number(p.aplicado_mora || 0), 0);
 
-    // Cobrado hoy
     const pagosHoy = pagos.filter(p => p.created_at?.startsWith(today));
     const cobradoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
     const numPagosHoy = pagosHoy.length;
 
-    // Efectivo en calle & cajas
+    // These are global (not filtered by prestamo subset)
     const efectivoCalle = cobradores.reduce((s: number, c: any) => s + Number(c.efectivo_en_mano || 0), 0);
     const capitalCajas = cajas.reduce((s, c) => s + Number(c.saldo_actual || 0), 0);
 
-    // ── Ratios financieros ────────────────────────────────────────
+    // Ratios
     const tasaRecuperacion = capitalColocado > 0 ? (capitalRecuperado / capitalColocado) * 100 : 0;
     const tasaMorosidad = saldoPorCobrar > 0 ? (montoVencido / saldoPorCobrar) * 100 : 0;
     const eficienciaCobranza = totalPagar > 0 ? (totalCobrado / totalPagar) * 100 : 0;
@@ -167,40 +222,28 @@ export default function DashboardPage() {
     const rendimientoCartera = capitalColocado > 0 ? (interesRecuperado / capitalColocado) * 100 : 0;
     const ticketPromedio = activos.length > 0 ? capitalColocado / activos.length : 0;
     const cuotaPromedio = cuotasPendientes > 0 ? saldoPorCobrar / cuotasPendientes : 0;
+    const carteraVencidaPct = capitalColocado > 0 ? (montoVencido / capitalColocado) * 100 : 0;
 
-    // Promesas de pago
     const promesasPendientes = promesas.filter(p => p.status === "Pendiente");
     const promesasHoy = promesasPendientes.filter(p => p.fecha_prometida <= today);
     const montoPromesasHoy = promesasHoy.reduce((s, p) => s + Number(p.monto_prometido || 0), 0);
 
-    // Clientes
     const clientesActivos = clientes.filter((c: any) => c.estado === "Activo").length;
     const clientesMora = clientes.filter((c: any) => c.estado === "En mora").length;
-
-    // Liquidez total = cajas + efectivo calle
     const liquidezTotal = capitalCajas + efectivoCalle;
-
-    // Ganancia neta estimada = interés + mora cobrados
     const gananciaNeta = interesCobrado + moraCobrada;
 
-    // Ratio cartera vencida
-    const carteraVencidaPct = capitalColocado > 0 ? (montoVencido / capitalColocado) * 100 : 0;
-
-    // ── Cuotas del día ────────────────────────────────────────────
+    // Cuotas del día
     const cuotasHoy = amort
-      .filter(a => a.fecha_vencimiento <= today && a.status !== "Pagada")
+      .filter(a => prestamoIds.has(a.prestamo_id) && a.fecha_vencimiento <= today && a.status !== "Pagada")
       .sort((a, b) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento))
       .slice(0, 12)
       .map(a => {
-        const prest = prestamos.find(p => p.id === a.prestamo_id);
-        return {
-          id: a.prestamo_id, cliente: (prest?.clientes as any)?.nombre_completo || "—",
-          monto: Number(a.saldo_total || 0), cuota: `${a.num_cuota}`,
-          status: a.status || "Pendiente", vencimiento: a.fecha_vencimiento,
-        };
+        const prest = allPrestamos.find(p => p.id === a.prestamo_id);
+        return { id: a.prestamo_id, cliente: (prest?.clientes as any)?.nombre_completo || "—", monto: Number(a.saldo_total || 0), cuota: `${a.num_cuota}`, status: a.status || "Pendiente", vencimiento: a.fecha_vencimiento };
       });
 
-    // ── Colocación por mes (últimos 6 meses) ──────────────────────
+    // Colocación por mes
     const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
     const colocacionMes: { mes: string; colocado: number; cobrado: number; mora: number }[] = [];
     for (let i = 0; i < 6; i++) {
@@ -212,44 +255,27 @@ export default function DashboardPage() {
       const mor = pagos.filter(p => (p.created_at || "").startsWith(ym)).reduce((s, p) => s + Number(p.aplicado_mora || 0), 0);
       colocacionMes.push({ mes: label, colocado: col, cobrado: cob, mora: mor });
     }
-
-    // ── Mora por mes (area chart) ─────────────────────────────────
     const moraPorMes = colocacionMes.map(m => ({ mes: m.mes, mora: m.mora }));
 
-    // ── Estado de cartera (pie) ───────────────────────────────────
+    // Pies
     const estadoCount: Record<string, number> = {};
     for (const p of prestamos) { const e = p.estado || "Activo"; estadoCount[e] = (estadoCount[e] || 0) + 1; }
     const estadoPie = Object.entries(estadoCount).map(([name, value]) => ({ name, value }));
-
-    // ── Composición del saldo (pie) ───────────────────────────────
-    const saldoPie = [
-      { name: "Capital", value: saldoCapital },
-      { name: "Interés", value: saldoInteres },
-      { name: "Mora", value: moraTotal },
-    ].filter(s => s.value > 0);
-
-    // ── Frecuencia de préstamos (pie) ─────────────────────────────
+    const saldoPie = [{ name: "Capital", value: saldoCapital }, { name: "Interés", value: saldoInteres }, { name: "Mora", value: moraTotal }].filter(s => s.value > 0);
     const freqCount: Record<string, number> = {};
     for (const p of activos) { const f = p.frecuencia || "semanal"; freqCount[f] = (freqCount[f] || 0) + 1; }
     const freqPie = Object.entries(freqCount).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
 
-    // ── Cobradores rendimiento ────────────────────────────────────
+    // Cobradores
     const cobradorStats = cobradores.filter((c: any) => c.activo).map((c: any) => {
       const cobPagos = pagos.filter(p => p.cobrador_id === c.id);
-      const totalCob = cobPagos.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+      const totalCob2 = cobPagos.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
       const prestamosAsignados = prestamos.filter(p => p.cobrador_id === c.id && ["Activo", "Al día", "Vencido"].includes(p.estado || "")).length;
-      const saldoCob = amort.filter(a => {
-        const pr = prestamos.find(p => p.id === a.prestamo_id);
-        return pr?.cobrador_id === c.id && a.status !== "Pagada";
-      }).reduce((s, a) => s + Number(a.saldo_total || 0), 0);
-      const moraCob = amort.filter(a => {
-        const pr = prestamos.find(p => p.id === a.prestamo_id);
-        return pr?.cobrador_id === c.id;
-      }).reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
-      return { nombre: c.nombre, cobrado: totalCob, prestamos: prestamosAsignados, efectivo: Number(c.efectivo_en_mano || 0), saldo: saldoCob, mora: moraCob };
+      const saldoCob = amort.filter(a => { const pr = prestamos.find(p2 => p2.id === a.prestamo_id); return pr?.cobrador_id === c.id && a.status !== "Pagada"; }).reduce((s, a) => s + Number(a.saldo_total || 0), 0);
+      const moraCob = amort.filter(a => { const pr = prestamos.find(p2 => p2.id === a.prestamo_id); return pr?.cobrador_id === c.id; }).reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
+      return { nombre: c.nombre, cobrado: totalCob2, prestamos: prestamosAsignados, efectivo: Number(c.efectivo_en_mano || 0), saldo: saldoCob, mora: moraCob };
     }).sort((a: any, b: any) => b.cobrado - a.cobrado);
 
-    // ── Rutas resumen ─────────────────────────────────────────────
     const rutaStats = rutas.map((r: any) => {
       const prs = prestamos.filter(p => p.ruta_id === r.id && ["Activo", "Al día", "Vencido"].includes(p.estado || ""));
       const saldo = amort.filter(a => prs.some(p => p.id === a.prestamo_id) && a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_total || 0), 0);
@@ -258,28 +284,20 @@ export default function DashboardPage() {
     }).sort((a: any, b: any) => b.saldo - a.saldo);
 
     const cajasData = cajas.map(c => ({ nombre: c.nombre, saldo: Number(c.saldo_actual || 0) }));
-
-    // ── Cobradores bar chart ──────────────────────────────────────
     const cobradoresChart = cobradorStats.slice(0, 8).map((c: any) => ({ nombre: c.nombre.split(" ")[0], cobrado: c.cobrado, saldo: c.saldo }));
 
     return {
-      capitalColocado, capitalHistorico, totalPagar, interesEsperado,
-      saldoPorCobrar, saldoCapital, saldoInteres, moraTotal,
-      capitalRecuperado, interesRecuperado, moraRecuperada,
-      montoVencido, cuotasVencidas, cuotasPendientes, cuotasPagadas, totalCuotas,
-      prestamosVencidos, totalCobrado, capitalCobrado, interesCobrado, moraCobrada,
-      cobradoHoy, numPagosHoy, efectivoCalle, capitalCajas,
-      tasaRecuperacion, tasaMorosidad, eficienciaCobranza, indiceMora,
-      rendimientoCartera, ticketPromedio, cuotaPromedio,
-      promesasPendientes: promesasPendientes.length, montoPromesasHoy,
-      clientesActivos, clientesMora, liquidezTotal, gananciaNeta,
-      carteraVencidaPct,
-      totalPrestamos: prestamos.length, totalActivos: activos.length,
-      totalLiquidados: liquidados.length, totalJuridicos: juridicos.length,
-      cuotasHoy, colocacionMes, moraPorMes, estadoPie, saldoPie, freqPie,
+      capitalColocado, totalPagar, interesEsperado, saldoPorCobrar, saldoCapital, saldoInteres, moraTotal,
+      capitalRecuperado, interesRecuperado, moraRecuperada, montoVencido, cuotasVencidas, cuotasPendientes,
+      cuotasPagadas, totalCuotas, prestamosVencidos, totalCobrado, capitalCobrado, interesCobrado, moraCobrada,
+      cobradoHoy, numPagosHoy, efectivoCalle, capitalCajas, tasaRecuperacion, tasaMorosidad, eficienciaCobranza,
+      indiceMora, rendimientoCartera, ticketPromedio, cuotaPromedio, promesasPendientes: promesasPendientes.length,
+      montoPromesasHoy, clientesActivos, clientesMora, liquidezTotal, gananciaNeta, carteraVencidaPct,
+      totalPrestamos: prestamos.length, totalActivos: activos.length, totalLiquidados: liquidados.length,
+      totalJuridicos: juridicos.length, cuotasHoy, colocacionMes, moraPorMes, estadoPie, saldoPie, freqPie,
       cobradorStats, rutaStats, cajasData, cobradoresChart,
     };
-  }, [data]);
+  }, [data, fechaDesde, fechaHasta, filtroRuta, filtroCobrador, filtroCaja]);
 
   if (isLoading || !stats) {
     return (
@@ -294,9 +312,80 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold">Dashboard</h1>
-        <p className="text-muted-foreground text-[13px]">Panel de control financiero — toma decisiones inteligentes</p>
+      <div className="flex items-start justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-xl font-semibold">Dashboard</h1>
+          <p className="text-muted-foreground text-[13px]">Panel de control financiero — toma decisiones inteligentes</p>
+        </div>
+      </div>
+
+      {/* ── BARRA DE FILTROS ─────────────────────────────────────── */}
+      <div className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mr-1">Filtros:</span>
+
+          {/* Presets */}
+          <div className="flex items-center gap-1">
+            {[{ label: "Hoy", days: 0 }, { label: "7 días", days: 7 }, { label: "30 días", days: 30 }, { label: "90 días", days: 90 }].map(p => (
+              <Button key={p.label} variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => p.days === 0 ? (() => { const t = new Date(); setFechaDesde(t); setFechaHasta(t); })() : setPreset(p.days)}>
+                {p.label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="h-5 w-px bg-border mx-1" />
+
+          {/* Date pickers */}
+          <DatePick value={fechaDesde} onChange={setFechaDesde} placeholder="Desde" />
+          <span className="text-[11px] text-muted-foreground">—</span>
+          <DatePick value={fechaHasta} onChange={setFechaHasta} placeholder="Hasta" />
+
+          <div className="h-5 w-px bg-border mx-1" />
+
+          {/* Ruta */}
+          <Select value={filtroRuta} onValueChange={setFiltroRuta}>
+            <SelectTrigger className="h-8 w-[140px] text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas las rutas</SelectItem>
+              {(data?.rutas || []).map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          {/* Cobrador */}
+          <Select value={filtroCobrador} onValueChange={setFiltroCobrador}>
+            <SelectTrigger className="h-8 w-[150px] text-[12px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos los cobradores</SelectItem>
+              {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          {/* Caja */}
+          <Select value={filtroCaja} onValueChange={setFiltroCaja}>
+            <SelectTrigger className="h-8 w-[140px] text-[12px]"><SelectValue placeholder="Caja" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas las cajas</SelectItem>
+              {(data?.cajas || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          {hasFilters && (
+            <Button variant="ghost" size="sm" className="h-7 text-[11px] text-destructive hover:text-destructive" onClick={clearFilters}>
+              <X className="h-3 w-3 mr-1" />Limpiar
+            </Button>
+          )}
+        </div>
+        {hasFilters && (
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Mostrando {stats.totalPrestamos} préstamos filtrados
+            {fechaDesde && ` · Desde: ${format(fechaDesde, "dd/MM/yyyy")}`}
+            {fechaHasta && ` · Hasta: ${format(fechaHasta, "dd/MM/yyyy")}`}
+            {filtroRuta !== "__all__" && ` · Ruta: ${data?.rutas.find((r: any) => r.id === filtroRuta)?.nombre}`}
+            {filtroCobrador !== "__all__" && ` · Cobrador: ${data?.cobradores.find((c: any) => c.id === filtroCobrador)?.nombre}`}
+            {filtroCaja !== "__all__" && ` · Caja: ${data?.cajas.find((c: any) => c.id === filtroCaja)?.nombre}`}
+          </p>
+        )}
       </div>
 
       {/* ── SECCIÓN 1: KPIs Principales ──────────────────────────── */}
@@ -307,7 +396,7 @@ export default function DashboardPage() {
         <KPI title="Total Cobrado" value={$$(stats.totalCobrado)} icon={TrendingUp} accent="text-success" sub={`${stats.numPagosHoy} pagos hoy: ${$$(stats.cobradoHoy)}`} />
       </div>
 
-      {/* ── SECCIÓN 2: Indicadores Financieros Clave ──────────────── */}
+      {/* ── SECCIÓN 2: Indicadores Financieros ────────────────────── */}
       <div>
         <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Indicadores Financieros</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -320,7 +409,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── SECCIÓN 3: Flujo de efectivo y montos ────────────────── */}
+      {/* ── SECCIÓN 3: Flujo de efectivo ──────────────────────────── */}
       <div>
         <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Flujo de Efectivo</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -333,7 +422,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── SECCIÓN 4: Desglose de cobrado y pendiente ───────────── */}
+      {/* ── SECCIÓN 4: Desglose ──────────────────────────────────── */}
       <div>
         <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Desglose del Portafolio</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
@@ -348,27 +437,22 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── SECCIÓN 5: Resumen rápido con progress bars ────────── */}
+      {/* ── SECCIÓN 5: Progress + Resumen + Composición ──────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Progreso de Recuperación</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">Capital</span><span className="font-medium">{pct(stats.capitalColocado > 0 ? (stats.capitalRecuperado / stats.capitalColocado) * 100 : 0)}</span></div>
-              <Progress value={stats.capitalColocado > 0 ? (stats.capitalRecuperado / stats.capitalColocado) * 100 : 0} className="h-2" />
-            </div>
-            <div>
-              <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">Interés</span><span className="font-medium">{pct(stats.interesEsperado > 0 ? (stats.interesCobrado / stats.interesEsperado) * 100 : 0)}</span></div>
-              <Progress value={stats.interesEsperado > 0 ? (stats.interesCobrado / stats.interesEsperado) * 100 : 0} className="h-2" />
-            </div>
-            <div>
-              <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">Cuotas Pagadas</span><span className="font-medium">{stats.cuotasPagadas} / {stats.totalCuotas}</span></div>
-              <Progress value={stats.totalCuotas > 0 ? (stats.cuotasPagadas / stats.totalCuotas) * 100 : 0} className="h-2" />
-            </div>
-            <div>
-              <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">Eficiencia Cobranza</span><span className="font-medium">{pct(stats.eficienciaCobranza)}</span></div>
-              <Progress value={stats.eficienciaCobranza} className="h-2" />
-            </div>
+            {[
+              { label: "Capital", pct: stats.capitalColocado > 0 ? (stats.capitalRecuperado / stats.capitalColocado) * 100 : 0 },
+              { label: "Interés", pct: stats.interesEsperado > 0 ? (stats.interesCobrado / stats.interesEsperado) * 100 : 0 },
+              { label: "Cuotas", pct: stats.totalCuotas > 0 ? (stats.cuotasPagadas / stats.totalCuotas) * 100 : 0, extra: `${stats.cuotasPagadas}/${stats.totalCuotas}` },
+              { label: "Eficiencia", pct: stats.eficienciaCobranza },
+            ].map(item => (
+              <div key={item.label}>
+                <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">{item.label}</span><span className="font-medium">{(item as any).extra || pct(item.pct)}</span></div>
+                <Progress value={Math.min(item.pct, 100)} className="h-2" />
+              </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -392,7 +476,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Composición del saldo (pie) */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Composición del Saldo</CardTitle></CardHeader>
           <CardContent>
@@ -448,7 +531,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* ── SECCIÓN 7: Mora trend + Frecuencia + Cobradores bar ─── */}
+      {/* ── SECCIÓN 7: Mora + Frecuencia + Cobradores bar ────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tendencia de Mora</CardTitle></CardHeader>
@@ -500,7 +583,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* ── SECCIÓN 8: Cobradores detalle + Cuotas ───────────────── */}
+      {/* ── SECCIÓN 8: Cobradores + Cuotas ───────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -571,10 +654,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {stats.rutaStats.map((r: any) => (
                   <div key={r.nombre} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-                    <div>
-                      <p className="text-[13px] font-medium">{r.nombre}</p>
-                      <p className="text-[11px] text-muted-foreground">{r.prestamos} préstamos · Mora: {$$(r.mora)}</p>
-                    </div>
+                    <div><p className="text-[13px] font-medium">{r.nombre}</p><p className="text-[11px] text-muted-foreground">{r.prestamos} préstamos · Mora: {$$(r.mora)}</p></div>
                     <p className="text-[13px] font-semibold">{$$(r.saldo)}</p>
                   </div>
                 ))}
