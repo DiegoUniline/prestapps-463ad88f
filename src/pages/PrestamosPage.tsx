@@ -92,48 +92,6 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
   );
 }
 
-// --- Date range dropdown ---
-function DateRangeDropdown({ from, to, onFromChange, onToChange, onClear }: {
-  from: Date | undefined; to: Date | undefined;
-  onFromChange: (d: Date | undefined) => void; onToChange: (d: Date | undefined) => void; onClear: () => void;
-}) {
-  const hasValue = from || to;
-  const label = from && to
-    ? `${format(from, "dd/MM/yy")} – ${format(to, "dd/MM/yy")}`
-    : from ? `Desde ${format(from, "dd/MM/yy")}` : to ? `Hasta ${format(to, "dd/MM/yy")}` : "Fecha Registro";
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm"
-          className={cn(
-            "h-9 gap-1.5 text-sm font-medium whitespace-nowrap",
-            hasValue && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
-          )}>
-          <CalendarIcon className="h-3.5 w-3.5" />
-          {label}
-          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-4" align="start">
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Desde</p>
-            <Calendar mode="single" selected={from} onSelect={onFromChange} className="p-0 pointer-events-auto" />
-          </div>
-          <div className="border-t pt-3">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Hasta</p>
-            <Calendar mode="single" selected={to} onSelect={onToChange} className="p-0 pointer-events-auto" />
-          </div>
-          {hasValue && (
-            <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={onClear}>Limpiar fechas</Button>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 // --- Filters rendered inside mobile sheet ---
 function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta, setSelRuta, selCobrador, setSelCobrador,
   regDesde, setRegDesde, regHasta, setRegHasta, clearAll }: any) {
