@@ -97,7 +97,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const canSubmit = montoNum > 0 && cajaId && distribution.length > 0;
 
   const handleSubmit = () => {
-    // TODO: connect to Supabase
+    // TODO: connect to Supabase — include ruta + cobrador
     console.log({
       prestamoId,
       montoRecibido: montoNum,
@@ -105,6 +105,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       montoEfectivo,
       metodo,
       cajaId,
+      rutaId: rutaId || null,
+      cobradorId: cobradorId || null,
       distribution,
     });
     onOpenChange(false);
