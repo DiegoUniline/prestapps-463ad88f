@@ -175,8 +175,7 @@ export default function CobradoresPage() {
 
     try {
       // Get last corte date for this cobrador
-      const { data: lastCorte } = await supabase
-        .from("cortes")
+      const { data: lastCorte } = await (supabase.from as any)("cortes")
         .select("created_at")
         .eq("cobrador_id", cobrador.id)
         .order("created_at", { ascending: false })
