@@ -32,11 +32,13 @@ interface PagoModalProps {
   prestamoId: string;
   cuotasPendientes: Cuota[];
   cajas: { id: string; nombre: string }[];
+  rutaId?: string | null;
+  cobradorId?: string | null;
 }
 
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas }: PagoModalProps) {
+export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId }: PagoModalProps) {
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("Efectivo");
@@ -95,7 +97,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const canSubmit = montoNum > 0 && cajaId && distribution.length > 0;
 
   const handleSubmit = () => {
-    // TODO: connect to Supabase
+    // TODO: connect to Supabase — include ruta + cobrador
     console.log({
       prestamoId,
       montoRecibido: montoNum,
@@ -103,6 +105,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       montoEfectivo,
       metodo,
       cajaId,
+      rutaId: rutaId || null,
+      cobradorId: cobradorId || null,
       distribution,
     });
     onOpenChange(false);

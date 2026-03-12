@@ -5,15 +5,17 @@ import { toast } from "sonner";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
+import { ReasignarModal } from "@/components/ReasignarModal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell, Receipt, FileSignature, MapPin, Phone } from "lucide-react";
+import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell, Receipt, FileSignature, MapPin, Phone, Route } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
+import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
 
 // ── Badge colors ──────────────────────────────────────────────────
@@ -93,6 +95,7 @@ export default function PrestamoDetallePage() {
   const [promesaOpen, setPromesaOpen] = useState(false);
   const [selectedCuota, setSelectedCuota] = useState<any>(null);
   const [showOptional, setShowOptional] = useState(false);
+  const [reasignarOpen, setReasignarOpen] = useState(false);
 
   const isNew = !id || id === "nuevo";
 
@@ -101,6 +104,7 @@ export default function PrestamoDetallePage() {
   const { data: pagosRaw = [] } = usePagos(isNew ? undefined : id);
   const { data: promesasRaw = [] } = usePromesas(isNew ? undefined : id);
   const { data: cajasAll = [] } = useCajas();
+  const { data: rutasAll = [] } = useRutasOptions();
 
   if (isNew) { navigate("/prestamos"); return null; }
 
@@ -299,6 +303,7 @@ export default function PrestamoDetallePage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setReasignarOpen(true)}>Reasignar Ruta / Cobrador</DropdownMenuItem>
                 <DropdownMenuItem>Imprimir tabla</DropdownMenuItem>
                 <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive">Cancelar préstamo</DropdownMenuItem>
@@ -334,8 +339,15 @@ export default function PrestamoDetallePage() {
                 cliente ? <Link to={`/clientes/${cliente.id}`} className="text-primary hover:underline font-medium">{cliente.nombre_completo}</Link> : "—"
               } />
               <SidebarField label="EMPRESA" value={dashStr(prestamo.empresa)} />
-              <SidebarField label="COBRADOR" value="—" />
-              <SidebarField label="RUTA" value={ruta?.nombre || "—"} />
+              <SidebarField label="COBRADOR" value={prestamo.cobrador_id || "—"} />
+              <SidebarField label="RUTA" value={
+                <span className="flex items-center gap-1.5">
+                  {ruta?.nombre || "—"}
+                  <button onClick={() => setReasignarOpen(true)} className="text-primary hover:text-primary/80 transition-colors" title="Reasignar">
+                    <Route className="h-3 w-3" />
+                  </button>
+                </span>
+              } />
               <SidebarField label="GENERADO POR" value="—" />
               <SidebarField label="F. REGISTRO" value={prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—"} />
               <SidebarField label="F. PRIMER PAGO" value={prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—"} />
@@ -648,6 +660,8 @@ export default function PrestamoDetallePage() {
           fecha_vencimiento: c.fecha_vencimiento,
         }))}
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
+        rutaId={prestamo.ruta_id}
+        cobradorId={prestamo.cobrador_id}
       />
 
       {/* Promesa Modal */}
@@ -662,6 +676,16 @@ export default function PrestamoDetallePage() {
           fechaVencimiento={format(new Date(selectedCuota.fecha_vencimiento), "dd/MM/yyyy")}
         />
       )}
+
+      {/* Reasignar Modal */}
+      <ReasignarModal
+        open={reasignarOpen}
+        onOpenChange={setReasignarOpen}
+        prestamoId={prestamo.id}
+        currentRutaId={prestamo.ruta_id}
+        currentCobradorId={prestamo.cobrador_id}
+        rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
+      />
     </div>
   );
 }
