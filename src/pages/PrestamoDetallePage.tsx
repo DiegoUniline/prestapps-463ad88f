@@ -86,6 +86,7 @@ const optionalCols = ["Cap.Pag.", "Int.Pag.", "Mora Pag.", "S.Cap", "S.Int", "S.
 export default function PrestamoDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState("amortizacion");
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [pagoOpen, setPagoOpen] = useState(false);
