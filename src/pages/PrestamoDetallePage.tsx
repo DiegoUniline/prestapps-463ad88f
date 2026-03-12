@@ -659,6 +659,8 @@ export default function PrestamoDetallePage() {
           fecha_vencimiento: c.fecha_vencimiento,
         }))}
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
+        rutaId={prestamo.ruta_id}
+        cobradorId={prestamo.cobrador_id}
       />
 
       {/* Promesa Modal */}
@@ -673,6 +675,16 @@ export default function PrestamoDetallePage() {
           fechaVencimiento={format(new Date(selectedCuota.fecha_vencimiento), "dd/MM/yyyy")}
         />
       )}
+
+      {/* Reasignar Modal */}
+      <ReasignarModal
+        open={reasignarOpen}
+        onOpenChange={setReasignarOpen}
+        prestamoId={prestamo.id}
+        currentRutaId={prestamo.ruta_id}
+        currentCobradorId={prestamo.cobrador_id}
+        rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
+      />
     </div>
   );
 }
