@@ -162,8 +162,8 @@ export default function PrestamosPage() {
   // Tab-based pre-filter
   const tabFiltered = useMemo(() => {
     if (activeTab === "todos") return prestamos;
-    if (activeTab === "vigentes") return prestamos.filter((p) => p.estado === "Activo" || p.estado === "Al día");
-    if (activeTab === "atrasados") return prestamos.filter((p) => p.estado === "Vencido" || p.estado === "Juridico");
+    if (activeTab === "vigentes") return prestamos.filter((p) => (p.estado === "Activo" || p.estado === "Al día") && p.mora <= 0);
+    if (activeTab === "atrasados") return prestamos.filter((p) => p.estado === "Vencido" || p.estado === "Juridico" || p.mora > 0);
     if (activeTab === "liquidados") return prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado");
     return prestamos;
   }, [prestamos, activeTab]);
