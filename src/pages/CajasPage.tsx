@@ -189,7 +189,7 @@ type ModalType = "depositar" | "retirar" | "transferir" | "nueva-caja" | null;
 export default function CajasPage() {
   const queryClient = useQueryClient();
   const { data: cajas = [], isLoading } = useCajas();
-  const { data: movimientos = [] } = useMovimientos();
+  const { data: kardex = [] } = useKardex();
   const { data: prestamoStats } = usePrestamosByCaja();
   const g = prestamoStats?.global || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
   const byCaja = prestamoStats?.byCaja || {};
