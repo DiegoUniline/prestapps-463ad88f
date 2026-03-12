@@ -42,17 +42,28 @@ interface PagoModalProps {
   cajas: { id: string; nombre: string }[];
   rutaId?: string | null;
   cobradorId?: string | null;
+  montoInicial?: number;
 }
 
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId }: PagoModalProps) {
+export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId, montoInicial }: PagoModalProps) {
   const queryClient = useQueryClient();
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("Efectivo");
   const [cajaId, setCajaId] = useState(cajas[0]?.id || "");
   const [saving, setSaving] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  // Pre-fill monto when modal opens with montoInicial
+  if (open && montoInicial && !initialized) {
+    setMontoRecibido(montoInicial.toFixed(2));
+    setInitialized(true);
+  }
+  if (!open && initialized) {
+    setInitialized(false);
+  }
 
   const totalAdeudado = cuotasPendientes.reduce((s, c) => s + c.saldo_total, 0);
   const montoNum = parseFloat(montoRecibido) || 0;

@@ -290,7 +290,7 @@ export default function PrestamoDetallePage() {
               </Button>
             </div>
             {/* Action buttons */}
-            <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => setPagoOpen(true)}>
+            <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }}>
               <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
             </Button>
             <Button variant="outline" size="sm" className="h-8 text-[13px]">
@@ -666,6 +666,7 @@ export default function PrestamoDetallePage() {
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
         rutaId={prestamo.ruta_id}
         cobradorId={prestamo.cobrador_id}
+        montoInicial={selectedCuota ? Number(selectedCuota.saldo_total || 0) : undefined}
       />
 
       {/* Promesa Modal */}
