@@ -39,12 +39,13 @@ function useCobradores(empresaId: string) {
   });
 }
 
-function useCortes() {
+function useCortes(empresaId: string) {
   return useQuery({
-    queryKey: ["cortes"],
+    queryKey: ["cortes", empresaId],
     queryFn: async () => {
       const { data, error } = await (supabase.from as any)("cortes")
         .select("*, cobradores ( nombre ), cajas ( nombre )")
+        .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
