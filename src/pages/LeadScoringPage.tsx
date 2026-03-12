@@ -241,6 +241,15 @@ const nivelConfig: Record<string, { color: string; bg: string }> = {
 };
 
 function ScoreBar({ score }: { score: number }) {
+  if (score < 0) {
+    return (
+      <div className="flex items-center gap-2 min-w-[120px]">
+        <div className="flex-1 h-2 rounded-full bg-muted" />
+        <span className="text-xs font-medium text-muted-foreground w-8 text-right">N/A</span>
+      </div>
+    );
+  }
+
   const color =
     score >= 85 ? "bg-emerald-500" :
     score >= 70 ? "bg-blue-500" :
