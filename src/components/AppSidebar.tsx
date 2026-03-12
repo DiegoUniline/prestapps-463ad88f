@@ -36,6 +36,7 @@ const mainNav = [
 
 const adminNav = [
   { title: "Cajas", url: "/cajas", icon: Wallet },
+  { title: "Cobradores", url: "/cobradores", icon: UserCheck },
   { title: "Rutas", url: "/rutas", icon: Route },
   { title: "Reportes", url: "/reportes", icon: FileText },
   { title: "Usuarios", url: "/usuarios", icon: Settings },
