@@ -31,7 +31,7 @@ function useCobradores() {
   return useQuery({
     queryKey: ["cobradores"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cobradores").select("*").order("nombre");
+      const { data, error } = await (supabase.from as any)("cobradores").select("*").order("nombre");
       if (error) throw error;
       return (data || []) as Cobrador[];
     },
