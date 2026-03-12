@@ -206,6 +206,10 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       queryClient.invalidateQueries({ queryKey: ["cobradores"] });
 
       toast.success(`Pago de ${$$(montoNum)} registrado correctamente`);
+
+      // Send WhatsApp receipt in background (don't block UI)
+      sendWhatsAppReceipt(distribution, montoNum, metodo, descuentoNum);
+
       onOpenChange(false);
       setMontoRecibido("");
       setDescuento("");
