@@ -242,6 +242,11 @@ export default function CajasPage() {
 
   const [selectedCaja, setSelectedCaja] = useState<string | null>(null);
 
+  // Kardex filters
+  const [selCategoria, setSelCategoria] = useState<Set<string>>(new Set());
+  const [kardexDesde, setKardexDesde] = useState<Date>();
+  const [kardexHasta, setKardexHasta] = useState<Date>();
+
   const resetModal = () => {
     setModal(null); setCajaId(""); setCajaDestinoId(""); setMonto(""); setConcepto("");
     setNombreCaja(""); setDescCaja("");
@@ -310,11 +315,8 @@ export default function CajasPage() {
     const destino = cajas.find((c) => c.id === cajaDestinoId);
     const nota = concepto.trim() || `Transferencia ${origen?.nombre} → ${destino?.nombre}`;
 
-    // Salida de origen
     await supabase.from("movimientos_caja").insert({ caja_id: cajaId, tipo: "salida", monto: m, concepto: nota });
     await supabase.from("cajas").update({ saldo_actual: (Number(origen?.saldo_actual) || 0) - m }).eq("id", cajaId);
-
-    // Entrada en destino
     await supabase.from("movimientos_caja").insert({ caja_id: cajaDestinoId, tipo: "entrada", monto: m, concepto: nota });
     await supabase.from("cajas").update({ saldo_actual: (Number(destino?.saldo_actual) || 0) + m }).eq("id", cajaDestinoId);
 
@@ -340,10 +342,22 @@ export default function CajasPage() {
     { label: "Salidas", value: $$(salidas), icon: ArrowUpRight, accent: "text-destructive" },
   ];
 
-  // Filter kardex by selected caja
-  const filteredMov = selectedCaja
-    ? kardex.filter((m) => m.cajaId === selectedCaja)
-    : kardex;
+  // Filter kardex
+  const filteredMov = kardex.filter((m) => {
+    if (selectedCaja && m.cajaId !== selectedCaja) return false;
+    if (selCategoria.size > 0 && !selCategoria.has(m.categoria)) return false;
+    if (kardexDesde && new Date(m.fecha) < kardexDesde) return false;
+    if (kardexHasta) {
+      const hasta = new Date(kardexHasta);
+      hasta.setHours(23, 59, 59, 999);
+      if (new Date(m.fecha) > hasta) return false;
+    }
+    return true;
+  });
+
+  const kardexCategories = ["Cobro", "Desembolso", "Depósito", "Retiro", "Transferencia"];
+  const totalKardexFilters = selCategoria.size + (kardexDesde ? 1 : 0) + (kardexHasta ? 1 : 0);
+  const clearKardexFilters = () => { setSelCategoria(new Set()); setKardexDesde(undefined); setKardexHasta(undefined); };
 
   return (
     <div className="space-y-5">
