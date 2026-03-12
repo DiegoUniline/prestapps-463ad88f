@@ -155,7 +155,7 @@ export default function CobradoresPage() {
   const handleCrear = async () => {
     if (!nombre.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("cobradores").insert({
+    const { error } = await (supabase.from as any)("cobradores").insert({
       nombre: nombre.trim(),
       telefono: telefono.trim() || null,
       porcentaje_comision: parseFloat(porcentaje) || 0,
