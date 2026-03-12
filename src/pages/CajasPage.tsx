@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, TrendingDown, Loader2 } from "lucide-react";
+import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, TrendingDown, Loader2, FileText, AlertTriangle, PiggyBank, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,68 @@ function useMovimientos() {
   });
 }
 
+// Stats from prestamos + amortizacion per caja
+function usePrestamosByCaja() {
+  return useQuery({
+    queryKey: ["prestamos-by-caja"],
+    queryFn: async () => {
+      const { data: prestamos, error } = await supabase
+        .from("prestamos")
+        .select("id, caja_id, monto_solicitado, monto_total_pagar, estado")
+        .not("estado", "in", '("Cancelado")');
+      if (error) throw error;
+      if (!prestamos || prestamos.length === 0) return { global: { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 }, byCaja: {} as Record<string, any> };
+
+      const ids = prestamos.map((p) => p.id);
+      const { data: amortData } = await supabase
+        .from("amortizacion")
+        .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento")
+        .in("prestamo_id", ids);
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Per-prestamo aggregation
+      const prestamoAgg: Record<string, { saldo: number; mora: number; tieneAtraso: boolean }> = {};
+      for (const a of amortData || []) {
+        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, tieneAtraso: false };
+        prestamoAgg[a.prestamo_id].saldo += Number(a.saldo_total || 0);
+        prestamoAgg[a.prestamo_id].mora += Number(a.saldo_mora || 0);
+        if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
+          prestamoAgg[a.prestamo_id].tieneAtraso = true;
+        }
+      }
+
+      // Global + per-caja stats
+      const byCaja: Record<string, { activos: number; colocado: number; totalPagar: number; porCobrar: number; gananciaProyectada: number; enMora: number; moraTotal: number }> = {};
+      let global = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+
+      for (const p of prestamos) {
+        const cajaKey = p.caja_id || "sin-caja";
+        if (!byCaja[cajaKey]) byCaja[cajaKey] = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, tieneAtraso: false };
+        const isActive = p.estado !== "Liquidado";
+        const monto = Number(p.monto_solicitado || 0);
+        const totalPagar = Number(p.monto_total_pagar || 0);
+        const ganancia = totalPagar - monto;
+
+        if (isActive) {
+          global.activos++; byCaja[cajaKey].activos++;
+        }
+        global.colocado += monto; byCaja[cajaKey].colocado += monto;
+        global.totalPagar += totalPagar; byCaja[cajaKey].totalPagar += totalPagar;
+        global.porCobrar += agg.saldo; byCaja[cajaKey].porCobrar += agg.saldo;
+        global.gananciaProyectada += ganancia; byCaja[cajaKey].gananciaProyectada += ganancia;
+        if (agg.tieneAtraso) {
+          global.enMora++; byCaja[cajaKey].enMora++;
+          global.moraTotal += agg.mora; byCaja[cajaKey].moraTotal += agg.mora;
+        }
+      }
+
+      return { global, byCaja };
+    },
+  });
+}
+
 // ── Modal types ───────────────────────────────────────────────────
 type ModalType = "depositar" | "retirar" | "transferir" | "nueva-caja" | null;
 
@@ -51,6 +113,9 @@ export default function CajasPage() {
   const queryClient = useQueryClient();
   const { data: cajas = [], isLoading } = useCajas();
   const { data: movimientos = [] } = useMovimientos();
+  const { data: prestamoStats } = usePrestamosByCaja();
+  const g = prestamoStats?.global || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+  const byCaja = prestamoStats?.byCaja || {};
 
   const [modal, setModal] = useState<ModalType>(null);
   const [cajaId, setCajaId] = useState("");
@@ -150,10 +215,14 @@ export default function CajasPage() {
   const salidas = movimientos.filter((m) => m.tipo === "salida").reduce((s, m) => s + Number(m.monto), 0);
 
   const kpis = [
-    { label: "Saldo Total", value: $$(totalSaldo), icon: Wallet, accent: "text-primary" },
-    { label: "Cajas", value: String(cajas.length), icon: DollarSign, accent: "text-[hsl(217,91%,60%)]" },
-    { label: "Entradas", value: $$(entradas), icon: TrendingUp, accent: "text-success" },
-    { label: "Salidas", value: $$(salidas), icon: TrendingDown, accent: "text-destructive" },
+    { label: "Saldo en Cajas", value: $$(totalSaldo), icon: Wallet, accent: "text-primary" },
+    { label: "Préstamos Activos", value: String(g.activos), icon: FileText, accent: "text-[hsl(217,91%,60%)]" },
+    { label: "Monto Colocado", value: $$(g.colocado), icon: DollarSign, accent: "text-foreground" },
+    { label: "Por Cobrar", value: $$(g.porCobrar), icon: TrendingUp, accent: "text-warning" },
+    { label: "Ganancia Proyectada", value: $$(g.gananciaProyectada), icon: PiggyBank, accent: "text-success" },
+    { label: `En Mora (${g.enMora})`, value: $$(g.moraTotal), icon: AlertTriangle, accent: "text-destructive" },
+    { label: "Entradas", value: $$(entradas), icon: ArrowDownLeft, accent: "text-success" },
+    { label: "Salidas", value: $$(salidas), icon: ArrowUpRight, accent: "text-destructive" },
   ];
 
   // Filter movimientos by selected caja
@@ -195,27 +264,56 @@ export default function CajasPage() {
         ))}
       </div>
 
-      {/* Cajas cards */}
+      {/* Cajas cards with per-caja stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)
-        ) : cajas.map((c) => (
-          <div
-            key={c.id}
-            className={cn(
-              "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
-              selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
-            )}
-            onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
-          >
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-[14px]">{c.nombre}</p>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
+          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-lg" />)
+        ) : cajas.map((c) => {
+          const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+          return (
+            <div
+              key={c.id}
+              className={cn(
+                "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
+                selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
+              )}
+              onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
+            >
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-[14px]">{c.nombre}</p>
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="text-2xl font-bold mt-1">{$$(Number(c.saldo_actual || 0))}</p>
+              {c.descripcion && <p className="text-[12px] text-muted-foreground mt-0.5">{c.descripcion}</p>}
+              <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Activos</p>
+                  <p className="text-[13px] font-semibold">{cs.activos}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Colocado</p>
+                  <p className="text-[13px] font-semibold">{$$(cs.colocado)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Por Cobrar</p>
+                  <p className="text-[13px] font-semibold">{$$(cs.porCobrar)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ganancia</p>
+                  <p className="text-[13px] font-semibold text-success">{$$(cs.gananciaProyectada)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">En Mora</p>
+                  <p className={cn("text-[13px] font-semibold", cs.enMora > 0 ? "text-destructive" : "")}>{cs.enMora}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Mora $</p>
+                  <p className={cn("text-[13px] font-semibold", cs.moraTotal > 0 ? "text-destructive" : "")}>{$$(cs.moraTotal)}</p>
+                </div>
+              </div>
             </div>
-            <p className="text-2xl font-bold mt-1">{$$(Number(c.saldo_actual || 0))}</p>
-            {c.descripcion && <p className="text-[12px] text-muted-foreground mt-1">{c.descripcion}</p>}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Movimientos table */}
