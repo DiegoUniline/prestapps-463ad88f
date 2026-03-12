@@ -116,7 +116,8 @@ function DatePick({ value, onChange, placeholder }: { value: Date | undefined; o
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { data, isLoading } = useDashboardData();
+  const { empresaId } = useEmpresa();
+  const { data, isLoading } = useDashboardData(empresaId);
 
   // ── Filter state ────────────────────────────────────────────────
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
