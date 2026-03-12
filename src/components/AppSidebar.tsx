@@ -38,6 +38,7 @@ const mainNav = [
   { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },
   { title: "Promesas", url: "/promesas", icon: CalendarCheck, roles: ["admin", "supervisor", "cobrador"] },
   { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "supervisor"] },
+  { title: "CRM Cobranza", url: "/crm", icon: Users2, roles: ["admin", "supervisor"] },
 ];
 
 const adminNav = [
