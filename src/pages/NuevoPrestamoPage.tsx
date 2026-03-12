@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, CalendarIcon, Save } from "lucide-react";
-import { format } from "date-fns";
+import { format, addDays, addWeeks, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
@@ -28,6 +29,25 @@ function useClientesOptions() {
       return data || [];
     },
   });
+}
+
+interface CuotaPreview {
+  num: number;
+  fechaVencimiento: string;
+  capital: number;
+  interes: number;
+  cuota: number;
+  saldo: number;
+}
+
+function calcNextDate(base: Date, frecuencia: string, n: number): Date {
+  switch (frecuencia) {
+    case "diario": return addDays(base, n);
+    case "semanal": return addWeeks(base, n);
+    case "quincenal": return addDays(base, n * 15);
+    case "mensual": return addMonths(base, n);
+    default: return addWeeks(base, n);
+  }
 }
 
 export default function NuevoPrestamoPage() {
@@ -50,20 +70,64 @@ export default function NuevoPrestamoPage() {
   const [gastosLegales, setGastosLegales] = useState("");
   const [tipoMora, setTipoMora] = useState<string>("porcentaje");
   const [valorMora, setValorMora] = useState("");
-  const [cobradorId, setCobradorId] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [notas, setNotas] = useState("");
+  const [cuotaOverride, setCuotaOverride] = useState("");
 
   // Cálculos
   const monto = parseFloat(montoSolicitado) || 0;
   const tasa = parseFloat(tasaInteres) || 0;
   const cuotas = parseInt(numCuotas) || 0;
 
-  const montoTotalPagar = modalidad === "fijo"
-    ? monto + (monto * tasa / 100)
-    : monto + (monto * tasa / 100); // simplified
-
+  const interesTotal = monto * tasa / 100;
+  const montoTotalPagar = monto + interesTotal;
   const cuotaCalculada = cuotas > 0 ? montoTotalPagar / cuotas : 0;
+  const cuotaFinal = cuotaOverride ? parseFloat(cuotaOverride) || cuotaCalculada : Math.ceil(cuotaCalculada);
+
+  // Recalcular total si se cambió la cuota manualmente
+  const totalConCuotaFinal = cuotaFinal * cuotas;
+
+  // Tabla de amortización en tiempo real
+  const amortizacion = useMemo((): CuotaPreview[] => {
+    if (monto <= 0 || cuotas <= 0) return [];
+    const baseDate = fechaPrimerPago || new Date();
+
+    if (modalidad === "fijo") {
+      const capitalPorCuota = monto / cuotas;
+      const interesPorCuota = cuotaFinal - capitalPorCuota;
+      let saldo = monto;
+      return Array.from({ length: cuotas }, (_, i) => {
+        const cap = i === cuotas - 1 ? saldo : capitalPorCuota;
+        saldo -= cap;
+        return {
+          num: i + 1,
+          fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
+          capital: Math.round(cap * 100) / 100,
+          interes: Math.round(interesPorCuota * 100) / 100,
+          cuota: Math.round(cuotaFinal * 100) / 100,
+          saldo: Math.max(0, Math.round(saldo * 100) / 100),
+        };
+      });
+    } else {
+      // Saldos insolutos
+      const tasaPeriodo = tasa / 100 / cuotas;
+      const capitalPorCuota = monto / cuotas;
+      let saldo = monto;
+      return Array.from({ length: cuotas }, (_, i) => {
+        const inter = saldo * tasaPeriodo;
+        const cuotaVal = capitalPorCuota + inter;
+        saldo -= capitalPorCuota;
+        return {
+          num: i + 1,
+          fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
+          capital: Math.round(capitalPorCuota * 100) / 100,
+          interes: Math.round(inter * 100) / 100,
+          cuota: Math.round(cuotaVal * 100) / 100,
+          saldo: Math.max(0, Math.round(saldo * 100) / 100),
+        };
+      });
+    }
+  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -76,7 +140,7 @@ export default function NuevoPrestamoPage() {
         .insert({
           cliente_id: clienteId,
           monto_solicitado: monto,
-          monto_total_pagar: montoTotalPagar,
+          monto_total_pagar: totalConCuotaFinal,
           tasa_interes: tasa,
           num_cuotas: cuotas,
           frecuencia: frecuencia as any,
@@ -87,11 +151,10 @@ export default function NuevoPrestamoPage() {
           gastos_legales: parseFloat(gastosLegales) || 0,
           tipo_mora: tipoMora as any,
           valor_mora: parseFloat(valorMora) || 0,
-          cobrador_id: cobradorId || null,
           empresa: empresa || null,
           notas: notas || null,
           cuota_calculada: cuotaCalculada,
-          cuota_redondeada: Math.ceil(cuotaCalculada),
+          cuota_redondeada: cuotaFinal,
         })
         .select("id")
         .single();
@@ -110,7 +173,7 @@ export default function NuevoPrestamoPage() {
   });
 
   return (
-    <div className="space-y-5 max-w-3xl mx-auto">
+    <div className="space-y-5 max-w-4xl mx-auto">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/prestamos")}>
           <ArrowLeft className="h-4 w-4" />
@@ -118,160 +181,236 @@ export default function NuevoPrestamoPage() {
         <h1 className="text-xl font-semibold">Nuevo Préstamo</h1>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Datos del Préstamo</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Cliente */}
-          <div className="space-y-1.5">
-            <Label className="text-[13px]">Cliente *</Label>
-            <Select value={clienteId} onValueChange={setClienteId}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-              <SelectContent>
-                {clientes.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nombre_completo} ({c.id_cliente})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Monto + Tasa + Cuotas */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        {/* LEFT — Form */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Datos del Préstamo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Cliente */}
             <div className="space-y-1.5">
-              <Label className="text-[13px]">Monto Solicitado *</Label>
-              <Input type="number" min="0" value={montoSolicitado} onChange={(e) => setMontoSolicitado(e.target.value)} placeholder="0.00" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Tasa de Interés (%)</Label>
-              <Input type="number" min="0" value={tasaInteres} onChange={(e) => setTasaInteres(e.target.value)} placeholder="0" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Número de Cuotas *</Label>
-              <Input type="number" min="1" value={numCuotas} onChange={(e) => setNumCuotas(e.target.value)} placeholder="0" />
-            </div>
-          </div>
-
-          {/* Frecuencia + Modalidad */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Frecuencia</Label>
-              <Select value={frecuencia} onValueChange={setFrecuencia}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label className="text-[13px]">Cliente *</Label>
+              <Select value={clienteId} onValueChange={setClienteId}>
+                <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="diario">Diario</SelectItem>
-                  <SelectItem value="semanal">Semanal</SelectItem>
-                  <SelectItem value="quincenal">Quincenal</SelectItem>
-                  <SelectItem value="mensual">Mensual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Modalidad</Label>
-              <Select value={modalidad} onValueChange={setModalidad}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fijo">Cuota Fija</SelectItem>
-                  <SelectItem value="insolutos">Saldos Insolutos</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Fecha primer pago */}
-          <div className="space-y-1.5">
-            <Label className="text-[13px]">Fecha Primer Pago</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !fechaPrimerPago && "text-muted-foreground")}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {fechaPrimerPago ? format(fechaPrimerPago, "dd/MM/yyyy") : "Seleccionar fecha"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={fechaPrimerPago} onSelect={setFechaPrimerPago} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Caja + Ruta */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Caja</Label>
-              <Select value={cajaId} onValueChange={setCajaId}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
-                <SelectContent>
-                  {cajas.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  {clientes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre_completo} ({c.id_cliente})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Monto + Tasa + Cuotas */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Monto *</Label>
+                <Input type="number" min="0" value={montoSolicitado} onChange={(e) => setMontoSolicitado(e.target.value)} placeholder="0.00" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Tasa (%)</Label>
+                <Input type="number" min="0" value={tasaInteres} onChange={(e) => setTasaInteres(e.target.value)} placeholder="0" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Cuotas *</Label>
+                <Input type="number" min="1" value={numCuotas} onChange={(e) => setNumCuotas(e.target.value)} placeholder="0" />
+              </div>
+            </div>
+
+            {/* Frecuencia + Modalidad */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Frecuencia</Label>
+                <Select value={frecuencia} onValueChange={setFrecuencia}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="diario">Diario</SelectItem>
+                    <SelectItem value="semanal">Semanal</SelectItem>
+                    <SelectItem value="quincenal">Quincenal</SelectItem>
+                    <SelectItem value="mensual">Mensual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Modalidad</Label>
+                <Select value={modalidad} onValueChange={setModalidad}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fijo">Cuota Fija</SelectItem>
+                    <SelectItem value="insolutos">Saldos Insolutos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Cuota fija override */}
+            {monto > 0 && cuotas > 0 && modalidad === "fijo" && (
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">
+                  Cuota Fija
+                  <span className="text-muted-foreground ml-1">(calculada: ${Math.ceil(cuotaCalculada).toLocaleString()})</span>
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={cuotaOverride}
+                  onChange={(e) => setCuotaOverride(e.target.value)}
+                  placeholder={String(Math.ceil(cuotaCalculada))}
+                />
+                <p className="text-[11px] text-muted-foreground">Déjalo vacío para usar la cuota calculada, o escribe un valor personalizado.</p>
+              </div>
+            )}
+
+            {/* Fecha primer pago */}
             <div className="space-y-1.5">
-              <Label className="text-[13px]">Ruta</Label>
-              <Select value={rutaId} onValueChange={setRutaId}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar ruta" /></SelectTrigger>
-                <SelectContent>
-                  {rutas.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-[13px]">Fecha Primer Pago</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !fechaPrimerPago && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {fechaPrimerPago ? format(fechaPrimerPago, "dd/MM/yyyy") : "Seleccionar fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={fechaPrimerPago} onSelect={setFechaPrimerPago} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
             </div>
-          </div>
 
-          {/* Gastos legales + Mora */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Caja + Ruta */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Caja</Label>
+                <Select value={cajaId} onValueChange={setCajaId}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    {cajas.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Ruta</Label>
+                <Select value={rutaId} onValueChange={setRutaId}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    {rutas.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Gastos legales + Mora */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Gastos Legales</Label>
+                <Input type="number" min="0" value={gastosLegales} onChange={(e) => setGastosLegales(e.target.value)} placeholder="0.00" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Tipo Mora</Label>
+                <Select value={tipoMora} onValueChange={setTipoMora}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="porcentaje">% por día</SelectItem>
+                    <SelectItem value="fijo">Fijo por día</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Mora / día</Label>
+                <Input type="number" min="0" value={valorMora} onChange={(e) => setValorMora(e.target.value)} placeholder="0" />
+              </div>
+            </div>
+
+            {/* Empresa */}
             <div className="space-y-1.5">
-              <Label className="text-[13px]">Gastos Legales</Label>
-              <Input type="number" min="0" value={gastosLegales} onChange={(e) => setGastosLegales(e.target.value)} placeholder="0.00" />
+              <Label className="text-[13px]">Empresa</Label>
+              <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Opcional" />
             </div>
+
+            {/* Notas */}
             <div className="space-y-1.5">
-              <Label className="text-[13px]">Tipo de Mora</Label>
-              <Select value={tipoMora} onValueChange={setTipoMora}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="porcentaje">Porcentaje</SelectItem>
-                  <SelectItem value="fijo">Fijo</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label className="text-[13px]">Notas</Label>
+              <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Observaciones..." rows={2} />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Valor Mora</Label>
-              <Input type="number" min="0" value={valorMora} onChange={(e) => setValorMora(e.target.value)} placeholder="0" />
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => navigate("/prestamos")}>Cancelar</Button>
+              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+                <Save className="h-4 w-4 mr-1.5" />
+                {createMutation.isPending ? "Guardando..." : "Crear Préstamo"}
+              </Button>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Empresa */}
-          <div className="space-y-1.5">
-            <Label className="text-[13px]">Empresa</Label>
-            <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Nombre de empresa (opcional)" />
-          </div>
+        {/* RIGHT — Live preview */}
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="text-base">Vista previa de Amortización</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {amortizacion.length === 0 ? (
+              <p className="text-[13px] text-muted-foreground py-8 text-center">
+                Ingresa monto, tasa y cuotas para ver la tabla en tiempo real.
+              </p>
+            ) : (
+              <>
+                {/* Summary strip */}
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="bg-muted/50 rounded-lg px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total a Pagar</p>
+                    <p className="text-sm font-semibold">${totalConCuotaFinal.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Cuota Fija</p>
+                    <p className="text-sm font-semibold">${cuotaFinal.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Mora / día</p>
+                    <p className="text-sm font-semibold">
+                      {tipoMora === "porcentaje"
+                        ? `${parseFloat(valorMora) || 0}%`
+                        : `$${(parseFloat(valorMora) || 0).toLocaleString()}`}
+                    </p>
+                  </div>
+                </div>
 
-          {/* Notas */}
-          <div className="space-y-1.5">
-            <Label className="text-[13px]">Notas</Label>
-            <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Observaciones..." rows={3} />
-          </div>
-
-          {/* Resumen */}
-          {monto > 0 && cuotas > 0 && (
-            <div className="bg-muted/50 rounded-lg p-4 space-y-1 text-[13px]">
-              <p><span className="text-muted-foreground">Total a pagar:</span> <span className="font-semibold">${montoTotalPagar.toLocaleString()}</span></p>
-              <p><span className="text-muted-foreground">Cuota estimada:</span> <span className="font-semibold">${Math.ceil(cuotaCalculada).toLocaleString()}</span></p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => navigate("/prestamos")}>Cancelar</Button>
-            <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-              <Save className="h-4 w-4 mr-1.5" />
-              {createMutation.isPending ? "Guardando..." : "Crear Préstamo"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+                <div className="border rounded-lg overflow-x-auto max-h-[500px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-table-header hover:bg-table-header">
+                        <TableHead className="text-[11px] px-2 py-2">#</TableHead>
+                        <TableHead className="text-[11px] px-2 py-2">Vencimiento</TableHead>
+                        <TableHead className="text-[11px] px-2 py-2 text-right">Capital</TableHead>
+                        <TableHead className="text-[11px] px-2 py-2 text-right">Interés</TableHead>
+                        <TableHead className="text-[11px] px-2 py-2 text-right">Cuota</TableHead>
+                        <TableHead className="text-[11px] px-2 py-2 text-right">Saldo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {amortizacion.map((c) => (
+                        <TableRow key={c.num} className="border-b border-border/50">
+                          <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-muted-foreground">{c.fechaVencimiento}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.capital.toLocaleString()}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.interes.toLocaleString()}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">${c.cuota.toLocaleString()}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.saldo.toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
