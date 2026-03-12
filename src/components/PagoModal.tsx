@@ -175,6 +175,16 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         await supabase.from("prestamos").update({ estado: "Liquidado" }).eq("id", prestamoId);
       }
 
+      // 6) Increment cobrador efectivo_en_mano if cobrador is assigned
+      if (cobradorId) {
+        const { data: cobData } = await (supabase.from as any)("cobradores").select("efectivo_en_mano").eq("id", cobradorId).single();
+        if (cobData) {
+          await (supabase.from as any)("cobradores").update({
+            efectivo_en_mano: Number(cobData.efectivo_en_mano || 0) + montoNum,
+          }).eq("id", cobradorId);
+        }
+      }
+
       // Invalidate queries to refresh UI
       queryClient.invalidateQueries({ queryKey: ["amortizacion", prestamoId] });
       queryClient.invalidateQueries({ queryKey: ["pagos", prestamoId] });
