@@ -183,7 +183,7 @@ export default function NuevoPrestamoPage() {
   });
 
   return (
-    <div className="space-y-5 max-w-4xl mx-auto">
+    <div className="space-y-5">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/prestamos")}>
           <ArrowLeft className="h-4 w-4" />
