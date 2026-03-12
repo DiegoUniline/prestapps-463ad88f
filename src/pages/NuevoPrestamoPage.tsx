@@ -18,14 +18,15 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 
-function useClientesOptions() {
+function useClientesOptions(empresaId: string) {
   return useQuery({
-    queryKey: ["clientes-options"],
+    queryKey: ["clientes-options", empresaId],
     queryFn: async () => {
       const { data } = await supabase
         .from("clientes")
         .select("id, nombre_completo, id_cliente")
         .eq("activo", true)
+        .eq("empresa_id", empresaId)
         .order("nombre_completo");
       return data || [];
     },
