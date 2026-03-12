@@ -55,10 +55,11 @@ function calcNextDate(base: Date, frecuencia: string, n: number): Date {
 export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { empresaId } = useEmpresa();
 
-  const { data: clientes = [] } = useClientesOptions();
-  const { data: cajas = [] } = useCajasOptions();
-  const { data: rutas = [] } = useRutasOptions();
+  const { data: clientes = [] } = useClientesOptions(empresaId);
+  const { data: cajas = [] } = useCajasOptions(empresaId);
+  const { data: rutas = [] } = useRutasOptions(empresaId);
 
   const [clienteId, setClienteId] = useState("");
   const [montoSolicitado, setMontoSolicitado] = useState("");
