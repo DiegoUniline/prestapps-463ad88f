@@ -459,14 +459,30 @@ export default function PrestamoDetallePage() {
                           <TableCell className="px-3 w-[90px]">
                             {status !== "Pagada" && (
                               <div className="flex items-center gap-1">
-                                <button title="Pagar" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                <button
+                                  title="Pagar"
+                                  onClick={() => { setSelectedCuota(c); setPagoOpen(true); }}
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                >
                                   <HandCoins className="h-3.5 w-3.5" />
                                 </button>
-                                <button title="Promesa" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                <button
+                                  title="Promesa"
+                                  onClick={() => { setSelectedCuota(c); setPromesaOpen(true); }}
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                >
                                   <CalendarCheck className="h-3.5 w-3.5" />
                                 </button>
                                 {!c.avisado && (
-                                  <button title="Avisar" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                  <button
+                                    title="Avisar"
+                                    onClick={async () => {
+                                      await supabase.from("amortizacion").update({ avisado: true }).eq("id", c.id);
+                                      queryClient.invalidateQueries({ queryKey: ["amortizacion"] });
+                                      toast.success(`Cuota #${c.num_cuota} marcada como avisada`);
+                                    }}
+                                    className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                  >
                                     <Bell className="h-3.5 w-3.5" />
                                   </button>
                                 )}
