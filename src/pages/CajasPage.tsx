@@ -393,11 +393,11 @@ export default function CajasPage() {
         })}
       </div>
 
-      {/* Movimientos table */}
+      {/* Kardex table */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-[14px] font-semibold">
-            Movimientos {selectedCaja ? `— ${cajas.find(c => c.id === selectedCaja)?.nombre}` : ""}
+            Kardex {selectedCaja ? `— ${cajas.find(c => c.id === selectedCaja)?.nombre}` : "— Todos los movimientos"}
           </h2>
           {selectedCaja && (
             <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setSelectedCaja(null)}>
@@ -409,33 +409,52 @@ export default function CajasPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-table-header hover:bg-table-header border-b">
-                <TableHead className="w-10 text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Tipo</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Concepto</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Caja</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Fecha</TableHead>
-                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Monto</TableHead>
+                {["", "Fecha", "Categoría", "Concepto", "Cliente", "Préstamo", "Caja"].map((h) => (
+                  <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">{h}</TableHead>
+                ))}
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">Entrada</TableHead>
+                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">Salida</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredMov.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-[13px]">Sin movimientos</TableCell></TableRow>
-              ) : filteredMov.map((m) => (
-                <TableRow key={m.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
-                  <TableCell className="px-3">
-                    <div className={cn("h-6 w-6 rounded-full flex items-center justify-center", m.tipo === "entrada" ? "bg-success/10" : "bg-destructive/10")}>
-                      {m.tipo === "entrada" ? <ArrowDownLeft className="h-3 w-3 text-success" /> : <ArrowUpRight className="h-3 w-3 text-destructive" />}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-[13px] px-3">{m.concepto || "—"}</TableCell>
-                  <TableCell className="text-[12px] text-muted-foreground px-3">{(m.cajas as any)?.nombre || "—"}</TableCell>
-                  <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">
-                    {m.created_at ? format(new Date(m.created_at), "dd/MM/yyyy HH:mm") : "—"}
-                  </TableCell>
-                  <TableCell className={cn("text-right font-medium text-[13px] px-3", m.tipo === "entrada" ? "text-success" : "text-destructive")}>
-                    {m.tipo === "entrada" ? "+" : "-"}{$$(Number(m.monto))}
-                  </TableCell>
-                </TableRow>
-              ))}
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-[13px]">Sin movimientos</TableCell></TableRow>
+              ) : filteredMov.map((m) => {
+                const catColors: Record<string, string> = {
+                  Cobro: "bg-success/10 text-success",
+                  Desembolso: "bg-[hsl(217,91%,60%)]/10 text-[hsl(217,91%,60%)]",
+                  "Depósito": "bg-primary/10 text-primary",
+                  Retiro: "bg-destructive/10 text-destructive",
+                  Transferencia: "bg-warning/10 text-warning",
+                };
+                return (
+                  <TableRow key={m.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
+                    <TableCell className="px-3 w-10">
+                      <div className={cn("h-6 w-6 rounded-full flex items-center justify-center", m.tipo === "entrada" ? "bg-success/10" : "bg-destructive/10")}>
+                        {m.tipo === "entrada" ? <ArrowDownLeft className="h-3 w-3 text-success" /> : <ArrowUpRight className="h-3 w-3 text-destructive" />}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">
+                      {m.fecha ? format(new Date(m.fecha), "dd/MM/yyyy HH:mm") : "—"}
+                    </TableCell>
+                    <TableCell className="px-3">
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", catColors[m.categoria] || "bg-muted text-muted-foreground")}>
+                        {m.categoria}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-[13px] px-3 max-w-[200px] truncate">{m.concepto}</TableCell>
+                    <TableCell className="text-[13px] px-3 whitespace-nowrap">{m.cliente || <span className="text-muted-foreground/40">—</span>}</TableCell>
+                    <TableCell className="text-[12px] text-muted-foreground px-3 font-mono">{m.prestamo || <span className="text-muted-foreground/40">—</span>}</TableCell>
+                    <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{m.caja}</TableCell>
+                    <TableCell className="text-right font-medium text-[13px] px-3 text-success">
+                      {m.tipo === "entrada" ? `+${$$(m.monto)}` : ""}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-[13px] px-3 text-destructive">
+                      {m.tipo === "salida" ? `-${$$(m.monto)}` : ""}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
