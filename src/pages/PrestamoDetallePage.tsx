@@ -86,6 +86,8 @@ export default function PrestamoDetallePage() {
   const [tab, setTab] = useState("amortizacion");
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [pagoOpen, setPagoOpen] = useState(false);
+  const [promesaOpen, setPromesaOpen] = useState(false);
+  const [selectedCuota, setSelectedCuota] = useState<any>(null);
   const [showOptional, setShowOptional] = useState(false);
 
   const isNew = !id || id === "nuevo";
