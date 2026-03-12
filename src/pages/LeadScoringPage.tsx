@@ -299,8 +299,9 @@ export default function LeadScoringPage() {
 
   // Summary stats
   const totals = useMemo(() => {
-    if (!scores?.length) return { avg: 0, excelentes: 0, buenos: 0, regulares: 0, riesgosos: 0, criticos: 0 };
-    const avg = Math.round(scores.reduce((s, c) => s + c.score, 0) / scores.length);
+    if (!scores?.length) return { avg: 0, excelentes: 0, buenos: 0, regulares: 0, riesgosos: 0, criticos: 0, nuevos: 0 };
+    const conScore = scores.filter((s) => s.score >= 0);
+    const avg = conScore.length > 0 ? Math.round(conScore.reduce((s, c) => s + c.score, 0) / conScore.length) : 0;
     return {
       avg,
       excelentes: scores.filter((s) => s.nivel === "Excelente").length,
@@ -308,6 +309,7 @@ export default function LeadScoringPage() {
       regulares: scores.filter((s) => s.nivel === "Regular").length,
       riesgosos: scores.filter((s) => s.nivel === "Riesgoso").length,
       criticos: scores.filter((s) => s.nivel === "Crítico").length,
+      nuevos: scores.filter((s) => s.nivel === "Nuevo").length,
     };
   }, [scores]);
 
