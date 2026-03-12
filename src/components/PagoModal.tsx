@@ -38,7 +38,7 @@ interface PagoModalProps {
 
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas }: PagoModalProps) {
+export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId }: PagoModalProps) {
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("Efectivo");
