@@ -28,17 +28,94 @@ function useCajas() {
   });
 }
 
-function useMovimientos() {
+interface KardexEntry {
+  id: string;
+  fecha: string;
+  tipo: "entrada" | "salida";
+  categoria: string; // Cobro, Desembolso, Depósito, Retiro, Transferencia
+  concepto: string;
+  cliente: string;
+  prestamo: string;
+  caja: string;
+  cajaId: string;
+  usuario: string;
+  monto: number;
+}
+
+function useKardex() {
   return useQuery({
-    queryKey: ["movimientos-all"],
+    queryKey: ["kardex-all"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1) Movimientos de caja (depósitos, retiros, transferencias, desembolsos)
+      const { data: movs, error: movErr } = await supabase
         .from("movimientos_caja")
-        .select("*, cajas ( nombre )")
+        .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
         .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      return data || [];
+        .limit(500);
+      if (movErr) throw movErr;
+
+      // 2) Pagos (cobros)
+      const { data: pagos, error: pagErr } = await supabase
+        .from("pagos")
+        .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      if (pagErr) throw pagErr;
+
+      const entries: KardexEntry[] = [];
+
+      // Map movimientos
+      for (const m of movs || []) {
+        const prestamo = m.prestamos as any;
+        const cliente = prestamo?.clientes as any;
+        const concepto = m.concepto || "";
+        let categoria = m.tipo === "entrada" ? "Depósito" : "Retiro";
+        if (concepto.toLowerCase().includes("transferencia")) categoria = "Transferencia";
+        if (concepto.toLowerCase().includes("desembolso") || concepto.toLowerCase().includes("préstamo")) {
+          categoria = m.tipo === "salida" ? "Desembolso" : "Cobro";
+        }
+
+        entries.push({
+          id: `mov-${m.id}`,
+          fecha: m.created_at || "",
+          tipo: m.tipo as "entrada" | "salida",
+          categoria,
+          concepto: concepto || (m.tipo === "entrada" ? "Depósito" : "Retiro"),
+          cliente: cliente?.nombre_completo || "",
+          prestamo: prestamo?.id ? `PRE-${prestamo.id.slice(0, 8)}` : "",
+          caja: (m.cajas as any)?.nombre || "—",
+          cajaId: m.caja_id,
+          usuario: "",
+          monto: Number(m.monto || 0),
+        });
+      }
+
+      // Map pagos as cobros (entrada)
+      for (const p of pagos || []) {
+        const prestamo = p.prestamos as any;
+        const cliente = prestamo?.clientes as any;
+        // Skip if a matching movimiento_caja already exists for this pago
+        const alreadyInMovs = entries.some(e => e.concepto.includes(prestamo?.id?.slice(0, 8) || "NONE") && e.categoria !== "Desembolso" && Math.abs(e.monto - Number(p.monto_recibido)) < 0.01);
+        if (alreadyInMovs) continue;
+
+        entries.push({
+          id: `pago-${p.id}`,
+          fecha: p.created_at || "",
+          tipo: "entrada",
+          categoria: "Cobro",
+          concepto: `Cobro cuota — ${$$(Number(p.monto_recibido))}`,
+          cliente: cliente?.nombre_completo || "",
+          prestamo: prestamo?.id ? `PRE-${prestamo.id.slice(0, 8)}` : "",
+          caja: (p.cajas as any)?.nombre || "—",
+          cajaId: p.caja_id || "",
+          usuario: "",
+          monto: Number(p.monto_recibido || 0),
+        });
+      }
+
+      // Sort by date descending
+      entries.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      return entries;
     },
   });
 }
