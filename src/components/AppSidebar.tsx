@@ -27,6 +27,8 @@ import {
   UserCheck,
   ClipboardCheck,
   Building2,
+  MessageSquare,
+  Users2,
 } from "lucide-react";
 
 const mainNav = [
@@ -36,6 +38,7 @@ const mainNav = [
   { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },
   { title: "Promesas", url: "/promesas", icon: CalendarCheck, roles: ["admin", "supervisor", "cobrador"] },
   { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "supervisor"] },
+  { title: "CRM Cobranza", url: "/crm", icon: Users2, roles: ["admin", "supervisor"] },
 ];
 
 const adminNav = [
@@ -45,6 +48,7 @@ const adminNav = [
   { title: "Reportes", url: "/reportes", icon: FileText, roles: ["admin", "supervisor"] },
   { title: "Usuarios", url: "/usuarios", icon: Settings, roles: ["admin"] },
   { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"] },
+  { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
 ];
 
 export function AppSidebar() {
