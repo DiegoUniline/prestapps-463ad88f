@@ -84,9 +84,10 @@ type ModalType = "nuevo" | "corte" | null;
 // ── Component ─────────────────────────────────────────────────────
 export default function CobradoresPage() {
   const queryClient = useQueryClient();
-  const { data: cobradores = [], isLoading } = useCobradores();
-  const { data: cortes = [] } = useCortes();
-  const { data: cajas = [] } = useCajas();
+  const { empresaId } = useEmpresa();
+  const { data: cobradores = [], isLoading } = useCobradores(empresaId);
+  const { data: cortes = [] } = useCortes(empresaId);
+  const { data: cajas = [] } = useCajas(empresaId);
 
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalType>(null);

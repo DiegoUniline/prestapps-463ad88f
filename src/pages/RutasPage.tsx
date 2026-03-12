@@ -73,7 +73,8 @@ function useCobradores() {
 
 function RutasListPage() {
   const navigate = useNavigate();
-  const { data: rutas = [], isLoading } = useRutas();
+  const { empresaId } = useEmpresa();
+  const { data: rutas = [], isLoading } = useRutas(empresaId);
 
   return (
     <div className="space-y-5">
