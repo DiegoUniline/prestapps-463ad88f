@@ -56,9 +56,9 @@ interface CuotaDiaria {
   fechaPago: string | null;
 }
 
-function useCobranzaDiaria(fecha: string) {
+function useCobranzaDiaria(fecha: string, empresaId: string) {
   return useQuery({
-    queryKey: ["cobranza-diaria", fecha],
+    queryKey: ["cobranza-diaria", fecha, empresaId],
     queryFn: async () => {
       // 1) Get all cuotas for this date + overdue
       const { data: cuotas, error } = await supabase
@@ -68,6 +68,7 @@ function useCobranzaDiaria(fecha: string) {
           saldo_capital, saldo_interes, mora_pagada, interes_pagado, capital_pagado,
           fecha_vencimiento, status, dias_atraso, fecha_pagada
         `)
+        .eq("empresa_id", empresaId)
         .or(`fecha_vencimiento.eq.${fecha},and(fecha_vencimiento.lt.${fecha},status.neq.Pagada)`)
         .order("fecha_vencimiento", { ascending: true });
 
