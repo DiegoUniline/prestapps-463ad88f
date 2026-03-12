@@ -323,7 +323,7 @@ export default function LeadScoringPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Score Promedio</p>
           <p className="text-2xl font-bold mt-1">{totals.avg}</p>
@@ -362,6 +362,13 @@ export default function LeadScoringPage() {
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Críticos</p>
           </div>
           <p className="text-2xl font-bold mt-1">{totals.criticos}</p>
+        </div>
+        <div className="border rounded-lg p-3 bg-card">
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full bg-slate-400" />
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Nuevos</p>
+          </div>
+          <p className="text-2xl font-bold mt-1">{totals.nuevos}</p>
         </div>
       </div>
 
