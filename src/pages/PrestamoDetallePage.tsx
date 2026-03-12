@@ -1,6 +1,10 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
+import { PromesaModal } from "@/components/PromesaModal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -82,9 +86,12 @@ const optionalCols = ["Cap.Pag.", "Int.Pag.", "Mora Pag.", "S.Cap", "S.Int", "S.
 export default function PrestamoDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState("amortizacion");
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [pagoOpen, setPagoOpen] = useState(false);
+  const [promesaOpen, setPromesaOpen] = useState(false);
+  const [selectedCuota, setSelectedCuota] = useState<any>(null);
   const [showOptional, setShowOptional] = useState(false);
 
   const isNew = !id || id === "nuevo";
@@ -456,14 +463,30 @@ export default function PrestamoDetallePage() {
                           <TableCell className="px-3 w-[90px]">
                             {status !== "Pagada" && (
                               <div className="flex items-center gap-1">
-                                <button title="Pagar" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                <button
+                                  title="Pagar"
+                                  onClick={() => { setSelectedCuota(c); setPagoOpen(true); }}
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                >
                                   <HandCoins className="h-3.5 w-3.5" />
                                 </button>
-                                <button title="Promesa" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                <button
+                                  title="Promesa"
+                                  onClick={() => { setSelectedCuota(c); setPromesaOpen(true); }}
+                                  className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                >
                                   <CalendarCheck className="h-3.5 w-3.5" />
                                 </button>
                                 {!c.avisado && (
-                                  <button title="Avisar" className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                                  <button
+                                    title="Avisar"
+                                    onClick={async () => {
+                                      await supabase.from("amortizacion").update({ avisado: true }).eq("id", c.id);
+                                      queryClient.invalidateQueries({ queryKey: ["amortizacion"] });
+                                      toast.success(`Cuota #${c.num_cuota} marcada como avisada`);
+                                    }}
+                                    className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                  >
                                     <Bell className="h-3.5 w-3.5" />
                                   </button>
                                 )}
@@ -609,6 +632,19 @@ export default function PrestamoDetallePage() {
         }))}
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
       />
+
+      {/* Promesa Modal */}
+      {selectedCuota && (
+        <PromesaModal
+          open={promesaOpen}
+          onOpenChange={setPromesaOpen}
+          prestamoId={prestamo.id}
+          cuotaNum={selectedCuota.num_cuota}
+          cuotaId={selectedCuota.id}
+          saldoTotal={Number(selectedCuota.saldo_total || 0)}
+          fechaVencimiento={format(new Date(selectedCuota.fecha_vencimiento), "dd/MM/yyyy")}
+        />
+      )}
     </div>
   );
 }
