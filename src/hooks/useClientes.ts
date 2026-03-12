@@ -6,13 +6,12 @@ export function useClientes(filters?: { estado?: string; search?: string; empres
   return useQuery({
     queryKey: ["clientes", filters],
     queryFn: async () => {
-      let query = supabase
-        .from("clientes")
+      let query = (supabase.from as any)("clientes")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (filters?.empresaId) {
-        query = query.eq("empresa_id" as any, filters.empresaId);
+        query = query.eq("empresa_id", filters.empresaId);
       }
       if (filters?.estado && filters.estado !== "todos") {
         query = query.eq("estado", filters.estado);
