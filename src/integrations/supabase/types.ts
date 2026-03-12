@@ -253,6 +253,7 @@ export type Database = {
           aplicado_interes: number | null
           aplicado_mora: number | null
           caja_id: string | null
+          cobrador_id: string | null
           created_at: string | null
           cuota_id: string | null
           id: string
@@ -260,12 +261,14 @@ export type Database = {
           monto_recibido: number
           prestamo_id: string
           registrado_por: string | null
+          ruta_id: string | null
         }
         Insert: {
           aplicado_capital?: number | null
           aplicado_interes?: number | null
           aplicado_mora?: number | null
           caja_id?: string | null
+          cobrador_id?: string | null
           created_at?: string | null
           cuota_id?: string | null
           id?: string
@@ -273,12 +276,14 @@ export type Database = {
           monto_recibido: number
           prestamo_id: string
           registrado_por?: string | null
+          ruta_id?: string | null
         }
         Update: {
           aplicado_capital?: number | null
           aplicado_interes?: number | null
           aplicado_mora?: number | null
           caja_id?: string | null
+          cobrador_id?: string | null
           created_at?: string | null
           cuota_id?: string | null
           id?: string
@@ -286,6 +291,7 @@ export type Database = {
           monto_recibido?: number
           prestamo_id?: string
           registrado_por?: string | null
+          ruta_id?: string | null
         }
         Relationships: [
           {
@@ -307,6 +313,13 @@ export type Database = {
             columns: ["prestamo_id"]
             isOneToOne: false
             referencedRelation: "prestamos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagos_ruta_id_fkey"
+            columns: ["ruta_id"]
+            isOneToOne: false
+            referencedRelation: "rutas"
             referencedColumns: ["id"]
           },
         ]
