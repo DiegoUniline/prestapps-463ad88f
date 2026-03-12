@@ -8,7 +8,7 @@ export function TopBar() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="h-14 border-b flex items-center justify-between px-4 bg-card">
+    <header className="h-14 border-b flex items-center justify-between px-4 bg-card shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
       <div className="flex items-center gap-2">
         <SidebarTrigger />
       </div>
