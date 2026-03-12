@@ -34,9 +34,9 @@ interface PagoListItem {
 type SortKey = keyof PagoListItem;
 
 // ── Data hook ─────────────────────────────────────────────────────
-function usePagosAll() {
+function usePagosAll(empresaId: string) {
   return useQuery({
-    queryKey: ["pagos-all"],
+    queryKey: ["pagos-all", empresaId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pagos")
@@ -46,6 +46,7 @@ function usePagosAll() {
           cajas ( nombre ),
           prestamos!pagos_prestamo_id_fkey ( id, clientes ( nombre_completo ), rutas ( nombre ) )
         `)
+        .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
