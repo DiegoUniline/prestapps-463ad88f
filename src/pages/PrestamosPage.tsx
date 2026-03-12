@@ -1,4 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { DollarSign, FileText, TrendingUp, AlertTriangle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -208,7 +210,64 @@ export default function PrestamosPage() {
         <Button onClick={() => navigate("/prestamos/nuevo")}><Plus className="h-4 w-4 mr-2" />Nuevo</Button>
       </div>
 
-      {/* Search bar centered — Odoo style */}
+      {/* KPI Cards */}
+      {(() => {
+        const totalPrestamos = mockPrestamos.length;
+        const montoColocado = mockPrestamos.reduce((s, p) => s + p.montoSolicitado, 0);
+        const porCobrar = mockPrestamos.reduce((s, p) => s + p.saldo, 0);
+        const morosos = mockPrestamos.filter((p) => p.mora > 0);
+        const totalMora = morosos.reduce((s, p) => s + p.mora, 0);
+        return (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-none shadow-sm bg-gradient-to-br from-primary/10 to-primary/5">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Total Préstamos</p>
+                  <p className="text-2xl font-bold tracking-tight">{totalPrestamos}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-none shadow-sm bg-gradient-to-br from-success/10 to-success/5">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-success/15 text-success">
+                  <DollarSign className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Monto Colocado</p>
+                  <p className="text-2xl font-bold tracking-tight">${montoColocado.toLocaleString()}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-none shadow-sm bg-gradient-to-br from-accent/40 to-accent/10">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Por Cobrar</p>
+                  <p className="text-2xl font-bold tracking-tight">${porCobrar.toLocaleString()}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-none shadow-sm bg-gradient-to-br from-destructive/10 to-destructive/5">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-destructive/15 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">En Mora ({morosos.length})</p>
+                  <p className="text-2xl font-bold tracking-tight">${totalMora.toLocaleString()}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
+
+
       <div className="hidden md:flex justify-center">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
