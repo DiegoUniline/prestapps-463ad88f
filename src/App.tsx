@@ -31,6 +31,7 @@ import CrmCobranzaPage from "@/pages/CrmCobranzaPage";
 import LeadScoringPage from "@/pages/LeadScoringPage";
 import GastosPage from "@/pages/GastosPage";
 import ComisionesPage from "@/pages/ComisionesPage";
+import MapaGPSPage from "@/pages/MapaGPSPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
