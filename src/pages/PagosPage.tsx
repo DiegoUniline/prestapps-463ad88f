@@ -133,9 +133,10 @@ function MetodoDot({ metodo }: { metodo: string }) {
 
 // ── Component ─────────────────────────────────────────────────────
 export default function PagosPage() {
-  const { data: pagos = [], isLoading, isError } = usePagosAll();
-  const { data: cajasRaw = [] } = useCajasOptions();
-  const { data: rutasRaw = [] } = useRutasOptions();
+  const { empresaId } = useEmpresa();
+  const { data: pagos = [], isLoading, isError } = usePagosAll(empresaId);
+  const { data: cajasRaw = [] } = useCajasOptions(empresaId);
+  const { data: rutasRaw = [] } = useRutasOptions(empresaId);
 
   const cajasOpts = cajasRaw.map((c) => c.nombre);
   const rutasOpts = rutasRaw.map((r) => r.nombre);
