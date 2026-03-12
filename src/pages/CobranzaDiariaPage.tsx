@@ -180,6 +180,7 @@ function getStatusBadge(item: CuotaDiaria) {
 export default function CobranzaDiariaPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { empresaId } = useEmpresa();
   const [fecha, setFecha] = useState(new Date());
   const [search, setSearch] = useState("");
   const [filtroRuta, setFiltroRuta] = useState("todas");
@@ -196,8 +197,8 @@ export default function CobranzaDiariaPage() {
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();
 
   const fechaStr = format(fecha, "yyyy-MM-dd");
-  const { data: cuotas, isLoading } = useCobranzaDiaria(fechaStr);
-  const { data: cajas } = useCajasAll();
+  const { data: cuotas, isLoading } = useCobranzaDiaria(fechaStr, empresaId);
+  const { data: cajas } = useCajasAll(empresaId);
 
   // Extract unique rutas and cobradores
   const rutas = useMemo(() => {
