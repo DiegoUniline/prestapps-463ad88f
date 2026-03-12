@@ -8,6 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import PrestamosPage from "@/pages/PrestamosPage";
 import NuevoPrestamoPage from "@/pages/NuevoPrestamoPage";
+import NuevoClientePage from "@/pages/NuevoClientePage";
 import PagosPage from "@/pages/PagosPage";
 import PromesasPage from "@/pages/PromesasPage";
 import ClientesPage from "@/pages/ClientesPage";
