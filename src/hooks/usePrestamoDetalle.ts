@@ -16,7 +16,7 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
           rutas ( id, nombre )
         `)
         .eq("id", prestamoId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       return prestamo;
