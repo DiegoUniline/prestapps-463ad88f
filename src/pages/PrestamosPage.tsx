@@ -219,6 +219,13 @@ export default function PrestamosPage() {
     { label: `En Mora (${morosos.length})`, value: `$${totalMora.toLocaleString()}`, icon: AlertTriangle, accent: "text-destructive" },
   ];
 
+  const tabCounts = useMemo(() => ({
+    todos: prestamos.length,
+    vigentes: prestamos.filter((p) => p.estado === "Activo" || p.estado === "Al día").length,
+    atrasados: prestamos.filter((p) => p.estado === "Vencido" || p.estado === "Juridico").length,
+    liquidados: prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado").length,
+  }), [prestamos]);
+
   return (
     <div className="space-y-5">
       {/* Header */}
