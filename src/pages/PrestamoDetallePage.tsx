@@ -193,7 +193,7 @@ export default function PrestamoDetallePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" className="h-8 text-[13px]">
+          <Button size="sm" className="h-8 text-[13px]" onClick={() => setPagoOpen(true)}>
             <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-[13px]">
