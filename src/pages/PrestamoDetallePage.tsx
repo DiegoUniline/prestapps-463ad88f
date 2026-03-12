@@ -1,235 +1,474 @@
-import { useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Pencil, Save, X, Calculator } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, MoreHorizontal, Pencil, HandCoins, Check, Clock, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, Bell } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
-interface CuotaAmortizacion {
-  numero: number; capital: number; interes: number; capitalInteres: number;
-  fechaVencimiento: string; saldoCapital: number; status: string;
-}
+// ── Badge colors (matching design system) ─────────────────────────
+const estadoBadge: Record<string, string> = {
+  Activo: "bg-badge-activo text-badge-activo-foreground",
+  "Al día": "bg-badge-aldia text-badge-aldia-foreground",
+  Vencido: "bg-badge-vencido text-badge-vencido-foreground",
+  Liquidado: "bg-badge-liquidado text-badge-liquidado-foreground",
+  Cancelado: "bg-badge-cancelado text-badge-cancelado-foreground",
+  Juridico: "bg-badge-juridico text-badge-juridico-foreground",
+};
 
-function calcularFijo(monto: number, cuotas: number, porcentaje: number, redondeo: number | null): CuotaAmortizacion[] {
-  const totalPagar = monto * (1 + porcentaje / 100);
-  const cuotaExacta = totalPagar / cuotas;
-  const cuotaAplicada = redondeo || cuotaExacta;
-  const totalConRedondeo = cuotaAplicada * (cuotas - 1);
-  const ultimaCuota = totalPagar - totalConRedondeo;
-  const interesPorCuota = (totalPagar - monto) / cuotas;
-  const capitalPorCuota = monto / cuotas;
-  const hoy = new Date();
-  return Array.from({ length: cuotas }, (_, i) => {
-    const fecha = new Date(hoy); fecha.setDate(fecha.getDate() + (i + 1) * 7);
-    const esUltima = i === cuotas - 1;
-    return { numero: i + 1, capital: capitalPorCuota, interes: interesPorCuota,
-      capitalInteres: esUltima && redondeo ? ultimaCuota : cuotaAplicada,
-      fechaVencimiento: fecha.toLocaleDateString("es"), saldoCapital: monto - capitalPorCuota * (i + 1), status: "Pendiente" };
-  });
-}
+const cuotaStatusBadge: Record<string, string> = {
+  Pagada: "bg-badge-activo text-badge-activo-foreground",
+  Vencida: "bg-badge-vencido text-badge-vencido-foreground",
+  Prometida: "bg-badge-juridico text-badge-juridico-foreground",
+  Parcial: "bg-badge-aldia text-badge-aldia-foreground",
+  Pendiente: "bg-secondary text-muted-foreground",
+};
 
-function calcularInsolutos(monto: number, cuotas: number, tasa: number, redondeo: number | null): CuotaAmortizacion[] {
-  const r = tasa / 100;
-  const cuotaFija = (monto * r * Math.pow(1 + r, cuotas)) / (Math.pow(1 + r, cuotas) - 1);
-  const cuotaAplicada = redondeo || cuotaFija;
-  let saldo = monto; const hoy = new Date();
-  return Array.from({ length: cuotas }, (_, i) => {
-    const interes = saldo * r; const esUltima = i === cuotas - 1;
-    const capitalInteres = esUltima ? saldo + interes : cuotaAplicada;
-    const capital = capitalInteres - interes; saldo = Math.max(0, saldo - capital);
-    const fecha = new Date(hoy); fecha.setDate(fecha.getDate() + (i + 1) * 7);
-    return { numero: i + 1, capital, interes, capitalInteres, fechaVencimiento: fecha.toLocaleDateString("es"), saldoCapital: saldo, status: "Pendiente" };
-  });
-}
+const cuotaRowBg: Record<string, string> = {
+  Pagada: "bg-[hsl(142_76%_97%)]",
+  Vencida: "bg-[hsl(0_93%_97%)]",
+  Prometida: "bg-[hsl(45_93%_97%)]",
+  Parcial: "bg-[hsl(217_91%_97%)]",
+  Pendiente: "",
+};
 
+const metodoBadge: Record<string, string> = {
+  Efectivo: "bg-badge-activo text-badge-activo-foreground",
+  Transferencia: "bg-badge-aldia text-badge-aldia-foreground",
+  Otro: "bg-secondary text-muted-foreground",
+};
+
+const promesaStatusBadge: Record<string, string> = {
+  Pendiente: "bg-badge-juridico text-badge-juridico-foreground",
+  Cumplida: "bg-badge-activo text-badge-activo-foreground",
+  Incumplida: "bg-badge-vencido text-badge-vencido-foreground",
+};
+
+// ── Mock data ─────────────────────────────────────────────────────
+const mockPrestamo = {
+  id: "PRE-0002",
+  cliente: "Carlos López",
+  clienteId: "CLI-0002",
+  empresa: "Comercial López",
+  cobrador: "Juan Torres",
+  ruta: "Ruta Norte",
+  generadoPor: "Admin",
+  fechaRegistro: "2025-11-01",
+  fechaPrimerPago: "2025-11-08",
+  caja: "Caja Principal",
+  modalidad: "fijo" as const,
+  montoSolicitado: 25000,
+  numCuotas: 24,
+  frecuencia: "semanal",
+  tasaInteres: 20,
+  cuotaCalculada: 1354.17,
+  cuotaRedondeada: 1355,
+  tipoMora: "porcentaje",
+  valorMora: 5,
+  gastosLegales: 500,
+  estado: "Vencido",
+  montoTotalPagar: 32500,
+  notas: "Cliente con buen historial previo.",
+};
+
+const mockAmortizacion = [
+  { num_cuota: 1, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2025-11-08", fecha_calculo: "2025-11-08", dias_atraso: 0, mora: 0, capital_pagado: 1041.67, interes_pagado: 312.50, mora_pagada: 0, saldo_capital: 0, saldo_interes: 0, saldo_mora: 0, saldo_total: 0, status: "Pagada", fecha_pagada: "2025-11-08", descuento_mora: 0, avisado: true },
+  { num_cuota: 2, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2025-11-15", fecha_calculo: "2025-11-15", dias_atraso: 0, mora: 0, capital_pagado: 1041.67, interes_pagado: 312.50, mora_pagada: 0, saldo_capital: 0, saldo_interes: 0, saldo_mora: 0, saldo_total: 0, status: "Pagada", fecha_pagada: "2025-11-15", descuento_mora: 0, avisado: true },
+  { num_cuota: 3, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2025-11-22", fecha_calculo: "2025-11-22", dias_atraso: 0, mora: 0, capital_pagado: 1041.67, interes_pagado: 312.50, mora_pagada: 0, saldo_capital: 0, saldo_interes: 0, saldo_mora: 0, saldo_total: 0, status: "Pagada", fecha_pagada: "2025-11-23", descuento_mora: 0, avisado: true },
+  { num_cuota: 4, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2025-11-29", fecha_calculo: "2025-11-29", dias_atraso: 0, mora: 0, capital_pagado: 1041.67, interes_pagado: 312.50, mora_pagada: 0, saldo_capital: 0, saldo_interes: 0, saldo_mora: 0, saldo_total: 0, status: "Pagada", fecha_pagada: "2025-11-29", descuento_mora: 0, avisado: true },
+  { num_cuota: 5, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2025-12-06", fecha_calculo: "2025-12-06", dias_atraso: 0, mora: 0, capital_pagado: 1041.67, interes_pagado: 312.50, mora_pagada: 0, saldo_capital: 0, saldo_interes: 0, saldo_mora: 0, saldo_total: 0, status: "Pagada", fecha_pagada: "2025-12-06", descuento_mora: 0, avisado: true },
+  { num_cuota: 6, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2025-12-13", fecha_calculo: "2025-12-13", dias_atraso: 0, mora: 0, capital_pagado: 520.00, interes_pagado: 200.00, mora_pagada: 0, saldo_capital: 521.67, saldo_interes: 112.50, saldo_mora: 0, saldo_total: 634.17, status: "Parcial", fecha_pagada: null, descuento_mora: 0, avisado: true },
+  { num_cuota: 7, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2025-12-20", fecha_calculo: "2026-03-12", dias_atraso: 82, mora: 450, capital_pagado: 0, interes_pagado: 0, mora_pagada: 0, saldo_capital: 1041.67, saldo_interes: 312.50, saldo_mora: 450, saldo_total: 1804.17, status: "Vencida", fecha_pagada: null, descuento_mora: 0, avisado: true },
+  { num_cuota: 8, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2025-12-27", fecha_calculo: "2026-03-12", dias_atraso: 75, mora: 380, capital_pagado: 0, interes_pagado: 0, mora_pagada: 0, saldo_capital: 1041.67, saldo_interes: 312.50, saldo_mora: 380, saldo_total: 1734.17, status: "Vencida", fecha_pagada: null, descuento_mora: 0, avisado: false },
+  { num_cuota: 9, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2026-01-03", fecha_calculo: "2026-03-12", dias_atraso: 68, mora: 370, capital_pagado: 0, interes_pagado: 0, mora_pagada: 0, saldo_capital: 1041.67, saldo_interes: 312.50, saldo_mora: 370, saldo_total: 1724.17, status: "Vencida", fecha_pagada: null, descuento_mora: 0, avisado: false },
+  { num_cuota: 10, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2026-03-15", fecha_calculo: null, dias_atraso: 0, mora: 0, capital_pagado: 0, interes_pagado: 0, mora_pagada: 0, saldo_capital: 1041.67, saldo_interes: 312.50, saldo_mora: 0, saldo_total: 1354.17, status: "Prometida", fecha_pagada: null, descuento_mora: 0, avisado: false },
+  { num_cuota: 11, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2026-03-22", fecha_calculo: null, dias_atraso: 0, mora: 0, capital_pagado: 0, interes_pagado: 0, mora_pagada: 0, saldo_capital: 1041.67, saldo_interes: 312.50, saldo_mora: 0, saldo_total: 1354.17, status: "Pendiente", fecha_pagada: null, descuento_mora: 0, avisado: false },
+  { num_cuota: 12, capital: 1041.67, interes: 312.50, capital_interes: 1354.17, fecha_vencimiento: "2026-03-29", fecha_calculo: null, dias_atraso: 0, mora: 0, capital_pagado: 0, interes_pagado: 0, mora_pagada: 0, saldo_capital: 1041.67, saldo_interes: 312.50, saldo_mora: 0, saldo_total: 1354.17, status: "Pendiente", fecha_pagada: null, descuento_mora: 0, avisado: false },
+];
+
+const mockPagos = [
+  { fecha: "2025-11-08", recibo: "PAG-0001", monto: 1354.17, mora: 0, interes: 312.50, capital: 1041.67, caja: "Caja Principal", metodo: "Efectivo", registrado: "Admin" },
+  { fecha: "2025-11-15", recibo: "PAG-0002", monto: 1354.17, mora: 0, interes: 312.50, capital: 1041.67, caja: "Caja Principal", metodo: "Efectivo", registrado: "Admin" },
+  { fecha: "2025-11-23", recibo: "PAG-0003", monto: 1354.17, mora: 0, interes: 312.50, capital: 1041.67, caja: "Caja Principal", metodo: "Transferencia", registrado: "Admin" },
+  { fecha: "2025-11-29", recibo: "PAG-0004", monto: 1354.17, mora: 0, interes: 312.50, capital: 1041.67, caja: "Caja Principal", metodo: "Efectivo", registrado: "Juan Torres" },
+  { fecha: "2025-12-06", recibo: "PAG-0005", monto: 1354.17, mora: 0, interes: 312.50, capital: 1041.67, caja: "Caja Principal", metodo: "Efectivo", registrado: "Juan Torres" },
+  { fecha: "2025-12-13", recibo: "PAG-0006", monto: 720.00, mora: 0, interes: 200.00, capital: 520.00, caja: "Caja Principal", metodo: "Efectivo", registrado: "Juan Torres" },
+];
+
+const mockPromesas = [
+  { cuota: 10, fecha: "2026-03-15", monto: 1354.17, notas: "Prometió pagar el viernes", status: "Pendiente", creado: "Juan Torres" },
+  { cuota: 7, fecha: "2026-01-10", monto: 1354.17, notas: "Dijo que pagaría después de cobrar", status: "Incumplida", creado: "Juan Torres" },
+];
+
+const mockActividad = [
+  { tipo: "registro", desc: "Préstamo registrado", usuario: "Admin", fecha: "2025-11-01T10:00:00" },
+  { tipo: "pago", desc: "Pago recibido — $1,354.17 (Cuota #1)", usuario: "Admin", fecha: "2025-11-08T09:30:00" },
+  { tipo: "pago", desc: "Pago recibido — $1,354.17 (Cuota #2)", usuario: "Admin", fecha: "2025-11-15T10:15:00" },
+  { tipo: "pago", desc: "Pago recibido — $1,354.17 (Cuota #3)", usuario: "Admin", fecha: "2025-11-23T11:00:00" },
+  { tipo: "pago", desc: "Pago recibido — $1,354.17 (Cuota #4)", usuario: "Juan Torres", fecha: "2025-11-29T08:45:00" },
+  { tipo: "pago", desc: "Pago recibido — $1,354.17 (Cuota #5)", usuario: "Juan Torres", fecha: "2025-12-06T09:00:00" },
+  { tipo: "pago", desc: "Pago parcial — $720.00 (Cuota #6)", usuario: "Juan Torres", fecha: "2025-12-13T10:20:00" },
+  { tipo: "promesa", desc: "Promesa de pago creada — Cuota #7 para 10/01/2026", usuario: "Juan Torres", fecha: "2025-12-28T14:00:00" },
+  { tipo: "estado", desc: "Estado cambiado a Vencido", usuario: "Sistema", fecha: "2026-01-11T00:00:00" },
+  { tipo: "promesa_incumplida", desc: "Promesa de pago incumplida — Cuota #7", usuario: "Sistema", fecha: "2026-01-11T00:00:00" },
+  { tipo: "promesa", desc: "Promesa de pago creada — Cuota #10 para 15/03/2026", usuario: "Juan Torres", fecha: "2026-03-10T16:00:00" },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────
+const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const muted0 = (n: number) => n === 0 ? "text-muted-foreground/50" : "";
+
+const activityIcon: Record<string, typeof CreditCard> = {
+  registro: FileText,
+  pago: HandCoins,
+  promesa: CalendarCheck,
+  promesa_incumplida: AlertTriangle,
+  estado: Activity,
+};
+
+// ── Component ─────────────────────────────────────────────────────
 export default function PrestamoDetallePage() {
   const { id } = useParams();
   const isNew = !id || id === "nuevo";
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(isNew);
-  const [modalidad, setModalidad] = useState<"fijo" | "insolutos">("fijo");
-  const [monto, setMonto] = useState(10000);
-  const [cuotas, setCuotas] = useState(12);
-  const [tasa, setTasa] = useState(20);
-  const [redondeo, setRedondeo] = useState<string>("");
-  const [frecuencia, setFrecuencia] = useState("semanal");
-  const [empresa, setEmpresa] = useState("");
-  const [notas, setNotas] = useState("");
+  const [tab, setTab] = useState("amortizacion");
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
 
-  const tabla = useMemo(() => {
-    const r = redondeo ? parseFloat(redondeo) : null;
-    return modalidad === "fijo" ? calcularFijo(monto, cuotas, tasa, r) : calcularInsolutos(monto, cuotas, tasa, r);
-  }, [modalidad, monto, cuotas, tasa, redondeo]);
+  if (isNew) {
+    // Redirect to creation form (keep existing logic or navigate)
+    navigate("/prestamos");
+    return null;
+  }
 
-  const totalPagar = tabla.reduce((s, c) => s + c.capitalInteres, 0);
-  const totalInteres = totalPagar - monto;
-  const cuotaEstandar = tabla[0]?.capitalInteres || 0;
-  const ultimaCuotaVal = tabla[tabla.length - 1]?.capitalInteres || 0;
+  const p = mockPrestamo;
+  const amort = mockAmortizacion;
 
-  const ReadOrInput = ({ label, value, onChange, type = "text" }: { label: string; value: string | number; onChange: (v: string) => void; type?: string }) => (
-    <div>
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      {editing ? <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} /> : <p className="text-sm font-medium mt-1">{value || "—"}</p>}
-    </div>
-  );
+  // KPI calculations
+  const totalPagado = amort.reduce((s, c) => s + (c.capital_pagado || 0) + (c.interes_pagado || 0) + (c.mora_pagada || 0), 0);
+  const saldoPendiente = amort.reduce((s, c) => s + (c.saldo_total || 0), 0);
+  const cuotasVencidas = amort.filter((c) => c.status === "Vencida").length;
+  const saldoMoroso = amort.reduce((s, c) => s + (c.saldo_mora || 0), 0);
+  const proximaCuota = amort.find((c) => c.status === "Pendiente" || c.status === "Prometida");
+  const ultimoPago = mockPagos[mockPagos.length - 1];
+
+  const kpis = [
+    { label: "Monto Prestado", value: $$(p.montoSolicitado), color: "" },
+    { label: "Total a Pagar", value: $$(p.montoTotalPagar), color: "" },
+    { label: "Total Pagado", value: $$(totalPagado), color: "text-success" },
+    { label: "Saldo Pendiente", value: $$(saldoPendiente), color: "text-badge-aldia-foreground" },
+    { label: "Cuotas Vencidas", value: String(cuotasVencidas), extra: `${cuotasVencidas} cuotas`, color: "text-destructive" },
+    { label: "Saldo Moroso", value: $$(saldoMoroso), color: saldoMoroso > 0 ? "text-destructive" : "text-success" },
+  ];
+
+  // Pagos totals
+  const totalPagosMonto = mockPagos.reduce((s, pg) => s + pg.monto, 0);
+  const totalPagosMora = mockPagos.reduce((s, pg) => s + pg.mora, 0);
+  const totalPagosInteres = mockPagos.reduce((s, pg) => s + pg.interes, 0);
+  const totalPagosCapital = mockPagos.reduce((s, pg) => s + pg.capital, 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      {/* ── Header ────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/prestamos")}><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/prestamos")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-muted-foreground">Préstamos</p>
-              <span className="text-sm text-muted-foreground">/</span>
-              <p className="text-sm">{isNew ? "Nuevo" : id}</p>
+            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              <Link to="/prestamos" className="hover:text-foreground transition-colors">Préstamos</Link>
+              <span>/</span>
+              <span className="text-foreground">{p.id}</span>
             </div>
-            <h1 className="text-2xl font-bold">{isNew ? "Nuevo Préstamo" : `Préstamo ${id}`}</h1>
+            <div className="flex items-center gap-2.5 mt-0.5">
+              <h1 className="text-xl font-semibold">Préstamo {p.id}</h1>
+              <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-medium", estadoBadge[p.estado])}>
+                {p.estado}
+              </span>
+            </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          {editing ? (
-            <>
-              <Button variant="outline" onClick={() => isNew ? navigate("/prestamos") : setEditing(false)}><X className="h-4 w-4 mr-2" />Descartar</Button>
-              <Button><Save className="h-4 w-4 mr-2" />Guardar</Button>
-            </>
-          ) : (
-            <Button variant="outline" onClick={() => setEditing(true)}><Pencil className="h-4 w-4 mr-2" />Editar</Button>
-          )}
+        <div className="flex items-center gap-2">
+          <Button size="sm" className="h-8 text-[13px]">
+            <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-[13px]">
+            <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Imprimir tabla</DropdownMenuItem>
+              <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive">Cancelar préstamo</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Datos del Préstamo</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {editing ? (
-                <>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Cliente</Label>
-                    <Select><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                      <SelectContent><SelectItem value="1">María García</SelectItem><SelectItem value="2">Carlos López</SelectItem></SelectContent>
-                    </Select>
-                  </div>
-                  <ReadOrInput label="Empresa" value={empresa} onChange={setEmpresa} />
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Cobrador</Label>
-                    <Select><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                      <SelectContent><SelectItem value="1">Pedro Ruiz</SelectItem><SelectItem value="2">Juan Torres</SelectItem></SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Ruta</Label>
-                    <Select><SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                      <SelectContent><SelectItem value="1">Ruta Centro</SelectItem><SelectItem value="2">Ruta Norte</SelectItem></SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Notas</Label>
-                    <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} />
-                  </div>
-                </>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-xs text-muted-foreground">Cliente</Label><p className="text-sm font-medium mt-1">—</p></div>
-                  <div><Label className="text-xs text-muted-foreground">Empresa</Label><p className="text-sm font-medium mt-1">{empresa || "—"}</p></div>
-                  <div><Label className="text-xs text-muted-foreground">Cobrador</Label><p className="text-sm font-medium mt-1">—</p></div>
-                  <div><Label className="text-xs text-muted-foreground">Ruta</Label><p className="text-sm font-medium mt-1">—</p></div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      {/* ── KPI Cards ─────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {kpis.map((k) => (
+          <div key={k.label} className="bg-card rounded-lg border border-border px-4 py-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
+            <p className={cn("text-lg font-semibold mt-0.5", k.color)}>{k.value}</p>
+            {k.extra && <p className="text-[11px] text-muted-foreground">{k.extra}</p>}
+          </div>
+        ))}
+      </div>
 
-          <Card>
-            <CardHeader><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Configuración del Crédito</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {editing && (
-                <Tabs value={modalidad} onValueChange={(v) => setModalidad(v as "fijo" | "insolutos")}>
-                  <TabsList className="w-full"><TabsTrigger value="fijo" className="flex-1">Interés Fijo</TabsTrigger><TabsTrigger value="insolutos" className="flex-1">Saldos Insolutos</TabsTrigger></TabsList>
-                </Tabs>
-              )}
-              {!editing ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-xs text-muted-foreground">Modalidad</Label><p className="text-sm font-medium mt-1 capitalize">{modalidad}</p></div>
-                  <div><Label className="text-xs text-muted-foreground">Monto</Label><p className="text-sm font-medium mt-1">${monto.toLocaleString()}</p></div>
-                  <div><Label className="text-xs text-muted-foreground">Cuotas</Label><p className="text-sm font-medium mt-1">{cuotas}</p></div>
-                  <div><Label className="text-xs text-muted-foreground">Tasa</Label><p className="text-sm font-medium mt-1">{tasa}%</p></div>
-                  <div><Label className="text-xs text-muted-foreground">Frecuencia</Label><p className="text-sm font-medium mt-1 capitalize">{frecuencia}</p></div>
-                </div>
-              ) : (
-                <>
-                  <ReadOrInput label="Monto ($)" value={monto} onChange={(v) => setMonto(Number(v))} type="number" />
-                  <ReadOrInput label="Cuotas" value={cuotas} onChange={(v) => setCuotas(Number(v))} type="number" />
-                  <ReadOrInput label={modalidad === "fijo" ? "Ganancia (%)" : "Tasa (%)"} value={tasa} onChange={(v) => setTasa(Number(v))} type="number" />
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Frecuencia</Label>
-                    <Select value={frecuencia} onValueChange={setFrecuencia}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent><SelectItem value="diario">Diario</SelectItem><SelectItem value="semanal">Semanal</SelectItem><SelectItem value="quincenal">Quincenal</SelectItem><SelectItem value="mensual">Mensual</SelectItem></SelectContent>
-                    </Select>
-                  </div>
-                  <ReadOrInput label="Redondear cuota a ($)" value={redondeo} onChange={setRedondeo} type="number" />
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="lg:col-span-2 space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: "Cuota Estándar", value: cuotaEstandar },
-              { label: "Última Cuota", value: ultimaCuotaVal },
-              { label: "Total a Pagar", value: totalPagar },
-              { label: "Interés Ganado", value: totalInteres, accent: true },
-            ].map((k) => (
-              <Card key={k.label}><CardContent className="pt-4 text-center">
-                <p className="text-xs text-muted-foreground">{k.label}</p>
-                <p className={`text-lg font-bold ${k.accent ? "text-primary" : ""}`}>${k.value.toFixed(2)}</p>
-              </CardContent></Card>
-            ))}
+      {/* ── Two columns ───────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
+        {/* LEFT — Info cards */}
+        <div className="space-y-4">
+          {/* Datos del Préstamo */}
+          <div className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            <div className="px-4 py-3 border-b"><p className="text-[13px] font-semibold">Datos del Préstamo</p></div>
+            <div className="px-4 py-3 space-y-2.5">
+              <InfoRow label="Cliente" value={<Link to={`/clientes/${p.clienteId}`} className="text-primary hover:underline font-medium">{p.cliente}</Link>} />
+              <InfoRow label="Empresa" value={p.empresa} />
+              <InfoRow label="Cobrador" value={p.cobrador} />
+              <InfoRow label="Ruta" value={p.ruta} />
+              <InfoRow label="Generado por" value={p.generadoPor} />
+              <InfoRow label="F. Registro" value={format(new Date(p.fechaRegistro), "dd/MM/yyyy")} />
+              <InfoRow label="F. Primer Pago" value={format(new Date(p.fechaPrimerPago), "dd/MM/yyyy")} />
+              <InfoRow label="Caja" value={p.caja} />
+            </div>
           </div>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2"><Calculator className="h-4 w-4 text-primary" /><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tabla de Amortización</CardTitle></div>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-auto max-h-[500px]">
+          {/* Configuración del Crédito */}
+          <div className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            <div className="px-4 py-3 border-b"><p className="text-[13px] font-semibold">Configuración del Crédito</p></div>
+            <div className="px-4 py-3 space-y-2.5">
+              <InfoRow label="Modalidad" value={p.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"} />
+              <InfoRow label="Monto solicitado" value={$$(p.montoSolicitado)} />
+              <InfoRow label="Cuotas" value={`${p.numCuotas} — ${p.frecuencia}`} />
+              <InfoRow label="Tasa de interés" value={`${p.tasaInteres}%`} />
+              <InfoRow label="Cuota estándar" value={$$(p.cuotaCalculada)} />
+              <InfoRow label="Cuota redondeada" value={p.cuotaRedondeada ? $$(p.cuotaRedondeada) : "—"} />
+              <InfoRow label="Tipo mora" value={`${p.tipoMora} — ${p.valorMora}${p.tipoMora === "porcentaje" ? "%" : ""}`} />
+              <InfoRow label="Gastos legales" value={$$(p.gastosLegales)} />
+            </div>
+          </div>
+
+          {/* Estado del Préstamo */}
+          <div className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            <div className="px-4 py-3 border-b"><p className="text-[13px] font-semibold">Estado del Préstamo</p></div>
+            <div className="px-4 py-3 space-y-2.5">
+              <InfoRow label="Estado" value={
+                <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[12px] font-medium", estadoBadge[p.estado])}>{p.estado}</span>
+              } />
+              {cuotasVencidas > 0 && <InfoRow label="Días en mora" value={<span className="text-destructive font-semibold">{amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso), 0)} días</span>} />}
+              {proximaCuota && <InfoRow label="Próxima cuota" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />}
+              {ultimoPago && <InfoRow label="Último pago" value={`${format(new Date(ultimoPago.fecha), "dd/MM/yyyy")} — ${$$(ultimoPago.monto)}`} />}
+              {p.notas && <InfoRow label="Notas" value={p.notas} />}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT — Tabs */}
+        <div className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)] overflow-hidden">
+          <Tabs value={tab} onValueChange={setTab}>
+            <div className="border-b px-4">
+              <TabsList className="bg-transparent h-auto p-0 gap-0">
+                {[
+                  { value: "amortizacion", label: "Amortización" },
+                  { value: "pagos", label: "Pagos" },
+                  { value: "promesas", label: "Promesas" },
+                  { value: "actividad", label: "Actividad" },
+                ].map((t) => (
+                  <TabsTrigger
+                    key={t.value}
+                    value={t.value}
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-[13px] font-medium"
+                  >
+                    {t.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+
+            {/* TAB: Amortización */}
+            <TabsContent value="amortizacion" className="m-0">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Capital</TableHead><TableHead>Interés</TableHead><TableHead>Cuota</TableHead>
-                      <TableHead>Fecha Venc.</TableHead><TableHead>Saldo Capital</TableHead><TableHead>Status</TableHead>
+                    <TableRow className="bg-table-header hover:bg-table-header">
+                      {["#", "Capital", "Interés", "Cuota", "F. Venc.", "Días", "Mora", "Cap. Pag.", "Int. Pag.", "Mora Pag.", "S. Cap.", "S. Int.", "S. Mora", "S. Total", "Status", "F. Pagada", ""].map((h) => (
+                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2 whitespace-nowrap">{h}</TableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {tabla.map((row) => (
-                      <TableRow key={row.numero}>
-                        <TableCell className="font-medium">{row.numero}</TableCell>
-                        <TableCell>${row.capital.toFixed(2)}</TableCell>
-                        <TableCell>${row.interes.toFixed(2)}</TableCell>
-                        <TableCell className="font-medium">${row.capitalInteres.toFixed(2)}</TableCell>
-                        <TableCell>{row.fechaVencimiento}</TableCell>
-                        <TableCell>${Math.max(0, row.saldoCapital).toFixed(2)}</TableCell>
-                        <TableCell><Badge variant="outline">{row.status}</Badge></TableCell>
+                    {amort.map((c) => {
+                      const isNext = proximaCuota?.num_cuota === c.num_cuota;
+                      return (
+                        <TableRow
+                          key={c.num_cuota}
+                          className={cn(
+                            "border-b border-border/50 transition-colors",
+                            cuotaRowBg[c.status],
+                            isNext && "border-l-[3px] border-l-primary",
+                          )}
+                          onMouseEnter={() => setHoveredRow(c.num_cuota)}
+                          onMouseLeave={() => setHoveredRow(null)}
+                        >
+                          <TableCell className="px-3 text-[13px] font-medium">{c.num_cuota}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", muted0(c.capital))}>{$$(c.capital)}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", muted0(c.interes))}>{$$(c.interes)}</TableCell>
+                          <TableCell className="px-3 text-[13px] font-medium">{$$(c.capital_interes)}</TableCell>
+                          <TableCell className="px-3 text-[12px] whitespace-nowrap">{format(new Date(c.fecha_vencimiento), "dd/MM/yy")}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", c.dias_atraso > 0 ? "text-destructive font-bold" : muted0(c.dias_atraso))}>{c.dias_atraso}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", c.mora > 0 ? "text-destructive font-bold" : muted0(c.mora))}>{$$(c.mora)}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", muted0(c.capital_pagado))}>{$$(c.capital_pagado)}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", muted0(c.interes_pagado))}>{$$(c.interes_pagado)}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", muted0(c.mora_pagada))}>{$$(c.mora_pagada)}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", muted0(c.saldo_capital))}>{$$(c.saldo_capital)}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", muted0(c.saldo_interes))}>{$$(c.saldo_interes)}</TableCell>
+                          <TableCell className={cn("px-3 text-[12px]", c.saldo_mora > 0 ? "text-destructive font-bold" : muted0(c.saldo_mora))}>{$$(c.saldo_mora)}</TableCell>
+                          <TableCell className="px-3 text-[13px] font-medium">{$$(c.saldo_total)}</TableCell>
+                          <TableCell className="px-3">
+                            <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium whitespace-nowrap", cuotaStatusBadge[c.status])}>
+                              {c.status === "Pagada" && <Check className="h-3 w-3 mr-0.5" />}
+                              {c.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
+                            {c.fecha_pagada ? format(new Date(c.fecha_pagada), "dd/MM/yy") : "—"}
+                          </TableCell>
+                          <TableCell className="px-3">
+                            {hoveredRow === c.num_cuota && c.status !== "Pagada" && (
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">Pagar</Button>
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">Promesa</Button>
+                                {!c.avisado && <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2">Avisar</Button>}
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+
+            {/* TAB: Pagos */}
+            <TabsContent value="pagos" className="m-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-table-header hover:bg-table-header">
+                      {["Fecha", "Recibo", "Monto", "A Mora", "A Interés", "A Capital", "Caja", "Método", "Registrado por"].map((h) => (
+                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2 whitespace-nowrap">{h}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockPagos.map((pg, i) => (
+                      <TableRow key={i} className="border-b border-border/50">
+                        <TableCell className="px-3 text-[12px]">{format(new Date(pg.fecha), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="px-3 text-[12px] font-mono text-muted-foreground">{pg.recibo}</TableCell>
+                        <TableCell className="px-3 text-[13px] font-medium">{$$(pg.monto)}</TableCell>
+                        <TableCell className={cn("px-3 text-[12px]", muted0(pg.mora))}>{$$(pg.mora)}</TableCell>
+                        <TableCell className={cn("px-3 text-[12px]", muted0(pg.interes))}>{$$(pg.interes)}</TableCell>
+                        <TableCell className={cn("px-3 text-[12px]", muted0(pg.capital))}>{$$(pg.capital)}</TableCell>
+                        <TableCell className="px-3 text-[12px] text-muted-foreground">{pg.caja}</TableCell>
+                        <TableCell className="px-3">
+                          <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", metodoBadge[pg.metodo])}>{pg.metodo}</span>
+                        </TableCell>
+                        <TableCell className="px-3 text-[12px]">{pg.registrado}</TableCell>
+                      </TableRow>
+                    ))}
+                    {/* Footer totals */}
+                    <TableRow className="bg-table-header hover:bg-table-header font-semibold">
+                      <TableCell className="px-3 text-[12px]" colSpan={2}>Totales</TableCell>
+                      <TableCell className="px-3 text-[13px]">{$$(totalPagosMonto)}</TableCell>
+                      <TableCell className="px-3 text-[12px]">{$$(totalPagosMora)}</TableCell>
+                      <TableCell className="px-3 text-[12px]">{$$(totalPagosInteres)}</TableCell>
+                      <TableCell className="px-3 text-[12px]">{$$(totalPagosCapital)}</TableCell>
+                      <TableCell colSpan={3} />
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>
+
+            {/* TAB: Promesas */}
+            <TabsContent value="promesas" className="m-0">
+              <div className="flex justify-end px-4 py-2 border-b">
+                <Button size="sm" className="h-7 text-[12px]"><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
+              </div>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-table-header hover:bg-table-header">
+                      {["Cuota #", "F. Prometida", "Monto", "Notas", "Status", "Creado por"].map((h) => (
+                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2 whitespace-nowrap">{h}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockPromesas.map((pr, i) => (
+                      <TableRow key={i} className="border-b border-border/50">
+                        <TableCell className="px-3 text-[13px] font-medium">{pr.cuota}</TableCell>
+                        <TableCell className="px-3 text-[12px]">{format(new Date(pr.fecha), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="px-3 text-[13px]">{$$(pr.monto)}</TableCell>
+                        <TableCell className="px-3 text-[12px] text-muted-foreground max-w-[200px] truncate">{pr.notas}</TableCell>
+                        <TableCell className="px-3">
+                          <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", promesaStatusBadge[pr.status])}>{pr.status}</span>
+                        </TableCell>
+                        <TableCell className="px-3 text-[12px]">{pr.creado}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-            </CardContent>
-          </Card>
+            </TabsContent>
+
+            {/* TAB: Actividad */}
+            <TabsContent value="actividad" className="m-0 p-4">
+              <div className="relative">
+                <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
+                <div className="space-y-4">
+                  {mockActividad.slice().reverse().map((a, i) => {
+                    const Icon = activityIcon[a.tipo] || Activity;
+                    return (
+                      <div key={i} className="relative pl-10">
+                        <div className="absolute left-[9px] top-1 h-7 w-7 rounded-full bg-secondary flex items-center justify-center border border-border">
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-[13px]">{a.desc}</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {a.usuario} · {format(new Date(a.fecha), "dd/MM/yyyy HH:mm")}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Small info row component ──────────────────────────────────────
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      <span className="text-[12px] uppercase tracking-wider text-muted-foreground shrink-0">{label}</span>
+      <span className="text-[13px] text-right">{value}</span>
     </div>
   );
 }
