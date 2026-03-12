@@ -44,6 +44,7 @@ const mainNav = [
   { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "supervisor"] },
   { title: "CRM Cobranza", url: "/crm", icon: Users2, roles: ["admin", "supervisor"] },
   { title: "Lead Scoring", url: "/scoring", icon: Star, roles: ["admin", "supervisor"] },
+  { title: "Mapa GPS", url: "/mapa-gps", icon: MapPin, roles: ["admin", "supervisor"] },
 ];
 
 const adminNav = [
