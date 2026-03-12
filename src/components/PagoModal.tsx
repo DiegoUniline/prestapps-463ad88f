@@ -190,6 +190,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       queryClient.invalidateQueries({ queryKey: ["pagos", prestamoId] });
       queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", prestamoId] });
       queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
+      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
 
       toast.success(`Pago de ${$$(montoNum)} registrado correctamente`);
       onOpenChange(false);
