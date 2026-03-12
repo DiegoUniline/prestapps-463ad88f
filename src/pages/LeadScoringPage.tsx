@@ -16,7 +16,7 @@ interface ClienteScore {
   id_cliente: string;
   nombre_completo: string;
   score: number; // 0–100
-  nivel: "Excelente" | "Bueno" | "Regular" | "Riesgoso" | "Crítico";
+  nivel: "Excelente" | "Bueno" | "Regular" | "Riesgoso" | "Crítico" | "Nuevo";
   recomendacion: string;
   icono: "prestar" | "aumentar" | "avales" | "no_prestar" | "vencimiento";
   totalPrestamos: number;
