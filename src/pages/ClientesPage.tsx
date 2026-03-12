@@ -143,7 +143,8 @@ export default function ClientesPage() {
   const [estadoFilter, setEstadoFilter] = useState("todos");
   const [searchEC, setSearchEC] = useState("");
   const navigate = useNavigate();
-  const { data: clientes, isLoading } = useClientes({ search, estado: estadoFilter });
+  const { empresaId } = useEmpresa();
+  const { data: clientes, isLoading } = useClientes({ search, estado: estadoFilter, empresaId });
   const updateCliente = useUpdateCliente();
   const { data: estados, isLoading: loadingEC } = useEstadosCuenta();
 
