@@ -215,6 +215,84 @@ function useCajasAll(empresaId: string) {
   });
 }
 
+// Profile data for cobrador
+function usePerfilCobrador(cobradorId: string | null, empresaId: string) {
+  return useQuery({
+    queryKey: ["cobrador-perfil", cobradorId, empresaId],
+    enabled: !!cobradorId,
+    queryFn: async () => {
+      // Profile info
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nombre_completo, telefono, direccion, foto_url, porcentaje_comision, efectivo_en_mano, comision_tipo, comision_prestamos, comision_cobros_equipo, bono_meta_objetivo, bono_meta_monto")
+        .eq("id", cobradorId!)
+        .single();
+
+      // Comisiones ganadas (cortes)
+      const { data: cortes } = await supabase
+        .from("cortes")
+        .select("id, monto_comision, monto_efectivo, monto_depositado, total_cobrado, created_at")
+        .eq("cobrador_id", cobradorId!)
+        .eq("empresa_id", empresaId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      const totalComisionesGanadas = (cortes || []).reduce((s, c) => s + Number(c.monto_comision || 0), 0);
+      const totalCobrado = (cortes || []).reduce((s, c) => s + Number(c.total_cobrado || 0), 0);
+
+      // All assigned loans (active)
+      const { data: prestamos } = await supabase
+        .from("prestamos")
+        .select(`
+          id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro,
+          frecuencia, fecha_primer_pago,
+          clientes ( nombre_completo ),
+          rutas ( nombre )
+        `)
+        .eq("cobrador_id", cobradorId!)
+        .eq("empresa_id", empresaId)
+        .in("estado", ["Activo", "Al día", "Vencido"])
+        .order("created_at", { ascending: false });
+
+      // Get amortization summary for each loan
+      const prestamoIds = (prestamos || []).map(p => p.id);
+      let amortSummary: Record<string, { pagadas: number; saldo: number; mora: number }> = {};
+      if (prestamoIds.length > 0) {
+        const { data: amort } = await supabase
+          .from("amortizacion")
+          .select("prestamo_id, status, saldo_total, saldo_mora")
+          .in("prestamo_id", prestamoIds);
+        for (const a of amort || []) {
+          if (!amortSummary[a.prestamo_id]) amortSummary[a.prestamo_id] = { pagadas: 0, saldo: 0, mora: 0 };
+          if (a.status === "Pagada") amortSummary[a.prestamo_id].pagadas += 1;
+          amortSummary[a.prestamo_id].saldo += Number(a.saldo_total || 0);
+          amortSummary[a.prestamo_id].mora += Number(a.saldo_mora || 0);
+        }
+      }
+
+      return {
+        profile,
+        cortes: cortes || [],
+        totalComisionesGanadas,
+        totalCobrado,
+        prestamos: (prestamos || []).map((p: any) => ({
+          id: p.id,
+          cliente: p.clientes?.nombre_completo || "—",
+          ruta: p.rutas?.nombre || "Sin ruta",
+          monto: Number(p.monto_solicitado || 0),
+          montoPagar: Number(p.monto_total_pagar || 0),
+          cuotas: p.num_cuotas,
+          estado: p.estado,
+          frecuencia: p.frecuencia,
+          pagadas: amortSummary[p.id]?.pagadas || 0,
+          saldo: amortSummary[p.id]?.saldo || 0,
+          mora: amortSummary[p.id]?.mora || 0,
+        })),
+      };
+    },
+  });
+}
+
 // ── Quick Date Range Presets ────────────────────────────────────
 type RangePreset = "hoy" | "semana" | "custom";
 
