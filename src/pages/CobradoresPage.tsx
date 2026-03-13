@@ -52,10 +52,10 @@ function useCortes(empresaId: string) {
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      const cobIds = [...new Set((cortes || []).map((c: any) => c.cobrador_id).filter(Boolean))];
+      const cobIds: string[] = [...new Set((cortes || []).map((c: any) => c.cobrador_id).filter(Boolean))] as string[];
       let cobMap: Record<string, string> = {};
       if (cobIds.length) {
-        const { data: profs } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
+        const { data: profs } = await (supabase.from as any)("profiles").select("id, nombre_completo").in("id", cobIds);
         for (const p of profs || []) cobMap[p.id] = p.nombre_completo;
       }
       return (cortes || []).map((c: any) => ({ ...c, cobrador_nombre: cobMap[c.cobrador_id] || "—" }));
