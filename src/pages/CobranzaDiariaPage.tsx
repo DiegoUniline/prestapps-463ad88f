@@ -24,7 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { VisitaModal } from "@/components/VisitaModal";
-import { ClienteEstadoCuentaSheet } from "@/components/ClienteEstadoCuentaSheet";
+
 // ── Data Hook ────────────────────────────────────────────────────
 interface CuotaDiaria {
   cuotaId: string;
@@ -257,15 +257,10 @@ export default function CobranzaDiariaPage() {
   const [visitaOpen, setVisitaOpen] = useState(false);
   const [visitaItem, setVisitaItem] = useState<CuotaDiaria | null>(null);
 
-  // Estado de cuenta sheet state
-  const [estadoCuentaOpen, setEstadoCuentaOpen] = useState(false);
-  const [estadoCuentaClienteId, setEstadoCuentaClienteId] = useState("");
-  const [estadoCuentaClienteNombre, setEstadoCuentaClienteNombre] = useState("");
+  // Navigation to detail page
 
-  const openEstadoCuenta = (clienteId: string, clienteNombre: string) => {
-    setEstadoCuentaClienteId(clienteId);
-    setEstadoCuentaClienteNombre(clienteNombre);
-    setEstadoCuentaOpen(true);
+  const openEstadoCuenta = (clienteId: string, _clienteNombre: string) => {
+    navigate(`/cobranza/cliente/${clienteId}?fecha=${fechaStr}`);
   };
 
   const fechaStr = format(fecha, "yyyy-MM-dd");
@@ -734,22 +729,6 @@ export default function CobranzaDiariaPage() {
           ))}
         </div>
         </>
-      )}
-
-      {/* Estado de Cuenta Sheet */}
-      {estadoCuentaOpen && (
-        <ClienteEstadoCuentaSheet
-          open={estadoCuentaOpen}
-          onOpenChange={(open) => {
-            setEstadoCuentaOpen(open);
-            if (!open) queryClient.invalidateQueries({ queryKey: ["cobranza-diaria", fechaStr] });
-          }}
-          clienteId={estadoCuentaClienteId}
-          clienteNombre={estadoCuentaClienteNombre}
-          empresaId={empresaId}
-          cajas={cajas || []}
-          fechaCobranza={fechaStr}
-        />
       )}
 
       {/* Payment Modal (direct from old flow, kept for backwards compat) */}
