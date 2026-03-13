@@ -84,6 +84,7 @@ export default function NuevoPrestamoPage() {
   const [empresa, setEmpresa] = useState("");
   const [notas, setNotas] = useState("");
   const [cuotaOverride, setCuotaOverride] = useState("");
+  const [esInicial, setEsInicial] = useState(false);
 
   // Cálculos
   const monto = parseFloat(montoSolicitado) || 0;
