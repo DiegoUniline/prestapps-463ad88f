@@ -102,6 +102,26 @@ export default function NuevoPrestamoPage() {
   // Recalcular total real (última cuota se ajusta)
   const totalConCuotaFinal = montoTotalPagar; // el total real no cambia, solo la distribución
 
+  // Calcular cuotas cubiertas según modo
+  const numCuotasCubiertas = useMemo(() => {
+    if (!esInicial) return 0;
+    if (inicialMode === "cuotas") return parseInt(cuotasCubiertas) || 0;
+    // Modo monto: calcular cuántas cuotas completas cubre
+    const pagado = parseFloat(montoPagadoInicial) || 0;
+    if (pagado <= 0 || cuotaFinal <= 0) return 0;
+    return Math.min(Math.floor(pagado / cuotaFinal), cuotas);
+  }, [esInicial, inicialMode, cuotasCubiertas, montoPagadoInicial, cuotaFinal, cuotas]);
+
+  // Resumen de carga inicial
+  const resumenInicial = useMemo(() => {
+    if (!esInicial || cuotas <= 0) return null;
+    const cubiertas = numCuotasCubiertas;
+    const pendientes = cuotas - cubiertas;
+    const montoCubierto = cubiertas * cuotaFinal;
+    const montoPendiente = montoTotalPagar - montoCubierto;
+    return { cubiertas, pendientes, montoCubierto, montoPendiente: Math.max(0, montoPendiente) };
+  }, [esInicial, numCuotasCubiertas, cuotas, cuotaFinal, montoTotalPagar]);
+
   // Tabla de amortización en tiempo real
   const amortizacion = useMemo((): CuotaPreview[] => {
     if (monto <= 0 || cuotas <= 0) return [];
