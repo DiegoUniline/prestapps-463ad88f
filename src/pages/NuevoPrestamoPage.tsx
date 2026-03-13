@@ -17,7 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, CalendarIcon, Save, AlertTriangle } from "lucide-react";
-import { format, addDays, addWeeks, addMonths } from "date-fns";
+import { format, addDays, addWeeks, addMonths, parse, isValid } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
