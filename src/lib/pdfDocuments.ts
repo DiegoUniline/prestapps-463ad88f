@@ -277,9 +277,10 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
 }
 
 // ── 2. CONTRATO ──────────────────────────────────────────────────
-export function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[]) {
+export async function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[]) {
   const doc = new jsPDF();
-  let y = addHeader(doc, "CONTRATO DE PRÉSTAMO", prestamo.id, prestamo.clienteNombre);
+  const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
+  let y = addHeader(doc, "CONTRATO DE PRÉSTAMO", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
   const modalidadText = prestamo.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos";
   const cuotaVal = $$(prestamo.cuotaRedondeada || prestamo.cuotaCalculada);
