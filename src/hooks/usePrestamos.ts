@@ -146,9 +146,9 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
 
 export function usePrestamos(filters?: FetchFilters) {
   return useQuery({
-    queryKey: ["prestamos-list", filters?.rutaIds, filters?.cobradorId, filters?.empresaId],
+    queryKey: ["prestamos-list-v2", filters?.rutaIds, filters?.cobradorId, filters?.empresaId],
     queryFn: () => fetchPrestamos(filters),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 30,
   });
 }
 
