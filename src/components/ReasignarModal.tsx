@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Route, UserCheck } from "lucide-react";
+import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 interface ReasignarModalProps {
   open: boolean;

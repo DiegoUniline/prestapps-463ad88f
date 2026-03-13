@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ArrowLeft, CalendarIcon, Send, AlertTriangle } from "lucide-react";
+import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { toast } from "sonner";

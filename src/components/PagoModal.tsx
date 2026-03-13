@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { cn, $$ } from "@/lib/utils";
 import { HandCoins, Info, Loader2, AlertTriangle } from "lucide-react";
+import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 interface Cuota {
   id: string;
