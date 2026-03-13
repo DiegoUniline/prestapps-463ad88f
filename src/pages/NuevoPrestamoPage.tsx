@@ -254,6 +254,11 @@ export default function NuevoPrestamoPage() {
           console.error("Error insertando amortización:", amortError);
           toast.error("Préstamo creado pero hubo error al generar cuotas");
         }
+
+        // Para carga inicial, recalcular mora en cuotas vencidas pendientes
+        if (esInicial && numCubiertas < cuotas) {
+          await supabase.rpc("recalcular_mora", { p_prestamo_id: data.id });
+        }
       }
 
       // Register cash outflow ONLY if NOT carga inicial
