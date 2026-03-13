@@ -55,6 +55,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
       setRutaId(prestamo.ruta_id ?? "");
       setCobradorId(prestamo.cobrador_id ?? "");
       setNotas(prestamo.notas ?? "");
+      setCodigoInterno((prestamo as any).codigo_interno ?? "");
     }
   }, [open, prestamo]);
 
