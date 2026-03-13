@@ -215,6 +215,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           cobrador_id: cobradorId || null,
           gps_lat: geo.lat,
           gps_lng: geo.lng,
+          empresa_id: empresaId,
         } as any);
         if (pagoErr) throw pagoErr;
 
