@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresaStore } from "@/stores/empresaStore";
 import { toast } from "sonner";
 
 // ── Generic simple catalog (nombre, descripcion, activo) ──
