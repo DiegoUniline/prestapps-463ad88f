@@ -5,6 +5,8 @@ import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole, type AppRole } from "@/hooks/useCurrentUserRole";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useAuthStore } from "@/stores/authStore";
+import { isSuperAdmin } from "@/components/SuperAdminGuard";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
@@ -32,6 +34,7 @@ interface NavItem {
   url: string;
   icon: LucideIcon;
   roles: AppRole[];
+  superAdminOnly?: boolean;
 }
 
 interface NavModule {
@@ -90,7 +93,7 @@ const modules: NavModule[] = [
   {
     label: "Configuración",
     items: [
-      { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"] },
+      { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"], superAdminOnly: true },
       { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"] },
       { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"] },
       { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
@@ -144,10 +147,16 @@ export function AppSidebar() {
   const isActive = (path: string) =>
     location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
 
+  const userEmail = useAuthStore((s) => s.user?.email);
+  const superAdmin = isSuperAdmin(userEmail);
+
   const visibleModules = modules
     .map((mod) => ({
       ...mod,
-      items: loading ? mod.items : mod.items.filter((item) => item.roles.includes(role)),
+      items: loading ? mod.items : mod.items.filter((item) => {
+        if (item.superAdminOnly && !superAdmin) return false;
+        return item.roles.includes(role);
+      }),
     }))
     .filter((mod) => mod.items.length > 0);
 

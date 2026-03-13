@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useAuthStore } from "@/stores/authStore";
+import { isSuperAdmin } from "@/components/SuperAdminGuard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +13,15 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Building2, UserPlus } from "lucide-react";
+import { Plus, Pencil, Building2, UserPlus, Crown, Shield, Users } from "lucide-react";
+
+const PLAN_CONFIG: Record<string, { label: string; maxUsers: number; price: string; icon: React.ReactNode }> = {
+  basico: { label: "Básico", maxUsers: 3, price: "$499/mes", icon: <Shield className="h-3.5 w-3.5" /> },
+  profesional: { label: "Profesional", maxUsers: 10, price: "$999/mes", icon: <Users className="h-3.5 w-3.5" /> },
+  enterprise: { label: "Enterprise", maxUsers: 999, price: "$1,999/mes", icon: <Crown className="h-3.5 w-3.5" /> },
+};
 
 interface Empresa {
   id: string;
@@ -24,6 +32,8 @@ interface Empresa {
   logo_url: string | null;
   activa: boolean;
   created_at: string | null;
+  plan: string;
+  max_usuarios: number;
 }
 
 interface EmpresaForm {
@@ -32,7 +42,7 @@ interface EmpresaForm {
   telefono: string;
   direccion: string;
   activa: boolean;
-  // Admin user fields (only for new)
+  plan: string;
   adminEmail: string;
   adminPassword: string;
   adminNombre: string;
@@ -40,13 +50,13 @@ interface EmpresaForm {
 }
 
 const emptyForm: EmpresaForm = {
-  nombre: "", ruc: "", telefono: "", direccion: "", activa: true,
+  nombre: "", ruc: "", telefono: "", direccion: "", activa: true, plan: "basico",
   adminEmail: "", adminPassword: "", adminNombre: "", adminTelefono: "",
 };
 
 export default function EmpresasPage() {
   const queryClient = useQueryClient();
-  const { role } = useCurrentUserRole();
+  const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EmpresaForm>(emptyForm);
@@ -54,13 +64,15 @@ export default function EmpresasPage() {
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ["empresas-config"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("empresas").select("id, nombre, ruc, telefono, direccion, logo_url, activa, created_at").order("nombre");
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, created_at, plan, max_usuarios")
+        .order("nombre");
       if (error) throw error;
-      return data as Empresa[];
+      return (data as unknown) as Empresa[];
     },
   });
 
-  // Fetch admin users per empresa
   const { data: adminMap = {} } = useQuery({
     queryKey: ["empresas-admins"],
     queryFn: async () => {
@@ -79,37 +91,55 @@ export default function EmpresasPage() {
     },
   });
 
+  // Count users per empresa
+  const { data: userCountMap = {} } = useQuery({
+    queryKey: ["empresas-user-counts"],
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke("manage-users", {
+        body: { action: "list" },
+      });
+      const map: Record<string, number> = {};
+      for (const u of data || []) {
+        const eid = u.empresa_id || "00000000-0000-0000-0000-000000000001";
+        map[eid] = (map[eid] || 0) + 1;
+      }
+      return map;
+    },
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.nombre.trim()) throw new Error("El nombre es requerido");
 
+      const planInfo = PLAN_CONFIG[form.plan] || PLAN_CONFIG.basico;
+
       if (editId) {
-        // Update empresa only
         const { error } = await supabase.from("empresas").update({
           nombre: form.nombre.trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
           activa: form.activa,
+          plan: form.plan,
+          max_usuarios: planInfo.maxUsers,
         }).eq("id", editId);
         if (error) throw error;
       } else {
-        // Validate admin fields
         if (!form.adminEmail.trim()) throw new Error("El correo del administrador es requerido");
         if (!form.adminPassword || form.adminPassword.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
         if (!form.adminNombre.trim()) throw new Error("El nombre del administrador es requerido");
 
-        // 1. Create empresa
         const { data: newEmpresa, error: empError } = await supabase.from("empresas").insert({
           nombre: form.nombre.trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
           activa: form.activa,
+          plan: form.plan,
+          max_usuarios: planInfo.maxUsers,
         }).select("id").single();
         if (empError) throw empError;
 
-        // 2. Create admin user for this empresa
         const { data: result, error: fnError } = await supabase.functions.invoke("manage-users", {
           body: {
             action: "create",
@@ -130,6 +160,7 @@ export default function EmpresasPage() {
       toast.success(editId ? "Empresa actualizada" : "Empresa y administrador creados");
       queryClient.invalidateQueries({ queryKey: ["empresas-config"] });
       queryClient.invalidateQueries({ queryKey: ["empresas-admins"] });
+      queryClient.invalidateQueries({ queryKey: ["empresas-user-counts"] });
       queryClient.invalidateQueries({ queryKey: ["empresas"] });
       setOpen(false);
       setEditId(null);
@@ -138,26 +169,19 @@ export default function EmpresasPage() {
     onError: (err: any) => toast.error(err.message),
   });
 
-  const openNew = () => {
-    setEditId(null);
-    setForm(emptyForm);
-    setOpen(true);
-  };
+  const openNew = () => { setEditId(null); setForm(emptyForm); setOpen(true); };
 
   const openEdit = (e: Empresa) => {
     setEditId(e.id);
     setForm({
-      nombre: e.nombre,
-      ruc: e.ruc || "",
-      telefono: e.telefono || "",
-      direccion: e.direccion || "",
-      activa: e.activa,
+      nombre: e.nombre, ruc: e.ruc || "", telefono: e.telefono || "",
+      direccion: e.direccion || "", activa: e.activa, plan: e.plan || "basico",
       adminEmail: "", adminPassword: "", adminNombre: "", adminTelefono: "",
     });
     setOpen(true);
   };
 
-  if (role !== "admin") {
+  if (!isSuperAdmin(user?.email)) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-muted-foreground">No tienes permisos para acceder a esta página.</p>
@@ -170,7 +194,7 @@ export default function EmpresasPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
-          <p className="text-sm text-muted-foreground">Gestiona las empresas y sus administradores</p>
+          <p className="text-sm text-muted-foreground">Gestiona las empresas, planes y administradores</p>
         </div>
         <Button onClick={openNew} className="gap-2">
           <Plus className="h-4 w-4" /> Nueva Empresa
@@ -183,8 +207,9 @@ export default function EmpresasPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
+                <TableHead>Plan</TableHead>
+                <TableHead>Usuarios</TableHead>
                 <TableHead>RUC / NIT</TableHead>
-                <TableHead>Teléfono</TableHead>
                 <TableHead>Administrador</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="w-16"></TableHead>
@@ -193,25 +218,39 @@ export default function EmpresasPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
                 </TableRow>
               ) : empresas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
                 </TableRow>
               ) : (
                 empresas.map((e) => {
                   const admins = adminMap[e.id] || [];
+                  const planInfo = PLAN_CONFIG[e.plan] || PLAN_CONFIG.basico;
+                  const userCount = userCountMap[e.id] || 0;
+                  const atLimit = userCount >= e.max_usuarios && e.max_usuarios < 999;
+
                   return (
-                    <TableRow key={e.id}>
+                    <TableRow key={e.id} className={!e.activa ? "opacity-50" : ""}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
                           {e.nombre}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="gap-1">
+                          {planInfo.icon} {planInfo.label}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground ml-1">{planInfo.price}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={atLimit ? "text-destructive font-semibold" : ""}>
+                          {userCount} / {e.max_usuarios >= 999 ? "∞" : e.max_usuarios}
+                        </span>
+                      </TableCell>
                       <TableCell>{e.ruc || "—"}</TableCell>
-                      <TableCell>{e.telefono || "—"}</TableCell>
                       <TableCell>
                         {admins.length > 0 ? (
                           <div className="space-y-0.5">
@@ -251,7 +290,6 @@ export default function EmpresasPage() {
             <DialogTitle>{editId ? "Editar Empresa" : "Nueva Empresa + Administrador"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-            {/* Empresa fields */}
             <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Building2 className="h-4 w-4" /> Datos de la Empresa
             </div>
@@ -259,6 +297,26 @@ export default function EmpresasPage() {
               <Label>Nombre *</Label>
               <Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Nombre de la empresa" />
             </div>
+
+            {/* Plan selector */}
+            <div className="space-y-2">
+              <Label>Plan</Label>
+              <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PLAN_CONFIG).map(([key, cfg]) => (
+                    <SelectItem key={key} value={key}>
+                      <span className="flex items-center gap-2">
+                        {cfg.icon} {cfg.label} — {cfg.price} (hasta {cfg.maxUsers >= 999 ? "∞" : cfg.maxUsers} usuarios)
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>RUC / NIT</Label>
@@ -266,7 +324,7 @@ export default function EmpresasPage() {
               </div>
               <div className="space-y-2">
                 <Label>Teléfono</Label>
-                <Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} placeholder="+503 0000-0000" />
+                <Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} placeholder="+52 000-000-0000" />
               </div>
             </div>
             <div className="space-y-2">
@@ -278,14 +336,13 @@ export default function EmpresasPage() {
               <Label>Empresa activa</Label>
             </div>
 
-            {/* Admin user fields — only for new empresa */}
             {!editId && (
               <>
                 <Separator />
                 <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                   <UserPlus className="h-4 w-4" /> Administrador de la Empresa
                 </div>
-                <p className="text-xs text-muted-foreground">Este usuario será el admin de la empresa. Todos los usuarios y datos que cree pertenecerán a esta empresa.</p>
+                <p className="text-xs text-muted-foreground">Este usuario será el admin de la empresa.</p>
                 <div className="space-y-2">
                   <Label>Nombre completo *</Label>
                   <Input value={form.adminNombre} onChange={(e) => setForm({ ...form, adminNombre: e.target.value })} placeholder="Nombre del administrador" />
@@ -302,7 +359,7 @@ export default function EmpresasPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Teléfono</Label>
-                  <Input value={form.adminTelefono} onChange={(e) => setForm({ ...form, adminTelefono: e.target.value })} placeholder="+503 0000-0000" />
+                  <Input value={form.adminTelefono} onChange={(e) => setForm({ ...form, adminTelefono: e.target.value })} placeholder="+52 000-000-0000" />
                 </div>
               </>
             )}
