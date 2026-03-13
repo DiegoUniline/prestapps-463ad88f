@@ -115,10 +115,10 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
               </div>
               <div>
                 <Label className="text-xs">Cobrador</Label>
-                <Select value={cobradorId} onValueChange={setCobradorId}>
+                <Select value={cobradorId || "__none__"} onValueChange={(v) => setCobradorId(v === "__none__" ? "" : v)}>
                   <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin cobrador" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin cobrador</SelectItem>
+                    <SelectItem value="__none__">Sin cobrador</SelectItem>
                     {cobradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
