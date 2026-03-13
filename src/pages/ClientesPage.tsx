@@ -167,10 +167,11 @@ export default function ClientesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Clientes</h1>
-        <Button onClick={() => navigate("/clientes/nuevo")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo
+        <h1 className="text-xl md:text-2xl font-bold">Clientes</h1>
+        <Button size="sm" className="h-8 text-[13px]" onClick={() => navigate("/clientes/nuevo")}>
+          <Plus className="h-4 w-4 mr-1.5" />
+          <span className="hidden sm:inline">Nuevo Cliente</span>
+          <span className="sm:hidden">Nuevo</span>
         </Button>
       </div>
 
