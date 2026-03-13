@@ -219,7 +219,7 @@ export default function NuevoPrestamoPage() {
             capital_pagado: yaPagada ? c.capital : 0,
             interes_pagado: yaPagada ? c.interes : 0,
             fecha_pagada: yaPagada ? format(new Date(), "yyyy-MM-dd") : null,
-            status: (yaPagada ? "Pagada" : "Pendiente") as const,
+            status: yaPagada ? ("Pagada" as const) : ("Pendiente" as const),
             empresa_id: empresaId,
           };
         });
