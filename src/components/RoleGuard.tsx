@@ -1,5 +1,6 @@
-import { useCurrentUserRole, AppRole } from "@/hooks/useCurrentUserRole";
+import { useAuthStore } from "@/stores/authStore";
 import { Navigate } from "react-router-dom";
+import type { AppRole } from "@/types/index";
 
 interface RoleGuardProps {
   children: React.ReactNode;
@@ -7,7 +8,8 @@ interface RoleGuardProps {
 }
 
 export default function RoleGuard({ children, allowed }: RoleGuardProps) {
-  const { role, loading } = useCurrentUserRole();
+  const role = useAuthStore((s) => s.role);
+  const loading = useAuthStore((s) => s.loading || s.roleLoading);
 
   if (loading) {
     return (
