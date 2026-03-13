@@ -18,10 +18,12 @@ import { es } from "date-fns/locale";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   XCircle, ChevronLeft, ChevronRight, Users, DollarSign,
-  TrendingUp, HandCoins, Eye,
+  TrendingUp, HandCoins, Eye, MapPin, CalendarCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
+import { PromesaModal } from "@/components/PromesaModal";
+import { VisitaModal } from "@/components/VisitaModal";
 
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -75,8 +77,36 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       if (error) throw error;
       if (!cuotas || cuotas.length === 0) return [];
 
+      // 1b) Also get cuotas with promesas for this date (status=Prometida)
+      const { data: promesas } = await supabase
+        .from("promesas_pago")
+        .select("cuota_id")
+        .eq("fecha_prometida", fecha)
+        .eq("status", "Pendiente");
+
+      const promesaCuotaIds = new Set((promesas || []).map((p: any) => p.cuota_id));
+
+      // Merge: add any promised cuotas not already in the list
+      let allCuotaIds = new Set(cuotas.map((c) => c.id));
+      const missingPromesaIds = [...promesaCuotaIds].filter((id) => !allCuotaIds.has(id));
+
+      let extraCuotas: any[] = [];
+      if (missingPromesaIds.length > 0) {
+        const { data: extra } = await supabase
+          .from("amortizacion")
+          .select(`
+            id, prestamo_id, num_cuota, capital_interes, saldo_total, saldo_mora,
+            saldo_capital, saldo_interes, mora_pagada, interes_pagado, capital_pagado,
+            fecha_vencimiento, status, dias_atraso, fecha_pagada
+          `)
+          .in("id", missingPromesaIds);
+        extraCuotas = extra || [];
+      }
+
+      const allCuotas = [...cuotas, ...extraCuotas];
+
       // 2) Get prestamos info
-      const prestamoIds = [...new Set(cuotas.map((c) => c.prestamo_id))];
+      const prestamoIds = [...new Set(allCuotas.map((c) => c.prestamo_id))];
       const { data: prestamos } = await supabase
         .from("prestamos")
         .select(`
@@ -96,7 +126,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       }
 
       // 4) Get payments for these cuotas to check if paid today
-      const cuotaIds = cuotas.map((c) => c.id);
+      const cuotaIds = allCuotas.map((c) => c.id);
       const { data: pagos } = await supabase
         .from("pagos")
         .select("cuota_id, monto_recibido, created_at")
@@ -113,7 +143,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       const presMap: Record<string, any> = {};
       for (const p of prestamos || []) presMap[p.id] = p;
 
-      return cuotas.map((c): CuotaDiaria => {
+      return allCuotas.map((c): CuotaDiaria => {
         const pres = presMap[c.prestamo_id] || {};
         const cliente = pres.clientes as any;
         const ruta = pres.rutas as any;
@@ -167,6 +197,7 @@ function useCajasAll(empresaId: string) {
 // ── Status helpers ────────────────────────────────────────────────
 function getStatusIcon(item: CuotaDiaria) {
   if (item.pagada) return <CheckCircle2 className="h-4 w-4 text-success" />;
+  if (item.status === "Prometida") return <CalendarIcon className="h-4 w-4 text-purple-500" />;
   if (item.status === "Parcial") return <Clock className="h-4 w-4 text-warning" />;
   if (item.diasAtraso > 0) return <AlertTriangle className="h-4 w-4 text-destructive" />;
   return <Clock className="h-4 w-4 text-muted-foreground" />;
@@ -174,6 +205,7 @@ function getStatusIcon(item: CuotaDiaria) {
 
 function getStatusBadge(item: CuotaDiaria) {
   if (item.pagada) return { label: "Cobrada", className: "bg-badge-activo text-badge-activo-foreground" };
+  if (item.status === "Prometida") return { label: "Prometida", className: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400" };
   if (item.status === "Parcial") return { label: "Parcial", className: "bg-badge-aldia text-badge-aldia-foreground" };
   if (item.diasAtraso > 0) return { label: `Vencida (${item.diasAtraso}d)`, className: "bg-badge-vencido text-badge-vencido-foreground" };
   return { label: "Pendiente", className: "bg-badge-liquidado text-badge-liquidado-foreground" };
@@ -198,6 +230,14 @@ export default function CobranzaDiariaPage() {
   const [pagoRutaId, setPagoRutaId] = useState<string | null>(null);
   const [pagoCobradorId, setPagoCobradorId] = useState<string | null>(null);
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();
+
+  // Promesa modal state
+  const [promesaOpen, setPromesaOpen] = useState(false);
+  const [promesaItem, setPromesaItem] = useState<CuotaDiaria | null>(null);
+
+  // Visita modal state
+  const [visitaOpen, setVisitaOpen] = useState(false);
+  const [visitaItem, setVisitaItem] = useState<CuotaDiaria | null>(null);
 
   const fechaStr = format(fecha, "yyyy-MM-dd");
   const { data: cuotas, isLoading } = useCobranzaDiaria(fechaStr, empresaId);
@@ -245,6 +285,7 @@ export default function CobranzaDiariaPage() {
       if (filtroEstado === "cobradas" && !c.pagada) return false;
       if (filtroEstado === "pendientes" && c.pagada) return false;
       if (filtroEstado === "vencidas" && (c.pagada || c.diasAtraso === 0)) return false;
+      if (filtroEstado === "prometidas" && c.status !== "Prometida") return false;
       return true;
     });
   }, [roleCuotas, search, filtroRuta, filtroCobrador, filtroEstado, showVencidas, fechaStr]);
@@ -411,6 +452,7 @@ export default function CobranzaDiariaPage() {
             <SelectItem value="pendientes">Pendientes</SelectItem>
             <SelectItem value="cobradas">Cobradas</SelectItem>
             <SelectItem value="vencidas">Vencidas</SelectItem>
+            <SelectItem value="prometidas">Prometidas</SelectItem>
           </SelectContent>
         </Select>
         <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground cursor-pointer select-none">
@@ -543,6 +585,26 @@ export default function CobranzaDiariaPage() {
                             Cobrar
                           </Button>
                           <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Registrar visita"
+                            onClick={() => { setVisitaItem(item); setVisitaOpen(true); }}
+                          >
+                            <MapPin className="h-3.5 w-3.5" />
+                          </Button>
+                          {item.status !== "Prometida" && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Promesa de pago"
+                              onClick={() => { setPromesaItem(item); setPromesaOpen(true); }}
+                            >
+                              <CalendarCheck className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
@@ -574,6 +636,39 @@ export default function CobranzaDiariaPage() {
           rutaId={pagoRutaId}
           cobradorId={pagoCobradorId}
           montoInicial={pagoMontoInicial}
+        />
+      )}
+
+      {/* Promesa Modal */}
+      {promesaOpen && promesaItem && (
+        <PromesaModal
+          open={promesaOpen}
+          onOpenChange={(open) => {
+            setPromesaOpen(open);
+            if (!open) queryClient.invalidateQueries({ queryKey: ["cobranza-diaria", fechaStr] });
+          }}
+          prestamoId={promesaItem.prestamoId}
+          cuotaNum={promesaItem.numCuota}
+          cuotaId={promesaItem.cuotaId}
+          saldoTotal={promesaItem.saldoTotal}
+          fechaVencimiento={promesaItem.fechaVencimiento}
+        />
+      )}
+
+      {/* Visita Modal */}
+      {visitaOpen && visitaItem && (
+        <VisitaModal
+          open={visitaOpen}
+          onOpenChange={(open) => {
+            setVisitaOpen(open);
+            if (!open) queryClient.invalidateQueries({ queryKey: ["cobranza-diaria", fechaStr] });
+          }}
+          prestamoId={visitaItem.prestamoId}
+          clienteId={visitaItem.clienteId}
+          clienteNombre={visitaItem.clienteNombre}
+          cuotaId={visitaItem.cuotaId}
+          cuotaNum={visitaItem.numCuota}
+          saldoTotal={visitaItem.saldoTotal}
         />
       )}
     </div>
