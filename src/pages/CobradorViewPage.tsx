@@ -18,10 +18,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { PagoModal } from "@/components/PagoModal";
+import { VisitaModal } from "@/components/VisitaModal";
+import { PromesaModal } from "@/components/PromesaModal";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   HandCoins, ChevronLeft, ChevronRight, DollarSign, TrendingUp,
-  Eye, Phone, MapPin, Filter, X, Receipt, History,
+  Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
 } from "lucide-react";
 
 const $$ = (n: number) => `$${(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
