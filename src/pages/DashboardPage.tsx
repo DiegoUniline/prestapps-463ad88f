@@ -51,7 +51,7 @@ function useDashboardData(empresaId: string) {
         supabase.from("amortizacion").select("prestamo_id, num_cuota, capital, interes, capital_interes, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento, mora, capital_pagado, interes_pagado, mora_pagada").eq("empresa_id", empresaId),
         supabase.from("pagos").select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, created_at, cobrador_id, prestamo_id, caja_id, ruta_id").eq("empresa_id", empresaId),
         supabase.from("cajas").select("id, nombre, saldo_actual").eq("empresa_id", empresaId),
-        (supabase.from as any)("cobradores").select("id, nombre, efectivo_en_mano, activo, porcentaje_comision").eq("empresa_id", empresaId),
+        supabase.from("profiles").select("id, nombre_completo, efectivo_en_mano, activo, porcentaje_comision").eq("empresa_id", empresaId),
         supabase.from("rutas").select("id, nombre, cobrador_id").eq("empresa_id", empresaId),
         supabase.from("clientes").select("id, estado, created_at").eq("empresa_id", empresaId),
         supabase.from("promesas_pago").select("id, monto_prometido, fecha_prometida, status").eq("empresa_id", empresaId),
