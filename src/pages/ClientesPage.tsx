@@ -278,18 +278,18 @@ export default function ClientesPage() {
         {/* ── Tab: Estados de Cuenta ────────────────────────── */}
         <TabsContent value="estados" className="space-y-4">
           {/* KPIs */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="border rounded-lg p-4 bg-card">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Deuda Total</p>
-              <p className="text-2xl font-bold mt-1">{$$(totalDeuda)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="border rounded-lg p-3 md:p-4 bg-card">
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Deuda Total</p>
+              <p className="text-xl md:text-2xl font-bold mt-1">{$$(totalDeuda)}</p>
             </div>
-            <div className="border rounded-lg p-4 bg-card">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Saldo Moroso</p>
-              <p className="text-2xl font-bold mt-1 text-destructive">{$$(totalMoroso)}</p>
+            <div className="border rounded-lg p-3 md:p-4 bg-card">
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Saldo Moroso</p>
+              <p className="text-xl md:text-2xl font-bold mt-1 text-destructive">{$$(totalMoroso)}</p>
             </div>
-            <div className="border rounded-lg p-4 bg-card">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Cuotas Vencidas</p>
-              <p className="text-2xl font-bold mt-1">{totalVencidas}</p>
+            <div className="border rounded-lg p-3 md:p-4 bg-card">
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Cuotas Vencidas</p>
+              <p className="text-xl md:text-2xl font-bold mt-1">{totalVencidas}</p>
             </div>
           </div>
 
