@@ -1,10 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
-
-const $$ = (n: number) =>
-  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 interface ExportColumn {
   header: string;
   key: string;

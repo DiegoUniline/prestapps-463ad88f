@@ -21,9 +21,7 @@ const estadoColors: Record<string, string> = {
   Bloqueado: "bg-muted text-muted-foreground",
   Inactivo: "bg-muted text-muted-foreground",
 };
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 // ── Estado de Cuenta hook ─────────────────────────────────────────
 interface EstadoCuenta {
   cliente_id: string;

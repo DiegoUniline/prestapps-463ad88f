@@ -13,10 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Search, UserCheck, Wallet, DollarSign, Percent, Scissors, ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { cn, $$ } from "@/lib/utils";
 // ── Data hooks ────────────────────────────────────────────────────
 interface Cobrador {
   id: string;
