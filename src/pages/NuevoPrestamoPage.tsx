@@ -403,7 +403,26 @@ export default function NuevoPrestamoPage() {
               </div>
             </div>
 
-            {/* Gastos legales + Mora */}
+            {/* Carga inicial checkbox */}
+            <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50">
+              <Checkbox
+                checked={esInicial}
+                onCheckedChange={(v) => setEsInicial(!!v)}
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-[13px] font-medium">Préstamo inicial (carga de cartera)</p>
+                <p className="text-[11px] text-muted-foreground">No descontará el monto de la caja. Útil para cargar préstamos existentes al sistema.</p>
+              </div>
+            </label>
+
+            {!esInicial && !cajaId && (
+              <div className="flex items-center gap-2 text-amber-600 text-sm">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Sin caja asignada — no se registrará movimiento de salida.</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Gastos Legales</Label>

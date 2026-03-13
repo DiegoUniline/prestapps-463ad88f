@@ -4,19 +4,80 @@ import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
+function CalendarCaption({
+  displayMonth,
+  onMonthChange,
+}: {
+  displayMonth: Date;
+  onMonthChange: (date: Date) => void;
+}) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 21 }, (_, i) => currentYear - 10 + i);
+  const months = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+  ];
+
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <Select
+        value={String(displayMonth.getMonth())}
+        onValueChange={(v) => {
+          const newDate = new Date(displayMonth);
+          newDate.setMonth(parseInt(v));
+          onMonthChange(newDate);
+        }}
+      >
+        <SelectTrigger className="h-7 text-xs font-medium border-none shadow-none px-2 gap-1 w-auto">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {months.map((m, i) => (
+            <SelectItem key={i} value={String(i)} className="text-xs">{m}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={String(displayMonth.getFullYear())}
+        onValueChange={(v) => {
+          const newDate = new Date(displayMonth);
+          newDate.setFullYear(parseInt(v));
+          onMonthChange(newDate);
+        }}
+      >
+        <SelectTrigger className="h-7 text-xs font-medium border-none shadow-none px-2 gap-1 w-auto">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="max-h-48">
+          {years.map((y) => (
+            <SelectItem key={y} value={String(y)} className="text-xs">{y}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+  const [month, setMonth] = React.useState<Date>(
+    (props as any).selected instanceof Date ? (props as any).selected : new Date()
+  );
+
   return (
     <DayPicker
+      month={month}
+      onMonthChange={setMonth}
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: "hidden",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),
@@ -44,6 +105,9 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
       components={{
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
+        Caption: ({ displayMonth }) => (
+          <CalendarCaption displayMonth={displayMonth} onMonthChange={setMonth} />
+        ),
       }}
       {...props}
     />
