@@ -273,8 +273,9 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
   }
 
   addFooter(doc);
-  doc.save(`estado-cuenta-PRE-${prestamo.id.slice(0, 8)}.pdf`);
+  return doc;
 }
+
 
 // ── 2. CONTRATO ──────────────────────────────────────────────────
 export async function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[]) {
