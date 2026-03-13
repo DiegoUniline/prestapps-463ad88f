@@ -1,0 +1,494 @@
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import {
+  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye,
+} from "lucide-react";
+import {
+  useEmpresaConfig, useSaveEmpresaConfig, useUploadLogo,
+  type EmpresaConfig, type TicketCampos, type ContratoCampos,
+} from "@/hooks/useEmpresaConfig";
+
+// ── Tab 1: Datos Generales ──
+function DatosGeneralesTab() {
+  const { empresaId } = useEmpresa();
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadLogo = useUploadLogo();
+
+  const { data: empresa, isLoading } = useQuery({
+    queryKey: ["empresa-datos", empresaId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("*")
+        .eq("id", empresaId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "" });
+
+  useEffect(() => {
+    if (empresa) {
+      setForm({
+        nombre: empresa.nombre || "",
+        ruc: empresa.ruc || "",
+        telefono: empresa.telefono || "",
+        direccion: empresa.direccion || "",
+      });
+    }
+  }, [empresa]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!form.nombre.trim()) throw new Error("El nombre es requerido");
+      const { error } = await supabase
+        .from("empresas")
+        .update({
+          nombre: form.nombre.trim(),
+          ruc: form.ruc || null,
+          telefono: form.telefono || null,
+          direccion: form.direccion || null,
+        })
+        .eq("id", empresaId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["empresa-datos"] });
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      toast.success("Datos actualizados");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("El logo no debe superar 2MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Solo se permiten imágenes");
+      return;
+    }
+    uploadLogo.mutate({ empresaId, file });
+  };
+
+  if (isLoading) {
+    return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>;
+  }
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      {/* Logo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 text-primary" /> Logo de la Empresa
+          </CardTitle>
+          <CardDescription>Se usará en tickets, contratos y documentos PDF</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-6">
+            <div className="h-24 w-24 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/30 overflow-hidden flex-shrink-0">
+              {empresa?.logo_url ? (
+                <img src={empresa.logo_url} alt="Logo" className="h-full w-full object-contain p-2" />
+              ) : (
+                <Building2 className="h-10 w-10 text-muted-foreground" />
+              )}
+            </div>
+            <div className="space-y-2">
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploadLogo.isPending}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                {uploadLogo.isPending ? "Subiendo..." : "Subir Logo"}
+              </Button>
+              <p className="text-xs text-muted-foreground">PNG, JPG o SVG. Máximo 2MB.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Company Data */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" /> Datos de la Empresa
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Nombre *</Label>
+            <Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>RUC / NIT</Label>
+              <Input value={form.ruc} onChange={(e) => setForm({ ...form, ruc: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Teléfono</Label>
+              <Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Dirección</Label>
+            <Textarea value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} rows={2} />
+          </div>
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full">
+            <Save className="h-4 w-4 mr-1" />
+            {saveMutation.isPending ? "Guardando..." : "Guardar Datos"}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Ticket field labels ──
+const TICKET_FIELD_LABELS: Record<keyof TicketCampos, string> = {
+  cliente_nombre: "Nombre del cliente",
+  cliente_dni: "Documento de identidad",
+  cliente_telefono: "Teléfono del cliente",
+  prestamo_id: "ID del préstamo",
+  fecha_pago: "Fecha del pago",
+  monto_recibido: "Monto recibido",
+  aplicado_mora: "Desglose: Mora",
+  aplicado_interes: "Desglose: Interés",
+  aplicado_capital: "Desglose: Capital",
+  saldo_pendiente: "Saldo pendiente",
+  metodo_pago: "Método de pago",
+  cobrador: "Nombre del cobrador",
+  firma_cliente: "Línea de firma del cliente",
+  firma_cobrador: "Línea de firma del cobrador",
+};
+
+// ── Tab 2: Diseño del Ticket ──
+function TicketTab() {
+  const { data: config, isLoading } = useEmpresaConfig();
+  const saveConfig = useSaveEmpresaConfig();
+  const [local, setLocal] = useState<EmpresaConfig | null>(null);
+
+  useEffect(() => {
+    if (config) setLocal({ ...config });
+  }, [config]);
+
+  if (isLoading || !local) {
+    return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>;
+  }
+
+  const toggleField = (field: keyof TicketCampos) => {
+    setLocal({
+      ...local,
+      ticket_campos: { ...local.ticket_campos, [field]: !local.ticket_campos[field] },
+    });
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-5">
+      {/* Settings */}
+      <div className="lg:col-span-3 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Encabezado y Pie</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Mostrar logo en el ticket</Label>
+              <Switch
+                checked={local.ticket_mostrar_logo}
+                onCheckedChange={(v) => setLocal({ ...local, ticket_mostrar_logo: v })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Texto de encabezado</Label>
+              <Input
+                value={local.ticket_encabezado}
+                onChange={(e) => setLocal({ ...local, ticket_encabezado: e.target.value })}
+                placeholder="Ej: Recibo de Pago Oficial"
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Texto de pie de página</Label>
+              <Input
+                value={local.ticket_pie}
+                onChange={(e) => setLocal({ ...local, ticket_pie: e.target.value })}
+                placeholder="Ej: Gracias por su pago"
+                maxLength={200}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Campos del Ticket</CardTitle>
+            <CardDescription>Selecciona qué información aparecerá en el ticket de pago</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(Object.keys(TICKET_FIELD_LABELS) as (keyof TicketCampos)[]).map((field) => (
+                <div key={field} className="flex items-center justify-between p-2 rounded-lg border">
+                  <span className="text-sm">{TICKET_FIELD_LABELS[field]}</span>
+                  <Switch
+                    checked={local.ticket_campos[field]}
+                    onCheckedChange={() => toggleField(field)}
+                  />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Button onClick={() => saveConfig.mutate(local)} disabled={saveConfig.isPending} className="w-full">
+          <Save className="h-4 w-4 mr-1" />
+          {saveConfig.isPending ? "Guardando..." : "Guardar Configuración de Ticket"}
+        </Button>
+      </div>
+
+      {/* Preview */}
+      <div className="lg:col-span-2">
+        <Card className="sticky top-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Eye className="h-4 w-4" /> Vista Previa
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg p-4 bg-background text-xs space-y-2 font-mono">
+              {local.ticket_mostrar_logo && (
+                <div className="text-center text-muted-foreground italic">[LOGO]</div>
+              )}
+              {local.ticket_encabezado && (
+                <div className="text-center font-bold text-sm">{local.ticket_encabezado}</div>
+              )}
+              <Separator />
+              {local.ticket_campos.prestamo_id && <div>Préstamo: <span className="font-bold">PRE-A1B2C3D4</span></div>}
+              {local.ticket_campos.fecha_pago && <div>Fecha: <span className="font-bold">13/03/2026 14:30</span></div>}
+              <Separator />
+              {local.ticket_campos.cliente_nombre && <div>Cliente: <span className="font-bold">Juan Pérez</span></div>}
+              {local.ticket_campos.cliente_dni && <div>Documento: <span className="font-bold">00000000-0</span></div>}
+              {local.ticket_campos.cliente_telefono && <div>Teléfono: <span className="font-bold">7000-0000</span></div>}
+              <Separator />
+              {local.ticket_campos.monto_recibido && <div className="font-bold text-sm">Monto Recibido: $50.00</div>}
+              {local.ticket_campos.aplicado_mora && <div className="pl-2">→ Mora: $5.00</div>}
+              {local.ticket_campos.aplicado_interes && <div className="pl-2">→ Interés: $15.00</div>}
+              {local.ticket_campos.aplicado_capital && <div className="pl-2">→ Capital: $30.00</div>}
+              {local.ticket_campos.saldo_pendiente && <div className="mt-1">Saldo Pendiente: <span className="font-bold">$450.00</span></div>}
+              {local.ticket_campos.metodo_pago && <div>Método: <span className="font-bold">Efectivo</span></div>}
+              {local.ticket_campos.cobrador && <div>Cobrador: <span className="font-bold">Carlos López</span></div>}
+              {(local.ticket_campos.firma_cliente || local.ticket_campos.firma_cobrador) && (
+                <>
+                  <Separator />
+                  <div className="grid grid-cols-2 gap-4 pt-4">
+                    {local.ticket_campos.firma_cliente && (
+                      <div className="text-center">
+                        <div className="border-t border-foreground mt-6 pt-1">Firma Cliente</div>
+                      </div>
+                    )}
+                    {local.ticket_campos.firma_cobrador && (
+                      <div className="text-center">
+                        <div className="border-t border-foreground mt-6 pt-1">Firma Cobrador</div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+              {local.ticket_pie && (
+                <>
+                  <Separator />
+                  <div className="text-center text-muted-foreground italic">{local.ticket_pie}</div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Contract field labels ──
+const CONTRATO_FIELD_LABELS: Record<keyof ContratoCampos, string> = {
+  datos_cliente: "Sección de datos del cliente",
+  datos_prestamo: "Condiciones del crédito",
+  tabla_amortizacion: "Tabla de amortización / plan de pagos",
+  clausula_mora: "Cláusula de mora",
+  firma_cliente: "Línea de firma del cliente",
+  firma_empresa: "Línea de firma de la empresa",
+  notas: "Notas adicionales",
+};
+
+const CONTRATO_PLACEHOLDERS = [
+  { tag: "{{cliente_nombre}}", desc: "Nombre del cliente" },
+  { tag: "{{cliente_dni}}", desc: "Documento de identidad" },
+  { tag: "{{cliente_documento}}", desc: "Tipo de documento" },
+  { tag: "{{cliente_direccion}}", desc: "Dirección del cliente" },
+  { tag: "{{cliente_telefono}}", desc: "Teléfono del cliente" },
+  { tag: "{{monto_solicitado}}", desc: "Monto solicitado" },
+  { tag: "{{monto_total_pagar}}", desc: "Monto total a pagar" },
+  { tag: "{{num_cuotas}}", desc: "Número de cuotas" },
+  { tag: "{{valor_cuota}}", desc: "Valor de cuota" },
+  { tag: "{{frecuencia}}", desc: "Frecuencia de pago" },
+  { tag: "{{modalidad}}", desc: "Modalidad del préstamo" },
+  { tag: "{{tasa_interes}}", desc: "Tasa de interés" },
+  { tag: "{{tipo_mora}}", desc: "Tipo de mora" },
+  { tag: "{{valor_mora}}", desc: "Valor de mora" },
+  { tag: "{{fecha_primer_pago}}", desc: "Fecha primer pago" },
+  { tag: "{{fecha_registro}}", desc: "Fecha de registro" },
+  { tag: "{{empresa_nombre}}", desc: "Nombre de la empresa" },
+  { tag: "{{notas}}", desc: "Notas del préstamo" },
+];
+
+// ── Tab 3: Contrato ──
+function ContratoTab() {
+  const { data: config, isLoading } = useEmpresaConfig();
+  const saveConfig = useSaveEmpresaConfig();
+  const [local, setLocal] = useState<EmpresaConfig | null>(null);
+
+  useEffect(() => {
+    if (config) setLocal({ ...config });
+  }, [config]);
+
+  if (isLoading || !local) {
+    return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>;
+  }
+
+  const toggleField = (field: keyof ContratoCampos) => {
+    setLocal({
+      ...local,
+      contrato_campos: { ...local.contrato_campos, [field]: !local.contrato_campos[field] },
+    });
+  };
+
+  const insertPlaceholder = (tag: string) => {
+    setLocal({
+      ...local,
+      contrato_plantilla: local.contrato_plantilla + " " + tag,
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Secciones */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Secciones del Contrato</CardTitle>
+            <CardDescription>Activa o desactiva las secciones que aparecerán en el PDF</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(Object.keys(CONTRATO_FIELD_LABELS) as (keyof ContratoCampos)[]).map((field) => (
+              <div key={field} className="flex items-center justify-between p-2 rounded-lg border">
+                <span className="text-sm">{CONTRATO_FIELD_LABELS[field]}</span>
+                <Switch
+                  checked={local.contrato_campos[field]}
+                  onCheckedChange={() => toggleField(field)}
+                />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Plantilla */}
+        <div className="lg:col-span-2 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Plantilla del Contrato</CardTitle>
+              <CardDescription>
+                Edita el texto del contrato. Usa los campos disponibles para insertar datos automáticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">Campos disponibles (clic para insertar):</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {CONTRATO_PLACEHOLDERS.map((p) => (
+                    <button
+                      key={p.tag}
+                      type="button"
+                      onClick={() => insertPlaceholder(p.tag)}
+                      className="inline-flex items-center rounded border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-mono hover:bg-muted transition-colors"
+                      title={p.desc}
+                    >
+                      {p.tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Textarea
+                value={local.contrato_plantilla}
+                onChange={(e) => setLocal({ ...local, contrato_plantilla: e.target.value })}
+                rows={16}
+                className="font-mono text-sm"
+                placeholder="Escribe el texto del contrato aquí..."
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Button onClick={() => saveConfig.mutate(local)} disabled={saveConfig.isPending} className="w-full">
+        <Save className="h-4 w-4 mr-1" />
+        {saveConfig.isPending ? "Guardando..." : "Guardar Configuración de Contrato"}
+      </Button>
+    </div>
+  );
+}
+
+// ── Página Principal ──
+export default function ConfiguracionEmpresaPage() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Configuración de la Empresa</h1>
+        <p className="text-muted-foreground text-sm mt-1">Logo, datos, diseño de tickets y plantilla de contratos</p>
+      </div>
+
+      <Tabs defaultValue="datos" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="datos" className="gap-1.5">
+            <Building2 className="h-4 w-4" /> Datos Generales
+          </TabsTrigger>
+          <TabsTrigger value="ticket" className="gap-1.5">
+            <Receipt className="h-4 w-4" /> Ticket de Pago
+          </TabsTrigger>
+          <TabsTrigger value="contrato" className="gap-1.5">
+            <FileText className="h-4 w-4" /> Contrato
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="datos">
+          <DatosGeneralesTab />
+        </TabsContent>
+        <TabsContent value="ticket">
+          <TicketTab />
+        </TabsContent>
+        <TabsContent value="contrato">
+          <ContratoTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
