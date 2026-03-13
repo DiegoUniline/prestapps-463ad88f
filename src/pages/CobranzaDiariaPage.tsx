@@ -437,16 +437,11 @@ export default function CobranzaDiariaPage() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="bg-filter-bar border border-filter-bar-border rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
+      {/* Desktop Filters */}
+      <div className="hidden md:flex bg-filter-bar border border-filter-bar-border rounded-lg px-4 py-3 flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Buscar cliente..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-[13px]"
-          />
+          <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
         </div>
         <Select value={filtroRuta} onValueChange={setFiltroRuta}>
           <SelectTrigger className="w-[160px] h-8 text-[13px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
@@ -473,14 +468,34 @@ export default function CobranzaDiariaPage() {
           </SelectContent>
         </Select>
         <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={showVencidas}
-            onChange={(e) => setShowVencidas(e.target.checked)}
-            className="rounded border-border"
-          />
-          Incluir vencidas anteriores
+          <input type="checkbox" checked={showVencidas} onChange={(e) => setShowVencidas(e.target.checked)} className="rounded border-border" />
+          Incluir vencidas
         </label>
+      </div>
+      {/* Mobile Filters */}
+      <div className="md:hidden space-y-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Select value={filtroRuta} onValueChange={setFiltroRuta}>
+            <SelectTrigger className="h-8 text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas rutas</SelectItem>
+              {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+            <SelectTrigger className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="pendientes">Pendientes</SelectItem>
+              <SelectItem value="cobradas">Cobradas</SelectItem>
+              <SelectItem value="vencidas">Vencidas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Summary by Route */}
