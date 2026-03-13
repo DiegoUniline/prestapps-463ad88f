@@ -198,8 +198,10 @@ export default function NuevoPrestamoPage() {
         throw new Error("Completa los campos obligatorios");
       }
 
-      // Validate caja balance if not carga inicial
-      if (!esInicial && cajaId) {
+      const esVenta = tipoCuenta !== "prestamo";
+
+      // Validate caja balance if not carga inicial and not a sale
+      if (!esInicial && !esVenta && cajaId) {
         const { data: caja } = await supabase
           .from("cajas")
           .select("saldo_actual")
