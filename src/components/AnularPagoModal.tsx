@@ -58,7 +58,7 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
       if (pago.cuota_id) {
         const { data: cuota } = await supabase
           .from("amortizacion")
-          .select("id, capital_pagado, interes_pagado, mora_pagada, saldo_capital, saldo_interes, saldo_mora, saldo_total, status")
+          .select("id, capital_pagado, interes_pagado, mora_pagada, saldo_capital, saldo_interes, saldo_mora, saldo_total, status, fecha_vencimiento")
           .eq("id", pago.cuota_id)
           .single();
 
