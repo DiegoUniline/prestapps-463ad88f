@@ -32,9 +32,21 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   },
 
   initialize: () => {
+    let empresasLoaded = false;
+    let profileLoaded = false;
+
+    const maybeFinishLoading = () => {
+      if (empresasLoaded && profileLoaded) {
+        set({ loading: false });
+      }
+    };
+
     const loadProfile = (userId: string) => {
-      // Deduplicate
-      if (get()._profileLoadedFor === userId) return;
+      if (get()._profileLoadedFor === userId) {
+        profileLoaded = true;
+        maybeFinishLoading();
+        return;
+      }
       set({ _profileLoadedFor: userId });
       supabase
         .from("profiles")
@@ -50,6 +62,8 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
             });
             localStorage.setItem("empresa_id", profile.empresa_id);
           }
+          profileLoaded = true;
+          maybeFinishLoading();
         });
     };
 
@@ -58,6 +72,8 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
         setTimeout(() => loadProfile(session.user.id), 0);
       } else {
         set({ _profileLoadedFor: null });
+        profileLoaded = true;
+        maybeFinishLoading();
       }
     });
 
@@ -73,14 +89,18 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
         set({
           empresas,
           empresaNombre: empresas.find((e) => e.id === currentId)?.nombre || "Empresa",
-          loading: false,
         });
+        empresasLoaded = true;
+        maybeFinishLoading();
       });
 
     // Load from profile on init
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         loadProfile(session.user.id);
+      } else {
+        profileLoaded = true;
+        maybeFinishLoading();
       }
     });
 
