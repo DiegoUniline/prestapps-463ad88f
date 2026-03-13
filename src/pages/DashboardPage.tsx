@@ -384,7 +384,7 @@ export default function DashboardPage() {
             {fechaDesde && ` · Desde: ${format(fechaDesde, "dd/MM/yyyy")}`}
             {fechaHasta && ` · Hasta: ${format(fechaHasta, "dd/MM/yyyy")}`}
             {filtroRuta !== "__all__" && ` · Ruta: ${data?.rutas.find((r: any) => r.id === filtroRuta)?.nombre}`}
-            {filtroCobrador !== "__all__" && ` · Cobrador: ${data?.cobradores.find((c: any) => c.id === filtroCobrador)?.nombre}`}
+            {filtroCobrador !== "__all__" && ` · Cobrador: ${data?.cobradores.find((c: any) => c.id === filtroCobrador)?.nombre_completo}`}
             {filtroCaja !== "__all__" && ` · Caja: ${data?.cajas.find((c: any) => c.id === filtroCaja)?.nombre}`}
           </p>
         )}
