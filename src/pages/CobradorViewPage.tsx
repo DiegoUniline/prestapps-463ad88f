@@ -249,6 +249,12 @@ export default function CobradorViewPage() {
   const [pagoCobradorId, setPagoCobradorId] = useState<string | null>(null);
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();
 
+  // Visita + Promesa modals
+  const [visitaOpen, setVisitaOpen] = useState(false);
+  const [visitaItem, setVisitaItem] = useState<CuotaCobrador | null>(null);
+  const [promesaOpen, setPromesaOpen] = useState(false);
+  const [promesaItem, setPromesaItem] = useState<CuotaCobrador | null>(null);
+
   const fechaDesdeStr = format(fechaDesde, "yyyy-MM-dd");
   const fechaHastaStr = format(fechaHasta, "yyyy-MM-dd");
 
