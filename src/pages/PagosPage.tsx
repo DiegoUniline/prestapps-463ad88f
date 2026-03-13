@@ -386,7 +386,7 @@ export default function PagosPage() {
                   p.anulado && "opacity-50"
                 )}
               >
-                <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? format(new Date(p.fecha), "dd/MM/yyyy HH:mm") : "—"}</TableCell>
+                <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
                 <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{p.shortId}</TableCell>
                 <TableCell className={cn("text-right font-medium text-[13px] px-3", p.anulado && "line-through")}>{$$(p.montoRecibido)}</TableCell>
