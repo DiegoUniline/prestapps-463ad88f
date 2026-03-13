@@ -201,6 +201,7 @@ export default function CobradoresPage() {
         monto_depositado: corteDeposito,
         total_cobrado: corteTotal,
         porcentaje_usado: selectedCobrador.porcentaje_comision,
+        empresa_id: empresaId,
       });
       if (corteErr) throw corteErr;
 
