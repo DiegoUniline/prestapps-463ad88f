@@ -107,6 +107,7 @@ export default function PrestamoDetallePage() {
   const [cancelarOpen, setCancelarOpen] = useState(false);
   const [reestructurarOpen, setReestructurarOpen] = useState(false);
   const [editarOpen, setEditarOpen] = useState(false);
+  const [docPreview, setDocPreview] = useState<{ open: boolean; type: "estado" | "contrato" | "pagos" | null }>({ open: false, type: null });
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
