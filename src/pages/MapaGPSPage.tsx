@@ -116,8 +116,8 @@ export default function MapaGPSPage() {
         if (p.gps_lat && p.gps_lng) {
           result.push({
             lat: p.gps_lat, lng: p.gps_lng, tipo: "prestamo",
-            label: `Préstamo $${Number(p.monto_solicitado).toLocaleString()}`,
-            detail: `${p.clientes?.nombre_completo} · ${new Date(p.created_at).toLocaleDateString()}`,
+            label: `Préstamo ${$$(Number(p.monto_solicitado))}`,
+            detail: `${p.clientes?.nombre_completo} · ${fmtDate(p.created_at)}`,
           });
         }
       });
