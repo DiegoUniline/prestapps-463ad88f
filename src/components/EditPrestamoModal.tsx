@@ -24,6 +24,7 @@ interface EditPrestamoModalProps {
     ruta_id: string | null;
     cobrador_id: string | null;
     notas: string | null;
+    codigo_interno: string | null;
   };
   cajas: { id: string; nombre: string }[];
   rutas: { id: string; nombre: string }[];
