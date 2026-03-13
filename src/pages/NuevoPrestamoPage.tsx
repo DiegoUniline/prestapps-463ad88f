@@ -186,7 +186,7 @@ export default function NuevoPrestamoPage() {
           tipo_mora: tipoMora as any,
           valor_mora: parseFloat(valorMora) || 0,
           empresa: empresa || null,
-          notas: notas || null,
+          notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
           gps_lat: geo.lat,
