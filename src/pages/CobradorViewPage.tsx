@@ -492,7 +492,7 @@ export default function CobradorViewPage() {
                 Ya cobradas ({cobradas.length})
               </p>
               {cobradas.map((item) => (
-                <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} />
+                <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }} onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }} />
               ))}
             </div>
           )}
