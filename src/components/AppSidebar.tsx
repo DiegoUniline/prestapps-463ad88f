@@ -36,6 +36,7 @@ import {
   ClipboardList,
   BookOpen,
   Cog,
+  FileInput,
   type LucideIcon,
 } from "lucide-react";
 
@@ -65,6 +66,7 @@ const modules: NavModule[] = [
       { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin", "supervisor", "cobrador"] },
       { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },
       { title: "Promesas", url: "/promesas", icon: CalendarCheck, roles: ["admin", "supervisor", "cobrador"] },
+      { title: "Solicitudes", url: "/solicitudes", icon: FileInput, roles: ["admin", "supervisor", "cobrador"] },
     ],
   },
   {

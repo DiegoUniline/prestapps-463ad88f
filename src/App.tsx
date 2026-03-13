@@ -35,6 +35,8 @@ import MapaGPSPage from "@/pages/MapaGPSPage";
 import LiquidarRutaPage from "@/pages/LiquidarRutaPage";
 import CatalogosPage from "@/pages/CatalogosPage";
 import ConfiguracionEmpresaPage from "@/pages/ConfiguracionEmpresaPage";
+import SolicitudesPage from "@/pages/SolicitudesPage";
+import SolicitudPrestamoPage from "@/pages/SolicitudPrestamoPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,6 +61,8 @@ const App = () => (
                   <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
                   <Route path="/pagos" element={<PagosPage />} />
                   <Route path="/promesas" element={<PromesasPage />} />
+                  <Route path="/solicitudes" element={<SolicitudesPage />} />
+                  <Route path="/solicitudes/nueva" element={<SolicitudPrestamoPage />} />
 
                   {/* Admin y Supervisor */}
                   <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]}><ClientesPage /></RoleGuard>} />
