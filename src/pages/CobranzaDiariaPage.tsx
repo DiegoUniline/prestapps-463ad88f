@@ -731,22 +731,6 @@ export default function CobranzaDiariaPage() {
         </>
       )}
 
-      {/* Estado de Cuenta Sheet */}
-      {estadoCuentaOpen && (
-        <ClienteEstadoCuentaSheet
-          open={estadoCuentaOpen}
-          onOpenChange={(open) => {
-            setEstadoCuentaOpen(open);
-            if (!open) queryClient.invalidateQueries({ queryKey: ["cobranza-diaria", fechaStr] });
-          }}
-          clienteId={estadoCuentaClienteId}
-          clienteNombre={estadoCuentaClienteNombre}
-          empresaId={empresaId}
-          cajas={cajas || []}
-          fechaCobranza={fechaStr}
-        />
-      )}
-
       {/* Payment Modal (direct from old flow, kept for backwards compat) */}
       {pagoOpen && (
         <PagoModal
