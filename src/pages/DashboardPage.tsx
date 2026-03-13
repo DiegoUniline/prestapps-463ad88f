@@ -559,7 +559,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Desglose */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 md:gap-3">
             <KPI title="Capital Recuperado" value={$$(stats.capitalRecuperado)} icon={Banknote} accent="text-success" />
             <KPI title="Interés Cobrado" value={$$(stats.interesCobrado)} icon={Percent} accent="text-success" />
             <KPI title="Mora Cobrada" value={$$(stats.moraCobrada)} icon={DollarSign} accent="text-warning" />
