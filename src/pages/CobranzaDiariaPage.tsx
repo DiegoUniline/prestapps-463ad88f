@@ -539,6 +539,7 @@ export default function CobranzaDiariaPage() {
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Mora</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Total a Cobrar</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Estado</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Visitas</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
