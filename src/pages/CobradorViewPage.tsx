@@ -533,16 +533,23 @@ export default function CobradorViewPage() {
 
       {/* ── PagoModal ──────────────────────────────────────── */}
       {pagoOpen && (
-        <PagoModal
-          open={pagoOpen}
-          onOpenChange={handlePagoClose}
-          prestamoId={pagoPrestamoId}
-          cuotasPendientes={pagoCuotas}
-          cajas={cajas || []}
-          rutaId={pagoRutaId}
-          cobradorId={pagoCobradorId}
-          montoInicial={pagoMontoInicial}
-        />
+        <PagoModal open={pagoOpen} onOpenChange={handlePagoClose} prestamoId={pagoPrestamoId}
+          cuotasPendientes={pagoCuotas} cajas={cajas || []} rutaId={pagoRutaId}
+          cobradorId={pagoCobradorId} montoInicial={pagoMontoInicial} />
+      )}
+      {visitaOpen && visitaItem && (
+        <VisitaModal open={visitaOpen}
+          onOpenChange={(o) => { setVisitaOpen(o); if (!o) queryClient.invalidateQueries({ queryKey: ["cobrador-cobranza"] }); }}
+          prestamoId={visitaItem.prestamoId} clienteId={visitaItem.clienteId}
+          clienteNombre={visitaItem.clienteNombre} cuotaId={visitaItem.cuotaId}
+          cuotaNum={visitaItem.numCuota} saldoTotal={visitaItem.saldoTotal} />
+      )}
+      {promesaOpen && promesaItem && (
+        <PromesaModal open={promesaOpen}
+          onOpenChange={(o) => { setPromesaOpen(o); if (!o) queryClient.invalidateQueries({ queryKey: ["cobrador-cobranza"] }); }}
+          prestamoId={promesaItem.prestamoId} cuotaNum={promesaItem.numCuota}
+          cuotaId={promesaItem.cuotaId} saldoTotal={promesaItem.saldoTotal}
+          fechaVencimiento={promesaItem.fechaVencimiento} />
       )}
     </div>
   );
