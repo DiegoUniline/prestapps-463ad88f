@@ -424,8 +424,7 @@ export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData
     doc.setTextColor(...GRAY);
     doc.text("No se han registrado pagos para este préstamo.", 14, y);
     addFooter(doc);
-    doc.save(`pagos-PRE-${prestamo.id.slice(0, 8)}.pdf`);
-    return;
+    return doc;
   }
 
   // Summary
