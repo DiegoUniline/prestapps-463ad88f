@@ -112,6 +112,15 @@ export default function PrestamoDetallePage() {
   const { data: promesasRaw = [] } = usePromesas(isNew ? undefined : id);
   const { data: cajasAll = [] } = useCajas();
   const { data: rutasAll = [] } = useRutasOptions();
+  const empresaId = prestamo?.empresa_id || "00000000-0000-0000-0000-000000000001";
+  const { data: empresaData } = useQuery({
+    queryKey: ["empresa-datos", empresaId],
+    queryFn: async () => {
+      const { data } = await supabase.from("empresas").select("nombre, logo_url").eq("id", empresaId).single();
+      return data;
+    },
+    enabled: !!prestamo,
+  });
 
   if (isNew) { navigate("/prestamos"); return null; }
 
