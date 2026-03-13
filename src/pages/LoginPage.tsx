@@ -59,9 +59,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center">
-            <Lock className="h-8 w-8 text-primary-foreground" />
-          </div>
+          <img src={logoFull} alt="PrestApp" className="mx-auto h-16 object-contain" />
           <h1 className="text-2xl font-bold text-foreground">Sistema de Préstamos</h1>
           <p className="text-muted-foreground text-sm">
             {mode === "login" ? "Inicia sesión para continuar" : "Recupera tu contraseña"}

@@ -155,9 +155,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">P</span>
-          </div>
+          <img src={logoIcon} alt="PrestApp" className="h-8 w-8 rounded-lg flex-shrink-0 object-contain" />
           {!collapsed && <span className="font-bold text-lg tracking-tight">PrestApp</span>}
         </div>
       </SidebarHeader>
