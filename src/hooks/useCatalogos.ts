@@ -166,6 +166,7 @@ export function useEstadosPrestamo() {
 
 export function useUpsertEstadoPrestamo() {
   const qc = useQueryClient();
+  const empresaId = useEmpresaStore((s) => s.empresaId);
   return useMutation({
     mutationFn: async (item: Partial<EstadoPrestamo> & { nombre: string }) => {
       if (item.id) {
@@ -177,7 +178,7 @@ export function useUpsertEstadoPrestamo() {
       } else {
         const { error } = await supabase
           .from("cat_estados_prestamo" as any)
-          .insert({ nombre: item.nombre, color: item.color ?? "", descripcion: item.descripcion ?? "", activo: item.activo ?? true } as any);
+          .insert({ nombre: item.nombre, color: item.color ?? "", descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
         if (error) throw error;
       }
     },
