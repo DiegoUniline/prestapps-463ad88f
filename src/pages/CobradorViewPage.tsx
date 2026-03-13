@@ -540,10 +540,10 @@ export default function CobradorViewPage() {
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-3 h-10">
+        <TabsList className="w-full grid grid-cols-4 h-10">
           <TabsTrigger value="cobranza" className="text-xs sm:text-sm gap-1">
             <HandCoins className="h-3.5 w-3.5 hidden sm:inline" />
-            Cobranza
+            Cobrar
             {kpis.pendientes > 0 && (
               <Badge variant="destructive" className="ml-1 h-5 min-w-5 text-[10px] px-1">{kpis.pendientes}</Badge>
             )}
@@ -555,6 +555,10 @@ export default function CobradorViewPage() {
           <TabsTrigger value="pagos" className="text-xs sm:text-sm gap-1">
             <Receipt className="h-3.5 w-3.5 hidden sm:inline" />
             Pagos
+          </TabsTrigger>
+          <TabsTrigger value="perfil" className="text-xs sm:text-sm gap-1">
+            <User className="h-3.5 w-3.5 hidden sm:inline" />
+            Perfil
           </TabsTrigger>
         </TabsList>
 
@@ -570,7 +574,6 @@ export default function CobradorViewPage() {
             ))
           )}
 
-          {/* Already collected section */}
           {cobradas.length > 0 && (
             <div className="pt-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
@@ -598,7 +601,6 @@ export default function CobradorViewPage() {
 
         {/* ── Tab: Pagos recibidos ───────────────────────────── */}
         <TabsContent value="pagos" className="mt-3 space-y-2">
-          {/* Total bar */}
           <div className="bg-primary/10 rounded-lg px-4 py-3 flex items-center justify-between">
             <span className="text-sm font-medium">Total recaudado</span>
             <span className="text-lg font-bold text-primary">{$$(totalPagosRecibidos)}</span>
@@ -612,6 +614,178 @@ export default function CobradorViewPage() {
             filteredPagos.map((p) => (
               <PagoCard key={p.id} pago={p} onNavigate={navigate} />
             ))
+          )}
+        </TabsContent>
+
+        {/* ── Tab: Perfil ─────────────────────────────────── */}
+        <TabsContent value="perfil" className="mt-3 space-y-4">
+          {loadingPerfil ? (
+            <LoadingCards />
+          ) : (
+            <>
+              {/* Profile info */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{perfil?.profile?.nombre_completo || "—"}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email || "—"}</p>
+                      {perfil?.profile?.telefono && (
+                        <p className="text-xs text-muted-foreground">{perfil.profile.telefono}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-center bg-secondary/50 rounded-md p-3">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Comisión</p>
+                      <p className="text-sm font-bold">{perfil?.profile?.porcentaje_comision || 0}%</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Efectivo en mano</p>
+                      <p className="text-sm font-bold">{$$(Number(perfil?.profile?.efectivo_en_mano || 0))}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Commissions summary */}
+              <Card>
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-primary" />
+                    Comisiones
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-primary/10 rounded-lg p-3 text-center">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total ganadas</p>
+                      <p className="text-lg font-bold text-primary">{$$(perfil?.totalComisionesGanadas || 0)}</p>
+                    </div>
+                    <div className="bg-secondary rounded-lg p-3 text-center">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total cobrado</p>
+                      <p className="text-lg font-bold">{$$(perfil?.totalCobrado || 0)}</p>
+                    </div>
+                  </div>
+
+                  {/* Recent cortes */}
+                  {(perfil?.cortes || []).length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Últimos cortes</p>
+                      <div className="space-y-1.5">
+                        {perfil!.cortes.slice(0, 5).map((c: any) => (
+                          <div key={c.id} className="flex items-center justify-between bg-secondary/50 rounded-md px-3 py-2">
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(c.created_at), "dd/MM/yyyy", { locale: es })}
+                            </span>
+                            <div className="text-right">
+                              <span className="text-xs font-semibold text-primary">{$$(Number(c.monto_comision))}</span>
+                              <span className="text-[10px] text-muted-foreground ml-2">de {$$(Number(c.total_cobrado))}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Change password */}
+              <Card>
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-primary" />
+                    Cambiar contraseña
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nueva contraseña</Label>
+                    <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Confirmar contraseña</Label>
+                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repetir contraseña" />
+                  </div>
+                  <Button
+                    className="w-full"
+                    disabled={changingPw || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword}
+                    onClick={async () => {
+                      setChangingPw(true);
+                      const { error } = await supabase.auth.updateUser({ password: newPassword });
+                      setChangingPw(false);
+                      if (error) {
+                        toast.error("Error al cambiar contraseña: " + error.message);
+                      } else {
+                        toast.success("Contraseña actualizada correctamente");
+                        setNewPassword("");
+                        setConfirmPassword("");
+                      }
+                    }}
+                  >
+                    {changingPw ? "Guardando..." : "Actualizar contraseña"}
+                  </Button>
+                  {newPassword && newPassword.length < 6 && (
+                    <p className="text-xs text-destructive">La contraseña debe tener al menos 6 caracteres</p>
+                  )}
+                  {confirmPassword && newPassword !== confirmPassword && (
+                    <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Assigned loans */}
+              <Card>
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Préstamos asignados ({perfil?.prestamos?.length || 0})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 space-y-2">
+                  {(perfil?.prestamos || []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-4">Sin préstamos asignados</p>
+                  ) : (
+                    perfil!.prestamos.map((p: any) => (
+                      <div key={p.id} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{p.cliente}</p>
+                            <p className="text-[11px] text-muted-foreground">{p.ruta} • {p.frecuencia}</p>
+                          </div>
+                          <Badge variant={p.estado === "Vencido" ? "destructive" : "secondary"} className="text-[10px] shrink-0">
+                            {p.estado}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center bg-secondary/50 rounded-md p-2">
+                          <div>
+                            <p className="text-[9px] uppercase text-muted-foreground">Monto</p>
+                            <p className="text-xs font-semibold">{$$(p.monto)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase text-muted-foreground">Saldo</p>
+                            <p className="text-xs font-semibold">{$$(p.saldo)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase text-muted-foreground">Cuotas</p>
+                            <p className="text-xs font-semibold">{p.pagadas}/{p.cuotas}</p>
+                          </div>
+                        </div>
+                        {p.mora > 0 && (
+                          <p className="text-[11px] text-destructive font-medium">Mora: {$$(p.mora)}</p>
+                        )}
+                        <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={() => navigate(`/prestamos/${p.id}`)}>
+                          <Eye className="h-3 w-3 mr-1" /> Ver detalle
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </>
           )}
         </TabsContent>
       </Tabs>
