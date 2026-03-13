@@ -41,6 +41,7 @@ import {
   BookOpen,
   Cog,
   FileInput,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -108,6 +109,7 @@ const modules: NavModule[] = [
       { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"] },
       { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"] },
       { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
+      { title: "Permisos", url: "/permisos", icon: ShieldCheck, roles: ["admin"] },
     ],
   },
 ];

@@ -45,6 +45,7 @@ const MapaGPSPage = lazy(() => import("@/pages/MapaGPSPage"));
 const LiquidarRutaPage = lazy(() => import("@/pages/LiquidarRutaPage"));
 const CatalogosPage = lazy(() => import("@/pages/CatalogosPage"));
 const ConfiguracionEmpresaPage = lazy(() => import("@/pages/ConfiguracionEmpresaPage"));
+const PermisosPage = lazy(() => import("@/pages/PermisosPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
@@ -128,6 +129,7 @@ const App = () => (
               <Route path="/liquidar-ruta" element={<RoleGuard allowed={["admin"]}><LazyPage><LiquidarRutaPage /></LazyPage></RoleGuard>} />
               <Route path="/catalogos" element={<RoleGuard allowed={["admin"]}><LazyPage><CatalogosPage /></LazyPage></RoleGuard>} />
               <Route path="/configuracion" element={<RoleGuard allowed={["admin"]}><LazyPage><ConfiguracionEmpresaPage /></LazyPage></RoleGuard>} />
+              <Route path="/permisos" element={<RoleGuard allowed={["admin"]}><LazyPage><PermisosPage /></LazyPage></RoleGuard>} />
             </Route>
             <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />
           </Routes>
