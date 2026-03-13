@@ -55,6 +55,7 @@ interface CuotaDiaria {
   fechaPago: string | null;
   gestiones: number;
   ultimaGestion: string | null;
+  tipoCuenta: string;
 }
 
 function useCobranzaDiaria(fecha: string, empresaId: string) {
