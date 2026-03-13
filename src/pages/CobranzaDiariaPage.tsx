@@ -169,6 +169,7 @@ function useCajasAll(empresaId: string) {
 // ── Status helpers ────────────────────────────────────────────────
 function getStatusIcon(item: CuotaDiaria) {
   if (item.pagada) return <CheckCircle2 className="h-4 w-4 text-success" />;
+  if (item.status === "Prometida") return <CalendarIcon className="h-4 w-4 text-purple-500" />;
   if (item.status === "Parcial") return <Clock className="h-4 w-4 text-warning" />;
   if (item.diasAtraso > 0) return <AlertTriangle className="h-4 w-4 text-destructive" />;
   return <Clock className="h-4 w-4 text-muted-foreground" />;
@@ -176,6 +177,7 @@ function getStatusIcon(item: CuotaDiaria) {
 
 function getStatusBadge(item: CuotaDiaria) {
   if (item.pagada) return { label: "Cobrada", className: "bg-badge-activo text-badge-activo-foreground" };
+  if (item.status === "Prometida") return { label: "Prometida", className: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400" };
   if (item.status === "Parcial") return { label: "Parcial", className: "bg-badge-aldia text-badge-aldia-foreground" };
   if (item.diasAtraso > 0) return { label: `Vencida (${item.diasAtraso}d)`, className: "bg-badge-vencido text-badge-vencido-foreground" };
   return { label: "Pendiente", className: "bg-badge-liquidado text-badge-liquidado-foreground" };
