@@ -87,10 +87,13 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
         `)
         .in("id", prestamoIds);
 
-      // 3) Get cobradores names
-      const { data: cobradores } = await supabase.from("cobradores").select("id, nombre");
+      // 3) Get cobradores names from profiles
+      const cobIds = [...new Set((prestamos || []).map((p: any) => p.cobrador_id).filter(Boolean))];
       const cobMap: Record<string, string> = {};
-      for (const c of cobradores || []) cobMap[c.id] = c.nombre;
+      if (cobIds.length) {
+        const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
+        for (const c of profiles || []) cobMap[c.id] = c.nombre_completo;
+      }
 
       // 4) Get payments for these cuotas to check if paid today
       const cuotaIds = cuotas.map((c) => c.id);

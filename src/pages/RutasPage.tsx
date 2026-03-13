@@ -241,7 +241,7 @@ function RutaDetallePage() {
               <Select value={cobradorId} onValueChange={setCobradorId}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar cobrador" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin asignar</SelectItem>
+                  <SelectItem value="__none__">Sin asignar</SelectItem>
                   {cobradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>

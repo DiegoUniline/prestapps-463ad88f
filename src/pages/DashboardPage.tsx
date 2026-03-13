@@ -275,7 +275,7 @@ export default function DashboardPage() {
       const prestamosAsignados = prestamos.filter(p => p.cobrador_id === c.id && ["Activo", "Al día", "Vencido"].includes(p.estado || "")).length;
       const saldoCob = amort.filter(a => { const pr = prestamos.find(p2 => p2.id === a.prestamo_id); return pr?.cobrador_id === c.id && a.status !== "Pagada"; }).reduce((s, a) => s + Number(a.saldo_total || 0), 0);
       const moraCob = amort.filter(a => { const pr = prestamos.find(p2 => p2.id === a.prestamo_id); return pr?.cobrador_id === c.id; }).reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
-      return { nombre: c.nombre, cobrado: totalCob2, prestamos: prestamosAsignados, efectivo: Number(c.efectivo_en_mano || 0), saldo: saldoCob, mora: moraCob };
+      return { nombre: c.nombre_completo || c.nombre, cobrado: totalCob2, prestamos: prestamosAsignados, efectivo: Number(c.efectivo_en_mano || 0), saldo: saldoCob, mora: moraCob };
     }).sort((a: any, b: any) => b.cobrado - a.cobrado);
 
     const rutaStats = rutas.map((r: any) => {

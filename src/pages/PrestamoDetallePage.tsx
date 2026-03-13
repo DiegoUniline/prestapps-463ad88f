@@ -383,7 +383,7 @@ export default function PrestamoDetallePage() {
                 cliente ? <Link to={`/clientes/${cliente.id}`} className="text-primary hover:underline font-medium">{cliente.nombre_completo}</Link> : "—"
               } />
               <SidebarField label="EMPRESA" value={dashStr(prestamo.empresa)} />
-              <SidebarField label="COBRADOR" value={prestamo.cobrador_id || "—"} />
+              <SidebarField label="COBRADOR" value={cobradoresAll.find((c: any) => c.id === prestamo.cobrador_id)?.nombre || "Sin asignar"} />
               <SidebarField label="RUTA" value={
                 <span className="flex items-center gap-1.5">
                   {ruta?.nombre || "—"}
