@@ -175,6 +175,7 @@ export default function SolicitudPrestamoPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
