@@ -449,10 +449,10 @@ export default function NuevoPrestamoPage() {
                         <TableRow key={c.num} className="border-b border-border/50">
                           <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num}</TableCell>
                           <TableCell className="text-[12px] px-2 py-1.5 text-muted-foreground">{c.fechaVencimiento}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.capital.toLocaleString()}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.interes.toLocaleString()}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">${c.cuota.toLocaleString()}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.saldo.toLocaleString()}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.capital)}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.interes)}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">{$$(c.cuota)}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.saldo)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

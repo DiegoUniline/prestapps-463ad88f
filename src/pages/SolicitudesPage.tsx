@@ -427,7 +427,7 @@ export default function SolicitudesPage() {
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">Cliente:</span> {detailSol.clientes?.nombre_completo}</div>
-                <div><span className="text-muted-foreground">Monto:</span> ${Number(detailSol.monto_solicitado).toLocaleString()}</div>
+                <div><span className="text-muted-foreground">Monto:</span> {$$(Number(detailSol.monto_solicitado))}</div>
                 <div><span className="text-muted-foreground">Tasa:</span> {detailSol.tasa_interes}%</div>
                 <div><span className="text-muted-foreground">Cuotas:</span> {detailSol.num_cuotas}</div>
                 <div><span className="text-muted-foreground">Frecuencia:</span> {detailSol.frecuencia}</div>

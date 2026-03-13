@@ -321,7 +321,7 @@ export default function SolicitudPrestamoPage() {
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Cuota</p>
-                    <p className="font-semibold text-sm">${Math.ceil(cuotaCalculada).toLocaleString()}</p>
+                    <p className="font-semibold text-sm">{$$(Math.ceil(cuotaCalculada))}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Interés</p>
