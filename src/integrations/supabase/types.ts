@@ -1034,11 +1034,13 @@ export type Database = {
           activo: boolean
           bono_meta_monto: number | null
           bono_meta_objetivo: number | null
+          caja_id: string | null
           comision_cobros_equipo: number | null
           comision_prestamos: number | null
           comision_tipo: string | null
           created_at: string | null
           direccion: string | null
+          efectivo_en_mano: number
           empresa_id: string | null
           foto_url: string | null
           id: string
@@ -1050,11 +1052,13 @@ export type Database = {
           activo?: boolean
           bono_meta_monto?: number | null
           bono_meta_objetivo?: number | null
+          caja_id?: string | null
           comision_cobros_equipo?: number | null
           comision_prestamos?: number | null
           comision_tipo?: string | null
           created_at?: string | null
           direccion?: string | null
+          efectivo_en_mano?: number
           empresa_id?: string | null
           foto_url?: string | null
           id: string
@@ -1066,11 +1070,13 @@ export type Database = {
           activo?: boolean
           bono_meta_monto?: number | null
           bono_meta_objetivo?: number | null
+          caja_id?: string | null
           comision_cobros_equipo?: number | null
           comision_prestamos?: number | null
           comision_tipo?: string | null
           created_at?: string | null
           direccion?: string | null
+          efectivo_en_mano?: number
           empresa_id?: string | null
           foto_url?: string | null
           id?: string
@@ -1079,6 +1085,13 @@ export type Database = {
           telefono?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_caja_id_fkey"
+            columns: ["caja_id"]
+            isOneToOne: false
+            referencedRelation: "cajas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_empresa_id_fkey"
             columns: ["empresa_id"]
