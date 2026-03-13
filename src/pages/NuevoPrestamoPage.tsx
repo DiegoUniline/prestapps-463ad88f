@@ -327,7 +327,9 @@ export default function NuevoPrestamoPage() {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/prestamos")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-xl font-semibold">Nuevo Préstamo</h1>
+        <h1 className="text-xl font-semibold">
+          {tipoCuenta === "prestamo" ? "Nuevo Préstamo" : "Nueva Venta a Crédito"}
+        </h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
