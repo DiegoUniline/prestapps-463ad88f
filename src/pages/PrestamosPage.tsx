@@ -179,7 +179,7 @@ export default function PrestamosPage() {
     let data = tabFiltered.filter((p) => {
       if (search) {
         const q = search.toLowerCase();
-        if (!p.cliente.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return false;
+        if (!p.cliente.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q) && !p.idPrestamo.toLowerCase().includes(q)) return false;
       }
       if (selEstado.size > 0 && !selEstado.has(p.estado)) return false;
       if (selCaja.size > 0 && !selCaja.has(p.caja)) return false;
@@ -361,7 +361,7 @@ export default function PrestamosPage() {
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
               </TableHead>
               {([
-                ["cliente", "Cliente"], ["fechaRegistro", "F. Registro"], ["fechaPrimerPago", "F. 1er Pago"],
+                ["idPrestamo", "Folio"], ["cliente", "Cliente"], ["fechaRegistro", "F. Registro"], ["fechaPrimerPago", "F. 1er Pago"],
                 ["montoSolicitado", "Prestado"], ["montoPagar", "A Pagar"], ["cuotasPagadas", "Cuotas"],
                 ["caja", "Caja"], ["ruta", "Ruta"],
                 ["saldo", "Saldo"], ["mora", "Mora"], ["estado", "Estado"],
@@ -380,15 +380,15 @@ export default function PrestamosPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={12} className="px-3 py-3">
+                  <TableCell colSpan={13} className="px-3 py-3">
                     <Skeleton className="h-4 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : isError ? (
-              <TableRow><TableCell colSpan={12} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}
@@ -402,6 +402,7 @@ export default function PrestamosPage() {
                 <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
                 </TableCell>
+                <TableCell className="font-mono text-[12px] px-3 whitespace-nowrap">{p.idPrestamo}</TableCell>
                 <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">{p.cliente}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaRegistro)}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaPrimerPago)}</TableCell>

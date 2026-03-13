@@ -251,7 +251,8 @@ export default function PrestamoDetallePage() {
   const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
 
   const estado = (prestamo.estado || "Activo") as string;
-  const shortId = prestamo.id?.slice(0, 8) || id;
+  const folioId = (prestamo as any).id_prestamo || `PRE-${(prestamo.id?.slice(0, 8) || id)}`;
+  const shortId = folioId;
 
   const kpis = [
     { label: "Monto Prestado", value: $$(prestamo.monto_solicitado), color: "text-foreground" },
@@ -375,7 +376,7 @@ export default function PrestamoDetallePage() {
             <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground mb-1">
               <Link to="/prestamos" className="hover:text-foreground transition-colors">Préstamos</Link>
               <span>/</span>
-              <span className="text-foreground">PRE-{shortId}</span>
+              <span className="text-foreground">{folioId}</span>
             </div>
             <div className="flex items-center gap-3 mt-0.5">
               <h1 className="text-xl font-bold tracking-tight">
@@ -398,7 +399,7 @@ export default function PrestamoDetallePage() {
                   <Phone className="h-3.5 w-3.5" />{cliente.telefono}
                 </a>
               )}
-              <span className="text-[11px] text-muted-foreground/60">PRE-{shortId}</span>
+              <span className="text-[11px] text-muted-foreground/60">{folioId}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface PrestamoListItem {
   id: string;
+  idPrestamo: string;
   cliente: string;
   clienteId: string;
   montoSolicitado: number;
@@ -29,10 +30,9 @@ interface FetchFilters {
 }
 
 async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[]> {
-  let query = supabase
-    .from("prestamos")
+  let query = (supabase.from as any)("prestamos")
     .select(
-      "id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id"
+      "id, id_prestamo, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id"
     )
     .order("created_at", { ascending: false });
 
@@ -50,8 +50,9 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   if (error) throw error;
   if (!rawPrestamos || rawPrestamos.length === 0) return [];
 
-  const prestamos = rawPrestamos as Array<{
+  const prestamos = rawPrestamos as unknown as Array<{
     id: string;
+    id_prestamo: string;
     monto_solicitado: number | null;
     monto_total_pagar: number | null;
     num_cuotas: number | null;
@@ -123,6 +124,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
 
     return {
       id: p.id,
+      idPrestamo: p.id_prestamo || p.id.slice(0, 8),
       cliente: clientesMap[p.cliente_id] || "—",
       clienteId: p.cliente_id,
       montoSolicitado: Number(p.monto_solicitado || 0),
