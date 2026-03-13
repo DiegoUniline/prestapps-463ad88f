@@ -60,6 +60,7 @@ export default function EmpresasPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EmpresaForm>(emptyForm);
+  const [detailEmpresa, setDetailEmpresa] = useState<Empresa | null>(null);
 
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ["empresas-config"],
