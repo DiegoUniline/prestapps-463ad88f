@@ -4,17 +4,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useFrecuenciasPagoActivas } from "@/hooks/useCatalogos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, CalendarIcon, Save } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Save, AlertTriangle } from "lucide-react";
 import { format, addDays, addWeeks, addMonths } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
@@ -59,6 +61,7 @@ export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
+  const { user } = useAuth();
 
   const { data: clientes = [] } = useClientesOptions(empresaId);
   const { data: cajas = [] } = useCajasOptions(empresaId);
@@ -81,6 +84,7 @@ export default function NuevoPrestamoPage() {
   const [empresa, setEmpresa] = useState("");
   const [notas, setNotas] = useState("");
   const [cuotaOverride, setCuotaOverride] = useState("");
+  const [esInicial, setEsInicial] = useState(false);
 
   // Cálculos
   const monto = parseFloat(montoSolicitado) || 0;
@@ -153,6 +157,18 @@ export default function NuevoPrestamoPage() {
         throw new Error("Completa los campos obligatorios");
       }
 
+      // Validate caja balance if not carga inicial
+      if (!esInicial && cajaId) {
+        const { data: caja } = await supabase
+          .from("cajas")
+          .select("saldo_actual")
+          .eq("id", cajaId)
+          .single();
+        if (caja && Number(caja.saldo_actual) < monto) {
+          throw new Error(`Saldo insuficiente en caja (${$$(Number(caja.saldo_actual))}). Monto requerido: ${$$(monto)}`);
+        }
+      }
+
       const { data, error } = await supabase
         .from("prestamos")
         .insert({
@@ -170,7 +186,7 @@ export default function NuevoPrestamoPage() {
           tipo_mora: tipoMora as any,
           valor_mora: parseFloat(valorMora) || 0,
           empresa: empresa || null,
-          notas: notas || null,
+          notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
           gps_lat: geo.lat,
@@ -206,6 +222,32 @@ export default function NuevoPrestamoPage() {
         if (amortError) {
           console.error("Error insertando amortización:", amortError);
           toast.error("Préstamo creado pero hubo error al generar cuotas");
+        }
+      }
+
+      // Register cash outflow ONLY if NOT carga inicial
+      if (!esInicial && cajaId) {
+        await supabase.from("movimientos_caja").insert({
+          caja_id: cajaId,
+          empresa_id: empresaId,
+          tipo: "salida" as any,
+          monto: monto,
+          concepto: `Desembolso préstamo`,
+          prestamo_id: data.id,
+          registrado_por: user?.id,
+        });
+
+        const { data: cajaActual } = await supabase
+          .from("cajas")
+          .select("saldo_actual")
+          .eq("id", cajaId)
+          .single();
+
+        if (cajaActual) {
+          await supabase
+            .from("cajas")
+            .update({ saldo_actual: Number(cajaActual.saldo_actual) - monto })
+            .eq("id", cajaId);
         }
       }
 
@@ -361,7 +403,26 @@ export default function NuevoPrestamoPage() {
               </div>
             </div>
 
-            {/* Gastos legales + Mora */}
+            {/* Carga inicial checkbox */}
+            <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50">
+              <Checkbox
+                checked={esInicial}
+                onCheckedChange={(v) => setEsInicial(!!v)}
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-[13px] font-medium">Préstamo inicial (carga de cartera)</p>
+                <p className="text-[11px] text-muted-foreground">No descontará el monto de la caja. Útil para cargar préstamos existentes al sistema.</p>
+              </div>
+            </label>
+
+            {!esInicial && !cajaId && (
+              <div className="flex items-center gap-2 text-warning text-sm">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Sin caja asignada — no se registrará movimiento de salida.</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Gastos Legales</Label>
