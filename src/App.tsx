@@ -33,6 +33,7 @@ import GastosPage from "@/pages/GastosPage";
 import ComisionesPage from "@/pages/ComisionesPage";
 import MapaGPSPage from "@/pages/MapaGPSPage";
 import LiquidarRutaPage from "@/pages/LiquidarRutaPage";
+import CatalogosPage from "@/pages/CatalogosPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
                   <Route path="/comisiones" element={<RoleGuard allowed={["admin"]}><ComisionesPage /></RoleGuard>} />
                   <Route path="/mapa-gps" element={<RoleGuard allowed={["admin", "supervisor"]}><MapaGPSPage /></RoleGuard>} />
                   <Route path="/liquidar-ruta" element={<RoleGuard allowed={["admin"]}><LiquidarRutaPage /></RoleGuard>} />
+                  <Route path="/catalogos" element={<RoleGuard allowed={["admin"]}><CatalogosPage /></RoleGuard>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
