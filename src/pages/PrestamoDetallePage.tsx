@@ -314,7 +314,7 @@ export default function PrestamoDetallePage() {
             <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }}>
               <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-[13px]">
+            <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => setEditarOpen(true)}>
               <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
             </Button>
             <DropdownMenu>
