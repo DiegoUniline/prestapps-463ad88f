@@ -33,7 +33,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   let query = supabase
     .from("prestamos")
     .select(
-      "id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id"
+      "id, id_prestamo, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id"
     )
     .order("created_at", { ascending: false });
 
