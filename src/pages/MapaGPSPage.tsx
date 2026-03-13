@@ -128,8 +128,8 @@ export default function MapaGPSPage() {
         if (pg.gps_lat && pg.gps_lng) {
           result.push({
             lat: pg.gps_lat, lng: pg.gps_lng, tipo: "pago",
-            label: `Pago $${Number(pg.monto_recibido).toLocaleString()}`,
-            detail: `${pg.prestamos?.clientes?.nombre_completo || ""} · ${new Date(pg.created_at).toLocaleDateString()}`,
+            label: `Pago ${$$(Number(pg.monto_recibido))}`,
+            detail: `${pg.prestamos?.clientes?.nombre_completo || ""} · ${fmtDate(pg.created_at)}`,
           });
         }
       });

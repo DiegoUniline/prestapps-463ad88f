@@ -481,8 +481,8 @@ async function sendWhatsAppNotification(
     if (!config?.activo) return;
 
     const message = resultado === "aprobada"
-      ? `✅ ¡Hola ${cliente.nombre_completo}! Tu solicitud de préstamo por $${Number(sol.monto_solicitado).toLocaleString()} ha sido *APROBADA*. Pronto recibirás más detalles.`
-      : `❌ Hola ${cliente.nombre_completo}, lamentamos informarte que tu solicitud de préstamo por $${Number(sol.monto_solicitado).toLocaleString()} ha sido *RECHAZADA*. ${motivoRechazo ? `Motivo: ${motivoRechazo}` : "Contacta a tu asesor para más información."}`;
+      ? `✅ ¡Hola ${cliente.nombre_completo}! Tu solicitud de préstamo por ${$$(Number(sol.monto_solicitado))} ha sido *APROBADA*. Pronto recibirás más detalles.`
+      : `❌ Hola ${cliente.nombre_completo}, lamentamos informarte que tu solicitud de préstamo por ${$$(Number(sol.monto_solicitado))} ha sido *RECHAZADA*. ${motivoRechazo ? `Motivo: ${motivoRechazo}` : "Contacta a tu asesor para más información."}`;
 
     await supabase.functions.invoke("whatsapp-sender", {
       body: {

@@ -427,7 +427,7 @@ export default function NuevoPrestamoPage() {
                     <p className="text-sm font-semibold">
                       {tipoMora === "porcentaje"
                         ? `${parseFloat(valorMora) || 0}%`
-                        : `$${(parseFloat(valorMora) || 0).toLocaleString()}`}
+                        : $$(parseFloat(valorMora) || 0)}
                     </p>
                   </div>
                 </div>
