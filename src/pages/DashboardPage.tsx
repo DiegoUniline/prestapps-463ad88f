@@ -359,7 +359,7 @@ export default function DashboardPage() {
             <SelectTrigger className="h-8 w-[150px] text-[12px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos los cobradores</SelectItem>
-              {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+              {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
             </SelectContent>
           </Select>
 

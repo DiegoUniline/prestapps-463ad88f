@@ -203,7 +203,7 @@ function RutaDetallePage() {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  const cobradorNombre = cobradores.find((c: any) => c.id === cobradorId)?.nombre || "Sin asignar";
+  const cobradorNombre = cobradores.find((c: any) => c.id === cobradorId || c.id === (cobradorId === "__none__" ? null : cobradorId))?.nombre || "Sin asignar";
 
   return (
     <div className="space-y-6">
