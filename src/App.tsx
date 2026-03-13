@@ -15,6 +15,7 @@ import AppLayout from "@/components/AppLayout";
 
 // Direct imports — frequent pages, instant navigation
 import LoginPage from "@/pages/LoginPage";
+import LandingPage from "@/pages/LandingPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import PrestamosPage from "@/pages/PrestamosPage";
