@@ -10,7 +10,7 @@ export const OfflineBanner = React.memo(function OfflineBanner() {
   return (
     <div className="bg-destructive text-destructive-foreground text-center py-2 px-4 text-sm font-medium flex items-center justify-center gap-2">
       <WifiOff className="h-4 w-4" />
-      Sin conexión — las acciones de escritura están deshabilitadas
+      Sin conexión — los cambios se guardarán localmente y se sincronizarán al reconectar
     </div>
   );
 });

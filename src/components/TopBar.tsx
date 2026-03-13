@@ -1,5 +1,6 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import logoIcon from "@/assets/logo-icon.png";
+import { SyncStatusBadge } from "@/components/SyncStatusPanel";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +46,7 @@ export function TopBar() {
             </Select>
           </div>
         )}
+        <SyncStatusBadge />
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
           {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </Button>
