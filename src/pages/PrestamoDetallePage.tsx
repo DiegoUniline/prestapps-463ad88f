@@ -786,7 +786,7 @@ export default function PrestamoDetallePage() {
                     ) : promesasRaw.map((pr) => (
                       <TableRow key={pr.id} className="border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]">
                         <TableCell className="px-3 text-[12px]">{pr.cuota_id ? "—" : "—"}</TableCell>
-                        <TableCell className="px-3 text-[12px]">{format(new Date(pr.fecha_prometida), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="px-3 text-[12px]">{fmtDate(pr.fecha_prometida)}</TableCell>
                         <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pr.monto_prometido))}</TableCell>
                         <TableCell className="px-3 text-[12px] text-muted-foreground max-w-[200px] truncate">{pr.notas || "—"}</TableCell>
                         <TableCell className="px-3">
