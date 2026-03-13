@@ -36,7 +36,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id,
       clientes ( id, nombre_completo ),
       cajas ( nombre ),
-      rutas ( nombre, cobrador_id )
+      rutas ( nombre )
     `)
     .order("created_at", { ascending: false });
 
@@ -57,10 +57,24 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   const ids = prestamos.map((p) => p.id);
   if (ids.length === 0) return [];
 
+  // Fetch amortization data
   const { data: amortData } = await supabase
     .from("amortizacion")
     .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
     .in("prestamo_id", ids);
+
+  // Fetch cobrador names from profiles
+  const cobradorIds = [...new Set(prestamos.map((p) => p.cobrador_id).filter(Boolean))] as string[];
+  let cobradorMap: Record<string, string> = {};
+  if (cobradorIds.length > 0) {
+    const { data: cobProfiles } = await supabase
+      .from("profiles")
+      .select("id, nombre_completo")
+      .in("id", cobradorIds);
+    for (const cp of cobProfiles || []) {
+      cobradorMap[cp.id] = cp.nombre_completo;
+    }
+  }
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -94,7 +108,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       caja: caja?.nombre || "—",
       ruta: ruta?.nombre || "—",
       rutaId: p.ruta_id,
-      cobrador: "—",
+      cobrador: p.cobrador_id ? (cobradorMap[p.cobrador_id] || "—") : "—",
       cobradorId: p.cobrador_id,
       saldo: amort.saldo,
       mora: amort.mora,
