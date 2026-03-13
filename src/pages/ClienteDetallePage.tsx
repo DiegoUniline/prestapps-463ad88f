@@ -275,6 +275,13 @@ export default function ClienteDetallePage() {
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información Personal</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Código interno (read-only) */}
+                {!isNew && cliente && (
+                  <div className="sm:col-span-2">
+                    <Label className="text-xs text-muted-foreground">Código Interno</Label>
+                    <p className="text-sm font-mono font-semibold mt-1">{cliente.id_cliente}</p>
+                  </div>
+                )}
                 <div className="sm:col-span-2">
                   <ReadOrInput label="Nombre Completo *" value={form.nombre_completo} formValue={form.nombre_completo} onChange={(v) => updateField("nombre_completo", v)} editing={editing} />
                 </div>
