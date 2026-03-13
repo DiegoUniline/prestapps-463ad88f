@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCreateSolicitud } from "@/hooks/useSolicitudes";
 import { useFrecuenciasPagoActivas } from "@/hooks/useCatalogos";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
+import { calcNextDate, calcularAmortizacion } from "@/lib/financial";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +17,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, CalendarIcon, Send } from "lucide-react";
-import { format, addDays, addWeeks, addMonths } from "date-fns";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { ArrowLeft, CalendarIcon, Send, AlertTriangle } from "lucide-react";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -36,14 +38,20 @@ function useClientesOptions(empresaId: string) {
   });
 }
 
-function calcNextDate(base: Date, frecuencia: string, n: number): Date {
-  switch (frecuencia) {
-    case "diario": return addDays(base, n);
-    case "semanal": return addWeeks(base, n);
-    case "quincenal": return addDays(base, n * 15);
-    case "mensual": return addMonths(base, n);
-    default: return addWeeks(base, n);
-  }
+// Hook to get caja balance for validation
+function useCajaBalance(cajaId: string) {
+  return useQuery({
+    queryKey: ["caja-balance", cajaId],
+    enabled: !!cajaId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("cajas")
+        .select("id, nombre, saldo_actual")
+        .eq("id", cajaId)
+        .single();
+      return data;
+    },
+  });
 }
 
 export default function SolicitudPrestamoPage() {
@@ -77,56 +85,44 @@ export default function SolicitudPrestamoPage() {
   const montoTotalPagar = monto + interesTotal;
   const cuotaCalculada = cuotas > 0 ? montoTotalPagar / cuotas : 0;
 
-  const amortizacion = useMemo(() => {
-    if (monto <= 0 || cuotas <= 0) return [];
-    const baseDate = fechaPrimerPago || new Date();
-    const cuotaFinal = Math.ceil(cuotaCalculada);
+  // Get caja balance for validation display
+  const { data: cajaData } = useCajaBalance(cajaId);
+  const saldoCaja = cajaData ? Number(cajaData.saldo_actual) : null;
+  const excedeSaldo = saldoCaja !== null && monto > saldoCaja;
 
-    if (modalidad === "fijo") {
-      const totalInteres = montoTotalPagar - monto;
-      const interesPorCuota = totalInteres / cuotas;
-      const capitalPorCuota = cuotaFinal - interesPorCuota;
-      let saldo = monto;
-      return Array.from({ length: cuotas }, (_, i) => {
-        const isLast = i === cuotas - 1;
-        const capital = isLast ? saldo : Math.min(capitalPorCuota, saldo);
-        const interes = isLast ? (saldo * totalInteres / monto) : interesPorCuota;
-        const cuotaVal = isLast ? capital + interes : cuotaFinal;
-        saldo = Math.max(0, saldo - capital);
-        return {
-          num: i + 1,
-          fecha: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
-          capital: Math.round(capital * 100) / 100,
-          interes: Math.round(interes * 100) / 100,
-          cuota: Math.round(cuotaVal * 100) / 100,
-          saldo: Math.round(saldo * 100) / 100,
-        };
-      });
-    } else {
-      const tasaPeriodo = tasa / 100 / cuotas;
-      const capitalPorCuota = monto / cuotas;
-      let saldo = monto;
-      return Array.from({ length: cuotas }, (_, i) => {
-        const inter = saldo * tasaPeriodo;
-        const cuotaVal = capitalPorCuota + inter;
-        saldo -= capitalPorCuota;
-        return {
-          num: i + 1,
-          fecha: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
-          capital: Math.round(capitalPorCuota * 100) / 100,
-          interes: Math.round(inter * 100) / 100,
-          cuota: Math.round(cuotaVal * 100) / 100,
-          saldo: Math.max(0, Math.round(saldo * 100) / 100),
-        };
-      });
-    }
-  }, [monto, cuotas, cuotaCalculada, frecuencia, modalidad, tasa, fechaPrimerPago, montoTotalPagar]);
+  // Use centralized financial.ts for amortization preview
+  const amortizacion = useMemo(() => {
+    if (monto <= 0 || cuotas <= 0 || !fechaPrimerPago) return [];
+    const rows = calcularAmortizacion(
+      monto, cuotas, tasa,
+      modalidad as "fijo" | "insolutos",
+      format(fechaPrimerPago, "yyyy-MM-dd"),
+      frecuencia as any
+    );
+    return rows.map((r) => ({
+      num: r.numCuota,
+      fecha: format(new Date(r.fechaVencimiento), "dd/MM/yyyy"),
+      capital: r.capital,
+      interes: r.interes,
+      cuota: r.capitalInteres,
+      saldo: r.saldoCapital,
+    }));
+  }, [monto, cuotas, tasa, frecuencia, modalidad, fechaPrimerPago]);
 
   const handleSubmit = () => {
     if (!clienteId || !monto || !cuotas) {
       toast.error("Completa cliente, monto y cuotas");
       return;
     }
+    if (monto <= 0) {
+      toast.error("El monto debe ser mayor a 0");
+      return;
+    }
+    if (!fechaPrimerPago) {
+      toast.error("Selecciona la fecha del primer pago");
+      return;
+    }
+
     createSolicitud.mutate(
       {
         cliente_id: clienteId,
@@ -136,7 +132,7 @@ export default function SolicitudPrestamoPage() {
         num_cuotas: cuotas,
         frecuencia,
         modalidad,
-        fecha_primer_pago: fechaPrimerPago ? format(fechaPrimerPago, "yyyy-MM-dd") : null,
+        fecha_primer_pago: format(fechaPrimerPago, "yyyy-MM-dd"),
         caja_id: cajaId || null,
         ruta_id: rutaId || null,
         gastos_legales: parseFloat(gastosLegales) || 0,
@@ -183,11 +179,11 @@ export default function SolicitudPrestamoPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Monto *</Label>
-                <Input type="number" min="0" value={montoSolicitado} onChange={(e) => setMontoSolicitado(e.target.value)} placeholder="0.00" />
+                <Input type="number" min="0" step="0.01" value={montoSolicitado} onChange={(e) => setMontoSolicitado(e.target.value)} placeholder="0.00" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Tasa (%)</Label>
-                <Input type="number" min="0" value={tasaInteres} onChange={(e) => setTasaInteres(e.target.value)} placeholder="0" />
+                <Input type="number" min="0" step="0.01" value={tasaInteres} onChange={(e) => setTasaInteres(e.target.value)} placeholder="0" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Cuotas *</Label>
@@ -227,7 +223,7 @@ export default function SolicitudPrestamoPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[13px]">Fecha Primer Pago</Label>
+              <Label className="text-[13px]">Fecha Primer Pago *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !fechaPrimerPago && "text-muted-foreground")}>
@@ -250,6 +246,17 @@ export default function SolicitudPrestamoPage() {
                     {cajas.map((c) => (<SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                {saldoCaja !== null && (
+                  <p className={cn("text-xs", excedeSaldo ? "text-destructive font-medium" : "text-muted-foreground")}>
+                    Saldo disponible: ${saldoCaja.toLocaleString()}
+                    {excedeSaldo && (
+                      <span className="flex items-center gap-1 mt-0.5">
+                        <AlertTriangle className="h-3 w-3" />
+                        El monto excede el saldo de la caja
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Ruta</Label>
@@ -265,7 +272,7 @@ export default function SolicitudPrestamoPage() {
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Gastos Legales</Label>
-                <Input type="number" min="0" value={gastosLegales} onChange={(e) => setGastosLegales(e.target.value)} placeholder="0.00" />
+                <Input type="number" min="0" step="0.01" value={gastosLegales} onChange={(e) => setGastosLegales(e.target.value)} placeholder="0.00" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Tipo Mora</Label>
@@ -279,7 +286,7 @@ export default function SolicitudPrestamoPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Mora / día</Label>
-                <Input type="number" min="0" value={valorMora} onChange={(e) => setValorMora(e.target.value)} placeholder="0" />
+                <Input type="number" min="0" step="0.01" value={valorMora} onChange={(e) => setValorMora(e.target.value)} placeholder="0" />
               </div>
             </div>
 
@@ -303,14 +310,14 @@ export default function SolicitudPrestamoPage() {
           <CardContent>
             {amortizacion.length === 0 ? (
               <p className="text-[13px] text-muted-foreground py-8 text-center">
-                Ingresa monto, tasa y cuotas para ver la tabla.
+                Ingresa monto, tasa, cuotas y fecha primer pago para ver la tabla.
               </p>
             ) : (
               <>
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Total a Pagar</p>
-                    <p className="font-semibold text-sm">${montoTotalPagar.toLocaleString()}</p>
+                    <p className="font-semibold text-sm">${montoTotalPagar.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Cuota</p>
@@ -318,7 +325,7 @@ export default function SolicitudPrestamoPage() {
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Interés</p>
-                    <p className="font-semibold text-sm">${interesTotal.toLocaleString()}</p>
+                    <p className="font-semibold text-sm">${interesTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   </div>
                 </div>
                 <div className="max-h-[400px] overflow-auto">
@@ -338,10 +345,10 @@ export default function SolicitudPrestamoPage() {
                         <TableRow key={c.num}>
                           <TableCell className="text-xs">{c.num}</TableCell>
                           <TableCell className="text-xs">{c.fecha}</TableCell>
-                          <TableCell className="text-xs text-right">${c.capital.toLocaleString()}</TableCell>
-                          <TableCell className="text-xs text-right">${c.interes.toLocaleString()}</TableCell>
-                          <TableCell className="text-xs text-right font-medium">${c.cuota.toLocaleString()}</TableCell>
-                          <TableCell className="text-xs text-right">${c.saldo.toLocaleString()}</TableCell>
+                          <TableCell className="text-xs text-right">${c.capital.toFixed(2)}</TableCell>
+                          <TableCell className="text-xs text-right">${c.interes.toFixed(2)}</TableCell>
+                          <TableCell className="text-xs text-right font-medium">${c.cuota.toFixed(2)}</TableCell>
+                          <TableCell className="text-xs text-right">${c.saldo.toFixed(2)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

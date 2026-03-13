@@ -5,41 +5,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useSolicitudes, useUpdateSolicitud } from "@/hooks/useSolicitudes";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addDays, addWeeks, addMonths } from "date-fns";
+import { format } from "date-fns";
+import { calcNextDate } from "@/lib/financial";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Check, X, Eye } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { Plus, Search, Check, X, Eye, FileInput, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-
-function calcNextDate(base: Date, frecuencia: string, n: number): Date {
-  switch (frecuencia) {
-    case "diario": return addDays(base, n);
-    case "semanal": return addWeeks(base, n);
-    case "quincenal": return addDays(base, n * 15);
-    case "mensual": return addMonths(base, n);
-    default: return addWeeks(base, n);
-  }
-}
-
-const statusColors: Record<string, string> = {
-  Pendiente: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-  Aprobada: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
-  Rechazada: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-};
 
 export default function SolicitudesPage() {
   const navigate = useNavigate();
@@ -55,6 +40,10 @@ export default function SolicitudesPage() {
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
   const [detailSol, setDetailSol] = useState<any>(null);
+  const [esCargaInicial, setEsCargaInicial] = useState(false);
+
+  // Only admin and supervisor can approve/reject
+  const canApprove = role === "admin" || role === "supervisor";
 
   const filtered = solicitudes.filter((s) => {
     if (!search) return true;
@@ -63,9 +52,9 @@ export default function SolicitudesPage() {
     return cliente.includes(search.toLowerCase()) || idCliente.includes(search.toLowerCase());
   });
 
-  // Approve: create the prestamo + amortization from the solicitud data
+  // Approve: create the prestamo + amortization + validate caja balance + optional WhatsApp
   const approveMutation = useMutation({
-    mutationFn: async (sol: any) => {
+    mutationFn: async ({ sol, cargaInicial }: { sol: any; cargaInicial: boolean }) => {
       const monto = Number(sol.monto_solicitado);
       const tasa = Number(sol.tasa_interes || 0);
       const cuotas = Number(sol.num_cuotas);
@@ -73,6 +62,21 @@ export default function SolicitudesPage() {
       const montoTotalPagar = monto + interesTotal;
       const cuotaCalculada = montoTotalPagar / cuotas;
       const cuotaFinal = Math.ceil(cuotaCalculada);
+
+      // Validate caja balance if not carga inicial and caja is assigned
+      if (!cargaInicial && sol.caja_id) {
+        const { data: caja } = await supabase
+          .from("cajas")
+          .select("id, nombre, saldo_actual")
+          .eq("id", sol.caja_id)
+          .single();
+
+        if (caja && Number(caja.saldo_actual) < monto) {
+          throw new Error(
+            `Saldo insuficiente en caja "${caja.nombre}". Saldo: $${Number(caja.saldo_actual).toLocaleString()}, Monto solicitado: $${monto.toLocaleString()}`
+          );
+        }
+      }
 
       // Create prestamo
       const { data: prestamo, error } = await supabase
@@ -92,7 +96,7 @@ export default function SolicitudesPage() {
           gastos_legales: Number(sol.gastos_legales || 0),
           tipo_mora: sol.tipo_mora as any,
           valor_mora: Number(sol.valor_mora || 0),
-          notas: sol.notas,
+          notas: cargaInicial ? `[CARGA INICIAL] ${sol.notas || ""}`.trim() : sol.notas,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
           generado_por: user?.id,
@@ -104,10 +108,10 @@ export default function SolicitudesPage() {
 
       // Generate amortization
       const baseDate = sol.fecha_primer_pago ? new Date(sol.fecha_primer_pago) : new Date();
-      const totalInteres = montoTotalPagar - monto;
-      const interesPorCuota = totalInteres / cuotas;
 
       if (sol.modalidad === "fijo") {
+        const totalInteres = montoTotalPagar - monto;
+        const interesPorCuota = totalInteres / cuotas;
         const capitalPorCuota = cuotaFinal - interesPorCuota;
         let saldo = monto;
         const rows = [];
@@ -119,6 +123,7 @@ export default function SolicitudesPage() {
           saldo = Math.max(0, saldo - capital);
           rows.push({
             prestamo_id: prestamo.id,
+            empresa_id: sol.empresa_id,
             num_cuota: i + 1,
             capital: Math.round(capital * 100) / 100,
             interes: Math.round(interes * 100) / 100,
@@ -142,6 +147,7 @@ export default function SolicitudesPage() {
           saldo -= capitalPorCuota;
           rows.push({
             prestamo_id: prestamo.id,
+            empresa_id: sol.empresa_id,
             num_cuota: i + 1,
             capital: Math.round(capitalPorCuota * 100) / 100,
             interes: Math.round(inter * 100) / 100,
@@ -156,28 +162,63 @@ export default function SolicitudesPage() {
         await supabase.from("amortizacion").insert(rows);
       }
 
-      // Update solicitud
-      await (supabase.from as any)("solicitudes_prestamo")
+      // Register cash outflow (salida) ONLY if NOT carga inicial
+      if (!cargaInicial && sol.caja_id) {
+        await supabase.from("movimientos_caja").insert({
+          caja_id: sol.caja_id,
+          empresa_id: sol.empresa_id,
+          tipo: "salida" as any,
+          monto: monto,
+          concepto: `Desembolso préstamo - ${sol.clientes?.nombre_completo || "Cliente"}`,
+          prestamo_id: prestamo.id,
+          registrado_por: user?.id,
+        });
+
+        // Update caja balance
+        const { data: cajaActual } = await supabase
+          .from("cajas")
+          .select("saldo_actual")
+          .eq("id", sol.caja_id)
+          .single();
+
+        if (cajaActual) {
+          await supabase
+            .from("cajas")
+            .update({ saldo_actual: Number(cajaActual.saldo_actual) - monto })
+            .eq("id", sol.caja_id);
+        }
+      }
+
+      // Update solicitud status
+      await supabase
+        .from("solicitudes_prestamo")
         .update({
           status: "Aprobada",
           aprobado_por: user?.id,
           prestamo_generado_id: prestamo.id,
           resuelto_en: new Date().toISOString(),
-        })
+        } as any)
         .eq("id", sol.id);
+
+      // Send WhatsApp notification (fire and forget)
+      sendWhatsAppNotification(sol, "aprobada", empresaId).catch(() => {});
 
       return prestamo;
     },
-    onSuccess: (prestamo) => {
+    onSuccess: () => {
       toast.success("Solicitud aprobada — préstamo creado");
+      setEsCargaInicial(false);
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
       queryClient.invalidateQueries({ queryKey: ["prestamos-list"] });
+      queryClient.invalidateQueries({ queryKey: ["cajas-options"] });
     },
     onError: (err: any) => toast.error(err.message || "Error al aprobar"),
   });
 
   const handleReject = () => {
     if (!rejectId) return;
+    const sol = solicitudes.find((s) => s.id === rejectId);
+
     updateSolicitud.mutate(
       {
         id: rejectId,
@@ -189,6 +230,10 @@ export default function SolicitudesPage() {
       {
         onSuccess: () => {
           toast.success("Solicitud rechazada");
+          // Send WhatsApp notification
+          if (sol) {
+            sendWhatsAppNotification(sol, "rechazada", empresaId, motivo).catch(() => {});
+          }
           setRejectId(null);
           setMotivo("");
         },
@@ -197,14 +242,19 @@ export default function SolicitudesPage() {
     );
   };
 
+  // State for approve confirmation dialog
+  const [approveTarget, setApproveTarget] = useState<any>(null);
+
   return (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="text-xl font-semibold">Solicitudes de Préstamo</h1>
-        <Button onClick={() => navigate("/solicitudes/nueva")}>
-          <Plus className="h-4 w-4 mr-1.5" />Nueva Solicitud
-        </Button>
-      </div>
+      <PageHeader
+        title="Solicitudes de Préstamo"
+        actions={
+          <Button onClick={() => navigate("/solicitudes/nueva")}>
+            <Plus className="h-4 w-4 mr-1.5" />Nueva Solicitud
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader className="pb-3">
@@ -226,11 +276,9 @@ export default function SolicitudesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-            </div>
+            <LoadingSkeleton rows={6} type="table" />
           ) : filtered.length === 0 ? (
-            <p className="text-center text-muted-foreground py-12 text-sm">No hay solicitudes</p>
+            <EmptyState icon={FileInput} title="No hay solicitudes" description="Las solicitudes de préstamo aparecerán aquí" />
           ) : (
             <Table>
               <TableHeader>
@@ -257,20 +305,20 @@ export default function SolicitudesPage() {
                     <TableCell className="text-sm capitalize">{s.frecuencia}</TableCell>
                     <TableCell className="text-sm">{s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</TableCell>
                     <TableCell>
-                      <Badge className={statusColors[s.status] || ""}>{s.status}</Badge>
+                      <StatusBadge status={s.status} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailSol(s)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {s.status === "Pendiente" && role === "admin" && (
+                        {s.status === "Pendiente" && canApprove && (
                           <>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-green-600 hover:text-green-700"
-                              onClick={() => approveMutation.mutate(s)}
+                              onClick={() => setApproveTarget(s)}
                               disabled={approveMutation.isPending}
                             >
                               <Check className="h-4 w-4" />
@@ -285,6 +333,9 @@ export default function SolicitudesPage() {
                             </Button>
                           </>
                         )}
+                        {s.status === "Pendiente" && !canApprove && (
+                          <span className="text-xs text-muted-foreground italic">Solo lectura</span>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -294,6 +345,61 @@ export default function SolicitudesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Approve confirmation dialog */}
+      <Dialog open={!!approveTarget} onOpenChange={() => { setApproveTarget(null); setEsCargaInicial(false); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Aprobar Solicitud</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">
+              ¿Aprobar solicitud de <strong>{approveTarget?.clientes?.nombre_completo}</strong> por{" "}
+              <strong>${Number(approveTarget?.monto_solicitado || 0).toLocaleString()}</strong>?
+            </p>
+
+            {approveTarget?.caja_id && (
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <p className="text-muted-foreground">Se descontará el monto de la caja seleccionada.</p>
+              </div>
+            )}
+
+            <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50">
+              <Checkbox
+                checked={esCargaInicial}
+                onCheckedChange={(v) => setEsCargaInicial(!!v)}
+                className="mt-0.5"
+              />
+              <div>
+                <p className="text-sm font-medium">Carga Inicial (sin salida de caja)</p>
+                <p className="text-xs text-muted-foreground">
+                  Marcar si es un préstamo existente que se está cargando al sistema por primera vez.
+                  No generará movimiento de salida en la caja.
+                </p>
+              </div>
+            </label>
+
+            {!esCargaInicial && !approveTarget?.caja_id && (
+              <div className="flex items-center gap-2 text-warning text-sm">
+                <AlertTriangle className="h-4 w-4" />
+                <span>No se seleccionó caja. No se registrará movimiento de salida.</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setApproveTarget(null); setEsCargaInicial(false); }}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                approveMutation.mutate({ sol: approveTarget, cargaInicial: esCargaInicial });
+                setApproveTarget(null);
+              }}
+              disabled={approveMutation.isPending}
+            >
+              {approveMutation.isPending ? "Procesando..." : "Aprobar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject dialog */}
       <Dialog open={!!rejectId} onOpenChange={() => setRejectId(null)}>
@@ -326,7 +432,7 @@ export default function SolicitudesPage() {
                 <div><span className="text-muted-foreground">Frecuencia:</span> {detailSol.frecuencia}</div>
                 <div><span className="text-muted-foreground">Modalidad:</span> {detailSol.modalidad === "fijo" ? "Cuota Fija" : "Insolutos"}</div>
                 <div><span className="text-muted-foreground">Fecha 1er pago:</span> {detailSol.fecha_primer_pago || "—"}</div>
-                <div><span className="text-muted-foreground">Estado:</span> <Badge className={statusColors[detailSol.status] || ""}>{detailSol.status}</Badge></div>
+                <div><span className="text-muted-foreground">Estado:</span> <StatusBadge status={detailSol.status} /></div>
               </div>
               {detailSol.notas && (
                 <div><span className="text-muted-foreground">Notas:</span> {detailSol.notas}</div>
@@ -345,4 +451,49 @@ export default function SolicitudesPage() {
       </Dialog>
     </div>
   );
+}
+
+/** Fire-and-forget WhatsApp notification for solicitud status change */
+async function sendWhatsAppNotification(
+  sol: any,
+  resultado: "aprobada" | "rechazada",
+  empresaId: string,
+  motivoRechazo?: string
+) {
+  try {
+    // Get client phone
+    const { data: cliente } = await supabase
+      .from("clientes")
+      .select("telefono, nombre_completo")
+      .eq("id", sol.cliente_id)
+      .single();
+
+    if (!cliente?.telefono) return;
+
+    // Get WhatsApp config
+    const { data: config } = await supabase
+      .from("whatsapp_config")
+      .select("activo")
+      .eq("empresa_id", empresaId)
+      .single();
+
+    if (!config?.activo) return;
+
+    const message = resultado === "aprobada"
+      ? `✅ ¡Hola ${cliente.nombre_completo}! Tu solicitud de préstamo por $${Number(sol.monto_solicitado).toLocaleString()} ha sido *APROBADA*. Pronto recibirás más detalles.`
+      : `❌ Hola ${cliente.nombre_completo}, lamentamos informarte que tu solicitud de préstamo por $${Number(sol.monto_solicitado).toLocaleString()} ha sido *RECHAZADA*. ${motivoRechazo ? `Motivo: ${motivoRechazo}` : "Contacta a tu asesor para más información."}`;
+
+    await supabase.functions.invoke("whatsapp-sender", {
+      body: {
+        action: "send-text",
+        empresa_id: empresaId,
+        phone: cliente.telefono,
+        message,
+        tipo: "solicitud",
+        referencia_id: sol.id,
+      },
+    });
+  } catch {
+    // Silent fail - notification is not critical
+  }
 }
