@@ -25,10 +25,8 @@ import {
   Banknote, PiggyBank, Receipt, ArrowUpRight, ArrowDownRight,
   CalendarIcon, Filter, X, Gauge, Eye, CreditCard, BadgeDollarSign,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 
-const $$ = (n: number) =>
-  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pct = (n: number) => `${n.toFixed(1)}%`;
 
 const tooltipStyle = {
