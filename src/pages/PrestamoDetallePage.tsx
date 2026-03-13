@@ -100,7 +100,10 @@ export default function PrestamoDetallePage() {
   const [selectedCuota, setSelectedCuota] = useState<any>(null);
   const [showOptional, setShowOptional] = useState(false);
   const [reasignarOpen, setReasignarOpen] = useState(false);
-
+  const [anularPagoOpen, setAnularPagoOpen] = useState(false);
+  const [selectedPago, setSelectedPago] = useState<any>(null);
+  const [cancelarOpen, setCancelarOpen] = useState(false);
+  const [reestructurarOpen, setReestructurarOpen] = useState(false);
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
