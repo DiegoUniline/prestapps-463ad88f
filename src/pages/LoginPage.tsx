@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import logoFull from "@/assets/logo-full.png";
 
 export default function LoginPage() {
   const { user, loading: authLoading } = useAuth();
