@@ -378,10 +378,10 @@ export default function CobranzaDiariaPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Control de Cobranza</h1>
-          <p className="text-muted-foreground text-sm">Vista diaria de cuotas por cobrar y cobradas</p>
+          <h1 className="text-xl md:text-2xl font-bold">Control de Cobranza</h1>
+          <p className="text-muted-foreground text-xs md:text-sm">Vista diaria de cuotas por cobrar y cobradas</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={prevDay}>
@@ -389,9 +389,10 @@ export default function CobranzaDiariaPage() {
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-[13px]">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-[12px] md:text-[13px]">
                 <CalendarIcon className="h-3.5 w-3.5" />
-                {format(fecha, "EEEE, d 'de' MMMM", { locale: es })}
+                <span className="hidden sm:inline">{format(fecha, "EEEE, d 'de' MMMM", { locale: es })}</span>
+                <span className="sm:hidden">{format(fecha, "d MMM yyyy", { locale: es })}</span>
                 {isToday(fecha) && <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">Hoy</Badge>}
               </Button>
             </PopoverTrigger>
