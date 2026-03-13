@@ -254,10 +254,10 @@ export default function PrestamoDetallePage() {
     cajaNombre: (p.cajas as any)?.nombre || "—",
   }));
 
-  const handlePdf = (type: "estado" | "contrato" | "pagos") => {
-    if (type === "estado") generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
-    else if (type === "contrato") generarContrato(pdfPrestamo, pdfCuotas);
-    else generarReciboPagos(pdfPrestamo, pdfPagos);
+  const handlePdf = async (type: "estado" | "contrato" | "pagos") => {
+    if (type === "estado") await generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
+    else if (type === "contrato") await generarContrato(pdfPrestamo, pdfCuotas);
+    else await generarReciboPagos(pdfPrestamo, pdfPagos);
   };
 
   return (
