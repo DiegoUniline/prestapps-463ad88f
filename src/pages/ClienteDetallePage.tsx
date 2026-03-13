@@ -314,11 +314,46 @@ export default function ClienteDetallePage() {
                 {/* GPS & Photo */}
                 <div className="sm:col-span-2 pt-2 border-t space-y-3">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ubicación y Foto</p>
+                  {/* Photo preview */}
+                  {form.foto_cliente && (
+                    <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
+                      <img src={form.foto_cliente} alt="Foto del cliente" className="w-full h-full object-cover" />
+                      {editing && (
+                        <button
+                          type="button"
+                          onClick={() => updateField("foto_cliente", null)}
+                          className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {editing ? (
                     <>
                       <div>
-                        <Label className="text-xs text-muted-foreground">URL de Foto</Label>
-                        <Input value={form.foto_cliente || ""} onChange={(e) => updateField("foto_cliente", e.target.value || null)} placeholder="https://..." />
+                        <Label className="text-xs text-muted-foreground">Foto del Cliente</Label>
+                        <input
+                          ref={fotoInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={handleFotoUpload}
+                        />
+                        <div className="flex gap-2 mt-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-9 text-[13px]"
+                            onClick={() => fotoInputRef.current?.click()}
+                            disabled={uploadingFoto}
+                          >
+                            {uploadingFoto ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Upload className="h-4 w-4 mr-1.5" />}
+                            {uploadingFoto ? "Subiendo..." : "Subir foto"}
+                          </Button>
+                        </div>
                       </div>
                       <Button type="button" variant="outline" className="w-full" onClick={handleCapturarGPS} disabled={capturingGps}>
                         {capturingGps ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />}
@@ -327,8 +362,12 @@ export default function ClienteDetallePage() {
                     </>
                   ) : (
                     <div>
-                      <Label className="text-xs text-muted-foreground">Foto</Label>
-                      <p className="text-sm font-medium mt-1">{form.foto_cliente || "Sin foto"}</p>
+                      {!form.foto_cliente && (
+                        <>
+                          <Label className="text-xs text-muted-foreground">Foto</Label>
+                          <p className="text-sm font-medium mt-1 text-muted-foreground">Sin foto</p>
+                        </>
+                      )}
                     </div>
                   )}
                   {(form.gps_lat != null && form.gps_lng != null) && (
