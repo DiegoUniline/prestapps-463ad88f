@@ -355,13 +355,19 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Método de Pago</Label>
               <Select value={metodo} onValueChange={setMetodo}>
-                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Efectivo">Efectivo</SelectItem>
-                  <SelectItem value="Transferencia">Transferencia</SelectItem>
-                  <SelectItem value="Otro">Otro</SelectItem>
+                  {metodosPago.map((m) => (
+                    <SelectItem key={m.id} value={m.nombre}>{m.nombre}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {metodosPago.find((m) => m.nombre === metodo)?.requiere_validacion && (
+                <div className="flex items-center gap-1.5 mt-1.5 text-amber-600 text-[11px]">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Este método requiere validación de comprobante</span>
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
