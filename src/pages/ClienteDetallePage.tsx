@@ -143,6 +143,8 @@ export default function ClienteDetallePage() {
   const [editing, setEditing] = useState(isNew);
   const [form, setForm] = useState<ClienteInsert>(emptyForm);
   const [capturingGps, setCapturingGps] = useState(false);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (cliente) {
