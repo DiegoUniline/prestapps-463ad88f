@@ -384,7 +384,10 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
           {/* Payment summary: Monto a Pagar vs Monto Pagado */}
           {(montoNum > 0 || descuentoNum > 0) && (() => {
-            const montoAPagar = Math.max(0, totalAdeudado - descuentoNum);
+            // Monto a Pagar = valor de la cuota actual (saldo_capital + saldo_interes + saldo_mora)
+            const cuotaActual = cuotasPendientes.find(c => c.saldo_total > 0);
+            const montoCuota = cuotaActual ? cuotaActual.saldo_total : 0;
+            const montoAPagar = Math.max(0, montoCuota - descuentoNum);
             const diferencia = montoNum - montoAPagar;
             const isDeMenos = diferencia < -0.01;
             const isExacto = Math.abs(diferencia) <= 0.01;
@@ -396,7 +399,10 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Monto a Pagar</p>
                     <p className="text-[15px] font-bold">{$$(montoAPagar)}</p>
                     {descuentoNum > 0 && (
-                      <p className="text-[10px] text-muted-foreground">({$$(totalAdeudado)} - {$$(descuentoNum)} desc.)</p>
+                      <p className="text-[10px] text-muted-foreground">({$$(montoCuota)} - {$$(descuentoNum)} desc.)</p>
+                    )}
+                    {!descuentoNum && cuotaActual && (
+                      <p className="text-[10px] text-muted-foreground">Cuota #{cuotaActual.num_cuota}</p>
                     )}
                   </div>
                   <div>
