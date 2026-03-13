@@ -143,7 +143,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       const presMap: Record<string, any> = {};
       for (const p of prestamos || []) presMap[p.id] = p;
 
-      return cuotas.map((c): CuotaDiaria => {
+      return allCuotas.map((c): CuotaDiaria => {
         const pres = presMap[c.prestamo_id] || {};
         const cliente = pres.clientes as any;
         const ruta = pres.rutas as any;
