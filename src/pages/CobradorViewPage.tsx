@@ -342,7 +342,8 @@ export default function CobradorViewPage() {
   const { data: cuotas, isLoading: loadingCuotas } = useCobranzaRango(fechaDesdeStr, fechaHastaStr, empresaId, effectiveCobradorId);
   const { data: pagos, isLoading: loadingPagos } = usePagosCobrador(fechaDesdeStr, fechaHastaStr, empresaId, effectiveCobradorId);
   const { data: cajas } = useCajasAll(empresaId);
-
+  const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, empresaId);
+  const { user } = useAuth();
   // Preset handlers
   const setHoy = useCallback(() => {
     setRangePreset("hoy");
