@@ -211,6 +211,7 @@ export default function NuevoPrestamoPage() {
           valor_mora: parseFloat(valorMora) || 0,
           empresa: empresaNombre || null,
           notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
+          codigo_interno: codigoInterno || null,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
           gps_lat: geo.lat,
