@@ -392,8 +392,8 @@ export default function PrestamoDetallePage() {
           {/* Datos del Préstamo */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Datos del Préstamo</h3>
-            <div className="space-y-2.5">
-              <SidebarField label="CLIENTE" value={
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <SidebarField full label="CLIENTE" value={
                 cliente ? <Link to={`/clientes/${cliente.id}`} className="text-primary hover:underline font-medium">{cliente.nombre_completo}</Link> : "—"
               } />
               <SidebarField label="EMPRESA" value={dashStr(prestamo.empresa)} />
@@ -406,10 +406,9 @@ export default function PrestamoDetallePage() {
                   </button>
                 </span>
               } />
-              <SidebarField label="GENERADO POR" value="—" />
+              <SidebarField label="CAJA" value={caja?.nombre || "—"} />
               <SidebarField label="F. REGISTRO" value={prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—"} />
               <SidebarField label="F. PRIMER PAGO" value={prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—"} />
-              <SidebarField label="CAJA" value={caja?.nombre || "—"} />
             </div>
           </div>
 
@@ -418,15 +417,15 @@ export default function PrestamoDetallePage() {
           {/* Configuración del Crédito */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Configuración del Crédito</h3>
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <SidebarField label="MODALIDAD" value={prestamo.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"} />
-              <SidebarField label="MONTO SOLICITADO" value={$$(prestamo.monto_solicitado)} />
-              <SidebarField label="CUOTAS — FRECUENCIA" value={`${prestamo.num_cuotas} — ${prestamo.frecuencia}`} />
-              <SidebarField label="TASA DE INTERÉS" value={prestamo.tasa_interes ? `${prestamo.tasa_interes}%` : "—"} />
-              <SidebarField label="CUOTA ESTÁNDAR" value={$$(prestamo.cuota_calculada)} />
-              <SidebarField label="CUOTA REDONDEADA" value={prestamo.cuota_redondeada ? $$(prestamo.cuota_redondeada) : "—"} />
-              <SidebarField label="TIPO MORA / VALOR" value={prestamo.tipo_mora ? `${prestamo.tipo_mora} — ${prestamo.valor_mora}${prestamo.tipo_mora === "porcentaje" ? "%" : ""}` : "—"} />
-              <SidebarField label="GASTOS LEGALES" value={$$(prestamo.gastos_legales)} />
+              <SidebarField label="MONTO" value={$$(prestamo.monto_solicitado)} />
+              <SidebarField label="CUOTAS" value={`${prestamo.num_cuotas} — ${prestamo.frecuencia}`} />
+              <SidebarField label="TASA INTERÉS" value={prestamo.tasa_interes ? `${prestamo.tasa_interes}%` : "—"} />
+              <SidebarField label="CUOTA" value={$$(prestamo.cuota_calculada)} />
+              <SidebarField label="REDONDEADA" value={prestamo.cuota_redondeada ? $$(prestamo.cuota_redondeada) : "—"} />
+              <SidebarField label="MORA" value={prestamo.tipo_mora ? `${prestamo.tipo_mora} — ${prestamo.valor_mora}${prestamo.tipo_mora === "porcentaje" ? "%" : ""}` : "—"} />
+              <SidebarField label="GASTOS LEG." value={$$(prestamo.gastos_legales)} />
             </div>
           </div>
 
@@ -435,31 +434,31 @@ export default function PrestamoDetallePage() {
           {/* Estado del Préstamo */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Estado del Préstamo</h3>
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <SidebarField label="ESTADO" value={
                 <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[12px] font-medium", estadoBadge[estado])}>{estado}</span>
               } />
               {cuotasVencidas > 0 && (
-                <SidebarField label="DÍAS EN MORA" value={<span className="text-destructive font-bold text-[15px]">{diasMora}</span>} />
+                <SidebarField label="DÍAS MORA" value={<span className="text-destructive font-bold text-[14px]">{diasMora}</span>} />
               )}
               {proximaCuota && (
-                <SidebarField label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />
+                <SidebarField full label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />
               )}
               {ultimoPago && (
-                <SidebarField label="ÚLTIMO PAGO" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />
+                <SidebarField full label="ÚLTIMO PAGO" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />
               )}
               {prestamo.notas && (
-                <SidebarField label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
+                <SidebarField full label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
               )}
               {(prestamo as any).reestructurado_de && (
-                <SidebarField label="REESTRUCTURADO DE" value={
+                <SidebarField full label="REESTRUCTURADO DE" value={
                   <Link to={`/prestamos/${(prestamo as any).reestructurado_de}`} className="text-primary hover:underline text-[12px]">
                     PRE-{((prestamo as any).reestructurado_de as string).slice(0, 8)}
                   </Link>
                 } />
               )}
               {(prestamo as any).cancelado_en && (
-                <SidebarField label="CANCELADO/REEST." value={
+                <SidebarField full label="CANCELADO/REEST." value={
                   <span className="text-destructive text-[12px]">
                     {format(new Date((prestamo as any).cancelado_en), "dd/MM/yyyy HH:mm")}
                     {(prestamo as any).motivo_cancelacion && <><br /><span className="italic text-muted-foreground">{(prestamo as any).motivo_cancelacion}</span></>}
@@ -875,11 +874,11 @@ export default function PrestamoDetallePage() {
 }
 
 // ── Sidebar field component ───────────────────────────────────────
-function SidebarField({ label, value }: { label: string; value: React.ReactNode }) {
+function SidebarField({ label, value, full }: { label: string; value: React.ReactNode; full?: boolean }) {
   return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wider text-[hsl(220,9%,60%)] font-medium">{label}</p>
-      <p className="text-[13px] text-foreground mt-0.5">{value}</p>
+    <div className={cn("flex items-baseline justify-between gap-2", full && "col-span-2")}>
+      <p className="text-[11px] uppercase tracking-wider text-foreground font-semibold whitespace-nowrap">{label}</p>
+      <p className="text-[12px] text-muted-foreground text-right">{value}</p>
     </div>
   );
 }
