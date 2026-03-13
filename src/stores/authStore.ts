@@ -74,12 +74,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     const timer = get().inactivityTimer;
     if (timer) clearTimeout(timer);
+    // Clear state FIRST so UI responds immediately
+    set({ session: null, user: null, role: "admin", roleLoading: false, cobradorId: null, rutaIds: [], inactivityTimer: null });
     try {
       await supabase.auth.signOut();
     } catch {
-      // Force clear
+      // Already cleared state above
     }
-    set({ session: null, user: null, role: "admin", cobradorId: null, rutaIds: [], inactivityTimer: null });
   },
 
   fetchRole: async (userId: string) => {
