@@ -108,6 +108,8 @@ interface PrestamoData {
   caja: string;
   ruta: string;
   notas: string;
+  logoUrl?: string | null;
+  empresaNombre?: string;
 }
 
 interface CuotaData {
