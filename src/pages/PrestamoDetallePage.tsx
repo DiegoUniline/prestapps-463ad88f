@@ -9,6 +9,7 @@ import { ReasignarModal } from "@/components/ReasignarModal";
 import { AnularPagoModal } from "@/components/AnularPagoModal";
 import { CancelarPrestamoModal } from "@/components/CancelarPrestamoModal";
 import { ReestructurarModal } from "@/components/ReestructurarModal";
+import { EditPrestamoModal } from "@/components/EditPrestamoModal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -104,6 +105,7 @@ export default function PrestamoDetallePage() {
   const [selectedPago, setSelectedPago] = useState<any>(null);
   const [cancelarOpen, setCancelarOpen] = useState(false);
   const [reestructurarOpen, setReestructurarOpen] = useState(false);
+  const [editarOpen, setEditarOpen] = useState(false);
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
@@ -112,6 +114,13 @@ export default function PrestamoDetallePage() {
   const { data: promesasRaw = [] } = usePromesas(isNew ? undefined : id);
   const { data: cajasAll = [] } = useCajas();
   const { data: rutasAll = [] } = useRutasOptions();
+  const { data: cobradoresAll = [] } = useQuery({
+    queryKey: ["cobradores-all"],
+    queryFn: async () => {
+      const { data } = await supabase.from("cobradores").select("id, nombre").eq("activo", true).order("nombre");
+      return data || [];
+    },
+  });
   const empresaId = prestamo?.empresa_id || "00000000-0000-0000-0000-000000000001";
   const { data: empresaData } = useQuery({
     queryKey: ["empresa-datos", empresaId],
@@ -312,7 +321,7 @@ export default function PrestamoDetallePage() {
             <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }}>
               <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-[13px]">
+            <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => setEditarOpen(true)}>
               <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
             </Button>
             <DropdownMenu>
@@ -812,6 +821,26 @@ export default function PrestamoDetallePage() {
           ruta_id: prestamo.ruta_id,
           cobrador_id: prestamo.cobrador_id,
         }}
+      />
+
+      {/* Editar Préstamo Modal */}
+      <EditPrestamoModal
+        open={editarOpen}
+        onOpenChange={setEditarOpen}
+        prestamo={{
+          id: prestamo.id,
+          tasa_interes: prestamo.tasa_interes ? Number(prestamo.tasa_interes) : null,
+          tipo_mora: prestamo.tipo_mora,
+          valor_mora: prestamo.valor_mora ? Number(prestamo.valor_mora) : null,
+          gastos_legales: prestamo.gastos_legales ? Number(prestamo.gastos_legales) : null,
+          caja_id: prestamo.caja_id,
+          ruta_id: prestamo.ruta_id,
+          cobrador_id: prestamo.cobrador_id,
+          notas: prestamo.notas || null,
+        }}
+        cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
+        rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
+        cobradores={cobradoresAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
       />
     </div>
   );
