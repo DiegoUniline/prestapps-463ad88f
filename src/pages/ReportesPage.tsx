@@ -29,7 +29,7 @@ function DateRangeFilter({
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="w-[140px] justify-start text-left text-xs">
             <CalendarIcon className="mr-1 h-3 w-3" />
-            {format(from, "dd/MM/yyyy")}
+            {fmtDate(from)}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
