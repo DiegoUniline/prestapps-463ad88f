@@ -85,6 +85,8 @@ export default function NuevoPrestamoPage() {
   const [cuotaOverride, setCuotaOverride] = useState("");
   const [esInicial, setEsInicial] = useState(false);
   const [cuotasCubiertas, setCuotasCubiertas] = useState("");
+  const [montoPagadoInicial, setMontoPagadoInicial] = useState("");
+  const [inicialMode, setInicialMode] = useState<"cuotas" | "monto">("cuotas");
   const [fechaTexto, setFechaTexto] = useState("");
 
   // Cálculos
@@ -99,6 +101,26 @@ export default function NuevoPrestamoPage() {
 
   // Recalcular total real (última cuota se ajusta)
   const totalConCuotaFinal = montoTotalPagar; // el total real no cambia, solo la distribución
+
+  // Calcular cuotas cubiertas según modo
+  const numCuotasCubiertas = useMemo(() => {
+    if (!esInicial) return 0;
+    if (inicialMode === "cuotas") return parseInt(cuotasCubiertas) || 0;
+    // Modo monto: calcular cuántas cuotas completas cubre
+    const pagado = parseFloat(montoPagadoInicial) || 0;
+    if (pagado <= 0 || cuotaFinal <= 0) return 0;
+    return Math.min(Math.floor(pagado / cuotaFinal), cuotas);
+  }, [esInicial, inicialMode, cuotasCubiertas, montoPagadoInicial, cuotaFinal, cuotas]);
+
+  // Resumen de carga inicial
+  const resumenInicial = useMemo(() => {
+    if (!esInicial || cuotas <= 0) return null;
+    const cubiertas = numCuotasCubiertas;
+    const pendientes = cuotas - cubiertas;
+    const montoCubierto = cubiertas * cuotaFinal;
+    const montoPendiente = montoTotalPagar - montoCubierto;
+    return { cubiertas, pendientes, montoCubierto, montoPendiente: Math.max(0, montoPendiente) };
+  }, [esInicial, numCuotasCubiertas, cuotas, cuotaFinal, montoTotalPagar]);
 
   // Tabla de amortización en tiempo real
   const amortizacion = useMemo((): CuotaPreview[] => {
@@ -202,7 +224,7 @@ export default function NuevoPrestamoPage() {
       // Insertar cuotas de amortización
       if (amortizacion.length > 0) {
         const baseDate = fechaPrimerPago || new Date();
-        const numCubiertas = esInicial ? (parseInt(cuotasCubiertas) || 0) : 0;
+        const numCubiertas = numCuotasCubiertas;
 
         const cuotasInsert = amortizacion.map((c) => {
           const yaPagada = c.num <= numCubiertas;
@@ -231,6 +253,11 @@ export default function NuevoPrestamoPage() {
         if (amortError) {
           console.error("Error insertando amortización:", amortError);
           toast.error("Préstamo creado pero hubo error al generar cuotas");
+        }
+
+        // Para carga inicial, recalcular mora en cuotas vencidas pendientes
+        if (esInicial && numCubiertas < cuotas) {
+          await supabase.rpc("recalcular_mora", { p_prestamo_id: data.id });
         }
       }
 
@@ -447,19 +474,66 @@ export default function NuevoPrestamoPage() {
             </label>
 
             {esInicial && cuotas > 0 && (
-              <div className="space-y-1.5 pl-1">
-                <Label className="text-[13px]">Cuotas ya cubiertas</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max={cuotas}
-                  value={cuotasCubiertas}
-                  onChange={(e) => setCuotasCubiertas(e.target.value)}
-                  placeholder={`0 de ${cuotas}`}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Indica cuántas cuotas ya fueron pagadas. Se marcarán como "Pagada" automáticamente.
-                </p>
+              <div className="space-y-3 pl-1 border-l-2 border-primary/20 ml-1 pl-4">
+                {/* Mode selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-[13px]">¿Cómo deseas indicar lo pagado?</Label>
+                  <Select value={inicialMode} onValueChange={(v) => setInicialMode(v as "cuotas" | "monto")}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cuotas">Por número de cuotas</SelectItem>
+                      <SelectItem value="monto">Por monto pagado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {inicialMode === "cuotas" ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Cuotas ya pagadas</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={cuotas}
+                      value={cuotasCubiertas}
+                      onChange={(e) => setCuotasCubiertas(e.target.value)}
+                      placeholder={`0 de ${cuotas}`}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Monto total pagado</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={montoPagadoInicial}
+                      onChange={(e) => setMontoPagadoInicial(e.target.value)}
+                      placeholder="0.00"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Se liquidarán las cuotas completas que cubra este monto ({numCuotasCubiertas} de {cuotas}).
+                    </p>
+                  </div>
+                )}
+
+                {/* Resumen */}
+                {resumenInicial && resumenInicial.cubiertas > 0 && (
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                    <p className="text-[12px] font-semibold">Resumen de carga</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px]">
+                      <span className="text-muted-foreground">Cuotas pagadas:</span>
+                      <span className="font-medium">{resumenInicial.cubiertas} de {cuotas}</span>
+                      <span className="text-muted-foreground">Monto cubierto:</span>
+                      <span className="font-medium">{$$(resumenInicial.montoCubierto)}</span>
+                      <span className="text-muted-foreground">Cuotas pendientes:</span>
+                      <span className="font-medium text-destructive">{resumenInicial.pendientes}</span>
+                      <span className="text-muted-foreground">Deuda restante:</span>
+                      <span className="font-medium text-destructive">{$$(resumenInicial.montoPendiente)}</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Las cuotas pendientes con fecha vencida se marcarán con mora automáticamente.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -560,8 +634,7 @@ export default function NuevoPrestamoPage() {
                     </TableHeader>
                     <TableBody>
                       {amortizacion.map((c) => {
-                        const numCubiertas = esInicial ? (parseInt(cuotasCubiertas) || 0) : 0;
-                        const yaPagada = c.num <= numCubiertas;
+                        const yaPagada = c.num <= numCuotasCubiertas;
                         return (
                           <TableRow key={c.num} className={cn("border-b border-border/50", yaPagada && "opacity-50 line-through")}>
                             <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num} {yaPagada && "✓"}</TableCell>
