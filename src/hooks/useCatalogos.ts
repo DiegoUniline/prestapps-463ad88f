@@ -100,6 +100,7 @@ export function useMetodosPagoActivos() {
 
 export function useUpsertMetodoPago() {
   const qc = useQueryClient();
+  const empresaId = useEmpresaStore((s) => s.empresaId);
   return useMutation({
     mutationFn: async (item: Partial<MetodoPago> & { nombre: string }) => {
       if (item.id) {
@@ -111,7 +112,7 @@ export function useUpsertMetodoPago() {
       } else {
         const { error } = await supabase
           .from("cat_metodos_pago" as any)
-          .insert({ nombre: item.nombre, requiere_validacion: item.requiere_validacion ?? false, descripcion: item.descripcion ?? "", activo: item.activo ?? true } as any);
+          .insert({ nombre: item.nombre, requiere_validacion: item.requiere_validacion ?? false, descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
         if (error) throw error;
       }
     },
