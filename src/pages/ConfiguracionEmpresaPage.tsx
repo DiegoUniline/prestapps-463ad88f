@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye,
+  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye, Pencil,
 } from "lucide-react";
 import {
   useEmpresaConfig, useSaveEmpresaConfig, useUploadLogo,
@@ -26,6 +26,7 @@ function DatosGeneralesTab() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadLogo = useUploadLogo();
+  const [editing, setEditing] = useState(false);
 
   const { data: empresa, isLoading } = useQuery({
     queryKey: ["empresa-datos", empresaId],
@@ -71,9 +72,22 @@ function DatosGeneralesTab() {
       qc.invalidateQueries({ queryKey: ["empresa-datos"] });
       qc.invalidateQueries({ queryKey: ["empresas"] });
       toast.success("Datos actualizados");
+      setEditing(false);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const handleCancel = () => {
+    if (empresa) {
+      setForm({
+        nombre: empresa.nombre || "",
+        ruc: empresa.ruc || "",
+        telefono: empresa.telefono || "",
+        direccion: empresa.direccion || "",
+      });
+    }
+    setEditing(false);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,34 +145,64 @@ function DatosGeneralesTab() {
 
       {/* Company Data */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary" /> Datos de la Empresa
-          </CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" /> Datos de la Empresa
+            </CardTitle>
+          </div>
+          {!editing && (
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="h-4 w-4 mr-1" /> Editar
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Nombre *</Label>
-            <Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            {editing ? (
+              <Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            ) : (
+              <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.nombre || "—"}</p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>RUC / NIT</Label>
-              <Input value={form.ruc} onChange={(e) => setForm({ ...form, ruc: e.target.value })} />
+              {editing ? (
+                <Input value={form.ruc} onChange={(e) => setForm({ ...form, ruc: e.target.value })} />
+              ) : (
+                <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.ruc || "—"}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Teléfono</Label>
-              <Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
+              {editing ? (
+                <Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
+              ) : (
+                <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.telefono || "—"}</p>
+              )}
             </div>
           </div>
           <div className="space-y-2">
             <Label>Dirección</Label>
-            <Textarea value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} rows={2} />
+            {editing ? (
+              <Textarea value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} rows={2} />
+            ) : (
+              <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.direccion || "—"}</p>
+            )}
           </div>
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full">
-            <Save className="h-4 w-4 mr-1" />
-            {saveMutation.isPending ? "Guardando..." : "Guardar Datos"}
-          </Button>
+          {editing && (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleCancel} className="flex-1">
+                Cancelar
+              </Button>
+              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="flex-1">
+                <Save className="h-4 w-4 mr-1" />
+                {saveMutation.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -185,7 +229,20 @@ const TICKET_FIELD_LABELS: Record<keyof TicketCampos, string> = {
 
 // ── Tab 2: Diseño del Ticket ──
 function TicketTab() {
+  const { empresaId } = useEmpresa();
   const { data: config, isLoading } = useEmpresaConfig();
+  const { data: empresa } = useQuery({
+    queryKey: ["empresa-datos", empresaId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("logo_url")
+        .eq("id", empresaId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
   const saveConfig = useSaveEmpresaConfig();
   const [local, setLocal] = useState<EmpresaConfig | null>(null);
 
@@ -278,7 +335,13 @@ function TicketTab() {
           <CardContent>
             <div className="border rounded-lg p-4 bg-background text-xs space-y-2 font-mono">
               {local.ticket_mostrar_logo && (
-                <div className="text-center text-muted-foreground italic">[LOGO]</div>
+                <div className="flex justify-center py-2">
+                  {empresa?.logo_url ? (
+                    <img src={empresa.logo_url} alt="Logo" className="h-12 w-auto object-contain" />
+                  ) : (
+                    <span className="text-muted-foreground italic">[Sin logo]</span>
+                  )}
+                </div>
               )}
               {local.ticket_encabezado && (
                 <div className="text-center font-bold text-sm">{local.ticket_encabezado}</div>
