@@ -381,18 +381,23 @@ export default function PagosPage() {
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}
-                className="border-b border-border/50 transition-colors hover:bg-table-hover"
+                className={cn(
+                  "border-b border-border/50 transition-colors hover:bg-table-hover",
+                  p.anulado && "opacity-50"
+                )}
               >
                 <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? format(new Date(p.fecha), "dd/MM/yyyy HH:mm") : "—"}</TableCell>
-                <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">{p.cliente}</TableCell>
+                <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{p.shortId}</TableCell>
-                <TableCell className="text-right font-medium text-[13px] px-3">{$$(p.montoRecibido)}</TableCell>
+                <TableCell className={cn("text-right font-medium text-[13px] px-3", p.anulado && "line-through")}>{$$(p.montoRecibido)}</TableCell>
                 <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoMora > 0 ? "text-destructive font-medium" : "text-muted-foreground/50")}>{$$(p.aplicadoMora)}</TableCell>
                 <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoInteres === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoInteres)}</TableCell>
                 <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoCapital === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoCapital)}</TableCell>
                 <TableCell className="px-3"><MetodoDot metodo={p.metodo} /></TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
-                <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.ruta}</TableCell>
+                <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">
+                  {p.anulado ? <span className="text-destructive font-medium">Anulado</span> : p.ruta}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
