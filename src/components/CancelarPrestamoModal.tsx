@@ -6,6 +6,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { $$ } from "@/lib/utils";
 
 interface CancelarPrestamoModalProps {
   open: boolean;
@@ -14,8 +15,6 @@ interface CancelarPrestamoModalProps {
   clienteNombre: string;
   saldoPendiente: number;
 }
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteNombre, saldoPendiente }: CancelarPrestamoModalProps) {
   const queryClient = useQueryClient();

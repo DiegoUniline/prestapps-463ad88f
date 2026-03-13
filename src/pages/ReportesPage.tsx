@@ -13,12 +13,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, FileText, FileSpreadsheet, Download } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { exportToPDF, exportToCSV } from "@/lib/reportExport";
-
-const $$ = (n: number | null | undefined) =>
-  `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 // ─── Date Range Filter ───
 function DateRangeFilter({
   from, to, onFromChange, onToChange,
@@ -33,7 +29,7 @@ function DateRangeFilter({
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="w-[140px] justify-start text-left text-xs">
             <CalendarIcon className="mr-1 h-3 w-3" />
-            {format(from, "dd/MM/yyyy")}
+            {fmtDate(from)}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -45,7 +41,7 @@ function DateRangeFilter({
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="w-[140px] justify-start text-left text-xs">
             <CalendarIcon className="mr-1 h-3 w-3" />
-            {format(to, "dd/MM/yyyy")}
+            {fmtDate(to)}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -83,8 +79,8 @@ function ReportTable({
   const fmt = (val: any, f?: string) => {
     if (val == null) return "—";
     if (f === "money") return $$(Number(val));
-    if (f === "date") return val ? format(new Date(val), "dd/MM/yyyy") : "—";
-    if (f === "number") return Number(val).toLocaleString();
+    if (f === "date") return fmtDate(val);
+    if (f === "number") return (Number(val) || 0).toLocaleString("en-US");
     return String(val);
   };
 

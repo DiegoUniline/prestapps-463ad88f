@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { $$, fmtDate } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -115,8 +116,8 @@ export default function MapaGPSPage() {
         if (p.gps_lat && p.gps_lng) {
           result.push({
             lat: p.gps_lat, lng: p.gps_lng, tipo: "prestamo",
-            label: `Préstamo $${Number(p.monto_solicitado).toLocaleString()}`,
-            detail: `${p.clientes?.nombre_completo} · ${new Date(p.created_at).toLocaleDateString()}`,
+            label: `Préstamo ${$$(Number(p.monto_solicitado))}`,
+            detail: `${p.clientes?.nombre_completo} · ${fmtDate(p.created_at)}`,
           });
         }
       });
@@ -127,8 +128,8 @@ export default function MapaGPSPage() {
         if (pg.gps_lat && pg.gps_lng) {
           result.push({
             lat: pg.gps_lat, lng: pg.gps_lng, tipo: "pago",
-            label: `Pago $${Number(pg.monto_recibido).toLocaleString()}`,
-            detail: `${pg.prestamos?.clientes?.nombre_completo || ""} · ${new Date(pg.created_at).toLocaleDateString()}`,
+            label: `Pago ${$$(Number(pg.monto_recibido))}`,
+            detail: `${pg.prestamos?.clientes?.nombre_completo || ""} · ${fmtDate(pg.created_at)}`,
           });
         }
       });

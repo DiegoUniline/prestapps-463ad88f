@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { $$ } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,7 +74,7 @@ export default function SolicitudesPage() {
 
         if (caja && Number(caja.saldo_actual) < monto) {
           throw new Error(
-            `Saldo insuficiente en caja "${caja.nombre}". Saldo: $${Number(caja.saldo_actual).toLocaleString()}, Monto solicitado: $${monto.toLocaleString()}`
+            `Saldo insuficiente en caja "${caja.nombre}". Saldo: ${$$(Number(caja.saldo_actual))}, Monto solicitado: ${$$(monto)}`
           );
         }
       }
@@ -300,7 +301,7 @@ export default function SolicitudesPage() {
                       <br />
                       <span className="text-xs text-muted-foreground">{s.clientes?.id_cliente}</span>
                     </TableCell>
-                    <TableCell className="text-right text-sm">${Number(s.monto_solicitado).toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-sm">{$$(Number(s.monto_solicitado))}</TableCell>
                     <TableCell className="text-center text-sm">{s.num_cuotas}</TableCell>
                     <TableCell className="text-sm capitalize">{s.frecuencia}</TableCell>
                     <TableCell className="text-sm">{s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</TableCell>
@@ -353,7 +354,7 @@ export default function SolicitudesPage() {
           <div className="space-y-4">
             <p className="text-sm">
               ¿Aprobar solicitud de <strong>{approveTarget?.clientes?.nombre_completo}</strong> por{" "}
-              <strong>${Number(approveTarget?.monto_solicitado || 0).toLocaleString()}</strong>?
+              <strong>{$$(Number(approveTarget?.monto_solicitado || 0))}</strong>?
             </p>
 
             {approveTarget?.caja_id && (
@@ -426,7 +427,7 @@ export default function SolicitudesPage() {
             <div className="space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-2">
                 <div><span className="text-muted-foreground">Cliente:</span> {detailSol.clientes?.nombre_completo}</div>
-                <div><span className="text-muted-foreground">Monto:</span> ${Number(detailSol.monto_solicitado).toLocaleString()}</div>
+                <div><span className="text-muted-foreground">Monto:</span> {$$(Number(detailSol.monto_solicitado))}</div>
                 <div><span className="text-muted-foreground">Tasa:</span> {detailSol.tasa_interes}%</div>
                 <div><span className="text-muted-foreground">Cuotas:</span> {detailSol.num_cuotas}</div>
                 <div><span className="text-muted-foreground">Frecuencia:</span> {detailSol.frecuencia}</div>
@@ -480,8 +481,8 @@ async function sendWhatsAppNotification(
     if (!config?.activo) return;
 
     const message = resultado === "aprobada"
-      ? `✅ ¡Hola ${cliente.nombre_completo}! Tu solicitud de préstamo por $${Number(sol.monto_solicitado).toLocaleString()} ha sido *APROBADA*. Pronto recibirás más detalles.`
-      : `❌ Hola ${cliente.nombre_completo}, lamentamos informarte que tu solicitud de préstamo por $${Number(sol.monto_solicitado).toLocaleString()} ha sido *RECHAZADA*. ${motivoRechazo ? `Motivo: ${motivoRechazo}` : "Contacta a tu asesor para más información."}`;
+      ? `✅ ¡Hola ${cliente.nombre_completo}! Tu solicitud de préstamo por ${$$(Number(sol.monto_solicitado))} ha sido *APROBADA*. Pronto recibirás más detalles.`
+      : `❌ Hola ${cliente.nombre_completo}, lamentamos informarte que tu solicitud de préstamo por ${$$(Number(sol.monto_solicitado))} ha sido *RECHAZADA*. ${motivoRechazo ? `Motivo: ${motivoRechazo}` : "Contacta a tu asesor para más información."}`;
 
     await supabase.functions.invoke("whatsapp-sender", {
       body: {

@@ -6,7 +6,7 @@ import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO, startOfDay, endOfDay, isToday, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -26,7 +26,7 @@ import {
   Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
 } from "lucide-react";
 
-const $$ = (n: number) => `$${(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 // ── Types ───────────────────────────────────────────────────────
 interface CuotaCobrador {
@@ -718,7 +718,7 @@ function PagoCard({ pago, onNavigate }: { pago: PagoHistorial; onNavigate: (path
               {pago.numCuota && <span className="text-[11px] text-muted-foreground">Cuota #{pago.numCuota}</span>}
               <span className="text-[11px] text-muted-foreground">{pago.metodoPago}</span>
               <span className="text-[11px] text-muted-foreground">
-                {format(new Date(pago.fechaPago), "dd/MM HH:mm", { locale: es })}
+                {format(new Date(pago.fechaPago), "dd/MM/yyyy HH:mm", { locale: es })}
               </span>
             </div>
           </div>

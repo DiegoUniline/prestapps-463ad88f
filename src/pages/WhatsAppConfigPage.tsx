@@ -427,7 +427,7 @@ export default function WhatsAppConfigPage() {
                       {logs.map((log: any) => (
                         <TableRow key={log.id}>
                           <TableCell className="text-xs whitespace-nowrap">
-                            {log.created_at ? format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: es }) : "---"}
+                            {log.created_at ? format(new Date(log.created_at), "dd/MM/yyyy HH:mm", { locale: es }) : "---"}
                           </TableCell>
                           <TableCell className="text-xs font-mono">{log.telefono}</TableCell>
                           <TableCell>

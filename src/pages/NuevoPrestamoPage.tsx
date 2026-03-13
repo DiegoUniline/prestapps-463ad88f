@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, CalendarIcon, Save } from "lucide-react";
 import { format, addDays, addWeeks, addMonths } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 
@@ -300,7 +300,7 @@ export default function NuevoPrestamoPage() {
               <div className="space-y-1.5">
                 <Label className="text-[13px]">
                   Cuota Fija
-                  <span className="text-muted-foreground ml-1">(calculada: ${Math.ceil(cuotaCalculada).toLocaleString()})</span>
+                  <span className="text-muted-foreground ml-1">(calculada: {$$(Math.ceil(cuotaCalculada))})</span>
                 </Label>
                 <Input
                   type="number"
@@ -416,18 +416,18 @@ export default function NuevoPrestamoPage() {
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total a Pagar</p>
-                    <p className="text-sm font-semibold">${totalConCuotaFinal.toLocaleString()}</p>
+                    <p className="text-sm font-semibold">{$$(totalConCuotaFinal)}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Cuota Fija</p>
-                    <p className="text-sm font-semibold">${cuotaFinal.toLocaleString()}</p>
+                    <p className="text-sm font-semibold">{$$(cuotaFinal)}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Mora / día</p>
                     <p className="text-sm font-semibold">
                       {tipoMora === "porcentaje"
                         ? `${parseFloat(valorMora) || 0}%`
-                        : `$${(parseFloat(valorMora) || 0).toLocaleString()}`}
+                        : $$(parseFloat(valorMora) || 0)}
                     </p>
                   </div>
                 </div>
@@ -449,10 +449,10 @@ export default function NuevoPrestamoPage() {
                         <TableRow key={c.num} className="border-b border-border/50">
                           <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num}</TableCell>
                           <TableCell className="text-[12px] px-2 py-1.5 text-muted-foreground">{c.fechaVencimiento}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.capital.toLocaleString()}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.interes.toLocaleString()}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">${c.cuota.toLocaleString()}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">${c.saldo.toLocaleString()}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.capital)}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.interes)}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">{$$(c.cuota)}</TableCell>
+                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.saldo)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

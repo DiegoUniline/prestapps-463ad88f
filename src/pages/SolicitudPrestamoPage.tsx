@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ArrowLeft, CalendarIcon, Send, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 function useClientesOptions(empresaId: string) {
@@ -101,7 +101,7 @@ export default function SolicitudPrestamoPage() {
     );
     return rows.map((r) => ({
       num: r.numCuota,
-      fecha: format(new Date(r.fechaVencimiento), "dd/MM/yyyy"),
+      fecha: fmtDate(new Date(r.fechaVencimiento)),
       capital: r.capital,
       interes: r.interes,
       cuota: r.capitalInteres,
@@ -248,7 +248,7 @@ export default function SolicitudPrestamoPage() {
                 </Select>
                 {saldoCaja !== null && (
                   <p className={cn("text-xs", excedeSaldo ? "text-destructive font-medium" : "text-muted-foreground")}>
-                    Saldo disponible: ${saldoCaja.toLocaleString()}
+                    Saldo disponible: {$$(saldoCaja)}
                     {excedeSaldo && (
                       <span className="flex items-center gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3" />
@@ -317,15 +317,15 @@ export default function SolicitudPrestamoPage() {
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Total a Pagar</p>
-                    <p className="font-semibold text-sm">${montoTotalPagar.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    <p className="font-semibold text-sm">{$$(montoTotalPagar)}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Cuota</p>
-                    <p className="font-semibold text-sm">${Math.ceil(cuotaCalculada).toLocaleString()}</p>
+                    <p className="font-semibold text-sm">{$$(Math.ceil(cuotaCalculada))}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Interés</p>
-                    <p className="font-semibold text-sm">${interesTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    <p className="font-semibold text-sm">{$$(interesTotal)}</p>
                   </div>
                 </div>
                 <div className="max-h-[400px] overflow-auto">

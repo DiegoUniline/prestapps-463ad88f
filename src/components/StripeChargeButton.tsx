@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CreditCard, Send, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, $$ } from "@/lib/utils";
 
 interface StripeChargeButtonProps {
   prestamoId: string;
@@ -20,7 +20,7 @@ interface StripeChargeButtonProps {
   onChargeSuccess?: () => void;
 }
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 export function StripeChargeButton({
   prestamoId, clienteId, clienteNombre, clienteTelefono, clienteEmail,

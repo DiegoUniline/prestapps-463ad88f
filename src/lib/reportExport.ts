@@ -1,10 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
-
-const $$ = (n: number) =>
-  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 interface ExportColumn {
   header: string;
   key: string;
@@ -24,7 +21,7 @@ function fmtCell(val: any, fmt?: string) {
   if (val == null) return "";
   if (fmt === "money") return $$(Number(val));
   if (fmt === "date") return val ? format(new Date(val), "dd/MM/yyyy") : "";
-  if (fmt === "number") return Number(val).toLocaleString();
+  if (fmt === "number") return Number(val).toLocaleString("en-US");
   return String(val);
 }
 

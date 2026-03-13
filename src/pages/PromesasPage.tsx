@@ -5,10 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarCheck, Hash, DollarSign, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { cn, $$ } from "@/lib/utils";
 function usePromesasAll(empresaId: string) {
   return useQuery({
     queryKey: ["promesas-all", empresaId],

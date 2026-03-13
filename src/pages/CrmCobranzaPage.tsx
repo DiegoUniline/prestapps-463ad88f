@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { $$ } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -44,7 +45,7 @@ const RESULTADOS = [
   { value: "buzon", label: "Buzón", color: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400" },
 ];
 
-const $$ = (n: number) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 export default function CrmCobranzaPage() {
   const { empresaId } = useEmpresa();
@@ -422,7 +423,7 @@ export default function CrmCobranzaPage() {
                             </div>
                             {g.notas && <p className="text-muted-foreground mt-1">{g.notas}</p>}
                             <p className="text-[10px] text-muted-foreground mt-1">
-                              {g.created_at ? format(new Date(g.created_at), "dd/MM/yy HH:mm", { locale: es }) : ""}
+                              {g.created_at ? format(new Date(g.created_at), "dd/MM/yyyy HH:mm", { locale: es }) : ""}
                               {g.fecha_seguimiento ? ` • Seguimiento: ${g.fecha_seguimiento}` : ""}
                             </p>
                           </div>

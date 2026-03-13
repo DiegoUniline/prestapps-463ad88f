@@ -15,9 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Receipt, Wallet, TrendingDown, Loader2, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 const CATEGORIAS_GASTO = [
   "Oficina",
   "Transporte",
@@ -285,7 +283,7 @@ export default function GastosPage() {
                 filtered.map((g) => (
                   <TableRow key={g.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                     <TableCell className="text-[13px] px-3">
-                      {format(new Date(g.fecha), "dd MMM yyyy HH:mm", { locale: es })}
+                      {format(new Date(g.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
                     </TableCell>
                     <TableCell className="px-3">
                       <Badge variant="outline" className="text-[11px]">{g.categoria}</Badge>

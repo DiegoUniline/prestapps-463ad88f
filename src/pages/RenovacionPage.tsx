@@ -9,11 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { cn, $$ } from "@/lib/utils";
 import { RefreshCw, Star, TrendingUp, DollarSign, ChevronRight, CheckCircle2 } from "lucide-react";
-
-const $$ = (n: number) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 export default function RenovacionPage() {
   const { empresaId } = useEmpresa();
   const navigate = useNavigate();

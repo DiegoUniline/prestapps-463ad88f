@@ -12,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, HandCoins, TrendingUp, Hash } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
 
 const metodoOptions = ["Efectivo", "Transferencia", "Otro"];
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 // ── Metodo dot ────────────────────────────────────────────────────
 function MetodoDot({ metodo }: { metodo: string }) {
@@ -251,7 +251,7 @@ export default function PagosPage() {
               className={cn("h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-filter-bar-border hover:bg-primary/5",
                 regDesde && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground")}>
               <CalendarIcon className="h-3 w-3" />
-              {regDesde ? format(regDesde, "dd/MM/yy") : "Desde"}
+              {regDesde ? fmtDate(regDesde) : "Desde"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -265,7 +265,7 @@ export default function PagosPage() {
               className={cn("h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-filter-bar-border hover:bg-primary/5",
                 regHasta && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground")}>
               <CalendarIcon className="h-3 w-3" />
-              {regHasta ? format(regHasta, "dd/MM/yy") : "Hasta"}
+              {regHasta ? fmtDate(regHasta) : "Hasta"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -386,7 +386,7 @@ export default function PagosPage() {
                   p.anulado && "opacity-50"
                 )}
               >
-                <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? format(new Date(p.fecha), "dd/MM/yyyy HH:mm") : "—"}</TableCell>
+                <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
                 <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{p.shortId}</TableCell>
                 <TableCell className={cn("text-right font-medium text-[13px] px-3", p.anulado && "line-through")}>{$$(p.montoRecibido)}</TableCell>

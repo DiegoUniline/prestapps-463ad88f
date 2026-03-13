@@ -13,13 +13,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, TrendingDown, Loader2, FileText, AlertTriangle, PiggyBank, BarChart3, CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 // ── Data hooks ────────────────────────────────────────────────────
 function useCajas(empresaId: string) {
   return useQuery({
@@ -506,7 +503,7 @@ export default function CajasPage() {
                 kardexDesde && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
               )}>
                 <CalendarIcon className="h-3 w-3" />
-                {kardexDesde ? format(kardexDesde, "dd/MM/yy") : "Desde"}
+                {kardexDesde ? fmtDate(kardexDesde) : "Desde"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -523,7 +520,7 @@ export default function CajasPage() {
                 kardexHasta && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
               )}>
                 <CalendarIcon className="h-3 w-3" />
-                {kardexHasta ? format(kardexHasta, "dd/MM/yy") : "Hasta"}
+                {kardexHasta ? fmtDate(kardexHasta) : "Hasta"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">

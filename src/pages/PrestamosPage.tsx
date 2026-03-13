@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, FileText, TrendingUp, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
 
 const estadoBadge: Record<string, string> = {
@@ -221,9 +221,9 @@ export default function PrestamosPage() {
 
   const kpis = [
     { label: "Total Préstamos", value: String(totalPrestamos), icon: FileText, accent: "text-primary" },
-    { label: "Monto Colocado", value: `$${montoColocado.toLocaleString()}`, icon: DollarSign, accent: "text-success" },
-    { label: "Por Cobrar", value: `$${porCobrar.toLocaleString()}`, icon: TrendingUp, accent: "text-warning" },
-    { label: `En Mora (${morosos.length})`, value: `$${totalMora.toLocaleString()}`, icon: AlertTriangle, accent: "text-destructive" },
+    { label: "Monto Colocado", value: $$(montoColocado), icon: DollarSign, accent: "text-success" },
+    { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning" },
+    { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
   ];
 
   const tabCounts = useMemo(() => ({
@@ -285,7 +285,7 @@ export default function PrestamosPage() {
               className={cn("h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-filter-bar-border hover:bg-primary/5",
                 regDesde && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground")}>
               <CalendarIcon className="h-3 w-3" />
-              {regDesde ? format(regDesde, "dd/MM/yy") : "Desde"}
+              {regDesde ? fmtDate(regDesde) : "Desde"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -299,7 +299,7 @@ export default function PrestamosPage() {
               className={cn("h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-filter-bar-border hover:bg-primary/5",
                 regHasta && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground")}>
               <CalendarIcon className="h-3 w-3" />
-              {regHasta ? format(regHasta, "dd/MM/yy") : "Hasta"}
+              {regHasta ? fmtDate(regHasta) : "Hasta"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -403,16 +403,16 @@ export default function PrestamosPage() {
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
                 </TableCell>
                 <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">{p.cliente}</TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{p.fechaRegistro ? format(new Date(p.fechaRegistro), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{p.fechaPrimerPago ? format(new Date(p.fechaPrimerPago), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-right text-[13px] px-3">${(p.montoSolicitado ?? 0).toLocaleString()}</TableCell>
-                <TableCell className="text-right text-[13px] px-3">${(p.montoPagar ?? 0).toLocaleString()}</TableCell>
+                <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaRegistro)}</TableCell>
+                <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaPrimerPago)}</TableCell>
+                <TableCell className="text-right text-[13px] px-3">{$$(p.montoSolicitado)}</TableCell>
+                <TableCell className="text-right text-[13px] px-3">{$$(p.montoPagar)}</TableCell>
                 <TableCell className="text-[13px] px-3">{p.cuotasPagadas ?? 0}/{p.totalCuotas ?? 0}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.ruta}</TableCell>
-                <TableCell className="text-right font-medium text-[13px] px-3">${(p.saldo ?? 0).toLocaleString()}</TableCell>
+                <TableCell className="text-right font-medium text-[13px] px-3">{$$(p.saldo)}</TableCell>
                 <TableCell className={cn("text-right font-bold text-[13px] px-3", (p.mora ?? 0) > 0 ? "text-destructive" : "text-muted-foreground")}>
-                  {(p.mora ?? 0) > 0 ? `$${(p.mora ?? 0).toLocaleString()}` : "$0"}
+                  {(p.mora ?? 0) > 0 ? $$(p.mora) : "$0.00"}
                 </TableCell>
                 <TableCell className="px-3">
                   <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium", estadoBadge[p.estado] || "bg-muted text-muted-foreground")}>

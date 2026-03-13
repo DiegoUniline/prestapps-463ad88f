@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell, Receipt, FileSignature, MapPin, Phone, Route, Ban, RefreshCw, XCircle, Zap } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate, fmtDateTime } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
 import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
@@ -37,7 +37,7 @@ const estadoBadge: Record<string, string> = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────
-const $$ = (n: number | null | undefined) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 const dash = (n: number | null | undefined) => (n || 0) === 0 ? "—" : null;
 const dashStr = (s: string | null | undefined) => s || "—";
 
@@ -253,7 +253,7 @@ export default function PrestamoDetallePage() {
     })),
     ...promesasRaw.map((pr) => ({
       tipo: pr.status === "Incumplida" ? "promesa_incumplida" : "promesa",
-      desc: `Promesa de pago — ${$$(Number(pr.monto_prometido))} para ${pr.fecha_prometida ? format(new Date(pr.fecha_prometida), "dd/MM/yyyy") : "—"}`,
+      desc: `Promesa de pago — ${$$(Number(pr.monto_prometido))} para ${fmtDate(pr.fecha_prometida)}`,
       usuario: "—",
       fecha: pr.created_at || "",
     })),
@@ -286,8 +286,8 @@ export default function PrestamoDetallePage() {
     tipoMora: prestamo.tipo_mora || "porcentaje",
     valorMora: Number(prestamo.valor_mora || 0),
     estado,
-    fechaRegistro: prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—",
-    fechaPrimerPago: prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—",
+    fechaRegistro: fmtDate(prestamo.fecha_registro),
+    fechaPrimerPago: fmtDate(prestamo.fecha_primer_pago),
     caja: caja?.nombre || "—",
     ruta: ruta?.nombre || "—",
     notas: prestamo.notas || "",
@@ -475,8 +475,8 @@ export default function PrestamoDetallePage() {
                 </span>
               } />
               <SidebarField label="CAJA" value={caja?.nombre || "—"} />
-              <SidebarField label="F. REGISTRO" value={prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—"} />
-              <SidebarField label="F. PRIMER PAGO" value={prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—"} />
+              <SidebarField label="F. REGISTRO" value={fmtDate(prestamo.fecha_registro)} />
+              <SidebarField label="F. PRIMER PAGO" value={fmtDate(prestamo.fecha_primer_pago)} />
             </div>
           </div>
 
@@ -510,10 +510,10 @@ export default function PrestamoDetallePage() {
                 <SidebarField label="DÍAS MORA" value={<span className="text-destructive font-bold text-[14px]">{diasMora}</span>} />
               )}
               {proximaCuota && (
-                <SidebarField full label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />
+                <SidebarField full label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${fmtDate(proximaCuota.fecha_vencimiento)} — ${$$(proximaCuota.capital_interes)}`} />
               )}
               {ultimoPago && (
-                <SidebarField full label="ÚLTIMO PAGO" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />
+                <SidebarField full label="ÚLTIMO PAGO" value={`${fmtDate(ultimoPago.created_at)} — ${$$(Number(ultimoPago.monto_recibido))}`} />
               )}
               {prestamo.notas && (
                 <SidebarField full label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
@@ -528,7 +528,7 @@ export default function PrestamoDetallePage() {
               {(prestamo as any).cancelado_en && (
                 <SidebarField full label="CANCELADO/REEST." value={
                   <span className="text-destructive text-[12px]">
-                    {format(new Date((prestamo as any).cancelado_en), "dd/MM/yyyy HH:mm")}
+                    {fmtDateTime((prestamo as any).cancelado_en)}
                     {(prestamo as any).motivo_cancelacion && <><br /><span className="italic text-muted-foreground">{(prestamo as any).motivo_cancelacion}</span></>}
                   </span>
                 } />
@@ -613,7 +613,7 @@ export default function PrestamoDetallePage() {
                           <TableCell className="px-3 text-[12px]">{dash(c.capital) || $$(c.capital)}</TableCell>
                           <TableCell className="px-3 text-[12px]">{dash(c.interes) || $$(c.interes)}</TableCell>
                           <TableCell className="px-3 text-[13px] font-medium">{$$(c.capital_interes)}</TableCell>
-                          <TableCell className="px-3 text-[12px] whitespace-nowrap">{format(new Date(c.fecha_vencimiento), "dd/MM/yy")}</TableCell>
+                          <TableCell className="px-3 text-[12px] whitespace-nowrap">{fmtDate(c.fecha_vencimiento)}</TableCell>
                           <TableCell className={cn("px-3 text-[12px]", (c.dias_atraso || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
                             {(c.dias_atraso || 0) > 0 ? c.dias_atraso : "—"}
                           </TableCell>
@@ -623,7 +623,7 @@ export default function PrestamoDetallePage() {
                           <TableCell className="px-3 text-[13px] font-medium">{dash(c.saldo_total) || $$(c.saldo_total)}</TableCell>
                           <TableCell className="px-3"><CuotaStatusBadge status={status} /></TableCell>
                           <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
-                            {c.fecha_pagada ? format(new Date(c.fecha_pagada), "dd/MM/yy") : <span className="text-[hsl(220,14%,83%)]">—</span>}
+                            {c.fecha_pagada ? fmtDate(c.fecha_pagada) : <span className="text-[hsl(220,14%,83%)]">—</span>}
                           </TableCell>
 
                           {showOptional && (
@@ -704,7 +704,7 @@ export default function PrestamoDetallePage() {
                               "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]",
                               isAnulado && "opacity-50 line-through"
                             )}>
-                              <TableCell className="px-3 text-[12px]">{pg.created_at ? format(new Date(pg.created_at), "dd/MM/yyyy") : "—"}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{fmtDate(pg.created_at)}</TableCell>
                               <TableCell className="px-3 text-[12px] text-muted-foreground">#{i + 1}</TableCell>
                               <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pg.monto_recibido))}</TableCell>
                               <TableCell className={cn("px-3 text-[12px]", (pg.aplicado_mora || 0) > 0 ? "text-destructive" : "text-[hsl(220,14%,83%)]")}>{(pg.aplicado_mora || 0) > 0 ? $$(pg.aplicado_mora) : "—"}</TableCell>
@@ -786,7 +786,7 @@ export default function PrestamoDetallePage() {
                     ) : promesasRaw.map((pr) => (
                       <TableRow key={pr.id} className="border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]">
                         <TableCell className="px-3 text-[12px]">{pr.cuota_id ? "—" : "—"}</TableCell>
-                        <TableCell className="px-3 text-[12px]">{format(new Date(pr.fecha_prometida), "dd/MM/yyyy")}</TableCell>
+                        <TableCell className="px-3 text-[12px]">{fmtDate(pr.fecha_prometida)}</TableCell>
                         <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pr.monto_prometido))}</TableCell>
                         <TableCell className="px-3 text-[12px] text-muted-foreground max-w-[200px] truncate">{pr.notas || "—"}</TableCell>
                         <TableCell className="px-3">
@@ -794,7 +794,7 @@ export default function PrestamoDetallePage() {
                             {pr.status || "Pendiente"}
                           </span>
                         </TableCell>
-                        <TableCell className="px-3 text-[12px] text-muted-foreground">{pr.created_at ? format(new Date(pr.created_at), "dd/MM/yyyy") : "—"}</TableCell>
+                        <TableCell className="px-3 text-[12px] text-muted-foreground">{fmtDate(pr.created_at)}</TableCell>
                         <TableCell className="px-3">
                           <button className="text-[11px] text-muted-foreground hover:text-primary transition-colors">Editar</button>
                         </TableCell>
@@ -820,7 +820,7 @@ export default function PrestamoDetallePage() {
                         <div>
                           <p className="text-[13px]">{a.desc}</p>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {a.usuario} · {a.fecha ? format(new Date(a.fecha), "dd/MM/yyyy HH:mm") : "—"}
+                            {a.usuario} · {fmtDateTime(a.fecha)}
                           </p>
                         </div>
                       </div>
@@ -866,7 +866,7 @@ export default function PrestamoDetallePage() {
           cuotaNum={selectedCuota.num_cuota}
           cuotaId={selectedCuota.id}
           saldoTotal={Number(selectedCuota.saldo_total || 0)}
-          fechaVencimiento={format(new Date(selectedCuota.fecha_vencimiento), "dd/MM/yyyy")}
+          fechaVencimiento={fmtDate(selectedCuota.fecha_vencimiento)}
         />
       )}
 

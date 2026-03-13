@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { cn, $$ } from "@/lib/utils";
 import { HandCoins, Info, Loader2, AlertTriangle } from "lucide-react";
 
 interface Cuota {
@@ -48,7 +48,7 @@ interface PagoModalProps {
   montoInicial?: number;
 }
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId, montoInicial }: PagoModalProps) {
   const queryClient = useQueryClient();

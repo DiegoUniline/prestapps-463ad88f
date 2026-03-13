@@ -10,14 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
 import { format, differenceInDays, parseISO, subDays, isAfter, isBefore } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import {
   AlertTriangle, Bell, CalendarCheck, Clock, Users, TrendingDown,
   ChevronRight, XCircle, Eye, HandCoins, MessageSquare, Loader2,
 } from "lucide-react";
-
-const $$ = (n: number) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 interface Alerta {
   id: string;
   tipo: "promesa_incumplida" | "sin_pago" | "vence_manana" | "cobrador_inactivo" | "mora_alta" | "meta_riesgo";
@@ -137,7 +134,7 @@ export default function AlertasPage() {
         tipo: "promesa_incumplida",
         severidad: "critica",
         titulo: `Promesa incumplida: ${cliente?.nombre_completo || "—"}`,
-        descripcion: `Prometió ${$$(p.monto_prometido)} para el ${format(parseISO(p.fecha_prometida), "dd/MM/yyyy")}`,
+        descripcion: `Prometió ${$$(p.monto_prometido)} para el ${fmtDate(p.fecha_prometida)}`,
         prestamoId: p.prestamo_id,
         clienteId: cliente?.id,
         monto: p.monto_prometido,

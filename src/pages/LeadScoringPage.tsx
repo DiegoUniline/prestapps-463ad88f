@@ -1,3 +1,4 @@
+import { $$ } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -276,7 +277,6 @@ function IconoAccion({ tipo }: { tipo: ClienteScore["icono"] }) {
   }
 }
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // ── Page component ─────────────────────────────────────────────
 export default function LeadScoringPage() {
