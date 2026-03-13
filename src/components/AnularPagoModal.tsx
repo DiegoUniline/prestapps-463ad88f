@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ interface AnularPagoModalProps {
 import { $$ } from "@/lib/utils";
 export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalProps) {
   const queryClient = useQueryClient();
+  const { empresaId } = useEmpresa();
   const [motivo, setMotivo] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -115,6 +117,7 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
           monto: pago.monto_recibido,
           prestamo_id: pago.prestamo_id,
           concepto: `Anulación de pago — ${motivo.trim()}`,
+          empresa_id: empresaId,
         });
       }
 

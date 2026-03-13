@@ -262,7 +262,7 @@ export default function CajasPage() {
   const handleCrearCaja = async () => {
     if (!nombreCaja.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("cajas").insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null });
+    const { error } = await supabase.from("cajas").insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId });
     setSaving(false);
     if (error) { toast.error("Error: " + error.message); return; }
     toast.success("Caja creada");
@@ -286,6 +286,7 @@ export default function CajasPage() {
     const { error: movErr } = await supabase.from("movimientos_caja").insert({
       caja_id: cajaId, tipo, monto: m,
       concepto: concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"),
+      empresa_id: empresaId,
     });
     if (movErr) { toast.error("Error: " + movErr.message); setSaving(false); return; }
 
@@ -314,9 +315,9 @@ export default function CajasPage() {
     const destino = cajas.find((c) => c.id === cajaDestinoId);
     const nota = concepto.trim() || `Transferencia ${origen?.nombre} → ${destino?.nombre}`;
 
-    await supabase.from("movimientos_caja").insert({ caja_id: cajaId, tipo: "salida", monto: m, concepto: nota });
+    await supabase.from("movimientos_caja").insert({ caja_id: cajaId, tipo: "salida", monto: m, concepto: nota, empresa_id: empresaId });
     await supabase.from("cajas").update({ saldo_actual: (Number(origen?.saldo_actual) || 0) - m }).eq("id", cajaId);
-    await supabase.from("movimientos_caja").insert({ caja_id: cajaDestinoId, tipo: "entrada", monto: m, concepto: nota });
+    await supabase.from("movimientos_caja").insert({ caja_id: cajaDestinoId, tipo: "entrada", monto: m, concepto: nota, empresa_id: empresaId });
     await supabase.from("cajas").update({ saldo_actual: (Number(destino?.saldo_actual) || 0) + m }).eq("id", cajaDestinoId);
 
     setSaving(false);

@@ -125,6 +125,7 @@ function RutaDetallePage() {
   const isNew = id === "nuevo";
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { empresaId } = useEmpresa();
   const { data: cobradores = [] } = useCobradores();
 
   const { data: ruta, isLoading } = useQuery({
@@ -177,6 +178,7 @@ function RutaDetallePage() {
           nombre: nombre.trim(),
           descripcion: descripcion.trim() || null,
           cobrador_id: cobradorId === "__none__" ? null : (cobradorId || null),
+          empresa_id: empresaId,
         });
         if (error) throw error;
         toast.success("Ruta creada");

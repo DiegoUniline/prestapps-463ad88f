@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ interface PromesaModalProps {
 }
 import { $$ } from "@/lib/utils";
 export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId, saldoTotal, fechaVencimiento }: PromesaModalProps) {
+  const { empresaId } = useEmpresa();
   const [monto, setMonto] = useState(saldoTotal.toString());
   const [fecha, setFecha] = useState("");
   const [notas, setNotas] = useState("");
@@ -40,6 +42,7 @@ export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId
         fecha_prometida: fecha,
         notas: notas || null,
         status: "Pendiente",
+        empresa_id: empresaId,
       });
       if (error) throw error;
 

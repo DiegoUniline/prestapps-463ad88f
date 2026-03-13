@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresaStore } from "@/stores/empresaStore";
 import { toast } from "sonner";
 
 // ── Generic simple catalog (nombre, descripcion, activo) ──
@@ -26,6 +27,7 @@ function useSimpleCatalog(table: string, queryKey: string) {
 
 function useUpsertSimple(table: string, queryKey: string, label: string) {
   const qc = useQueryClient();
+  const empresaId = useEmpresaStore((s) => s.empresaId);
   return useMutation({
     mutationFn: async (item: Partial<CatalogoSimple> & { nombre: string }) => {
       if (item.id) {
@@ -37,7 +39,7 @@ function useUpsertSimple(table: string, queryKey: string, label: string) {
       } else {
         const { error } = await supabase
           .from(table as any)
-          .insert({ nombre: item.nombre, descripcion: item.descripcion ?? "", activo: item.activo ?? true } as any);
+          .insert({ nombre: item.nombre, descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
         if (error) throw error;
       }
     },
@@ -98,6 +100,7 @@ export function useMetodosPagoActivos() {
 
 export function useUpsertMetodoPago() {
   const qc = useQueryClient();
+  const empresaId = useEmpresaStore((s) => s.empresaId);
   return useMutation({
     mutationFn: async (item: Partial<MetodoPago> & { nombre: string }) => {
       if (item.id) {
@@ -109,7 +112,7 @@ export function useUpsertMetodoPago() {
       } else {
         const { error } = await supabase
           .from("cat_metodos_pago" as any)
-          .insert({ nombre: item.nombre, requiere_validacion: item.requiere_validacion ?? false, descripcion: item.descripcion ?? "", activo: item.activo ?? true } as any);
+          .insert({ nombre: item.nombre, requiere_validacion: item.requiere_validacion ?? false, descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
         if (error) throw error;
       }
     },
@@ -163,6 +166,7 @@ export function useEstadosPrestamo() {
 
 export function useUpsertEstadoPrestamo() {
   const qc = useQueryClient();
+  const empresaId = useEmpresaStore((s) => s.empresaId);
   return useMutation({
     mutationFn: async (item: Partial<EstadoPrestamo> & { nombre: string }) => {
       if (item.id) {
@@ -174,7 +178,7 @@ export function useUpsertEstadoPrestamo() {
       } else {
         const { error } = await supabase
           .from("cat_estados_prestamo" as any)
-          .insert({ nombre: item.nombre, color: item.color ?? "", descripcion: item.descripcion ?? "", activo: item.activo ?? true } as any);
+          .insert({ nombre: item.nombre, color: item.color ?? "", descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
         if (error) throw error;
       }
     },

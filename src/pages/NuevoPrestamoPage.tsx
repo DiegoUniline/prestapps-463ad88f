@@ -175,6 +175,7 @@ export default function NuevoPrestamoPage() {
           cuota_redondeada: cuotaFinal,
           gps_lat: geo.lat,
           gps_lng: geo.lng,
+          empresa_id: empresaId,
         } as any)
         .select("id")
         .single();
@@ -195,6 +196,7 @@ export default function NuevoPrestamoPage() {
           saldo_interes: c.interes,
           saldo_total: c.cuota,
           status: "Pendiente" as const,
+          empresa_id: empresaId,
         }));
 
         const { error: amortError } = await supabase

@@ -201,6 +201,7 @@ export default function CobradoresPage() {
         monto_depositado: corteDeposito,
         total_cobrado: corteTotal,
         porcentaje_usado: selectedCobrador.porcentaje_comision,
+        empresa_id: empresaId,
       });
       if (corteErr) throw corteErr;
 
@@ -210,6 +211,7 @@ export default function CobradoresPage() {
         tipo: "entrada",
         monto: corteDeposito,
         concepto: `Corte cobrador: ${selectedCobrador.nombre_completo}`,
+        empresa_id: empresaId,
       });
 
       const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", corteCajaId).single();
@@ -226,6 +228,7 @@ export default function CobradoresPage() {
           tipo: "salida",
           monto: corteComision,
           concepto: `Comisión cobrador: ${selectedCobrador.nombre_completo} (${selectedCobrador.porcentaje_comision}%)`,
+          empresa_id: empresaId,
         });
 
         const { data: cajaData2 } = await supabase.from("cajas").select("saldo_actual").eq("id", corteCajaId).single();
