@@ -285,7 +285,7 @@ export default function PrestamosPage() {
               className={cn("h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-filter-bar-border hover:bg-primary/5",
                 regDesde && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground")}>
               <CalendarIcon className="h-3 w-3" />
-              {regDesde ? format(regDesde, "dd/MM/yy") : "Desde"}
+              {regDesde ? fmtDate(regDesde) : "Desde"}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">

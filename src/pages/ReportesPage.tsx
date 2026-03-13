@@ -79,8 +79,8 @@ function ReportTable({
   const fmt = (val: any, f?: string) => {
     if (val == null) return "—";
     if (f === "money") return $$(Number(val));
-    if (f === "date") return val ? format(new Date(val), "dd/MM/yyyy") : "—";
-    if (f === "number") return Number(val).toLocaleString();
+    if (f === "date") return fmtDate(val);
+    if (f === "number") return (Number(val) || 0).toLocaleString("en-US");
     return String(val);
   };
 
