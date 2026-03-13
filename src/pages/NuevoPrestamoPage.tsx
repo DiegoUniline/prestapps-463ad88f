@@ -246,6 +246,7 @@ export default function NuevoPrestamoPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
             </div>
 
             {/* Monto + Tasa + Cuotas */}
