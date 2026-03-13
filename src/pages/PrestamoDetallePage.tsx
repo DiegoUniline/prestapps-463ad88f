@@ -434,31 +434,31 @@ export default function PrestamoDetallePage() {
           {/* Estado del Préstamo */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Estado del Préstamo</h3>
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <SidebarField label="ESTADO" value={
                 <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[12px] font-medium", estadoBadge[estado])}>{estado}</span>
               } />
               {cuotasVencidas > 0 && (
-                <SidebarField label="DÍAS EN MORA" value={<span className="text-destructive font-bold text-[15px]">{diasMora}</span>} />
+                <SidebarField label="DÍAS MORA" value={<span className="text-destructive font-bold text-[14px]">{diasMora}</span>} />
               )}
               {proximaCuota && (
-                <SidebarField label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />
+                <SidebarField full label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />
               )}
               {ultimoPago && (
-                <SidebarField label="ÚLTIMO PAGO" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />
+                <SidebarField full label="ÚLTIMO PAGO" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />
               )}
               {prestamo.notas && (
-                <SidebarField label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
+                <SidebarField full label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
               )}
               {(prestamo as any).reestructurado_de && (
-                <SidebarField label="REESTRUCTURADO DE" value={
+                <SidebarField full label="REESTRUCTURADO DE" value={
                   <Link to={`/prestamos/${(prestamo as any).reestructurado_de}`} className="text-primary hover:underline text-[12px]">
                     PRE-{((prestamo as any).reestructurado_de as string).slice(0, 8)}
                   </Link>
                 } />
               )}
               {(prestamo as any).cancelado_en && (
-                <SidebarField label="CANCELADO/REEST." value={
+                <SidebarField full label="CANCELADO/REEST." value={
                   <span className="text-destructive text-[12px]">
                     {format(new Date((prestamo as any).cancelado_en), "dd/MM/yyyy HH:mm")}
                     {(prestamo as any).motivo_cancelacion && <><br /><span className="italic text-muted-foreground">{(prestamo as any).motivo_cancelacion}</span></>}
