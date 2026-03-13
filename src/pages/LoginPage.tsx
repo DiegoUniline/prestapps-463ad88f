@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,12 @@ export default function LoginPage() {
             </form>
           </CardContent>
         </Card>
+
+        <div className="text-center">
+          <Link to="/landing" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            ← Conoce más sobre PrestApp
+          </Link>
+        </div>
       </div>
     </div>
   );

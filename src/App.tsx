@@ -15,6 +15,7 @@ import AppLayout from "@/components/AppLayout";
 
 // Direct imports — frequent pages, instant navigation
 import LoginPage from "@/pages/LoginPage";
+import LandingPage from "@/pages/LandingPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
 import PrestamosPage from "@/pages/PrestamosPage";
@@ -98,6 +99,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            <Route path="/landing" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
