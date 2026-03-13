@@ -7,8 +7,7 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
     queryFn: async () => {
       if (!prestamoId) throw new Error("No ID");
 
-      const { data: prestamo, error } = await supabase
-        .from("prestamos")
+      const { data: prestamo, error } = await (supabase.from as any)("prestamos")
         .select(`
           id, id_prestamo, cliente_id, monto_solicitado, monto_total_pagar, tasa_interes,
           num_cuotas, frecuencia, modalidad, fecha_primer_pago, fecha_registro,
