@@ -237,9 +237,9 @@ export default function PrestamosPage() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Préstamos</h1>
+        <h1 className="text-xl font-semibold">Préstamos y Ventas</h1>
         <Button onClick={() => navigate("/prestamos/nuevo")} size="sm" className="h-8 text-[13px]">
-          <Plus className="h-3.5 w-3.5 mr-1.5" />Nuevo Préstamo
+          <Plus className="h-3.5 w-3.5 mr-1.5" />Nuevo
         </Button>
       </div>
 
