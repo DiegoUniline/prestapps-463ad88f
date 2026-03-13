@@ -347,7 +347,8 @@ export default function DashboardPage() {
       </div>
 
       {/* ── FILTROS ─────────────────────────────────────────── */}
-      <div className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+      {/* Desktop filters */}
+      <div className="hidden md:block bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mr-1">Filtros:</span>
@@ -389,6 +390,37 @@ export default function DashboardPage() {
               <X className="h-3 w-3 mr-1" />Limpiar
             </Button>
           )}
+        </div>
+      </div>
+      {/* Mobile filters */}
+      <div className="md:hidden space-y-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {[{ label: "Hoy", days: 0 }, { label: "7d", days: 7 }, { label: "30d", days: 30 }, { label: "90d", days: 90 }].map(p => (
+            <Button key={p.label} variant="outline" size="sm" className="h-7 text-[11px] px-2.5 shrink-0" onClick={() => p.days === 0 ? (() => { const t = new Date(); setFechaDesde(t); setFechaHasta(t); })() : setPreset(p.days)}>
+              {p.label}
+            </Button>
+          ))}
+          {hasFilters && (
+            <Button variant="ghost" size="sm" className="h-7 text-[11px] text-destructive shrink-0" onClick={clearFilters}>
+              <X className="h-3 w-3 mr-1" />Limpiar
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Select value={filtroRuta} onValueChange={setFiltroRuta}>
+            <SelectTrigger className="h-8 text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todas rutas</SelectItem>
+              {(data?.rutas || []).map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filtroCobrador} onValueChange={setFiltroCobrador}>
+            <SelectTrigger className="h-8 text-[12px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
