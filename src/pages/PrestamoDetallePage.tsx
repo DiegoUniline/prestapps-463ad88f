@@ -37,7 +37,7 @@ const estadoBadge: Record<string, string> = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────
-const $$ = (n: number | null | undefined) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 const dash = (n: number | null | undefined) => (n || 0) === 0 ? "—" : null;
 const dashStr = (s: string | null | undefined) => s || "—";
 
