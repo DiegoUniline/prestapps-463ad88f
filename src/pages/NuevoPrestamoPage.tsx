@@ -326,6 +326,14 @@ export default function NuevoPrestamoPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {clienteId && (() => {
+                const sel = clientes.find(c => c.id === clienteId);
+                return sel ? (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Código interno: <span className="font-mono font-semibold text-foreground">{sel.id_cliente}</span>
+                  </p>
+                ) : null;
+              })()}
               <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
             </div>
 
