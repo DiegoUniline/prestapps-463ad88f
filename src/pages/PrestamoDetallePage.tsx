@@ -29,6 +29,7 @@ const estadoBadge: Record<string, string> = {
   Liquidado: "bg-badge-liquidado text-badge-liquidado-foreground",
   Cancelado: "bg-badge-cancelado text-badge-cancelado-foreground",
   Juridico: "bg-badge-juridico text-badge-juridico-foreground",
+  Reestructurado: "bg-amber-100 text-amber-800",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────
