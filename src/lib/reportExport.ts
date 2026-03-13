@@ -21,7 +21,7 @@ function fmtCell(val: any, fmt?: string) {
   if (val == null) return "";
   if (fmt === "money") return $$(Number(val));
   if (fmt === "date") return val ? format(new Date(val), "dd/MM/yyyy") : "";
-  if (fmt === "number") return Number(val).toLocaleString();
+  if (fmt === "number") return Number(val).toLocaleString("en-US");
   return String(val);
 }
 

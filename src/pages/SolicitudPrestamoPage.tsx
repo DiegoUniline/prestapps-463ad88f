@@ -101,7 +101,7 @@ export default function SolicitudPrestamoPage() {
     );
     return rows.map((r) => ({
       num: r.numCuota,
-      fecha: format(new Date(r.fechaVencimiento), "dd/MM/yyyy"),
+      fecha: fmtDate(new Date(r.fechaVencimiento)),
       capital: r.capital,
       interes: r.interes,
       cuota: r.capitalInteres,
