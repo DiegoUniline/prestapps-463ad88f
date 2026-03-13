@@ -188,8 +188,41 @@ export default function ClienteDetallePage() {
     }
   };
 
-  const handleSave = () => {
-    if (!form.nombre_completo.trim()) { toast.error("El nombre es obligatorio"); return; }
+  const handleSave = async () => {
+    const nombre = form.nombre_completo.trim();
+    if (!nombre) { toast.error("El nombre es obligatorio"); return; }
+
+    // ── Validación de duplicados ──
+    try {
+      const conditions: string[] = [];
+      conditions.push(`nombre_completo.ilike.${nombre}`);
+      if (form.telefono?.trim()) conditions.push(`telefono.eq.${form.telefono.trim()}`);
+      if (form.correo?.trim()) conditions.push(`correo.eq.${form.correo.trim()}`);
+
+      const { data: duplicados } = await supabase
+        .from("clientes")
+        .select("id, nombre_completo, telefono, correo")
+        .or(conditions.join(","));
+
+      const otros = (duplicados || []).filter((d) => d.id !== (isNew ? "__new__" : id));
+
+      if (otros.length > 0) {
+        const coincidencias: string[] = [];
+        for (const d of otros) {
+          if (d.nombre_completo?.toLowerCase() === nombre.toLowerCase()) coincidencias.push(`Nombre "${d.nombre_completo}"`);
+          if (form.telefono?.trim() && d.telefono === form.telefono.trim()) coincidencias.push(`Teléfono "${d.telefono}"`);
+          if (form.correo?.trim() && d.correo === form.correo.trim()) coincidencias.push(`Correo "${d.correo}"`);
+        }
+        if (coincidencias.length > 0) {
+          const msg = `Ya existe un cliente con: ${[...new Set(coincidencias)].join(", ")}`;
+          const continuar = confirm(`⚠️ ${msg}\n\n¿Desea continuar de todos modos?`);
+          if (!continuar) return;
+        }
+      }
+    } catch {
+      // Si falla la validación, permitir continuar
+    }
+
     if (isNew) {
       createCliente.mutate(form, {
         onSuccess: (data) => { toast.success(`Cliente ${data.id_cliente} creado`); navigate(`/clientes/${data.id}`, { replace: true }); },
