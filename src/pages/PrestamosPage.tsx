@@ -179,7 +179,7 @@ export default function PrestamosPage() {
     let data = tabFiltered.filter((p) => {
       if (search) {
         const q = search.toLowerCase();
-        if (!p.cliente.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return false;
+        if (!p.cliente.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q) && !p.idPrestamo.toLowerCase().includes(q)) return false;
       }
       if (selEstado.size > 0 && !selEstado.has(p.estado)) return false;
       if (selCaja.size > 0 && !selCaja.has(p.caja)) return false;
