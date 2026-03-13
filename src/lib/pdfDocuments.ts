@@ -411,9 +411,10 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
 }
 
 // ── 3. RECIBO DE PAGOS ──────────────────────────────────────────
-export function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData[]) {
+export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData[]) {
   const doc = new jsPDF();
-  let y = addHeader(doc, "RECIBO DE PAGOS", prestamo.id, prestamo.clienteNombre);
+  const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
+  let y = addHeader(doc, "RECIBO DE PAGOS", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
   if (pagos.length === 0) {
     doc.setFont("helvetica", "normal");
