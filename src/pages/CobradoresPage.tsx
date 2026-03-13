@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, UserCheck, Wallet, DollarSign, Percent, Scissors, ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, UserCheck, Wallet, DollarSign, Percent, Scissors, ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +20,7 @@ const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigit
 // ── Data hooks ────────────────────────────────────────────────────
 interface Cobrador {
   id: string;
-  nombre: string;
+  nombre_completo: string;
   telefono: string | null;
   porcentaje_comision: number;
   efectivo_en_mano: number;
@@ -30,9 +30,12 @@ interface Cobrador {
 
 function useCobradores(empresaId: string) {
   return useQuery({
-    queryKey: ["cobradores", empresaId],
+    queryKey: ["profiles-cobradores", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("cobradores").select("id, nombre, telefono, porcentaje_comision, efectivo_en_mano, activo, created_at, user_id, empresa_id").eq("empresa_id", empresaId).order("nombre");
+      const { data, error } = await supabase.from("profiles")
+        .select("id, nombre_completo, telefono, porcentaje_comision, efectivo_en_mano, activo, created_at, empresa_id")
+        .eq("empresa_id", empresaId)
+        .order("nombre_completo");
       if (error) throw error;
       return (data || []) as Cobrador[];
     },
@@ -43,13 +46,19 @@ function useCortes(empresaId: string) {
   return useQuery({
     queryKey: ["cortes", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("cortes")
-        .select("*, cobradores ( nombre ), cajas ( nombre )")
+      const { data: cortes, error } = await (supabase.from as any)("cortes")
+        .select("*, cajas ( nombre )")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      return data || [];
+      const cobIds = [...new Set((cortes || []).map((c: any) => c.cobrador_id).filter(Boolean))];
+      let cobMap: Record<string, string> = {};
+      if (cobIds.length) {
+        const { data: profs } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
+        for (const p of profs || []) cobMap[p.id] = p.nombre_completo;
+      }
+      return (cortes || []).map((c: any) => ({ ...c, cobrador_nombre: cobMap[c.cobrador_id] || "—" }));
     },
   });
 }
@@ -78,8 +87,8 @@ async function fetchCobradorPagos(cobradorId: string, desde?: string) {
   return data || [];
 }
 
-type SortKey = "nombre" | "porcentaje_comision" | "efectivo_en_mano" | "activo";
-type ModalType = "nuevo" | "corte" | null;
+type SortKey = "nombre_completo" | "porcentaje_comision" | "efectivo_en_mano" | "activo";
+type ModalType = "corte" | null;
 
 // ── Component ─────────────────────────────────────────────────────
 export default function CobradoresPage() {
@@ -92,11 +101,6 @@ export default function CobradoresPage() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<ModalType>(null);
   const [saving, setSaving] = useState(false);
-
-  // New cobrador form
-  const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [porcentaje, setPorcentaje] = useState("");
 
   // Corte form
   const [selectedCobrador, setSelectedCobrador] = useState<Cobrador | null>(null);
@@ -122,12 +126,12 @@ export default function CobradoresPage() {
   };
 
   const resetModal = () => {
-    setModal(null); setNombre(""); setTelefono(""); setPorcentaje("");
+    setModal(null);
     setSelectedCobrador(null); setCorteCajaId(""); setCorteTotal(0); setCorteComision(0); setCorteDeposito(0);
   };
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["cobradores"] });
+    queryClient.invalidateQueries({ queryKey: ["profiles-cobradores"] });
     queryClient.invalidateQueries({ queryKey: ["cortes"] });
     queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
     queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
@@ -139,7 +143,7 @@ export default function CobradoresPage() {
     let data = cobradores.filter((c) => {
       if (search) {
         const q = search.toLowerCase();
-        if (!c.nombre.toLowerCase().includes(q)) return false;
+        if (!c.nombre_completo.toLowerCase().includes(q)) return false;
       }
       return true;
     });
@@ -154,22 +158,6 @@ export default function CobradoresPage() {
     return data;
   }, [cobradores, search, sortKey, sortDir]);
 
-  // ── Create cobrador ─────────────────────────────────────────────
-  const handleCrear = async () => {
-    if (!nombre.trim()) return;
-    setSaving(true);
-    const { error } = await (supabase.from as any)("cobradores").insert({
-      nombre: nombre.trim(),
-      telefono: telefono.trim() || null,
-      porcentaje_comision: parseFloat(porcentaje) || 0,
-    });
-    setSaving(false);
-    if (error) { toast.error("Error: " + error.message); return; }
-    toast.success("Cobrador creado");
-    invalidate();
-    resetModal();
-  };
-
   // ── Prepare corte ───────────────────────────────────────────────
   const prepararCorte = async (cobrador: Cobrador) => {
     setSelectedCobrador(cobrador);
@@ -177,7 +165,6 @@ export default function CobradoresPage() {
     setModal("corte");
 
     try {
-      // Get last corte date for this cobrador
       const { data: lastCorte } = await (supabase.from as any)("cortes")
         .select("created_at")
         .eq("cobrador_id", cobrador.id)
@@ -225,7 +212,7 @@ export default function CobradoresPage() {
         caja_id: corteCajaId,
         tipo: "entrada",
         monto: corteDeposito,
-        concepto: `Corte cobrador: ${selectedCobrador.nombre}`,
+        concepto: `Corte cobrador: ${selectedCobrador.nombre_completo}`,
       });
 
       const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", corteCajaId).single();
@@ -241,7 +228,7 @@ export default function CobradoresPage() {
           caja_id: corteCajaId,
           tipo: "salida",
           monto: corteComision,
-          concepto: `Comisión cobrador: ${selectedCobrador.nombre} (${selectedCobrador.porcentaje_comision}%)`,
+          concepto: `Comisión cobrador: ${selectedCobrador.nombre_completo} (${selectedCobrador.porcentaje_comision}%)`,
         });
 
         const { data: cajaData2 } = await supabase.from("cajas").select("saldo_actual").eq("id", corteCajaId).single();
@@ -253,7 +240,7 @@ export default function CobradoresPage() {
       }
 
       // 4) Reset cobrador cash to 0
-      await (supabase.from as any)("cobradores").update({ efectivo_en_mano: 0 }).eq("id", selectedCobrador.id);
+      await supabase.from("profiles").update({ efectivo_en_mano: 0 } as any).eq("id", selectedCobrador.id);
 
       toast.success(`Corte realizado: ${$$(corteDeposito)} depositado, ${$$(corteComision)} comisión`);
       invalidate();
@@ -272,7 +259,7 @@ export default function CobradoresPage() {
   const totalComisiones = cortes.reduce((s, c) => s + Number((c as any).monto_comision || 0), 0);
 
   const kpis = [
-    { label: "Cobradores Activos", value: String(totalCobradores), icon: UserCheck, accent: "text-primary" },
+    { label: "Usuarios Activos", value: String(totalCobradores), icon: UserCheck, accent: "text-primary" },
     { label: "Efectivo en Calle", value: $$(totalEfectivo), icon: Wallet, accent: "text-warning" },
     { label: "Cortes Realizados", value: String(totalCortes), icon: Scissors, accent: "text-[hsl(217,91%,60%)]" },
     { label: "Comisiones Pagadas", value: $$(totalComisiones), icon: DollarSign, accent: "text-success" },
@@ -283,9 +270,6 @@ export default function CobradoresPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Cobradores</h1>
-        <Button size="sm" className="h-8 text-[13px]" onClick={() => setModal("nuevo")}>
-          <Plus className="h-3.5 w-3.5 mr-1.5" />Nuevo Cobrador
-        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -305,13 +289,13 @@ export default function CobradoresPage() {
       <div className="hidden md:flex justify-center">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Buscar cobrador..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-[13px] bg-card" />
+          <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9 text-[13px] bg-card" />
         </div>
       </div>
 
       {/* Count */}
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-muted-foreground">{filtered.length} cobrador{filtered.length !== 1 ? "es" : ""}</p>
+        <p className="text-[12px] text-muted-foreground">{filtered.length} usuario{filtered.length !== 1 ? "s" : ""}</p>
         <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
           <span>1-{filtered.length} / {filtered.length}</span>
           <Button variant="ghost" size="icon" className="h-6 w-6" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
@@ -325,7 +309,7 @@ export default function CobradoresPage() {
           <TableHeader>
             <TableRow className="bg-table-header hover:bg-table-header border-b">
               {([
-                ["nombre", "Nombre"], ["porcentaje_comision", "% Comisión"], ["efectivo_en_mano", "Efectivo en Mano"], ["activo", "Estado"],
+                ["nombre_completo", "Nombre"], ["porcentaje_comision", "% Comisión"], ["efectivo_en_mano", "Efectivo en Mano"], ["activo", "Estado"],
               ] as [SortKey, string][]).map(([key, label]) => (
                 <TableHead
                   key={key}
@@ -345,10 +329,10 @@ export default function CobradoresPage() {
                 <TableRow key={i}><TableCell colSpan={6} className="px-3 py-3"><Skeleton className="h-4 w-full" /></TableCell></TableRow>
               ))
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron cobradores</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron usuarios</TableCell></TableRow>
             ) : filtered.map((c) => (
               <TableRow key={c.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
-                <TableCell className="font-medium text-[13px] px-3">{c.nombre}</TableCell>
+                <TableCell className="font-medium text-[13px] px-3">{c.nombre_completo}</TableCell>
                 <TableCell className="text-[13px] px-3">
                   <span className="inline-flex items-center gap-1">
                     <Percent className="h-3 w-3 text-muted-foreground" />
@@ -404,7 +388,7 @@ export default function CobradoresPage() {
                 {cortes.map((ct: any) => (
                   <TableRow key={ct.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                     <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{ct.created_at ? format(new Date(ct.created_at), "dd/MM/yyyy HH:mm") : "—"}</TableCell>
-                    <TableCell className="font-medium text-[13px] px-3">{ct.cobradores?.nombre || "—"}</TableCell>
+                    <TableCell className="font-medium text-[13px] px-3">{ct.cobrador_nombre || "—"}</TableCell>
                     <TableCell className="text-[12px] text-muted-foreground px-3">{ct.cajas?.nombre || "—"}</TableCell>
                     <TableCell className="text-right text-[13px] px-3">{$$(Number(ct.total_cobrado))}</TableCell>
                     <TableCell className="text-right text-[13px] text-success font-medium px-3">{$$(Number(ct.monto_comision))} <span className="text-muted-foreground text-[11px]">({ct.porcentaje_usado}%)</span></TableCell>
@@ -417,45 +401,13 @@ export default function CobradoresPage() {
         </div>
       )}
 
-      {/* ── NUEVO COBRADOR MODAL ───────────────────────────────── */}
-      <Dialog open={modal === "nuevo"} onOpenChange={(o) => !o && resetModal()}>
-        <DialogContent className="sm:max-w-[420px] p-0 gap-0">
-          <DialogHeader className="px-5 pt-5 pb-3">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <UserCheck className="h-4 w-4 text-primary" />Nuevo Cobrador
-            </DialogTitle>
-          </DialogHeader>
-          <div className="px-5 space-y-3 pb-4">
-            <div>
-              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Nombre</Label>
-              <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre completo" className="mt-1 h-9 text-[13px]" autoFocus />
-            </div>
-            <div>
-              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Teléfono</Label>
-              <Input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Opcional" className="mt-1 h-9 text-[13px]" />
-            </div>
-            <div>
-              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">% Comisión</Label>
-              <Input type="number" step="0.1" min="0" max="100" value={porcentaje} onChange={(e) => setPorcentaje(e.target.value)} placeholder="Ej: 5" className="mt-1 h-9 text-[13px]" />
-            </div>
-          </div>
-          <DialogFooter className="px-5 py-3 border-t bg-secondary/30">
-            <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={resetModal}>Cancelar</Button>
-            <Button size="sm" className="h-8 text-[13px]" disabled={saving || !nombre.trim()} onClick={handleCrear}>
-              {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
-              Crear
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* ── CORTE MODAL ────────────────────────────────────────── */}
       <Dialog open={modal === "corte"} onOpenChange={(o) => !o && resetModal()}>
         <DialogContent className="sm:max-w-[500px] p-0 gap-0">
           <DialogHeader className="px-5 pt-5 pb-3">
             <DialogTitle className="flex items-center gap-2 text-base">
               <Scissors className="h-4 w-4 text-primary" />
-              Corte — {selectedCobrador?.nombre}
+              Corte — {selectedCobrador?.nombre_completo}
             </DialogTitle>
           </DialogHeader>
           <div className="px-5 space-y-4 pb-4">
