@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
 import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
+import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 
 // ── Badge colors ──────────────────────────────────────────────────
 const estadoBadge: Record<string, string> = {
@@ -106,6 +107,7 @@ export default function PrestamoDetallePage() {
   const [cancelarOpen, setCancelarOpen] = useState(false);
   const [reestructurarOpen, setReestructurarOpen] = useState(false);
   const [editarOpen, setEditarOpen] = useState(false);
+  const [docPreview, setDocPreview] = useState<{ open: boolean; type: "estado" | "contrato" | "pagos" | null }>({ open: false, type: null });
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
@@ -267,9 +269,21 @@ export default function PrestamoDetallePage() {
   }));
 
   const handlePdf = async (type: "estado" | "contrato" | "pagos") => {
-    if (type === "estado") await generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
-    else if (type === "contrato") await generarContrato(pdfPrestamo, pdfCuotas);
-    else await generarReciboPagos(pdfPrestamo, pdfPagos);
+    setDocPreview({ open: true, type });
+  };
+
+  const docTitles: Record<string, string> = { estado: "Estado de Cuenta", contrato: "Contrato de Préstamo", pagos: "Recibo de Pagos" };
+  const docFileNames: Record<string, string> = {
+    estado: `estado-cuenta-PRE-${shortId}.pdf`,
+    contrato: `contrato-PRE-${shortId}.pdf`,
+    pagos: `pagos-PRE-${shortId}.pdf`,
+  };
+
+  const generateDocForPreview = async () => {
+    const t = docPreview.type!;
+    if (t === "estado") return generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
+    if (t === "contrato") return generarContrato(pdfPrestamo, pdfCuotas);
+    return generarReciboPagos(pdfPrestamo, pdfPagos);
   };
 
   return (
@@ -845,6 +859,17 @@ export default function PrestamoDetallePage() {
         rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
         cobradores={cobradoresAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
       />
+
+      {/* Document Preview Modal */}
+      {docPreview.type && (
+        <DocumentPreviewModal
+          open={docPreview.open}
+          onOpenChange={(open) => setDocPreview({ open, type: open ? docPreview.type : null })}
+          title={docTitles[docPreview.type]}
+          fileName={docFileNames[docPreview.type]}
+          generateDoc={generateDocForPreview}
+        />
+      )}
     </div>
   );
 }

@@ -273,8 +273,9 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
   }
 
   addFooter(doc);
-  doc.save(`estado-cuenta-PRE-${prestamo.id.slice(0, 8)}.pdf`);
+  return doc;
 }
+
 
 // ── 2. CONTRATO ──────────────────────────────────────────────────
 export async function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[]) {
@@ -407,8 +408,9 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
   doc.text(prestamo.empresaNombre || "Empresa", 158, y + 31, { align: "center" });
 
   addFooter(doc);
-  doc.save(`contrato-PRE-${prestamo.id.slice(0, 8)}.pdf`);
+  return doc;
 }
+
 
 // ── 3. RECIBO DE PAGOS ──────────────────────────────────────────
 export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData[]) {
@@ -422,8 +424,7 @@ export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData
     doc.setTextColor(...GRAY);
     doc.text("No se han registrado pagos para este préstamo.", 14, y);
     addFooter(doc);
-    doc.save(`pagos-PRE-${prestamo.id.slice(0, 8)}.pdf`);
-    return;
+    return doc;
   }
 
   // Summary
@@ -485,5 +486,6 @@ export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData
   });
 
   addFooter(doc);
-  doc.save(`pagos-PRE-${prestamo.id.slice(0, 8)}.pdf`);
+  return doc;
 }
+
