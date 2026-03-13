@@ -34,12 +34,12 @@ function useRutas(empresaId: string) {
         .order("nombre");
       if (error) throw error;
 
-      // Get cobrador names
+      // Get cobrador names from profiles
       const cobIds = [...new Set((rutas || []).map(r => r.cobrador_id).filter(Boolean))];
       let cobMap: Record<string, string> = {};
       if (cobIds.length) {
-        const { data: cobs } = await (supabase.from as any)("cobradores").select("id, nombre").in("id", cobIds);
-        for (const c of cobs || []) cobMap[c.id] = c.nombre;
+        const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
+        for (const c of profiles || []) cobMap[c.id] = c.nombre_completo;
       }
 
       // Count prestamos per ruta
