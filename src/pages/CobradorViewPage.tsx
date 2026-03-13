@@ -26,7 +26,7 @@ import {
   Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
 } from "lucide-react";
 
-const $$ = (n: number) => `$${(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 // ── Types ───────────────────────────────────────────────────────
 interface CuotaCobrador {

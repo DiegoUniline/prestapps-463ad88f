@@ -11,11 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, $$ } from "@/lib/utils";
 import { ScrollText, Search, HandCoins, XCircle, CreditCard, CalendarCheck, MapPin, MessageSquare } from "lucide-react";
-
-const $$ = (n: number) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 interface AuditEntry {
   id: string;
   tipo: string;

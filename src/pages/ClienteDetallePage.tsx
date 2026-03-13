@@ -14,9 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ClienteInsert } from "@/types/cliente";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 function useClientePrestamos(clienteId: string | undefined) {
   return useQuery({
     queryKey: ["cliente-prestamos", clienteId],

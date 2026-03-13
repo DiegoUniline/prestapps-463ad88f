@@ -45,7 +45,7 @@ const RESULTADOS = [
   { value: "buzon", label: "Buzón", color: "bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400" },
 ];
 
-const { $$ } = await import("@/lib/utils").then(m => ({ $$: m.$$ }));
+
 
 export default function CrmCobranzaPage() {
   const { empresaId } = useEmpresa();

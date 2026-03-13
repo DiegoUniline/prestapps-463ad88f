@@ -17,10 +17,7 @@ import {
   ArrowDownToLine, MinusCircle, Plus, ClipboardList,
 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { cn, $$ } from "@/lib/utils";
 interface Cobrador {
   id: string;
   nombre: string;

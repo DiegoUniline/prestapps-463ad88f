@@ -276,7 +276,7 @@ function IconoAccion({ tipo }: { tipo: ClienteScore["icono"] }) {
   }
 }
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { $$ } from "@/lib/utils";
 
 // ── Page component ─────────────────────────────────────────────
 export default function LeadScoringPage() {

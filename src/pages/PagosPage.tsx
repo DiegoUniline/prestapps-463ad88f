@@ -120,7 +120,7 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
 
 const metodoOptions = ["Efectivo", "Transferencia", "Otro"];
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { $$ } from "@/lib/utils";
 
 // ── Metodo dot ────────────────────────────────────────────────────
 function MetodoDot({ metodo }: { metodo: string }) {
