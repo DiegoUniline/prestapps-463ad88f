@@ -307,11 +307,9 @@ export default function ClienteDetallePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información Personal</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <ReadOrInput label="Código Interno" value={isNew ? "" : (cliente?.id_cliente || "")} formValue={(form as any).id_cliente ?? ""} onChange={(v) => setForm((p) => ({ ...p, id_cliente: v } as any))} editing={editing} placeholder="Ej: CLI-001" />
-                <div>
-                  <ReadOrInput label="Nombre Completo *" value={form.nombre_completo} formValue={form.nombre_completo} onChange={(v) => updateField("nombre_completo", v)} editing={editing} />
-                </div>
+              <CardContent className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-4">
+                <ReadOrInput label="Cód. Interno" value={isNew ? "" : (cliente?.id_cliente || "")} formValue={(form as any).id_cliente ?? ""} onChange={(v) => setForm((p) => ({ ...p, id_cliente: v } as any))} editing={editing} placeholder="CLI-001" />
+                <ReadOrInput label="Nombre Completo *" value={form.nombre_completo} formValue={form.nombre_completo} onChange={(v) => updateField("nombre_completo", v)} editing={editing} />
                 <ReadOrInput label="Teléfono" value={form.telefono || ""} formValue={form.telefono} onChange={(v) => updateField("telefono", v)} editing={editing} />
                 <ReadOrInput label="Correo Electrónico" value={form.correo || ""} formValue={form.correo} onChange={(v) => updateField("correo", v)} editing={editing} />
                 <ReadOrSelect label="Sexo" value={form.sexo || ""} formValue={form.sexo} onChange={(v) => updateField("sexo", v as any)} editing={editing}

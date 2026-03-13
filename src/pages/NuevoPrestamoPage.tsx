@@ -317,33 +317,24 @@ export default function NuevoPrestamoPage() {
             <CardTitle className="text-base">Datos del Préstamo</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Cliente */}
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Cliente *</Label>
-              <Select value={clienteId} onValueChange={setClienteId}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                <SelectContent>
-                  {clientes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre_completo} ({c.id_cliente})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {clienteId && (() => {
-                const sel = clientes.find(c => c.id === clienteId);
-                return sel ? (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Código interno: <span className="font-mono font-semibold text-foreground">{sel.id_cliente}</span>
-                  </p>
-                ) : null;
-              })()}
-              <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
-            </div>
-
-            {/* Código interno */}
-            <div className="space-y-1.5">
-              <Label className="text-[13px]">Código Interno</Label>
-              <Input value={codigoInterno} onChange={(e) => setCodigoInterno(e.target.value)} placeholder="Ej: CI-001, REF-2024..." />
-              <p className="text-[11px] text-muted-foreground">Código de referencia interno opcional</p>
+            {/* Código Interno + Cliente */}
+            <div className="grid grid-cols-[120px_1fr] gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Cód. Interno</Label>
+                <Input value={codigoInterno} onChange={(e) => setCodigoInterno(e.target.value)} placeholder="CI-001" className="h-9 text-sm font-mono" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Cliente *</Label>
+                <Select value={clienteId} onValueChange={setClienteId}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
+                  <SelectContent>
+                    {clientes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nombre_completo} ({c.id_cliente})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
+              </div>
             </div>
 
             {/* Monto + Tasa + Cuotas */}
