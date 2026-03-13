@@ -262,10 +262,8 @@ export default function CobranzaDiariaPage() {
   const [estadoCuentaClienteId, setEstadoCuentaClienteId] = useState("");
   const [estadoCuentaClienteNombre, setEstadoCuentaClienteNombre] = useState("");
 
-  const openEstadoCuenta = (clienteId: string, clienteNombre: string) => {
-    setEstadoCuentaClienteId(clienteId);
-    setEstadoCuentaClienteNombre(clienteNombre);
-    setEstadoCuentaOpen(true);
+  const openEstadoCuenta = (clienteId: string, _clienteNombre: string) => {
+    navigate(`/cobranza/cliente/${clienteId}?fecha=${fechaStr}`);
   };
 
   const fechaStr = format(fecha, "yyyy-MM-dd");

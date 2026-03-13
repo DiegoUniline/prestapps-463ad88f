@@ -108,6 +108,7 @@ const App = () => (
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/cobranza" element={<CobranzaDiariaPage />} />
+              <Route path="/cobranza/cliente/:id" element={<ClienteCobranzaDetallePage />} />
               <Route path="/mi-cobranza" element={<CobradorViewPage />} />
               <Route path="/prestamos" element={<PrestamosPage />} />
               <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
