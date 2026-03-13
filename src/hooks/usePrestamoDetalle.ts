@@ -16,7 +16,7 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
           valor_mora, notas, cuota_calculada, cuota_redondeada, empresa,
           cancelado_por, cancelado_en, motivo_cancelacion, reestructurado_de,
           gps_lat, gps_lng, created_at, generado_por, empresa_id,
-          clientes ( id, id_cliente, nombre_completo, dni, direccion, telefono ),
+          clientes ( id, id_cliente, nombre_completo, dni, direccion, telefono, correo ),
           cajas ( id, nombre ),
           rutas ( id, nombre )
         `)
@@ -24,7 +24,19 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
         .maybeSingle();
 
       if (error) throw error;
-      return prestamo;
+
+      // Fetch cobro_automatico_stripe separately (column may not be in types yet)
+      let cobro_automatico_stripe = false;
+      try {
+        const { data: extraData } = await supabase
+          .from("prestamos")
+          .select("cobro_automatico_stripe" as any)
+          .eq("id", prestamoId)
+          .maybeSingle();
+        cobro_automatico_stripe = (extraData as any)?.cobro_automatico_stripe ?? false;
+      } catch { /* column may not exist yet */ }
+
+      return prestamo ? { ...prestamo, cobro_automatico_stripe } : null;
     },
     enabled: !!prestamoId,
     staleTime: 30 * 1000,

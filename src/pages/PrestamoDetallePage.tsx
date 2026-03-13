@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -16,7 +16,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell, Receipt, FileSignature, MapPin, Phone, Route, Ban, RefreshCw, XCircle } from "lucide-react";
+import { MoreHorizontal, Pencil, HandCoins, Check, AlertTriangle, CalendarCheck, Plus, Activity, CreditCard, FileText, ChevronDown, Bell, Receipt, FileSignature, MapPin, Phone, Route, Ban, RefreshCw, XCircle, Zap } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
@@ -90,6 +91,57 @@ function MetodoDot({ metodo }: { metodo: string }) {
 // ── Default & optional columns ────────────────────────────────────
 const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "Mora", "Saldo Total", "Status", "F.Pagada"];
 const optionalCols = ["Cap.Pag.", "Int.Pag.", "Mora Pag.", "S.Cap", "S.Int", "S.Mora", "Desc.Mora", "Avisado"];
+
+// ── Stripe Auto-Charge Toggle ─────────────────────────────────────
+function StripeAutoChargeToggle({ prestamoId, enabled, disabled, onToggled }: {
+  prestamoId: string; enabled: boolean; disabled: boolean; onToggled: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [checked, setChecked] = useState(enabled);
+
+  const handleToggle = async (value: boolean) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("prestamos")
+        .update({ cobro_automatico_stripe: value } as any)
+        .eq("id", prestamoId);
+      if (error) throw error;
+      setChecked(value);
+      toast.success(value ? "Cobro automático activado" : "Cobro automático desactivado");
+      onToggled();
+    } catch (err: any) {
+      toast.error(err.message || "Error al actualizar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+        <Zap className="h-3.5 w-3.5" /> Cobro Automático Stripe
+      </h3>
+      <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-card">
+        <div className="space-y-0.5">
+          <p className="text-[13px] font-medium">
+            {checked ? "Activado" : "Desactivado"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {checked
+              ? "Las cuotas se cobrarán automáticamente a la tarjeta del cliente en su fecha de vencimiento."
+              : "Active para cobrar automáticamente las cuotas con tarjeta registrada."}
+          </p>
+        </div>
+        <Switch
+          checked={checked}
+          onCheckedChange={handleToggle}
+          disabled={disabled || loading}
+        />
+      </div>
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────
 export default function PrestamoDetallePage() {
@@ -483,6 +535,16 @@ export default function PrestamoDetallePage() {
               )}
             </div>
           </div>
+
+          <div className="border-t border-[hsl(220,14%,91%)]" />
+
+          {/* Cobro Automático Stripe */}
+          <StripeAutoChargeToggle
+            prestamoId={prestamo.id}
+            enabled={(prestamo as any).cobro_automatico_stripe ?? false}
+            disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
+            onToggled={() => queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] })}
+          />
         </div>
 
         {/* RIGHT CONTENT (72%) */}
