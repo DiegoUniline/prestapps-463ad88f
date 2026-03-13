@@ -310,10 +310,23 @@ export default function PrestamoDetallePage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setReasignarOpen(true)}>Reasignar Ruta / Cobrador</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setReasignarOpen(true)}>
+                  <Route className="h-3.5 w-3.5 mr-2" />Reasignar Ruta / Cobrador
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setReestructurarOpen(true)} disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-2" />Reestructurar Préstamo
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem>Imprimir tabla</DropdownMenuItem>
                 <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">Cancelar préstamo</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setCancelarOpen(true)}
+                  disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
+                >
+                  <Ban className="h-3.5 w-3.5 mr-2" />Cancelar préstamo
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
