@@ -110,7 +110,7 @@ export default function CrmCobranzaPage() {
     queryKey: ["crm-gestiones", empresaId],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("crm_gestiones")
-        .select("*")
+        .select("id, cliente_id, prestamo_id, tipo_gestion, resultado, notas, fecha_seguimiento, registrado_por, created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(200);

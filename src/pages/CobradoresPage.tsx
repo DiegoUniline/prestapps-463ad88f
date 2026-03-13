@@ -32,7 +32,7 @@ function useCobradores(empresaId: string) {
   return useQuery({
     queryKey: ["cobradores", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("cobradores").select("*").eq("empresa_id", empresaId).order("nombre");
+      const { data, error } = await (supabase.from as any)("cobradores").select("id, nombre, telefono, porcentaje_comision, efectivo_en_mano, activo, created_at, user_id, empresa_id").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
       return (data || []) as Cobrador[];
     },

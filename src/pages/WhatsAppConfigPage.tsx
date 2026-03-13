@@ -61,7 +61,7 @@ export default function WhatsAppConfigPage() {
     queryKey: ["whatsapp-config", empresaId],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("whatsapp_config")
-        .select("*")
+        .select("id, empresa_id, activo, api_url, api_token, aviso_dia_antes, aviso_vencido, enviar_recibo_pago, created_at")
         .eq("empresa_id", empresaId)
         .maybeSingle();
       return data;
@@ -113,7 +113,7 @@ export default function WhatsAppConfigPage() {
     queryKey: ["whatsapp-templates", empresaId],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("whatsapp_templates")
-        .select("*")
+        .select("id, empresa_id, tipo, nombre, mensaje, activo, created_at")
         .eq("empresa_id", empresaId);
       return (data || []) as any[];
     },
@@ -150,7 +150,7 @@ export default function WhatsAppConfigPage() {
     queryKey: ["whatsapp-log", empresaId],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("whatsapp_log")
-        .select("*")
+        .select("id, telefono, tipo, mensaje, status, error_detalle, created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(100);

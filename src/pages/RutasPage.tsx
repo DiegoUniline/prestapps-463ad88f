@@ -127,7 +127,7 @@ function RutaDetallePage() {
     queryKey: ["ruta-detalle", id],
     queryFn: async () => {
       if (isNew) return null;
-      const { data, error } = await supabase.from("rutas").select("*").eq("id", id!).single();
+      const { data, error } = await supabase.from("rutas").select("id, nombre, descripcion, cobrador_id, empresa_id, created_at").eq("id", id!).single();
       if (error) throw error;
       return data;
     },

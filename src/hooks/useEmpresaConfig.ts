@@ -64,6 +64,11 @@ El presente contrato se firma en la ciudad de ______________ a los ____ días de
 
 {{notas}}`;
 
+const CONFIG_COLUMNS = `
+  id, empresa_id, ticket_mostrar_logo, ticket_encabezado, ticket_pie,
+  ticket_campos, contrato_plantilla, contrato_campos
+`;
+
 export function useEmpresaConfig() {
   const { empresaId } = useEmpresa();
   return useQuery({
@@ -71,7 +76,7 @@ export function useEmpresaConfig() {
     queryFn: async (): Promise<EmpresaConfig> => {
       const { data, error } = await supabase
         .from("empresa_config" as any)
-        .select("*")
+        .select(CONFIG_COLUMNS)
         .eq("empresa_id", empresaId)
         .maybeSingle();
       if (error) throw error;
@@ -88,7 +93,6 @@ export function useEmpresaConfig() {
           contrato_campos: { ...DEFAULT_CONTRATO_CAMPOS, ...(d.contrato_campos || {}) },
         };
       }
-      // Return defaults if no config exists
       return {
         id: "",
         empresa_id: empresaId,
@@ -100,6 +104,7 @@ export function useEmpresaConfig() {
         contrato_campos: DEFAULT_CONTRATO_CAMPOS,
       };
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
 

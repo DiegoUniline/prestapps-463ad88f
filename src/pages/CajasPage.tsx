@@ -25,7 +25,7 @@ function useCajas(empresaId: string) {
   return useQuery({
     queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cajas").select("*").eq("empresa_id", empresaId).order("nombre");
+      const { data, error } = await supabase.from("cajas").select("id, nombre, descripcion, saldo_actual, empresa_id, created_at").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
       return data || [];
     },
