@@ -321,6 +321,9 @@ export default function CobradorViewPage() {
   const [fechaHasta, setFechaHasta] = useState(today);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("cobranza");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPw, setChangingPw] = useState(false);
 
   // Payment modal
   const [pagoOpen, setPagoOpen] = useState(false);
