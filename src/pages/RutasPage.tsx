@@ -273,7 +273,7 @@ function RutaDetallePage() {
                   {prestamosRuta.map((p: any) => (
                     <TableRow key={p.id} className="border-b border-border/50 hover:bg-table-hover cursor-pointer" onClick={() => navigate(`/prestamos/${p.id}`)}>
                       <TableCell className="text-[13px] px-3">{(p.clientes as any)?.nombre_completo || "—"}</TableCell>
-                      <TableCell className="text-[13px] px-3 text-right">${Number(p.monto_solicitado).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-[13px] px-3 text-right">{$$(Number(p.monto_solicitado))}</TableCell>
                       <TableCell className="text-[13px] px-3">{p.estado}</TableCell>
                     </TableRow>
                   ))}
