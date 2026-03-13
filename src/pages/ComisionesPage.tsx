@@ -467,7 +467,7 @@ export default function ComisionesPage() {
                   historial.map((h: any) => (
                     <TableRow key={h.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                       <TableCell className="text-[13px] px-3">
-                        {format(new Date(h.created_at), "dd MMM yyyy HH:mm", { locale: es })}
+                        {format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
                       </TableCell>
                       <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
                         {(h.concepto || "").replace(/\[.*?\]\s*/, "")}

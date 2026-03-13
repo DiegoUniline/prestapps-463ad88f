@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, $$ } from "@/lib/utils";
 import { format, isToday, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -24,9 +24,6 @@ import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { VisitaModal } from "@/components/VisitaModal";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 // ── Data Hook ────────────────────────────────────────────────────
 interface CuotaDiaria {
   cuotaId: string;

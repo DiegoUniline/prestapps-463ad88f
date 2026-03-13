@@ -134,7 +134,7 @@ export default function AlertasPage() {
         tipo: "promesa_incumplida",
         severidad: "critica",
         titulo: `Promesa incumplida: ${cliente?.nombre_completo || "—"}`,
-        descripcion: `Prometió ${$$(p.monto_prometido)} para el ${format(parseISO(p.fecha_prometida), "dd/MM/yyyy")}`,
+        descripcion: `Prometió ${$$(p.monto_prometido)} para el ${fmtDate(p.fecha_prometida)}`,
         prestamoId: p.prestamo_id,
         clienteId: cliente?.id,
         monto: p.monto_prometido,
