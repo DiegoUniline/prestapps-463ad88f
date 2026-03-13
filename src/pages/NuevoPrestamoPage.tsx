@@ -448,7 +448,7 @@ export default function NuevoPrestamoPage() {
             {/* Empresa */}
             <div className="space-y-1.5">
               <Label className="text-[13px]">Empresa</Label>
-              <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Opcional" />
+              <Input value={empresaNombre || ""} disabled className="bg-muted/50" />
             </div>
 
             {/* Notas */}
