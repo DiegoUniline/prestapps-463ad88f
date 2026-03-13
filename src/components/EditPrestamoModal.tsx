@@ -71,6 +71,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
         ruta_id: rutaId || null,
         cobrador_id: cobradorId || null,
         notas: notas || null,
+        codigo_interno: codigoInterno || null,
       };
 
       const { error } = await supabase
