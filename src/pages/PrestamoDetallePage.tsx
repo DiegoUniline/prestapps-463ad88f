@@ -9,6 +9,7 @@ import { ReasignarModal } from "@/components/ReasignarModal";
 import { AnularPagoModal } from "@/components/AnularPagoModal";
 import { CancelarPrestamoModal } from "@/components/CancelarPrestamoModal";
 import { ReestructurarModal } from "@/components/ReestructurarModal";
+import { EditPrestamoModal } from "@/components/EditPrestamoModal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
