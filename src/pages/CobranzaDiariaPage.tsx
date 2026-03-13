@@ -145,6 +145,21 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       const presMap: Record<string, any> = {};
       for (const p of prestamos || []) presMap[p.id] = p;
 
+      // 5) Get gestiones count per prestamo
+      const { data: gestiones } = await supabase
+        .from("crm_gestiones")
+        .select("prestamo_id, created_at, resultado")
+        .in("prestamo_id", prestamoIds)
+        .order("created_at", { ascending: false });
+
+      const gestionesByPrestamo: Record<string, { count: number; ultima: string | null }> = {};
+      for (const g of gestiones || []) {
+        if (!gestionesByPrestamo[g.prestamo_id]) {
+          gestionesByPrestamo[g.prestamo_id] = { count: 0, ultima: g.created_at };
+        }
+        gestionesByPrestamo[g.prestamo_id].count++;
+      }
+
       return allCuotas.map((c): CuotaDiaria => {
         const pres = presMap[c.prestamo_id] || {};
         const cliente = pres.clientes as any;
