@@ -166,6 +166,28 @@ export default function ClienteDetallePage() {
     );
   };
 
+  const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Solo se permiten imágenes"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("La imagen no debe superar 5MB"); return; }
+    setUploadingFoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const fileName = `clientes/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("empresa-assets").upload(fileName, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(fileName);
+      updateField("foto_cliente", urlData.publicUrl);
+      toast.success("Foto subida correctamente");
+    } catch (err: any) {
+      toast.error("Error al subir foto: " + (err.message || err));
+    } finally {
+      setUploadingFoto(false);
+      if (fotoInputRef.current) fotoInputRef.current.value = "";
+    }
+  };
+
   const handleSave = () => {
     if (!form.nombre_completo.trim()) { toast.error("El nombre es obligatorio"); return; }
     if (isNew) {
