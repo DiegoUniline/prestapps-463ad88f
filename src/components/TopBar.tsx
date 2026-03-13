@@ -20,9 +20,15 @@ export function TopBar() {
   const roleLabel: Record<string, string> = { admin: "Admin", supervisor: "Supervisor", cobrador: "Cobrador" };
 
   return (
-    <header className="h-14 border-b flex items-center justify-between px-4 bg-card shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+    <header className="h-14 border-b flex items-center justify-between px-3 md:px-4 bg-card shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
       <div className="flex items-center gap-2">
-        <SidebarTrigger />
+        <SidebarTrigger className="hidden md:flex" />
+        <div className="flex md:hidden items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-xs">P</span>
+          </div>
+          <span className="font-bold text-sm">PrestApp</span>
+        </div>
       </div>
       <div className="flex items-center gap-3">
         {empresas.length > 1 && (
