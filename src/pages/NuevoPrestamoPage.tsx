@@ -469,19 +469,66 @@ export default function NuevoPrestamoPage() {
             </label>
 
             {esInicial && cuotas > 0 && (
-              <div className="space-y-1.5 pl-1">
-                <Label className="text-[13px]">Cuotas ya cubiertas</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max={cuotas}
-                  value={cuotasCubiertas}
-                  onChange={(e) => setCuotasCubiertas(e.target.value)}
-                  placeholder={`0 de ${cuotas}`}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Indica cuántas cuotas ya fueron pagadas. Se marcarán como "Pagada" automáticamente.
-                </p>
+              <div className="space-y-3 pl-1 border-l-2 border-primary/20 ml-1 pl-4">
+                {/* Mode selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-[13px]">¿Cómo deseas indicar lo pagado?</Label>
+                  <Select value={inicialMode} onValueChange={(v) => setInicialMode(v as "cuotas" | "monto")}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cuotas">Por número de cuotas</SelectItem>
+                      <SelectItem value="monto">Por monto pagado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {inicialMode === "cuotas" ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Cuotas ya pagadas</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={cuotas}
+                      value={cuotasCubiertas}
+                      onChange={(e) => setCuotasCubiertas(e.target.value)}
+                      placeholder={`0 de ${cuotas}`}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <Label className="text-[13px]">Monto total pagado</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={montoPagadoInicial}
+                      onChange={(e) => setMontoPagadoInicial(e.target.value)}
+                      placeholder="0.00"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Se liquidarán las cuotas completas que cubra este monto ({numCuotasCubiertas} de {cuotas}).
+                    </p>
+                  </div>
+                )}
+
+                {/* Resumen */}
+                {resumenInicial && resumenInicial.cubiertas > 0 && (
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                    <p className="text-[12px] font-semibold">Resumen de carga</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[11px]">
+                      <span className="text-muted-foreground">Cuotas pagadas:</span>
+                      <span className="font-medium">{resumenInicial.cubiertas} de {cuotas}</span>
+                      <span className="text-muted-foreground">Monto cubierto:</span>
+                      <span className="font-medium">{$$(resumenInicial.montoCubierto)}</span>
+                      <span className="text-muted-foreground">Cuotas pendientes:</span>
+                      <span className="font-medium text-destructive">{resumenInicial.pendientes}</span>
+                      <span className="text-muted-foreground">Deuda restante:</span>
+                      <span className="font-medium text-destructive">{$$(resumenInicial.montoPendiente)}</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Las cuotas pendientes con fecha vencida se marcarán con mora automáticamente.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
