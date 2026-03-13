@@ -116,7 +116,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
         .in("id", prestamoIds);
 
       // 3) Get cobradores names from profiles
-      const cobIds = [...new Set((prestamos || []).map((p: any) => p.cobrador_id).filter(Boolean))];
+      const cobIds = [...new Set((prestamos || []).map((p: any) => p.cobrador_id).filter(Boolean))] as string[];
       const cobMap: Record<string, string> = {};
       if (cobIds.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
