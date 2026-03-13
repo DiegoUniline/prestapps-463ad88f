@@ -45,6 +45,7 @@ const MapaGPSPage = lazy(() => import("@/pages/MapaGPSPage"));
 const LiquidarRutaPage = lazy(() => import("@/pages/LiquidarRutaPage"));
 const CatalogosPage = lazy(() => import("@/pages/CatalogosPage"));
 const ConfiguracionEmpresaPage = lazy(() => import("@/pages/ConfiguracionEmpresaPage"));
+const PermisosPage = lazy(() => import("@/pages/PermisosPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
