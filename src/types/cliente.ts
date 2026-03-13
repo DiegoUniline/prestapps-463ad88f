@@ -44,4 +44,4 @@ export interface Cliente {
   aval_parentesco: string | null;
 }
 
-export type ClienteInsert = Omit<Cliente, "id" | "id_cliente" | "created_at">;
+export type ClienteInsert = Omit<Cliente, "id" | "id_cliente" | "created_at"> & { id_cliente?: string };

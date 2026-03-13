@@ -148,7 +148,7 @@ export default function ClienteDetallePage() {
 
   useEffect(() => {
     if (cliente) {
-      const { id: _id, id_cliente: _idc, created_at: _ca, ...rest } = cliente;
+      const { id: _id, created_at: _ca, ...rest } = cliente;
       setForm(rest);
     }
   }, [cliente]);
@@ -308,14 +308,8 @@ export default function ClienteDetallePage() {
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información Personal</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Código interno (read-only) */}
-                {!isNew && cliente && (
-                  <div className="sm:col-span-2">
-                    <Label className="text-xs text-muted-foreground">Código Interno</Label>
-                    <p className="text-sm font-mono font-semibold mt-1">{cliente.id_cliente}</p>
-                  </div>
-                )}
-                <div className="sm:col-span-2">
+                <ReadOrInput label="Código Interno" value={isNew ? "" : (cliente?.id_cliente || "")} formValue={(form as any).id_cliente ?? ""} onChange={(v) => setForm((p) => ({ ...p, id_cliente: v } as any))} editing={editing} placeholder="Ej: CLI-001" />
+                <div>
                   <ReadOrInput label="Nombre Completo *" value={form.nombre_completo} formValue={form.nombre_completo} onChange={(v) => updateField("nombre_completo", v)} editing={editing} />
                 </div>
                 <ReadOrInput label="Teléfono" value={form.telefono || ""} formValue={form.telefono} onChange={(v) => updateField("telefono", v)} editing={editing} />
