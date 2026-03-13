@@ -265,7 +265,7 @@ export default function CobranzaDiariaPage() {
     // Fetch all pending cuotas for this prestamo
     const { data } = await supabase
       .from("amortizacion")
-      .select("*")
+      .select("id, num_cuota, saldo_mora, saldo_interes, saldo_capital, saldo_total, mora_pagada, interes_pagado, capital_pagado, status, fecha_vencimiento")
       .eq("prestamo_id", item.prestamoId)
       .neq("status", "Pagada")
       .order("num_cuota");

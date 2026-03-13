@@ -54,7 +54,7 @@ export default function EmpresasPage() {
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ["empresas-config"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("empresas").select("*").order("nombre");
+      const { data, error } = await supabase.from("empresas").select("id, nombre, ruc, telefono, direccion, logo_url, activa, created_at").order("nombre");
       if (error) throw error;
       return data as Empresa[];
     },
