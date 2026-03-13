@@ -46,8 +46,10 @@ export function TopBar() {
             </Select>
           </div>
         )}
+        <SyncStatusBadge />
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
           {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+        </Button>
         </Button>
         <Badge variant="secondary" className="text-[10px] h-6 hidden md:flex">{roleLabel[role] || role}</Badge>
         <Avatar className="h-8 w-8">
