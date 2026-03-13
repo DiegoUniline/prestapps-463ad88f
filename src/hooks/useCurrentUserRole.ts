@@ -13,21 +13,28 @@ interface CurrentUserRole {
 }
 
 async function fetchUserRole(userId: string) {
-  // Get role from user_roles
-  const roleResult = await supabase
+  // Get all roles for user and prioritize highest access
+  const { data: roleRows, error: roleError } = await supabase
     .from("user_roles")
     .select("role")
-    .eq("user_id", userId)
-    .maybeSingle();
+    .eq("user_id", userId);
 
-  const role: AppRole = (roleResult.data?.role as AppRole) || "cobrador";
+  if (roleError) throw roleError;
+
+  const roles = (roleRows || []).map((r) => r.role as AppRole);
+  const role: AppRole =
+    roles.includes("admin")
+      ? "admin"
+      : roles.includes("supervisor")
+      ? "supervisor"
+      : roles.includes("cobrador")
+      ? "cobrador"
+      : "admin"; // fallback to avoid accidental lock to cobrador when role row is missing
 
   let cobradorId: string | null = null;
   let rutaIds: string[] = [];
 
   if (role === "cobrador") {
-    // user_id column on cobradores (added via migration, not in generated types)
-    // Use rpc or raw approach to avoid type issues
     const { data } = await supabase.rpc("get_cobrador_by_user" as any, { p_user_id: userId });
     if (data && (data as any).length > 0) {
       cobradorId = (data as any)[0].id;
