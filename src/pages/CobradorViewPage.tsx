@@ -481,7 +481,7 @@ export default function CobradorViewPage() {
             <EmptyCard icon={CheckCircle2} title="¡Todo cobrado!" subtitle="No hay cuotas pendientes para este periodo." />
           ) : (
             pendientes.map((item) => (
-              <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} />
+              <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }} onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }} />
             ))
           )}
 
