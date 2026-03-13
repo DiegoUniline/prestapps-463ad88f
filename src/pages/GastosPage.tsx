@@ -15,9 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Receipt, Wallet, TrendingDown, Loader2, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 const CATEGORIAS_GASTO = [
   "Oficina",
   "Transporte",
