@@ -10,7 +10,7 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
       const { data: prestamo, error } = await supabase
         .from("prestamos")
         .select(`
-          id, cliente_id, monto_solicitado, monto_total_pagar, tasa_interes,
+          id, id_prestamo, cliente_id, monto_solicitado, monto_total_pagar, tasa_interes,
           num_cuotas, frecuencia, modalidad, fecha_primer_pago, fecha_registro,
           caja_id, ruta_id, cobrador_id, estado, gastos_legales, tipo_mora,
           valor_mora, notas, cuota_calculada, cuota_redondeada, empresa,
