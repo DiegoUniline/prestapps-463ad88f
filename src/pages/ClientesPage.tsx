@@ -189,13 +189,13 @@ export default function ClientesPage() {
 
         {/* ── Tab: Listado ──────────────────────────────────── */}
         <TabsContent value="listado" className="space-y-4">
-          <div className="flex gap-3">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="relative flex-1 sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
             <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-full sm:w-36">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
