@@ -13,12 +13,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, FileText, FileSpreadsheet, Download } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { exportToPDF, exportToCSV } from "@/lib/reportExport";
-
-const $$ = (n: number | null | undefined) =>
-  `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 // ─── Date Range Filter ───
 function DateRangeFilter({
   from, to, onFromChange, onToChange,
