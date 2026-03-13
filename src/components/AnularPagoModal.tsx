@@ -27,7 +27,9 @@ interface AnularPagoModalProps {
 import { $$ } from "@/lib/utils";
 export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalProps) {
   const queryClient = useQueryClient();
+  const { empresaId } = useEmpresa();
   const [motivo, setMotivo] = useState("");
+  const [saving, setSaving] = useState(false);
   const [saving, setSaving] = useState(false);
 
   if (!pago) return null;
