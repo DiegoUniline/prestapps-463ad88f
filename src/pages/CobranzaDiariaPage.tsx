@@ -257,10 +257,7 @@ export default function CobranzaDiariaPage() {
   const [visitaOpen, setVisitaOpen] = useState(false);
   const [visitaItem, setVisitaItem] = useState<CuotaDiaria | null>(null);
 
-  // Estado de cuenta sheet state
-  const [estadoCuentaOpen, setEstadoCuentaOpen] = useState(false);
-  const [estadoCuentaClienteId, setEstadoCuentaClienteId] = useState("");
-  const [estadoCuentaClienteNombre, setEstadoCuentaClienteNombre] = useState("");
+  // Navigation to detail page
 
   const openEstadoCuenta = (clienteId: string, _clienteNombre: string) => {
     navigate(`/cobranza/cliente/${clienteId}?fecha=${fechaStr}`);
