@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -145,6 +145,22 @@ export default function ClienteDetallePage() {
   const [capturingGps, setCapturingGps] = useState(false);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const fotoInputRef = useRef<HTMLInputElement>(null);
+
+  // Pre-fill id_cliente for new clients
+  useEffect(() => {
+    if (isNew && !form.id_cliente) {
+      supabase.from("clientes").select("id_cliente").order("created_at", { ascending: false }).limit(1)
+        .then(({ data }) => {
+          if (data?.[0]?.id_cliente) {
+            const match = data[0].id_cliente.match(/(\d+)/);
+            const next = match ? parseInt(match[1]) + 1 : 1;
+            setForm(p => ({ ...p, id_cliente: `CLI-${String(next).padStart(4, "0")}` }));
+          } else {
+            setForm(p => ({ ...p, id_cliente: "CLI-0001" }));
+          }
+        });
+    }
+  }, [isNew]);
 
   useEffect(() => {
     if (cliente) {

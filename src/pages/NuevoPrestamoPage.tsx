@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
@@ -83,6 +83,25 @@ export default function NuevoPrestamoPage() {
   const [valorMora, setValorMora] = useState("");
   const [notas, setNotas] = useState("");
   const [codigoInterno, setCodigoInterno] = useState("");
+
+  // Pre-fill codigoInterno with next PRE-XXXX
+  useEffect(() => {
+    if (!codigoInterno) {
+      (supabase.from as any)("prestamos")
+        .select("id_prestamo")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .then(({ data }: any) => {
+          if (data?.[0]?.id_prestamo) {
+            const match = data[0].id_prestamo.match(/(\d+)/);
+            const next = match ? parseInt(match[1]) + 1 : 1;
+            setCodigoInterno(`PRE-${String(next).padStart(4, "0")}`);
+          } else {
+            setCodigoInterno("PRE-0001");
+          }
+        });
+    }
+  }, []);
   const [cuotaOverride, setCuotaOverride] = useState("");
   const [esInicial, setEsInicial] = useState(false);
   const [cuotasCubiertas, setCuotasCubiertas] = useState("");
