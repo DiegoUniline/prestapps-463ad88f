@@ -113,6 +113,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
                     {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
               </div>
               <div>
                 <Label className="text-xs">Cobrador</Label>
@@ -133,6 +134,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
                     {cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
               </div>
             </div>
           </div>
