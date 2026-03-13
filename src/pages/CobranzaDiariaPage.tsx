@@ -60,7 +60,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
   return useQuery({
     queryKey: ["cobranza-diaria", fecha, empresaId],
     queryFn: async () => {
-      // 1) Get all cuotas for this date + overdue
+      // 1) Get cuotas: due today, overdue unpaid, OR paid on this date
       const { data: cuotas, error } = await supabase
         .from("amortizacion")
         .select(`
@@ -69,7 +69,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
           fecha_vencimiento, status, dias_atraso, fecha_pagada
         `)
         .eq("empresa_id", empresaId)
-        .or(`fecha_vencimiento.eq.${fecha},and(fecha_vencimiento.lt.${fecha},status.neq.Pagada)`)
+        .or(`fecha_vencimiento.eq.${fecha},and(fecha_vencimiento.lt.${fecha},status.neq.Pagada),fecha_pagada.eq.${fecha}`)
         .order("fecha_vencimiento", { ascending: true });
 
       if (error) throw error;
