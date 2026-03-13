@@ -12,16 +12,17 @@ import { Progress } from "@/components/ui/progress";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area,
+  PieChart, Pie, Cell, Legend, AreaChart, Area, LineChart, Line,
 } from "recharts";
 import {
   DollarSign, TrendingUp, AlertTriangle, Clock, Users, Wallet,
   CalendarClock, Landmark, ArrowRight, Percent, ShieldAlert,
   Target, BarChart3, Activity, CircleDollarSign, Scale, TrendingDown,
   Banknote, PiggyBank, Receipt, ArrowUpRight, ArrowDownRight,
-  CalendarIcon, Filter, X,
+  CalendarIcon, Filter, X, Gauge, Eye, CreditCard, BadgeDollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -77,27 +78,31 @@ const statusColor: Record<string, string> = {
 const PIE_COLORS = [
   "hsl(var(--primary))", "hsl(var(--success))", "hsl(var(--warning))",
   "hsl(var(--destructive))", "hsl(217, 91%, 60%)", "hsl(280, 67%, 55%)",
+  "hsl(32, 95%, 50%)",
 ];
 
-function KPI({ title, value, icon: Icon, accent, sub, trend }: {
-  title: string; value: string; icon: any; accent: string; sub?: string; trend?: "up" | "down" | null;
+function KPI({ title, value, icon: Icon, accent, sub, trend, large }: {
+  title: string; value: string; icon: any; accent: string; sub?: string;
+  trend?: "up" | "down" | null; large?: boolean;
 }) {
   return (
-    <div className="bg-card rounded-lg border border-border px-4 py-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+    <div className={cn(
+      "bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]",
+      large ? "px-5 py-4" : "px-4 py-3",
+    )}>
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-        <Icon className={cn("h-4 w-4", accent)} />
+        <p className={cn("font-medium text-muted-foreground uppercase tracking-wider", large ? "text-[12px]" : "text-[11px]")}>{title}</p>
+        <Icon className={cn(large ? "h-5 w-5" : "h-4 w-4", accent)} />
       </div>
       <div className="flex items-baseline gap-1.5 mt-1">
-        <p className="text-lg font-semibold">{value}</p>
+        <p className={cn("font-semibold", large ? "text-2xl" : "text-lg")}>{value}</p>
         {trend && (trend === "up" ? <ArrowUpRight className="h-3.5 w-3.5 text-success" /> : <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />)}
       </div>
-      {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+      {sub && <p className={cn("text-muted-foreground", large ? "text-[12px]" : "text-[11px]")}>{sub}</p>}
     </div>
   );
 }
 
-// ── Date picker helper ────────────────────────────────────────────
 function DatePick({ value, onChange, placeholder }: { value: Date | undefined; onChange: (d: Date | undefined) => void; placeholder: string }) {
   return (
     <Popover>
@@ -114,12 +119,44 @@ function DatePick({ value, onChange, placeholder }: { value: Date | undefined; o
   );
 }
 
+// ── Sparkline mini component ──
+function MiniSpark({ data, dataKey, color, height = 50 }: { data: any[]; dataKey: string; color: string; height?: number }) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+        <Area type="monotone" dataKey={dataKey} stroke={color} fill={color} fillOpacity={0.15} strokeWidth={2} dot={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Visual KPI with sparkline ──
+function VisualKPI({ title, value, sub, data, dataKey, color, icon: Icon, accent }: {
+  title: string; value: string; sub?: string; data: any[]; dataKey: string;
+  color: string; icon: any; accent: string;
+}) {
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="px-4 pt-3 pb-1">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
+            <Icon className={cn("h-4 w-4", accent)} />
+          </div>
+          <p className="text-xl font-bold mt-0.5">{value}</p>
+          {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
+        </div>
+        <MiniSpark data={data} dataKey={dataKey} color={color} height={55} />
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { empresaId } = useEmpresa();
   const { data, isLoading } = useDashboardData(empresaId);
 
-  // ── Filter state ────────────────────────────────────────────────
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
   const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
   const [filtroRuta, setFiltroRuta] = useState<string>("__all__");
@@ -127,28 +164,16 @@ export default function DashboardPage() {
   const [filtroCaja, setFiltroCaja] = useState<string>("__all__");
 
   const hasFilters = fechaDesde || fechaHasta || filtroRuta !== "__all__" || filtroCobrador !== "__all__" || filtroCaja !== "__all__";
-
-  const clearFilters = () => {
-    setFechaDesde(undefined); setFechaHasta(undefined);
-    setFiltroRuta("__all__"); setFiltroCobrador("__all__"); setFiltroCaja("__all__");
-  };
-
-  // Quick date presets
-  const setPreset = (days: number) => {
-    const now = new Date();
-    const from = new Date(); from.setDate(now.getDate() - days);
-    setFechaDesde(from); setFechaHasta(now);
-  };
+  const clearFilters = () => { setFechaDesde(undefined); setFechaHasta(undefined); setFiltroRuta("__all__"); setFiltroCobrador("__all__"); setFiltroCaja("__all__"); };
+  const setPreset = (days: number) => { const now = new Date(); const from = new Date(); from.setDate(now.getDate() - days); setFechaDesde(from); setFechaHasta(now); };
 
   const stats = useMemo(() => {
     if (!data) return null;
     const { prestamos: allPrestamos, amort: allAmort, pagos: allPagos, cajas, cobradores, rutas, clientes, promesas, today } = data;
 
-    // ── Apply filters ─────────────────────────────────────────────
     const desdeStr = fechaDesde ? fechaDesde.toISOString().slice(0, 10) : null;
     const hastaStr = fechaHasta ? fechaHasta.toISOString().slice(0, 10) : null;
 
-    // Filter prestamos by ruta, cobrador, caja, and date
     let prestamos = allPrestamos.filter(p => {
       if (filtroRuta !== "__all__" && p.ruta_id !== filtroRuta) return false;
       if (filtroCobrador !== "__all__" && p.cobrador_id !== filtroCobrador) return false;
@@ -159,11 +184,7 @@ export default function DashboardPage() {
     });
 
     const prestamoIds = new Set(prestamos.map(p => p.id));
-
-    // Filter amort to matching prestamos
     let amort = allAmort.filter(a => prestamoIds.has(a.prestamo_id));
-
-    // Filter pagos by date range + matching prestamos + cobrador/ruta/caja
     let pagos = allPagos.filter(p => {
       if (!prestamoIds.has(p.prestamo_id)) return false;
       if (filtroCobrador !== "__all__" && p.cobrador_id !== filtroCobrador) return false;
@@ -175,7 +196,6 @@ export default function DashboardPage() {
       return true;
     });
 
-    // ── Categorías de préstamos ───────────────────────────────────
     const activos = prestamos.filter(p => ["Activo", "Al día", "Vencido"].includes(p.estado || ""));
     const liquidados = prestamos.filter(p => p.estado === "Liquidado");
     const juridicos = prestamos.filter(p => p.estado === "Juridico");
@@ -212,11 +232,9 @@ export default function DashboardPage() {
     const cobradoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
     const numPagosHoy = pagosHoy.length;
 
-    // These are global (not filtered by prestamo subset)
     const efectivoCalle = cobradores.reduce((s: number, c: any) => s + Number(c.efectivo_en_mano || 0), 0);
     const capitalCajas = cajas.reduce((s, c) => s + Number(c.saldo_actual || 0), 0);
 
-    // Ratios
     const tasaRecuperacion = capitalColocado > 0 ? (capitalRecuperado / capitalColocado) * 100 : 0;
     const tasaMorosidad = saldoPorCobrar > 0 ? (montoVencido / saldoPorCobrar) * 100 : 0;
     const eficienciaCobranza = totalPagar > 0 ? (totalCobrado / totalPagar) * 100 : 0;
@@ -245,19 +263,21 @@ export default function DashboardPage() {
         return { id: a.prestamo_id, cliente: (prest?.clientes as any)?.nombre_completo || "—", monto: Number(a.saldo_total || 0), cuota: `${a.num_cuota}`, status: a.status || "Pendiente", vencimiento: a.fecha_vencimiento };
       });
 
-    // Colocación por mes
+    // Colocación por mes (6 meses)
     const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const colocacionMes: { mes: string; colocado: number; cobrado: number; mora: number }[] = [];
+    const colocacionMes: { mes: string; colocado: number; cobrado: number; mora: number; interes: number; capital: number }[] = [];
     for (let i = 0; i < 6; i++) {
       const d = new Date(); d.setMonth(d.getMonth() - 5 + i);
       const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().slice(2)}`;
       const col = prestamos.filter(p => (p.fecha_registro || "").startsWith(ym)).reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
-      const cob = pagos.filter(p => (p.created_at || "").startsWith(ym)).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-      const mor = pagos.filter(p => (p.created_at || "").startsWith(ym)).reduce((s, p) => s + Number(p.aplicado_mora || 0), 0);
-      colocacionMes.push({ mes: label, colocado: col, cobrado: cob, mora: mor });
+      const mesPagos = pagos.filter(p => (p.created_at || "").startsWith(ym));
+      const cob = mesPagos.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+      const mor = mesPagos.reduce((s, p) => s + Number(p.aplicado_mora || 0), 0);
+      const int = mesPagos.reduce((s, p) => s + Number(p.aplicado_interes || 0), 0);
+      const cap = mesPagos.reduce((s, p) => s + Number(p.aplicado_capital || 0), 0);
+      colocacionMes.push({ mes: label, colocado: col, cobrado: cob, mora: mor, interes: int, capital: cap });
     }
-    const moraPorMes = colocacionMes.map(m => ({ mes: m.mes, mora: m.mora }));
 
     // Pies
     const estadoCount: Record<string, number> = {};
@@ -267,6 +287,11 @@ export default function DashboardPage() {
     const freqCount: Record<string, number> = {};
     for (const p of activos) { const f = p.frecuencia || "semanal"; freqCount[f] = (freqCount[f] || 0) + 1; }
     const freqPie = Object.entries(freqCount).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
+
+    // Cuota status pie
+    const cuotaStatusCount: Record<string, number> = {};
+    for (const c of amortActivos) { const s = c.status || "Pendiente"; cuotaStatusCount[s] = (cuotaStatusCount[s] || 0) + 1; }
+    const cuotaStatusPie = Object.entries(cuotaStatusCount).map(([name, value]) => ({ name, value }));
 
     // Cobradores
     const cobradorStats = cobradores.filter((c: any) => c.activo).map((c: any) => {
@@ -296,7 +321,8 @@ export default function DashboardPage() {
       indiceMora, rendimientoCartera, ticketPromedio, cuotaPromedio, promesasPendientes: promesasPendientes.length,
       montoPromesasHoy, clientesActivos, clientesMora, liquidezTotal, gananciaNeta, carteraVencidaPct,
       totalPrestamos: prestamos.length, totalActivos: activos.length, totalLiquidados: liquidados.length,
-      totalJuridicos: juridicos.length, cuotasHoy, colocacionMes, moraPorMes, estadoPie, saldoPie, freqPie,
+      totalJuridicos: juridicos.length, cuotasHoy, colocacionMes,
+      estadoPie, saldoPie, freqPie, cuotaStatusPie,
       cobradorStats, rutaStats, cajasData, cobradoresChart,
     };
   }, [data, fechaDesde, fechaHasta, filtroRuta, filtroCobrador, filtroCaja]);
@@ -306,390 +332,478 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <div><h1 className="text-xl font-semibold">Dashboard</h1><p className="text-muted-foreground text-[13px]">Cargando datos...</p></div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {Array.from({ length: 12 }).map((_, i) => <Card key={i}><CardContent className="pt-5 pb-4"><Skeleton className="h-16 w-full" /></CardContent></Card>)}
+          {Array.from({ length: 8 }).map((_, i) => <Card key={i}><CardContent className="pt-5 pb-4"><Skeleton className="h-16 w-full" /></CardContent></Card>)}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div className="flex items-start justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-muted-foreground text-[13px]">Panel de control financiero — toma decisiones inteligentes</p>
+          <p className="text-muted-foreground text-[13px]">Panel de control — toma decisiones inteligentes</p>
         </div>
       </div>
 
-      {/* ── BARRA DE FILTROS ─────────────────────────────────────── */}
+      {/* ── FILTROS ─────────────────────────────────────────── */}
       <div className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mr-1">Filtros:</span>
-
-          {/* Presets */}
           <div className="flex items-center gap-1">
-            {[{ label: "Hoy", days: 0 }, { label: "7 días", days: 7 }, { label: "30 días", days: 30 }, { label: "90 días", days: 90 }].map(p => (
+            {[{ label: "Hoy", days: 0 }, { label: "7d", days: 7 }, { label: "30d", days: 30 }, { label: "90d", days: 90 }].map(p => (
               <Button key={p.label} variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => p.days === 0 ? (() => { const t = new Date(); setFechaDesde(t); setFechaHasta(t); })() : setPreset(p.days)}>
                 {p.label}
               </Button>
             ))}
           </div>
-
           <div className="h-5 w-px bg-border mx-1" />
-
-          {/* Date pickers */}
           <DatePick value={fechaDesde} onChange={setFechaDesde} placeholder="Desde" />
           <span className="text-[11px] text-muted-foreground">—</span>
           <DatePick value={fechaHasta} onChange={setFechaHasta} placeholder="Hasta" />
-
           <div className="h-5 w-px bg-border mx-1" />
-
-          {/* Ruta */}
           <Select value={filtroRuta} onValueChange={setFiltroRuta}>
-            <SelectTrigger className="h-8 w-[140px] text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
+            <SelectTrigger className="h-8 w-[130px] text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">Todas las rutas</SelectItem>
+              <SelectItem value="__all__">Todas rutas</SelectItem>
               {(data?.rutas || []).map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
             </SelectContent>
           </Select>
-
-          {/* Cobrador */}
           <Select value={filtroCobrador} onValueChange={setFiltroCobrador}>
-            <SelectTrigger className="h-8 w-[150px] text-[12px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
+            <SelectTrigger className="h-8 w-[140px] text-[12px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">Todos los cobradores</SelectItem>
+              <SelectItem value="__all__">Todos</SelectItem>
               {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
             </SelectContent>
           </Select>
-
-          {/* Caja */}
           <Select value={filtroCaja} onValueChange={setFiltroCaja}>
-            <SelectTrigger className="h-8 w-[140px] text-[12px]"><SelectValue placeholder="Caja" /></SelectTrigger>
+            <SelectTrigger className="h-8 w-[130px] text-[12px]"><SelectValue placeholder="Caja" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">Todas las cajas</SelectItem>
+              <SelectItem value="__all__">Todas cajas</SelectItem>
               {(data?.cajas || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
             </SelectContent>
           </Select>
-
           {hasFilters && (
             <Button variant="ghost" size="sm" className="h-7 text-[11px] text-destructive hover:text-destructive" onClick={clearFilters}>
               <X className="h-3 w-3 mr-1" />Limpiar
             </Button>
           )}
         </div>
-        {hasFilters && (
-          <p className="text-[11px] text-muted-foreground mt-2">
-            Mostrando {stats.totalPrestamos} préstamos filtrados
-            {fechaDesde && ` · Desde: ${format(fechaDesde, "dd/MM/yyyy")}`}
-            {fechaHasta && ` · Hasta: ${format(fechaHasta, "dd/MM/yyyy")}`}
-            {filtroRuta !== "__all__" && ` · Ruta: ${data?.rutas.find((r: any) => r.id === filtroRuta)?.nombre}`}
-            {filtroCobrador !== "__all__" && ` · Cobrador: ${data?.cobradores.find((c: any) => c.id === filtroCobrador)?.nombre_completo}`}
-            {filtroCaja !== "__all__" && ` · Caja: ${data?.cajas.find((c: any) => c.id === filtroCaja)?.nombre}`}
-          </p>
-        )}
       </div>
 
-      {/* ── SECCIÓN 1: KPIs Principales ──────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPI title="Capital Colocado" value={$$(stats.capitalColocado)} icon={DollarSign} accent="text-primary" sub={`${stats.totalActivos} préstamos activos`} />
-        <KPI title="Saldo por Cobrar" value={$$(stats.saldoPorCobrar)} icon={Wallet} accent="text-[hsl(217,91%,60%)]" sub={`${stats.cuotasPendientes} cuotas pendientes`} />
-        <KPI title="Mora Acumulada" value={$$(stats.moraTotal)} icon={AlertTriangle} accent="text-destructive" sub={`${stats.cuotasVencidas} cuotas vencidas`} />
-        <KPI title="Total Cobrado" value={$$(stats.totalCobrado)} icon={TrendingUp} accent="text-success" sub={`${stats.numPagosHoy} pagos hoy: ${$$(stats.cobradoHoy)}`} />
-      </div>
+      {/* ── TABS ─────────────────────────────────────────── */}
+      <Tabs defaultValue="principal">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="principal" className="text-xs gap-1"><Eye className="h-3.5 w-3.5" /> Principal</TabsTrigger>
+          <TabsTrigger value="financiero" className="text-xs gap-1"><BadgeDollarSign className="h-3.5 w-3.5" /> Financiero</TabsTrigger>
+          <TabsTrigger value="flujo" className="text-xs gap-1"><Banknote className="h-3.5 w-3.5" /> Flujo</TabsTrigger>
+          <TabsTrigger value="portafolio" className="text-xs gap-1"><CreditCard className="h-3.5 w-3.5" /> Portafolio</TabsTrigger>
+        </TabsList>
 
-      {/* ── SECCIÓN 2: Indicadores Financieros ────────────────────── */}
-      <div>
-        <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Indicadores Financieros</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <KPI title="Tasa Recuperación" value={pct(stats.tasaRecuperacion)} icon={Target} accent="text-success" sub="Capital recuperado / colocado" />
-          <KPI title="Tasa Morosidad" value={pct(stats.tasaMorosidad)} icon={ShieldAlert} accent={stats.tasaMorosidad > 20 ? "text-destructive" : "text-warning"} sub="Vencido / por cobrar" trend={stats.tasaMorosidad > 20 ? "down" : null} />
-          <KPI title="Eficiencia Cobranza" value={pct(stats.eficienciaCobranza)} icon={Activity} accent="text-[hsl(217,91%,60%)]" sub="Cobrado / total a pagar" />
-          <KPI title="Índice de Mora" value={pct(stats.indiceMora)} icon={TrendingDown} accent={stats.indiceMora > 5 ? "text-destructive" : "text-success"} sub="Mora / capital colocado" />
-          <KPI title="Rendimiento Cartera" value={pct(stats.rendimientoCartera)} icon={BarChart3} accent="text-primary" sub="Interés cobrado / capital" />
-          <KPI title="Cartera Vencida" value={pct(stats.carteraVencidaPct)} icon={AlertTriangle} accent={stats.carteraVencidaPct > 15 ? "text-destructive" : "text-warning"} sub="% del capital" />
-        </div>
-      </div>
+        {/* ════════════════════════════════════════════════════
+            TAB PRINCIPAL — Super visual, sparklines
+            ════════════════════════════════════════════════════ */}
+        <TabsContent value="principal" className="mt-4 space-y-4">
+          {/* Hero KPIs with sparklines */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <VisualKPI title="Colocación" value={$$(stats.capitalColocado)} sub={`${stats.totalActivos} préstamos activos`}
+              data={stats.colocacionMes} dataKey="colocado" color="hsl(var(--primary))" icon={DollarSign} accent="text-primary" />
+            <VisualKPI title="Recuperación" value={$$(stats.totalCobrado)} sub={`Hoy: ${$$(stats.cobradoHoy)} (${stats.numPagosHoy} pagos)`}
+              data={stats.colocacionMes} dataKey="cobrado" color="hsl(var(--success))" icon={TrendingUp} accent="text-success" />
+            <VisualKPI title="Mora Acumulada" value={$$(stats.moraTotal)} sub={`${stats.cuotasVencidas} cuotas vencidas`}
+              data={stats.colocacionMes} dataKey="mora" color="hsl(var(--destructive))" icon={AlertTriangle} accent="text-destructive" />
+            <VisualKPI title="Interés Ganado" value={$$(stats.interesCobrado)} sub={`Rendimiento: ${pct(stats.rendimientoCartera)}`}
+              data={stats.colocacionMes} dataKey="interes" color="hsl(217, 91%, 60%)" icon={Percent} accent="text-[hsl(217,91%,60%)]" />
+          </div>
 
-      {/* ── SECCIÓN 3: Flujo de efectivo ──────────────────────────── */}
-      <div>
-        <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Flujo de Efectivo</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <KPI title="Capital en Cajas" value={$$(stats.capitalCajas)} icon={Landmark} accent="text-success" />
-          <KPI title="Efectivo en Calle" value={$$(stats.efectivoCalle)} icon={Clock} accent="text-warning" />
-          <KPI title="Liquidez Total" value={$$(stats.liquidezTotal)} icon={PiggyBank} accent="text-[hsl(217,91%,60%)]" sub="Cajas + calle" />
-          <KPI title="Ganancia Neta" value={$$(stats.gananciaNeta)} icon={CircleDollarSign} accent="text-success" sub="Interés + mora cobrados" />
-          <KPI title="Monto Vencido" value={$$(stats.montoVencido)} icon={ShieldAlert} accent="text-destructive" sub={`${stats.cuotasVencidas} cuotas`} />
-          <KPI title="Ticket Promedio" value={$$(stats.ticketPromedio)} icon={Receipt} accent="text-primary" sub="Promedio por préstamo" />
-        </div>
-      </div>
-
-      {/* ── SECCIÓN 4: Desglose ──────────────────────────────────── */}
-      <div>
-        <h2 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Desglose del Portafolio</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-          <KPI title="Capital Recuperado" value={$$(stats.capitalRecuperado)} icon={Banknote} accent="text-success" />
-          <KPI title="Interés Cobrado" value={$$(stats.interesCobrado)} icon={Percent} accent="text-success" />
-          <KPI title="Mora Cobrada" value={$$(stats.moraCobrada)} icon={DollarSign} accent="text-warning" />
-          <KPI title="Interés Esperado" value={$$(stats.interesEsperado)} icon={Target} accent="text-primary" />
-          <KPI title="Saldo Capital" value={$$(stats.saldoCapital)} icon={Scale} accent="text-[hsl(217,91%,60%)]" />
-          <KPI title="Saldo Interés" value={$$(stats.saldoInteres)} icon={Percent} accent="text-[hsl(217,91%,60%)]" />
-          <KPI title="Cuota Promedio" value={$$(stats.cuotaPromedio)} icon={Receipt} accent="text-muted-foreground" />
-          <KPI title="Promesas Hoy" value={$$(stats.montoPromesasHoy)} icon={CalendarClock} accent="text-warning" sub={`${stats.promesasPendientes} pendientes`} />
-        </div>
-      </div>
-
-      {/* ── SECCIÓN 5: Progress + Resumen + Composición ──────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Progreso de Recuperación</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {[
-              { label: "Capital", pct: stats.capitalColocado > 0 ? (stats.capitalRecuperado / stats.capitalColocado) * 100 : 0 },
-              { label: "Interés", pct: stats.interesEsperado > 0 ? (stats.interesCobrado / stats.interesEsperado) * 100 : 0 },
-              { label: "Cuotas", pct: stats.totalCuotas > 0 ? (stats.cuotasPagadas / stats.totalCuotas) * 100 : 0, extra: `${stats.cuotasPagadas}/${stats.totalCuotas}` },
-              { label: "Eficiencia", pct: stats.eficienciaCobranza },
-            ].map(item => (
-              <div key={item.label}>
-                <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">{item.label}</span><span className="font-medium">{(item as any).extra || pct(item.pct)}</span></div>
-                <Progress value={Math.min(item.pct, 100)} className="h-2" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Resumen de Cartera</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {[
-              { label: "Total Préstamos", value: stats.totalPrestamos },
-              { label: "Activos", value: stats.totalActivos, color: "text-success" },
-              { label: "Vencidos", value: stats.prestamosVencidos, color: "text-destructive" },
-              { label: "Liquidados", value: stats.totalLiquidados, color: "text-[hsl(217,91%,60%)]" },
-              { label: "Jurídicos", value: stats.totalJuridicos, color: "text-warning" },
-              { label: "Clientes Activos", value: stats.clientesActivos },
-              { label: "Clientes en Mora", value: stats.clientesMora, color: "text-destructive" },
-            ].map(item => (
-              <div key={item.label} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
-                <p className="text-[12px] text-muted-foreground">{item.label}</p>
-                <p className={cn("text-[13px] font-semibold", (item as any).color)}>{item.value}</p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Composición del Saldo</CardTitle></CardHeader>
-          <CardContent>
-            {stats.saldoPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={stats.saldoPie} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={75} label={({ name, value }) => `${name}: ${$$(value)}`} labelLine={false} fontSize={10}>
-                    {stats.saldoPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── SECCIÓN 6: Gráficas principales ──────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Colocación vs Cobranza vs Mora (6 meses)</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={stats.colocacionMes} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                <Bar dataKey="colocado" name="Colocado" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="cobrado" name="Cobrado" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="mora" name="Mora" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Estado de Cartera</CardTitle></CardHeader>
-          <CardContent>
-            {stats.estadoPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin préstamos</p> : (
+          {/* Colocación vs Cobranza — big chart */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Colocación vs Recuperación vs Mora (6 meses)</CardTitle></CardHeader>
+            <CardContent>
               <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie data={stats.estadoPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={11}>
-                    {stats.estadoPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── SECCIÓN 7: Mora + Frecuencia + Cobradores bar ────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tendencia de Mora</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={stats.moraPorMes}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                <Area type="monotone" dataKey="mora" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.15} strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Frecuencia de Pago</CardTitle></CardHeader>
-          <CardContent>
-            {stats.freqPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={stats.freqPie} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={70} label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10}>
-                    {stats.freqPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cobrado por Cobrador</CardTitle></CardHeader>
-          <CardContent>
-            {stats.cobradoresChart.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={stats.cobradoresChart} layout="vertical" barSize={14}>
+                <BarChart data={stats.colocacionMes} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="nombre" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} width={60} />
+                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                  <Bar dataKey="cobrado" name="Cobrado" fill="hsl(var(--success))" radius={[0, 3, 3, 0]} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="colocado" name="Colocado" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="cobrado" name="Cobrado" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="mora" name="Mora" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
 
-      {/* ── SECCIÓN 8: Cobradores + Cuotas ───────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Rendimiento por Cobrador</CardTitle>
-              <button onClick={() => navigate("/cobradores")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver todos <ArrowRight className="h-3 w-3" /></button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {stats.cobradorStats.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin cobradores</p> : (
-              <div className="space-y-2">
-                {stats.cobradorStats.slice(0, 8).map((c: any) => (
-                  <div key={c.nombre} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13px] font-medium truncate">{c.nombre}</p>
-                      <p className="text-[11px] text-muted-foreground">{c.prestamos} prést · Ef: {$$(c.efectivo)} · Mora: {$$(c.mora)}</p>
-                    </div>
-                    <div className="text-right ml-3">
-                      <p className="text-[13px] font-semibold text-success">{$$(c.cobrado)}</p>
-                      <p className="text-[10px] text-muted-foreground">Saldo: {$$(c.saldo)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          {/* Gauges row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { label: "Tasa Recuperación", pct: stats.tasaRecuperacion, color: "text-success" },
+              { label: "Eficiencia Cobranza", pct: stats.eficienciaCobranza, color: "text-[hsl(217,91%,60%)]" },
+              { label: "Tasa Morosidad", pct: stats.tasaMorosidad, color: stats.tasaMorosidad > 20 ? "text-destructive" : "text-warning" },
+              { label: "Cuotas Cobradas", pct: stats.totalCuotas > 0 ? (stats.cuotasPagadas / stats.totalCuotas) * 100 : 0, color: "text-primary", extra: `${stats.cuotasPagadas}/${stats.totalCuotas}` },
+            ].map(item => (
+              <Card key={item.label}>
+                <CardContent className="pt-4 pb-3 text-center">
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{item.label}</p>
+                  <p className={cn("text-2xl font-bold mt-1", item.color)}>{(item as any).extra || pct(item.pct)}</p>
+                  <Progress value={Math.min(item.pct, 100)} className="h-2 mt-2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cuotas Pendientes / Vencidas</CardTitle>
-              <button onClick={() => navigate("/pagos")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver pagos <ArrowRight className="h-3 w-3" /></button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {stats.cuotasHoy.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">No hay cuotas pendientes</p> : (
-              <div className="space-y-2">
-                {stats.cuotasHoy.map((c, i) => (
-                  <div key={`${c.id}-${i}`} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0 cursor-pointer hover:bg-muted/30 px-1 rounded" onClick={() => navigate(`/prestamos/${c.id}`)}>
-                    <div>
-                      <p className="text-[13px] font-medium">{c.cliente}</p>
-                      <p className="text-[11px] text-muted-foreground">Cuota #{c.cuota} · {c.vencimiento}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-semibold">{$$(c.monto)}</p>
-                      <Badge className={cn("text-[10px]", statusColor[c.status] || statusColor.Pendiente)}>{c.status}</Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ── SECCIÓN 9: Rutas + Cajas ─────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Saldo por Ruta</CardTitle>
-              <button onClick={() => navigate("/rutas")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver rutas <ArrowRight className="h-3 w-3" /></button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {stats.rutaStats.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin rutas</p> : (
-              <div className="space-y-3">
-                {stats.rutaStats.map((r: any) => (
-                  <div key={r.nombre} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-                    <div><p className="text-[13px] font-medium">{r.nombre}</p><p className="text-[11px] text-muted-foreground">{r.prestamos} préstamos · Mora: {$$(r.mora)}</p></div>
-                    <p className="text-[13px] font-semibold">{$$(r.saldo)}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Saldo en Cajas</CardTitle>
-              <button onClick={() => navigate("/cajas")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver cajas <ArrowRight className="h-3 w-3" /></button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {stats.cajasData.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin cajas</p> : (
-              <div className="space-y-3">
-                {stats.cajasData.map((c: any) => (
-                  <div key={c.nombre} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-                    <div className="flex items-center gap-2"><Landmark className="h-4 w-4 text-muted-foreground" /><p className="text-[13px] font-medium">{c.nombre}</p></div>
-                    <p className={cn("text-[13px] font-semibold", c.saldo > 0 ? "text-success" : "text-muted-foreground")}>{$$(c.saldo)}</p>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between pt-2 border-t border-border">
-                  <p className="text-[12px] font-semibold text-muted-foreground">TOTAL LIQUIDEZ</p>
-                  <p className="text-[14px] font-bold">{$$(stats.liquidezTotal)}</p>
+          {/* Quick lists */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cuotas Pendientes / Vencidas</CardTitle>
+                  <button onClick={() => navigate("/pagos")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver pagos <ArrowRight className="h-3 w-3" /></button>
                 </div>
+              </CardHeader>
+              <CardContent>
+                {stats.cuotasHoy.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">No hay cuotas pendientes</p> : (
+                  <div className="space-y-2">
+                    {stats.cuotasHoy.map((c, i) => (
+                      <div key={`${c.id}-${i}`} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0 cursor-pointer hover:bg-muted/30 px-1 rounded" onClick={() => navigate(`/prestamos/${c.id}`)}>
+                        <div><p className="text-[13px] font-medium">{c.cliente}</p><p className="text-[11px] text-muted-foreground">Cuota #{c.cuota} · {c.vencimiento}</p></div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[13px] font-semibold">{$$(c.monto)}</p>
+                          <Badge className={cn("text-[10px]", statusColor[c.status] || statusColor.Pendiente)}>{c.status}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Resumen Rápido</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  { label: "Total Préstamos", value: stats.totalPrestamos.toString() },
+                  { label: "Activos", value: stats.totalActivos.toString(), color: "text-success" },
+                  { label: "Vencidos", value: stats.prestamosVencidos.toString(), color: "text-destructive" },
+                  { label: "Liquidados", value: stats.totalLiquidados.toString(), color: "text-[hsl(217,91%,60%)]" },
+                  { label: "Jurídicos", value: stats.totalJuridicos.toString(), color: "text-warning" },
+                  { label: "Clientes Activos", value: stats.clientesActivos.toString() },
+                  { label: "Clientes en Mora", value: stats.clientesMora.toString(), color: "text-destructive" },
+                  { label: "Promesas Hoy", value: `${$$(stats.montoPromesasHoy)} (${stats.promesasPendientes})`, color: "text-warning" },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
+                    <p className="text-[12px] text-muted-foreground">{item.label}</p>
+                    <p className={cn("text-[13px] font-semibold", (item as any).color)}>{item.value}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* ════════════════════════════════════════════════════
+            TAB FINANCIERO — Indicadores, recuperación, rendimiento
+            ════════════════════════════════════════════════════ */}
+        <TabsContent value="financiero" className="mt-4 space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KPI large title="Capital Colocado" value={$$(stats.capitalColocado)} icon={DollarSign} accent="text-primary" sub={`${stats.totalActivos} préstamos`} />
+            <KPI large title="Saldo por Cobrar" value={$$(stats.saldoPorCobrar)} icon={Wallet} accent="text-[hsl(217,91%,60%)]" sub={`${stats.cuotasPendientes} cuotas`} />
+            <KPI large title="Total Cobrado" value={$$(stats.totalCobrado)} icon={TrendingUp} accent="text-success" sub={`Hoy: ${$$(stats.cobradoHoy)}`} />
+            <KPI large title="Ganancia Neta" value={$$(stats.gananciaNeta)} icon={CircleDollarSign} accent="text-success" sub="Interés + mora cobrados" />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <KPI title="Tasa Recuperación" value={pct(stats.tasaRecuperacion)} icon={Target} accent="text-success" sub="Capital recup. / colocado" />
+            <KPI title="Tasa Morosidad" value={pct(stats.tasaMorosidad)} icon={ShieldAlert} accent={stats.tasaMorosidad > 20 ? "text-destructive" : "text-warning"} sub="Vencido / por cobrar" trend={stats.tasaMorosidad > 20 ? "down" : null} />
+            <KPI title="Eficiencia Cobranza" value={pct(stats.eficienciaCobranza)} icon={Activity} accent="text-[hsl(217,91%,60%)]" sub="Cobrado / total pagar" />
+            <KPI title="Índice Mora" value={pct(stats.indiceMora)} icon={TrendingDown} accent={stats.indiceMora > 5 ? "text-destructive" : "text-success"} sub="Mora / capital" />
+            <KPI title="Rendimiento" value={pct(stats.rendimientoCartera)} icon={BarChart3} accent="text-primary" sub="Interés / capital" />
+            <KPI title="Cartera Vencida" value={pct(stats.carteraVencidaPct)} icon={AlertTriangle} accent={stats.carteraVencidaPct > 15 ? "text-destructive" : "text-warning"} sub="% del capital" />
+          </div>
+
+          {/* Desglose */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+            <KPI title="Capital Recuperado" value={$$(stats.capitalRecuperado)} icon={Banknote} accent="text-success" />
+            <KPI title="Interés Cobrado" value={$$(stats.interesCobrado)} icon={Percent} accent="text-success" />
+            <KPI title="Mora Cobrada" value={$$(stats.moraCobrada)} icon={DollarSign} accent="text-warning" />
+            <KPI title="Interés Esperado" value={$$(stats.interesEsperado)} icon={Target} accent="text-primary" />
+            <KPI title="Saldo Capital" value={$$(stats.saldoCapital)} icon={Scale} accent="text-[hsl(217,91%,60%)]" />
+            <KPI title="Saldo Interés" value={$$(stats.saldoInteres)} icon={Percent} accent="text-[hsl(217,91%,60%)]" />
+            <KPI title="Monto Vencido" value={$$(stats.montoVencido)} icon={ShieldAlert} accent="text-destructive" />
+            <KPI title="Ticket Promedio" value={$$(stats.ticketPromedio)} icon={Receipt} accent="text-primary" />
+          </div>
+
+          {/* Progress bars */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Progreso de Recuperación</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {[
+                  { label: "Capital", pct: stats.capitalColocado > 0 ? (stats.capitalRecuperado / stats.capitalColocado) * 100 : 0 },
+                  { label: "Interés", pct: stats.interesEsperado > 0 ? (stats.interesCobrado / stats.interesEsperado) * 100 : 0 },
+                  { label: "Cuotas", pct: stats.totalCuotas > 0 ? (stats.cuotasPagadas / stats.totalCuotas) * 100 : 0, extra: `${stats.cuotasPagadas}/${stats.totalCuotas}` },
+                  { label: "Eficiencia", pct: stats.eficienciaCobranza },
+                ].map(item => (
+                  <div key={item.label}>
+                    <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">{item.label}</span><span className="font-medium">{(item as any).extra || pct(item.pct)}</span></div>
+                    <Progress value={Math.min(item.pct, 100)} className="h-2.5" />
+                  </div>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+
+          {/* Comparativa mensual interés vs capital */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Capital vs Interés Cobrado (6 meses)</CardTitle></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={stats.colocacionMes} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="capital" name="Capital" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="interes" name="Interés" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="mora" name="Mora" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ════════════════════════════════════════════════════
+            TAB FLUJO — Efectivo, cajas, cobradores
+            ════════════════════════════════════════════════════ */}
+        <TabsContent value="flujo" className="mt-4 space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KPI large title="Capital en Cajas" value={$$(stats.capitalCajas)} icon={Landmark} accent="text-success" />
+            <KPI large title="Efectivo en Calle" value={$$(stats.efectivoCalle)} icon={Clock} accent="text-warning" />
+            <KPI large title="Liquidez Total" value={$$(stats.liquidezTotal)} icon={PiggyBank} accent="text-[hsl(217,91%,60%)]" sub="Cajas + calle" />
+            <KPI large title="Cobrado Hoy" value={$$(stats.cobradoHoy)} icon={TrendingUp} accent="text-success" sub={`${stats.numPagosHoy} pagos`} />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Cajas */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Saldo en Cajas</CardTitle>
+                  <button onClick={() => navigate("/cajas")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver cajas <ArrowRight className="h-3 w-3" /></button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {stats.cajasData.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin cajas</p> : (
+                  <div className="space-y-3">
+                    {stats.cajasData.map((c: any) => (
+                      <div key={c.nombre} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                        <div className="flex items-center gap-2"><Landmark className="h-4 w-4 text-muted-foreground" /><p className="text-[13px] font-medium">{c.nombre}</p></div>
+                        <p className={cn("text-[13px] font-semibold", c.saldo > 0 ? "text-success" : "text-muted-foreground")}>{$$(c.saldo)}</p>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <p className="text-[12px] font-semibold text-muted-foreground">TOTAL</p>
+                      <p className="text-[14px] font-bold">{$$(stats.capitalCajas)}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Cobradores */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Rendimiento por Cobrador</CardTitle>
+                  <button onClick={() => navigate("/cobradores")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver todos <ArrowRight className="h-3 w-3" /></button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {stats.cobradorStats.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin cobradores</p> : (
+                  <div className="space-y-2">
+                    {stats.cobradorStats.slice(0, 8).map((c: any) => (
+                      <div key={c.nombre} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                        <div className="min-w-0 flex-1"><p className="text-[13px] font-medium truncate">{c.nombre}</p><p className="text-[11px] text-muted-foreground">{c.prestamos} prést · Ef: {$$(c.efectivo)}</p></div>
+                        <div className="text-right ml-3"><p className="text-[13px] font-semibold text-success">{$$(c.cobrado)}</p><p className="text-[10px] text-muted-foreground">Mora: {$$(c.mora)}</p></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Cobrado por cobrador chart */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cobrado por Cobrador</CardTitle></CardHeader>
+            <CardContent>
+              {stats.cobradoresChart.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={stats.cobradoresChart} layout="vertical" barSize={16}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                    <YAxis type="category" dataKey="nombre" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} width={70} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="cobrado" name="Cobrado" fill="hsl(var(--success))" radius={[0, 3, 3, 0]} />
+                    <Bar dataKey="saldo" name="Saldo" fill="hsl(var(--primary))" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Cobranza mensual trend */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tendencia de Cobranza (6 meses)</CardTitle></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={stats.colocacionMes}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
+                  <Area type="monotone" dataKey="cobrado" name="Cobrado" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.15} strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ════════════════════════════════════════════════════
+            TAB PORTAFOLIO — Composición, estados, rutas
+            ════════════════════════════════════════════════════ */}
+        <TabsContent value="portafolio" className="mt-4 space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KPI large title="Total Préstamos" value={stats.totalPrestamos.toString()} icon={CreditCard} accent="text-primary" />
+            <KPI large title="Activos" value={stats.totalActivos.toString()} icon={Activity} accent="text-success" sub={`Vencidos: ${stats.prestamosVencidos}`} />
+            <KPI large title="Liquidados" value={stats.totalLiquidados.toString()} icon={Target} accent="text-[hsl(217,91%,60%)]" />
+            <KPI large title="Jurídicos" value={stats.totalJuridicos.toString()} icon={ShieldAlert} accent="text-warning" />
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <KPI title="Clientes Activos" value={stats.clientesActivos.toString()} icon={Users} accent="text-success" />
+            <KPI title="Clientes en Mora" value={stats.clientesMora.toString()} icon={AlertTriangle} accent="text-destructive" />
+            <KPI title="Cuota Promedio" value={$$(stats.cuotaPromedio)} icon={Receipt} accent="text-muted-foreground" />
+            <KPI title="Promesas Pendientes" value={stats.promesasPendientes.toString()} icon={CalendarClock} accent="text-warning" sub={$$(stats.montoPromesasHoy)} />
+          </div>
+
+          {/* Charts row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Estado de Cartera</CardTitle></CardHeader>
+              <CardContent>
+                {stats.estadoPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie data={stats.estadoPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10}>
+                        {stats.estadoPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Composición del Saldo</CardTitle></CardHeader>
+              <CardContent>
+                {stats.saldoPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie data={stats.saldoPie} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={80} label={({ name, value }) => `${name}: ${$$(value)}`} labelLine={false} fontSize={10}>
+                        {stats.saldoPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Estado de Cuotas</CardTitle></CardHeader>
+              <CardContent>
+                {stats.cuotaStatusPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie data={stats.cuotaStatusPie} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={75} label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10}>
+                        {stats.cuotaStatusPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Frecuencia + Mora trend */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Frecuencia de Pago</CardTitle></CardHeader>
+              <CardContent>
+                {stats.freqPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
+                      <Pie data={stats.freqPie} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={70} label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10}>
+                        {stats.freqPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip contentStyle={tooltipStyle} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tendencia de Mora</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={stats.colocacionMes}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
+                    <Area type="monotone" dataKey="mora" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.15} strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Rutas */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Saldo por Ruta</CardTitle>
+                <button onClick={() => navigate("/rutas")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver rutas <ArrowRight className="h-3 w-3" /></button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {stats.rutaStats.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin rutas</p> : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {stats.rutaStats.map((r: any) => (
+                    <div key={r.nombre} className="flex items-center justify-between py-2 px-3 border rounded-lg">
+                      <div><p className="text-[13px] font-medium">{r.nombre}</p><p className="text-[11px] text-muted-foreground">{r.prestamos} préstamos · Mora: {$$(r.mora)}</p></div>
+                      <p className="text-[13px] font-semibold">{$$(r.saldo)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
