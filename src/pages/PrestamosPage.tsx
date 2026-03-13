@@ -403,10 +403,10 @@ export default function PrestamosPage() {
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
                 </TableCell>
                 <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">{p.cliente}</TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{p.fechaRegistro ? format(new Date(p.fechaRegistro), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{p.fechaPrimerPago ? format(new Date(p.fechaPrimerPago), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-right text-[13px] px-3">${(p.montoSolicitado ?? 0).toLocaleString()}</TableCell>
-                <TableCell className="text-right text-[13px] px-3">${(p.montoPagar ?? 0).toLocaleString()}</TableCell>
+                <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaRegistro)}</TableCell>
+                <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaPrimerPago)}</TableCell>
+                <TableCell className="text-right text-[13px] px-3">{$$(p.montoSolicitado)}</TableCell>
+                <TableCell className="text-right text-[13px] px-3">{$$(p.montoPagar)}</TableCell>
                 <TableCell className="text-[13px] px-3">{p.cuotasPagadas ?? 0}/{p.totalCuotas ?? 0}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.ruta}</TableCell>
