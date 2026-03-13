@@ -142,6 +142,82 @@ export type Database = {
           },
         ]
       }
+      cat_estados_prestamo: {
+        Row: {
+          activo: boolean
+          color: string | null
+          created_at: string | null
+          descripcion: string | null
+          empresa_id: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean
+          color?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean
+          color?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_estados_prestamo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cat_metodos_pago: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          descripcion: string | null
+          empresa_id: string | null
+          id: string
+          nombre: string
+          requiere_validacion: boolean
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre: string
+          requiere_validacion?: boolean
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre?: string
+          requiere_validacion?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_metodos_pago_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clientes: {
         Row: {
           activo: boolean | null
