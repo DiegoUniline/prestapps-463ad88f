@@ -270,10 +270,16 @@ export default function NuevoPrestamoPage() {
                 <Select value={frecuencia} onValueChange={setFrecuencia}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="diario">Diario</SelectItem>
-                    <SelectItem value="semanal">Semanal</SelectItem>
-                    <SelectItem value="quincenal">Quincenal</SelectItem>
-                    <SelectItem value="mensual">Mensual</SelectItem>
+                    {frecuencias.length > 0 ? frecuencias.map((f) => (
+                      <SelectItem key={f.id} value={f.nombre}>{f.nombre.charAt(0).toUpperCase() + f.nombre.slice(1)}</SelectItem>
+                    )) : (
+                      <>
+                        <SelectItem value="diario">Diario</SelectItem>
+                        <SelectItem value="semanal">Semanal</SelectItem>
+                        <SelectItem value="quincenal">Quincenal</SelectItem>
+                        <SelectItem value="mensual">Mensual</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
