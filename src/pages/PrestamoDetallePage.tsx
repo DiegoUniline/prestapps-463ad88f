@@ -822,6 +822,26 @@ export default function PrestamoDetallePage() {
           cobrador_id: prestamo.cobrador_id,
         }}
       />
+
+      {/* Editar Préstamo Modal */}
+      <EditPrestamoModal
+        open={editarOpen}
+        onOpenChange={setEditarOpen}
+        prestamo={{
+          id: prestamo.id,
+          tasa_interes: prestamo.tasa_interes ? Number(prestamo.tasa_interes) : null,
+          tipo_mora: prestamo.tipo_mora,
+          valor_mora: prestamo.valor_mora ? Number(prestamo.valor_mora) : null,
+          gastos_legales: prestamo.gastos_legales ? Number(prestamo.gastos_legales) : null,
+          caja_id: prestamo.caja_id,
+          ruta_id: prestamo.ruta_id,
+          cobrador_id: prestamo.cobrador_id,
+          notas: prestamo.notas || null,
+        }}
+        cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
+        rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
+        cobradores={cobradoresAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
+      />
     </div>
   );
 }
