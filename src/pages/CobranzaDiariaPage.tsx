@@ -675,6 +675,7 @@ export default function CobranzaDiariaPage() {
             );
           })}
         </div>
+        </>
       )}
 
       {/* Payment Modal */}
