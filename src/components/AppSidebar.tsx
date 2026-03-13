@@ -46,7 +46,7 @@ const modules: NavModule[] = [
   {
     label: "General",
     items: [
-      { title: "Dashboard", url: "/", icon: LayoutDashboard, roles: ["admin", "supervisor", "cobrador"] },
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["admin", "supervisor", "cobrador"] },
     ],
   },
   {
