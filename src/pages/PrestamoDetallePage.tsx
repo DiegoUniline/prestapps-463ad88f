@@ -224,6 +224,8 @@ export default function PrestamoDetallePage() {
     caja: caja?.nombre || "—",
     ruta: ruta?.nombre || "—",
     notas: prestamo.notas || "",
+    logoUrl: empresaData?.logo_url,
+    empresaNombre: empresaData?.nombre,
   };
 
   const pdfCuotas = amort.map(c => ({
