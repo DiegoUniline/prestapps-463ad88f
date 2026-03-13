@@ -21,6 +21,7 @@ interface PromesaModalProps {
 }
 import { $$ } from "@/lib/utils";
 export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId, saldoTotal, fechaVencimiento }: PromesaModalProps) {
+  const { empresaId } = useEmpresa();
   const [monto, setMonto] = useState(saldoTotal.toString());
   const [fecha, setFecha] = useState("");
   const [notas, setNotas] = useState("");
