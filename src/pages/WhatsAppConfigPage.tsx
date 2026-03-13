@@ -150,7 +150,7 @@ export default function WhatsAppConfigPage() {
     queryKey: ["whatsapp-log", empresaId],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("whatsapp_log")
-        .select("*")
+        .select("id, telefono, tipo, mensaje, status, error_detalle, created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(100);
