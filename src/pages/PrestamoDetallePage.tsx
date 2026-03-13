@@ -875,11 +875,11 @@ export default function PrestamoDetallePage() {
 }
 
 // ── Sidebar field component ───────────────────────────────────────
-function SidebarField({ label, value }: { label: string; value: React.ReactNode }) {
+function SidebarField({ label, value, full }: { label: string; value: React.ReactNode; full?: boolean }) {
   return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wider text-[hsl(220,9%,60%)] font-medium">{label}</p>
-      <p className="text-[13px] text-foreground mt-0.5">{value}</p>
+    <div className={cn("flex items-baseline justify-between gap-2", full && "col-span-2")}>
+      <p className="text-[11px] uppercase tracking-wider text-foreground font-semibold whitespace-nowrap">{label}</p>
+      <p className="text-[12px] text-muted-foreground text-right">{value}</p>
     </div>
   );
 }
