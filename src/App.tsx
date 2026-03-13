@@ -61,6 +61,8 @@ const App = () => (
                   <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
                   <Route path="/pagos" element={<PagosPage />} />
                   <Route path="/promesas" element={<PromesasPage />} />
+                  <Route path="/solicitudes" element={<SolicitudesPage />} />
+                  <Route path="/solicitudes/nueva" element={<SolicitudPrestamoPage />} />
 
                   {/* Admin y Supervisor */}
                   <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]}><ClientesPage /></RoleGuard>} />
