@@ -90,7 +90,7 @@ const modules: NavModule[] = [
   {
     label: "Configuración",
     items: [
-      { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"] },
+      { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"], superAdminOnly: true },
       { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"] },
       { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"] },
       { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
