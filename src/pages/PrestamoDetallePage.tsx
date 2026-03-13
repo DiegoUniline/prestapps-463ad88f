@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate, useParams, Link } from "react-router-dom";
@@ -112,6 +112,15 @@ export default function PrestamoDetallePage() {
   const { data: promesasRaw = [] } = usePromesas(isNew ? undefined : id);
   const { data: cajasAll = [] } = useCajas();
   const { data: rutasAll = [] } = useRutasOptions();
+  const empresaId = prestamo?.empresa_id || "00000000-0000-0000-0000-000000000001";
+  const { data: empresaData } = useQuery({
+    queryKey: ["empresa-datos", empresaId],
+    queryFn: async () => {
+      const { data } = await supabase.from("empresas").select("nombre, logo_url").eq("id", empresaId).single();
+      return data;
+    },
+    enabled: !!prestamo,
+  });
 
   if (isNew) { navigate("/prestamos"); return null; }
 
@@ -215,6 +224,8 @@ export default function PrestamoDetallePage() {
     caja: caja?.nombre || "—",
     ruta: ruta?.nombre || "—",
     notas: prestamo.notas || "",
+    logoUrl: empresaData?.logo_url,
+    empresaNombre: empresaData?.nombre,
   };
 
   const pdfCuotas = amort.map(c => ({
@@ -243,10 +254,10 @@ export default function PrestamoDetallePage() {
     cajaNombre: (p.cajas as any)?.nombre || "—",
   }));
 
-  const handlePdf = (type: "estado" | "contrato" | "pagos") => {
-    if (type === "estado") generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
-    else if (type === "contrato") generarContrato(pdfPrestamo, pdfCuotas);
-    else generarReciboPagos(pdfPrestamo, pdfPagos);
+  const handlePdf = async (type: "estado" | "contrato" | "pagos") => {
+    if (type === "estado") await generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
+    else if (type === "contrato") await generarContrato(pdfPrestamo, pdfCuotas);
+    else await generarReciboPagos(pdfPrestamo, pdfPagos);
   };
 
   return (

@@ -8,20 +8,56 @@ const GRAY: [number, number, number] = [107, 114, 128];
 const DARK: [number, number, number] = [17, 24, 39];
 const LIGHT_BG: [number, number, number] = [249, 250, 251];
 
-function addHeader(doc: jsPDF, title: string, prestamoId: string, clienteNombre: string) {
+/** Load an image URL as base64 data URL for jsPDF */
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function addHeader(doc: jsPDF, title: string, prestamoId: string, clienteNombre: string, logoBase64?: string | null, empresaNombre?: string) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // Title bar
   doc.setFillColor(...PRIMARY_COLOR);
   doc.rect(0, 0, pageWidth, 28, "F");
+
+  let logoEndX = 14;
+  // Logo in header
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, "JPEG", 14, 3, 22, 22);
+      logoEndX = 40;
+    } catch {
+      // Logo failed, continue without it
+    }
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
-  doc.text(title, 14, 18);
+  doc.text(title, logoEndX, 14);
+
+  // Company name under title if available
+  if (empresaNombre) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(empresaNombre, logoEndX, 22);
+  }
 
   // Right side - date
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
+  doc.setTextColor(255, 255, 255);
   doc.text(`Generado: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth - 14, 18, { align: "right" });
 
   // Prestamo info line
@@ -72,6 +108,8 @@ interface PrestamoData {
   caja: string;
   ruta: string;
   notas: string;
+  logoUrl?: string | null;
+  empresaNombre?: string;
 }
 
 interface CuotaData {
@@ -101,9 +139,10 @@ interface PagoData {
 }
 
 // ── 1. ESTADO DE CUENTA ──────────────────────────────────────────
-export function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaData[], pagos: PagoData[]) {
+export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaData[], pagos: PagoData[]) {
   const doc = new jsPDF();
-  let y = addHeader(doc, "ESTADO DE CUENTA", prestamo.id, prestamo.clienteNombre);
+  const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
+  let y = addHeader(doc, "ESTADO DE CUENTA", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
   // Summary section
   const totalPagado = cuotas.reduce((s, c) => s + (c.capital_pagado || 0) + (c.interes_pagado || 0) + (c.mora_pagada || 0), 0);
@@ -238,9 +277,10 @@ export function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaData[],
 }
 
 // ── 2. CONTRATO ──────────────────────────────────────────────────
-export function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[]) {
+export async function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[]) {
   const doc = new jsPDF();
-  let y = addHeader(doc, "CONTRATO DE PRÉSTAMO", prestamo.id, prestamo.clienteNombre);
+  const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
+  let y = addHeader(doc, "CONTRATO DE PRÉSTAMO", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
   const modalidadText = prestamo.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos";
   const cuotaVal = $$(prestamo.cuotaRedondeada || prestamo.cuotaCalculada);
@@ -364,16 +404,17 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
   // Right signature
   doc.line(120, y + 20, 196, y + 20);
   doc.text("Firma Autorizada", 158, y + 26, { align: "center" });
-  doc.text("Empresa", 158, y + 31, { align: "center" });
+  doc.text(prestamo.empresaNombre || "Empresa", 158, y + 31, { align: "center" });
 
   addFooter(doc);
   doc.save(`contrato-PRE-${prestamo.id.slice(0, 8)}.pdf`);
 }
 
 // ── 3. RECIBO DE PAGOS ──────────────────────────────────────────
-export function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData[]) {
+export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData[]) {
   const doc = new jsPDF();
-  let y = addHeader(doc, "RECIBO DE PAGOS", prestamo.id, prestamo.clienteNombre);
+  const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
+  let y = addHeader(doc, "RECIBO DE PAGOS", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
   if (pagos.length === 0) {
     doc.setFont("helvetica", "normal");
