@@ -225,6 +225,32 @@ export default function NuevoPrestamoPage() {
         }
       }
 
+      // Register cash outflow ONLY if NOT carga inicial
+      if (!esInicial && cajaId) {
+        await supabase.from("movimientos_caja").insert({
+          caja_id: cajaId,
+          empresa_id: empresaId,
+          tipo: "salida" as any,
+          monto: monto,
+          concepto: `Desembolso préstamo`,
+          prestamo_id: data.id,
+          registrado_por: user?.id,
+        });
+
+        const { data: cajaActual } = await supabase
+          .from("cajas")
+          .select("saldo_actual")
+          .eq("id", cajaId)
+          .single();
+
+        if (cajaActual) {
+          await supabase
+            .from("cajas")
+            .update({ saldo_actual: Number(cajaActual.saldo_actual) - monto })
+            .eq("id", cajaId);
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {
