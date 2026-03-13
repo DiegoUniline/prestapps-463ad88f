@@ -559,16 +559,20 @@ export default function NuevoPrestamoPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {amortizacion.map((c) => (
-                        <TableRow key={c.num} className="border-b border-border/50">
-                          <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-muted-foreground">{c.fechaVencimiento}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.capital)}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.interes)}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">{$$(c.cuota)}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.saldo)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {amortizacion.map((c) => {
+                        const numCubiertas = esInicial ? (parseInt(cuotasCubiertas) || 0) : 0;
+                        const yaPagada = c.num <= numCubiertas;
+                        return (
+                          <TableRow key={c.num} className={cn("border-b border-border/50", yaPagada && "opacity-50 line-through")}>
+                            <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num} {yaPagada && "✓"}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-muted-foreground">{c.fechaVencimiento}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.capital)}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.interes)}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">{$$(c.cuota)}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-right">{yaPagada ? "$0.00" : $$(c.saldo)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
