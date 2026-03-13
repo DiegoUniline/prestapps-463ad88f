@@ -69,7 +69,7 @@ export default function EmpresasPage() {
         .select("id, nombre, ruc, telefono, direccion, logo_url, activa, created_at, plan, max_usuarios")
         .order("nombre");
       if (error) throw error;
-      return data as Empresa[];
+      return (data as unknown) as Empresa[];
     },
   });
 
