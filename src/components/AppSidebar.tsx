@@ -33,6 +33,7 @@ import {
   Receipt,
   Percent,
   MapPin,
+  ClipboardList,
 } from "lucide-react";
 
 const mainNav = [
