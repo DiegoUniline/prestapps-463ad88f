@@ -257,6 +257,17 @@ export default function CobranzaDiariaPage() {
   const [visitaOpen, setVisitaOpen] = useState(false);
   const [visitaItem, setVisitaItem] = useState<CuotaDiaria | null>(null);
 
+  // Estado de cuenta sheet state
+  const [estadoCuentaOpen, setEstadoCuentaOpen] = useState(false);
+  const [estadoCuentaClienteId, setEstadoCuentaClienteId] = useState("");
+  const [estadoCuentaClienteNombre, setEstadoCuentaClienteNombre] = useState("");
+
+  const openEstadoCuenta = (clienteId: string, clienteNombre: string) => {
+    setEstadoCuentaClienteId(clienteId);
+    setEstadoCuentaClienteNombre(clienteNombre);
+    setEstadoCuentaOpen(true);
+  };
+
   const fechaStr = format(fecha, "yyyy-MM-dd");
   const { data: cuotas, isLoading } = useCobranzaDiaria(fechaStr, empresaId);
   const { data: cajas } = useCajasAll(empresaId);
