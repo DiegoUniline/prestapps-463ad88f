@@ -610,6 +610,9 @@ export default function ConfiguracionEmpresaPage() {
         <TabsContent value="contrato">
           <ContratoTab />
         </TabsContent>
+        <TabsContent value="stripe">
+          <StripeConnectTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
