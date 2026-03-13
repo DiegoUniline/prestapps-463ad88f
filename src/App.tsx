@@ -56,11 +56,7 @@ const queryClient = new QueryClient({
 });
 
 function PageLoader() {
-  return (
-    <div className="flex items-center justify-center min-h-[30vh] animate-fade-in opacity-0" style={{ animationDelay: "300ms", animationFillMode: "forwards" }}>
-      <div className="animate-spin rounded-full h-5 w-5 border-2 border-muted-foreground/20 border-t-primary" />
-    </div>
-  );
+  return null;
 }
 
 /** Initialize all Zustand stores */
