@@ -394,6 +394,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ── ONBOARDING CHECKLIST ──────────────────────── */}
+      <OnboardingChecklist />
+
       {/* ── TABS ─────────────────────────────────────────── */}
       <Tabs defaultValue="principal">
         <TabsList className="grid w-full grid-cols-4">
