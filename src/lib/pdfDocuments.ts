@@ -408,8 +408,9 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
   doc.text(prestamo.empresaNombre || "Empresa", 158, y + 31, { align: "center" });
 
   addFooter(doc);
-  doc.save(`contrato-PRE-${prestamo.id.slice(0, 8)}.pdf`);
+  return doc;
 }
+
 
 // ── 3. RECIBO DE PAGOS ──────────────────────────────────────────
 export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData[]) {
