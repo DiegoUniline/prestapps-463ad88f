@@ -157,6 +157,18 @@ export default function NuevoPrestamoPage() {
         throw new Error("Completa los campos obligatorios");
       }
 
+      // Validate caja balance if not carga inicial
+      if (!esInicial && cajaId) {
+        const { data: caja } = await supabase
+          .from("cajas")
+          .select("saldo_actual")
+          .eq("id", cajaId)
+          .single();
+        if (caja && Number(caja.saldo_actual) < monto) {
+          throw new Error(`Saldo insuficiente en caja (${$$(Number(caja.saldo_actual))}). Monto requerido: ${$$(monto)}`);
+        }
+      }
+
       const { data, error } = await supabase
         .from("prestamos")
         .insert({
