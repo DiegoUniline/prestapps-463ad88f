@@ -417,7 +417,7 @@ export default function NuevoPrestamoPage() {
             </label>
 
             {!esInicial && !cajaId && (
-              <div className="flex items-center gap-2 text-amber-600 text-sm">
+              <div className="flex items-center gap-2 text-warning text-sm">
                 <AlertTriangle className="h-4 w-4" />
                 <span>Sin caja asignada — no se registrará movimiento de salida.</span>
               </div>
