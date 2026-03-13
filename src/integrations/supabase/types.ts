@@ -993,6 +993,7 @@ export type Database = {
           reestructurado_de: string | null
           ruta_id: string | null
           tasa_interes: number | null
+          tipo_cuenta: string
           tipo_mora: Database["public"]["Enums"]["tipo_mora"] | null
           valor_mora: number | null
         }
@@ -1028,6 +1029,7 @@ export type Database = {
           reestructurado_de?: string | null
           ruta_id?: string | null
           tasa_interes?: number | null
+          tipo_cuenta?: string
           tipo_mora?: Database["public"]["Enums"]["tipo_mora"] | null
           valor_mora?: number | null
         }
@@ -1063,6 +1065,7 @@ export type Database = {
           reestructurado_de?: string | null
           ruta_id?: string | null
           tasa_interes?: number | null
+          tipo_cuenta?: string
           tipo_mora?: Database["public"]["Enums"]["tipo_mora"] | null
           valor_mora?: number | null
         }
@@ -1828,6 +1831,11 @@ export type Database = {
         | "Desempleado"
         | "Pensionado"
         | "Otro"
+      tipo_cuenta:
+        | "prestamo"
+        | "venta_seguro"
+        | "venta_producto"
+        | "venta_servicio"
       tipo_mora: "porcentaje" | "fijo"
     }
     CompositeTypes: {
@@ -1981,6 +1989,12 @@ export const Constants = {
         "Desempleado",
         "Pensionado",
         "Otro",
+      ],
+      tipo_cuenta: [
+        "prestamo",
+        "venta_seguro",
+        "venta_producto",
+        "venta_servicio",
       ],
       tipo_mora: ["porcentaje", "fijo"],
     },
