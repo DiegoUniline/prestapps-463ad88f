@@ -8,20 +8,56 @@ const GRAY: [number, number, number] = [107, 114, 128];
 const DARK: [number, number, number] = [17, 24, 39];
 const LIGHT_BG: [number, number, number] = [249, 250, 251];
 
-function addHeader(doc: jsPDF, title: string, prestamoId: string, clienteNombre: string) {
+/** Load an image URL as base64 data URL for jsPDF */
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+function addHeader(doc: jsPDF, title: string, prestamoId: string, clienteNombre: string, logoBase64?: string | null, empresaNombre?: string) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // Title bar
   doc.setFillColor(...PRIMARY_COLOR);
   doc.rect(0, 0, pageWidth, 28, "F");
+
+  let logoEndX = 14;
+  // Logo in header
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, "JPEG", 14, 3, 22, 22);
+      logoEndX = 40;
+    } catch {
+      // Logo failed, continue without it
+    }
+  }
+
   doc.setFont("helvetica", "bold");
   doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
-  doc.text(title, 14, 18);
+  doc.text(title, logoEndX, 14);
+
+  // Company name under title if available
+  if (empresaNombre) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text(empresaNombre, logoEndX, 22);
+  }
 
   // Right side - date
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
+  doc.setTextColor(255, 255, 255);
   doc.text(`Generado: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth - 14, 18, { align: "right" });
 
   // Prestamo info line
