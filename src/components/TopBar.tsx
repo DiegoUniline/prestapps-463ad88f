@@ -1,5 +1,6 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import logoIcon from "@/assets/logo-icon.png";
+import { SyncStatusBadge } from "@/components/SyncStatusPanel";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
