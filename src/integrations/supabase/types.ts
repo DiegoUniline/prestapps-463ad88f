@@ -673,7 +673,9 @@ export type Database = {
           direccion: string | null
           id: string
           logo_url: string | null
+          max_usuarios: number
           nombre: string
+          plan: string
           ruc: string | null
           telefono: string | null
         }
@@ -683,7 +685,9 @@ export type Database = {
           direccion?: string | null
           id?: string
           logo_url?: string | null
+          max_usuarios?: number
           nombre: string
+          plan?: string
           ruc?: string | null
           telefono?: string | null
         }
@@ -693,7 +697,9 @@ export type Database = {
           direccion?: string | null
           id?: string
           logo_url?: string | null
+          max_usuarios?: number
           nombre?: string
+          plan?: string
           ruc?: string | null
           telefono?: string | null
         }
