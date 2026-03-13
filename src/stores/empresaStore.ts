@@ -30,22 +30,29 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   },
 
   initialize: () => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("empresa_id")
-          .eq("id", session.user.id)
-          .single();
+    // Non-blocking: fire-and-forget profile load
+    const loadProfile = (userId: string) => {
+      supabase
+        .from("profiles")
+        .select("empresa_id")
+        .eq("id", userId)
+        .single()
+        .then(({ data: profile }) => {
+          if (profile?.empresa_id) {
+            const empresas = get().empresas;
+            set({
+              empresaId: profile.empresa_id,
+              empresaNombre: empresas.find((e) => e.id === profile.empresa_id)?.nombre || "Empresa",
+            });
+            localStorage.setItem("empresa_id", profile.empresa_id);
+          }
+        });
+    };
 
-        if (profile?.empresa_id) {
-          const empresas = get().empresas;
-          set({
-            empresaId: profile.empresa_id,
-            empresaNombre: empresas.find((e) => e.id === profile.empresa_id)?.nombre || "Empresa",
-          });
-          localStorage.setItem("empresa_id", profile.empresa_id);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        // Defer to avoid Supabase deadlock
+        setTimeout(() => loadProfile(session.user.id), 0);
       }
     });
 
@@ -66,18 +73,9 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
       });
 
     // Load from profile on init
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("empresa_id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (profile?.empresa_id) {
-          set({ empresaId: profile.empresa_id });
-          localStorage.setItem("empresa_id", profile.empresa_id);
-        }
+        loadProfile(session.user.id);
       }
     });
 
