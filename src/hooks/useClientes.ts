@@ -70,7 +70,7 @@ export function useCreateCliente() {
         .select()
         .single();
       if (error) throw error;
-      return data as Cliente;
+      return data as unknown as Cliente;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientes"] });
