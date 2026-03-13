@@ -41,6 +41,7 @@ import {
   BookOpen,
   Cog,
   FileInput,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
