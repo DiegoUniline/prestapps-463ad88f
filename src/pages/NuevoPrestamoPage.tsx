@@ -89,16 +89,13 @@ export default function NuevoPrestamoPage() {
     if (!codigoInterno) {
       (supabase.from as any)("prestamos")
         .select("id_prestamo")
-        .order("created_at", { ascending: false })
-        .limit(1)
         .then(({ data }: any) => {
-          if (data?.[0]?.id_prestamo) {
-            const match = data[0].id_prestamo.match(/(\d+)/);
-            const next = match ? parseInt(match[1]) + 1 : 1;
-            setCodigoInterno(`PRE-${String(next).padStart(4, "0")}`);
-          } else {
-            setCodigoInterno("PRE-0001");
+          let maxNum = 0;
+          for (const row of data || []) {
+            const m = row.id_prestamo?.match(/(\d+)/);
+            if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
           }
+          setCodigoInterno(`PRE-${String(maxNum + 1).padStart(4, "0")}`);
         });
     }
   }, []);
