@@ -11,6 +11,7 @@ import { useUIStore } from "@/stores/uiStore";
 import { useEmpresaStore } from "@/stores/empresaStore";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleGuard from "@/components/RoleGuard";
+import SuperAdminGuard from "@/components/SuperAdminGuard";
 import AppLayout from "@/components/AppLayout";
 
 // Direct imports — frequent pages, instant navigation
