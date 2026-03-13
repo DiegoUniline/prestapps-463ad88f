@@ -30,7 +30,7 @@ export function useClientes(filters?: { estado?: string; search?: string; empres
       }
       if (filters?.search) {
         query = query.or(
-          `nombre_completo.ilike.%${filters.search}%,id_cliente.ilike.%${filters.search}%,telefono.ilike.%${filters.search}%`
+          `nombre_completo.ilike.%${filters.search}%,id_cliente.ilike.%${filters.search}%,telefono.ilike.%${filters.search}%,correo.ilike.%${filters.search}%`
         );
       }
 
