@@ -29,6 +29,7 @@ interface PagoListItem {
   metodo: string;
   caja: string;
   ruta: string;
+  anulado: boolean;
 }
 
 type SortKey = keyof PagoListItem;
