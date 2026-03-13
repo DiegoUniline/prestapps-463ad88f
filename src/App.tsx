@@ -30,6 +30,7 @@ import CajasPage from "@/pages/CajasPage";
 import RutasPage from "@/pages/RutasPage";
 import CobradoresPage from "@/pages/CobradoresPage";
 import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
+import ClienteCobranzaDetallePage from "@/pages/ClienteCobranzaDetallePage";
 import CobradorViewPage from "@/pages/CobradorViewPage";
 import SolicitudesPage from "@/pages/SolicitudesPage";
 import SolicitudPrestamoPage from "@/pages/SolicitudPrestamoPage";
