@@ -77,6 +77,34 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       if (error) throw error;
       if (!cuotas || cuotas.length === 0) return [];
 
+      // 1b) Also get cuotas with promesas for this date (status=Prometida)
+      const { data: promesas } = await supabase
+        .from("promesas_pago")
+        .select("cuota_id")
+        .eq("fecha_prometida", fecha)
+        .eq("status", "Pendiente");
+
+      const promesaCuotaIds = new Set((promesas || []).map((p: any) => p.cuota_id));
+
+      // Merge: add any promised cuotas not already in the list
+      let allCuotaIds = new Set(cuotas.map((c) => c.id));
+      const missingPromesaIds = [...promesaCuotaIds].filter((id) => !allCuotaIds.has(id));
+
+      let extraCuotas: any[] = [];
+      if (missingPromesaIds.length > 0) {
+        const { data: extra } = await supabase
+          .from("amortizacion")
+          .select(`
+            id, prestamo_id, num_cuota, capital_interes, saldo_total, saldo_mora,
+            saldo_capital, saldo_interes, mora_pagada, interes_pagado, capital_pagado,
+            fecha_vencimiento, status, dias_atraso, fecha_pagada
+          `)
+          .in("id", missingPromesaIds);
+        extraCuotas = extra || [];
+      }
+
+      const allCuotas = [...cuotas, ...extraCuotas];
+
       // 2) Get prestamos info
       const prestamoIds = [...new Set(cuotas.map((c) => c.prestamo_id))];
       const { data: prestamos } = await supabase
