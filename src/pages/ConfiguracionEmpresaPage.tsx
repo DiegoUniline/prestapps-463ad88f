@@ -229,7 +229,20 @@ const TICKET_FIELD_LABELS: Record<keyof TicketCampos, string> = {
 
 // ── Tab 2: Diseño del Ticket ──
 function TicketTab() {
+  const { empresaId } = useEmpresa();
   const { data: config, isLoading } = useEmpresaConfig();
+  const { data: empresa } = useQuery({
+    queryKey: ["empresa-datos", empresaId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("empresas")
+        .select("logo_url")
+        .eq("id", empresaId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
   const saveConfig = useSaveEmpresaConfig();
   const [local, setLocal] = useState<EmpresaConfig | null>(null);
 
