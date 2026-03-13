@@ -163,7 +163,7 @@ function RutaDetallePage() {
   if (ruta && !synced) {
     setNombre(ruta.nombre);
     setDescripcion(ruta.descripcion || "");
-    setCobradorId(ruta.cobrador_id || "");
+    setCobradorId(ruta.cobrador_id || "__none__");
     setSynced(true);
   }
 
