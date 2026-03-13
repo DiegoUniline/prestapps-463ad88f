@@ -27,6 +27,7 @@ function useSimpleCatalog(table: string, queryKey: string) {
 
 function useUpsertSimple(table: string, queryKey: string, label: string) {
   const qc = useQueryClient();
+  const empresaId = useEmpresaStore((s) => s.empresaId);
   return useMutation({
     mutationFn: async (item: Partial<CatalogoSimple> & { nombre: string }) => {
       if (item.id) {
@@ -38,7 +39,7 @@ function useUpsertSimple(table: string, queryKey: string, label: string) {
       } else {
         const { error } = await supabase
           .from(table as any)
-          .insert({ nombre: item.nombre, descripcion: item.descripcion ?? "", activo: item.activo ?? true } as any);
+          .insert({ nombre: item.nombre, descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
         if (error) throw error;
       }
     },
