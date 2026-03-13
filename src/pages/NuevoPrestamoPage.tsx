@@ -403,12 +403,21 @@ export default function NuevoPrestamoPage() {
                   placeholder="dd/mm/aaaa"
                   value={fechaTexto}
                   onChange={(e) => {
-                    setFechaTexto(e.target.value);
-                    const parsed = parse(e.target.value, "dd/MM/yyyy", new Date());
-                    if (isValid(parsed) && e.target.value.length === 10) {
-                      setFechaPrimerPago(parsed);
+                    let raw = e.target.value.replace(/[^\d]/g, "");
+                    if (raw.length > 8) raw = raw.slice(0, 8);
+                    let formatted = raw;
+                    if (raw.length > 4) {
+                      formatted = raw.slice(0, 2) + "/" + raw.slice(2, 4) + "/" + raw.slice(4);
+                    } else if (raw.length > 2) {
+                      formatted = raw.slice(0, 2) + "/" + raw.slice(2);
+                    }
+                    setFechaTexto(formatted);
+                    if (formatted.length === 10) {
+                      const parsed = parse(formatted, "dd/MM/yyyy", new Date());
+                      if (isValid(parsed)) setFechaPrimerPago(parsed);
                     }
                   }}
+                  maxLength={10}
                   className="flex-1"
                 />
                 <Popover>
