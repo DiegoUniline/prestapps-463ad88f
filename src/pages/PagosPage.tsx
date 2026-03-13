@@ -43,7 +43,7 @@ function usePagosAll(empresaId: string) {
         .from("pagos")
         .select(`
           id, monto_recibido, aplicado_mora, aplicado_interes, aplicado_capital,
-          metodo_pago, created_at, prestamo_id,
+          metodo_pago, created_at, prestamo_id, anulado,
           cajas ( nombre ),
           prestamos!pagos_prestamo_id_fkey ( id, clientes ( nombre_completo ), rutas ( nombre ) )
         `)
