@@ -382,19 +382,43 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
             </div>
           </div>
 
-          {/* Effective amount summary */}
-          {(montoNum > 0 || descuentoNum > 0) && (
-            <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[13px]">
-                <Info className="h-3.5 w-3.5 text-primary" />
-                <span>Recibido <strong>{$$(montoNum)}</strong></span>
-                {descuentoNum > 0 && <span>+ Descuento <strong>{$$(descuentoNum)}</strong></span>}
+          {/* Payment summary: Monto a Pagar vs Monto Pagado */}
+          {(montoNum > 0 || descuentoNum > 0) && (() => {
+            const montoAPagar = Math.max(0, totalAdeudado - descuentoNum);
+            const diferencia = montoNum - montoAPagar;
+            const isDeMenos = diferencia < -0.01;
+            const isExacto = Math.abs(diferencia) <= 0.01;
+            const isDeMas = diferencia > 0.01;
+            return (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 space-y-2">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Monto a Pagar</p>
+                    <p className="text-[15px] font-bold">{$$(montoAPagar)}</p>
+                    {descuentoNum > 0 && (
+                      <p className="text-[10px] text-muted-foreground">({$$(totalAdeudado)} - {$$(descuentoNum)} desc.)</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Monto Pagado</p>
+                    <p className={cn("text-[15px] font-bold", isDeMenos && "text-destructive", isExacto && "text-green-600", isDeMas && "text-blue-600")}>{$$(montoNum)}</p>
+                    <p className={cn("text-[10px] font-medium", isDeMenos && "text-destructive", isExacto && "text-green-600", isDeMas && "text-blue-600")}>
+                      {isDeMenos && `▼ ${$$( Math.abs(diferencia))} de menos`}
+                      {isExacto && "✓ Exacto"}
+                      {isDeMas && `▲ ${$$(diferencia)} de más`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Monto a Aplicar</p>
+                    <p className="text-[15px] font-bold text-primary">{$$(montoEfectivo)}</p>
+                    {descuentoNum > 0 && (
+                      <p className="text-[10px] text-muted-foreground">({$$(montoNum)} + {$$(descuentoNum)} desc.)</p>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="text-[13px] font-semibold">
-                Total aplicado: <span className="text-primary">{$$(montoEfectivo)}</span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Distribution preview */}
           {distribution.length > 0 && (
