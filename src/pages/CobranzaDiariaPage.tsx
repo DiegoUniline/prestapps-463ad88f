@@ -557,6 +557,26 @@ export default function CobranzaDiariaPage() {
                             Cobrar
                           </Button>
                           <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Registrar visita"
+                            onClick={() => { setVisitaItem(item); setVisitaOpen(true); }}
+                          >
+                            <MapPin className="h-3.5 w-3.5" />
+                          </Button>
+                          {item.status !== "Prometida" && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Promesa de pago"
+                              onClick={() => { setPromesaItem(item); setPromesaOpen(true); }}
+                            >
+                              <CalendarCheck className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
@@ -588,6 +608,39 @@ export default function CobranzaDiariaPage() {
           rutaId={pagoRutaId}
           cobradorId={pagoCobradorId}
           montoInicial={pagoMontoInicial}
+        />
+      )}
+
+      {/* Promesa Modal */}
+      {promesaOpen && promesaItem && (
+        <PromesaModal
+          open={promesaOpen}
+          onOpenChange={(open) => {
+            setPromesaOpen(open);
+            if (!open) queryClient.invalidateQueries({ queryKey: ["cobranza-diaria", fechaStr] });
+          }}
+          prestamoId={promesaItem.prestamoId}
+          cuotaNum={promesaItem.numCuota}
+          cuotaId={promesaItem.cuotaId}
+          saldoTotal={promesaItem.saldoTotal}
+          fechaVencimiento={promesaItem.fechaVencimiento}
+        />
+      )}
+
+      {/* Visita Modal */}
+      {visitaOpen && visitaItem && (
+        <VisitaModal
+          open={visitaOpen}
+          onOpenChange={(open) => {
+            setVisitaOpen(open);
+            if (!open) queryClient.invalidateQueries({ queryKey: ["cobranza-diaria", fechaStr] });
+          }}
+          prestamoId={visitaItem.prestamoId}
+          clienteId={visitaItem.clienteId}
+          clienteNombre={visitaItem.clienteNombre}
+          cuotaId={visitaItem.cuotaId}
+          cuotaNum={visitaItem.numCuota}
+          saldoTotal={visitaItem.saldoTotal}
         />
       )}
     </div>
