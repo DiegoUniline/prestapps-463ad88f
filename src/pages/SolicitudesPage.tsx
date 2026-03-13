@@ -301,7 +301,7 @@ export default function SolicitudesPage() {
                       <br />
                       <span className="text-xs text-muted-foreground">{s.clientes?.id_cliente}</span>
                     </TableCell>
-                    <TableCell className="text-right text-sm">${Number(s.monto_solicitado).toLocaleString()}</TableCell>
+                    <TableCell className="text-right text-sm">{$$(Number(s.monto_solicitado))}</TableCell>
                     <TableCell className="text-center text-sm">{s.num_cuotas}</TableCell>
                     <TableCell className="text-sm capitalize">{s.frecuencia}</TableCell>
                     <TableCell className="text-sm">{s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</TableCell>
