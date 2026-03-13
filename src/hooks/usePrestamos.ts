@@ -53,6 +53,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
 
   const prestamos = rawPrestamos as Array<{
     id: string;
+    id_prestamo: string;
     monto_solicitado: number | null;
     monto_total_pagar: number | null;
     num_cuotas: number | null;
