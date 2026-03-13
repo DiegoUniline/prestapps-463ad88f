@@ -61,20 +61,20 @@ async function fetchUserRole(userId: string) {
 }
 
 export function useCurrentUserRole(): CurrentUserRole {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const userId = user?.id;
 
   const { data, isLoading } = useQuery({
     queryKey: ["current-user-role", userId],
-    enabled: !!userId,
+    enabled: !!userId && !authLoading,
     queryFn: () => fetchUserRole(userId!),
   });
 
   return {
-    role: data?.role || "cobrador",
+    role: data?.role || "admin",
     profileId: data?.profileId || null,
     cobradorId: data?.cobradorId || null,
     rutaIds: data?.rutaIds || [],
-    loading: isLoading,
+    loading: authLoading || isLoading,
   };
 }
