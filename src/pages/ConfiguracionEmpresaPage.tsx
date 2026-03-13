@@ -335,7 +335,13 @@ function TicketTab() {
           <CardContent>
             <div className="border rounded-lg p-4 bg-background text-xs space-y-2 font-mono">
               {local.ticket_mostrar_logo && (
-                <div className="text-center text-muted-foreground italic">[LOGO]</div>
+                <div className="flex justify-center py-2">
+                  {empresa?.logo_url ? (
+                    <img src={empresa.logo_url} alt="Logo" className="h-12 w-auto object-contain" />
+                  ) : (
+                    <span className="text-muted-foreground italic">[Sin logo]</span>
+                  )}
+                </div>
               )}
               {local.ticket_encabezado && (
                 <div className="text-center font-bold text-sm">{local.ticket_encabezado}</div>
