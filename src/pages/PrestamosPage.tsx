@@ -410,9 +410,9 @@ export default function PrestamosPage() {
                 <TableCell className="text-[13px] px-3">{p.cuotasPagadas ?? 0}/{p.totalCuotas ?? 0}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.ruta}</TableCell>
-                <TableCell className="text-right font-medium text-[13px] px-3">${(p.saldo ?? 0).toLocaleString()}</TableCell>
+                <TableCell className="text-right font-medium text-[13px] px-3">{$$(p.saldo)}</TableCell>
                 <TableCell className={cn("text-right font-bold text-[13px] px-3", (p.mora ?? 0) > 0 ? "text-destructive" : "text-muted-foreground")}>
-                  {(p.mora ?? 0) > 0 ? `$${(p.mora ?? 0).toLocaleString()}` : "$0"}
+                  {(p.mora ?? 0) > 0 ? $$(p.mora) : "$0.00"}
                 </TableCell>
                 <TableCell className="px-3">
                   <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium", estadoBadge[p.estado] || "bg-muted text-muted-foreground")}>
