@@ -510,7 +510,7 @@ export default function PrestamoDetallePage() {
                 <SidebarField label="DÍAS MORA" value={<span className="text-destructive font-bold text-[14px]">{diasMora}</span>} />
               )}
               {proximaCuota && (
-                <SidebarField full label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${format(new Date(proximaCuota.fecha_vencimiento), "dd/MM/yyyy")} — ${$$(proximaCuota.capital_interes)}`} />
+                <SidebarField full label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${fmtDate(proximaCuota.fecha_vencimiento)} — ${$$(proximaCuota.capital_interes)}`} />
               )}
               {ultimoPago && (
                 <SidebarField full label="ÚLTIMO PAGO" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />
