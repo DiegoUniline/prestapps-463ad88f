@@ -105,30 +105,30 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Ruta</Label>
-                <Select value={rutaId} onValueChange={setRutaId}>
+                <Select value={rutaId || "__none__"} onValueChange={(v) => setRutaId(v === "__none__" ? "" : v)}>
                   <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin ruta" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin ruta</SelectItem>
+                    <SelectItem value="__none__">Sin ruta</SelectItem>
                     {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs">Cobrador</Label>
-                <Select value={cobradorId} onValueChange={setCobradorId}>
+                <Select value={cobradorId || "__none__"} onValueChange={(v) => setCobradorId(v === "__none__" ? "" : v)}>
                   <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin cobrador" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin cobrador</SelectItem>
+                    <SelectItem value="__none__">Sin cobrador</SelectItem>
                     {cobradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="sm:col-span-2">
                 <Label className="text-xs">Caja</Label>
-                <Select value={cajaId} onValueChange={setCajaId}>
+                <Select value={cajaId || "__none__"} onValueChange={(v) => setCajaId(v === "__none__" ? "" : v)}>
                   <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin caja" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin caja</SelectItem>
+                    <SelectItem value="__none__">Sin caja</SelectItem>
                     {cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
