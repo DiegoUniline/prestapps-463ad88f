@@ -56,6 +56,8 @@ interface CuotaDiaria {
   pagada: boolean;
   montoPagado: number;
   fechaPago: string | null;
+  gestiones: number;
+  ultimaGestion: string | null;
 }
 
 function useCobranzaDiaria(fecha: string, empresaId: string) {
@@ -143,6 +145,21 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       const presMap: Record<string, any> = {};
       for (const p of prestamos || []) presMap[p.id] = p;
 
+      // 5) Get gestiones count per prestamo
+      const { data: gestiones } = await supabase
+        .from("crm_gestiones")
+        .select("prestamo_id, created_at, resultado")
+        .in("prestamo_id", prestamoIds)
+        .order("created_at", { ascending: false });
+
+      const gestionesByPrestamo: Record<string, { count: number; ultima: string | null }> = {};
+      for (const g of gestiones || []) {
+        if (!gestionesByPrestamo[g.prestamo_id]) {
+          gestionesByPrestamo[g.prestamo_id] = { count: 0, ultima: g.created_at };
+        }
+        gestionesByPrestamo[g.prestamo_id].count++;
+      }
+
       return allCuotas.map((c): CuotaDiaria => {
         const pres = presMap[c.prestamo_id] || {};
         const cliente = pres.clientes as any;
@@ -178,6 +195,8 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
           pagada: c.status === "Pagada",
           montoPagado: pago?.total || 0,
           fechaPago: c.fecha_pagada || null,
+          gestiones: gestionesByPrestamo[c.prestamo_id]?.count || 0,
+          ultimaGestion: gestionesByPrestamo[c.prestamo_id]?.ultima || null,
         };
       });
     },
@@ -520,6 +539,7 @@ export default function CobranzaDiariaPage() {
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Mora</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Total a Cobrar</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Estado</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Visitas</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -572,6 +592,23 @@ export default function CobranzaDiariaPage() {
                       <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", badge.className)}>
                         {badge.label}
                       </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {item.gestiones > 0 ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <MapPin className="h-2.5 w-2.5" />
+                            {item.gestiones}
+                          </Badge>
+                          {item.ultimaGestion && (
+                            <span className="text-[9px] text-muted-foreground">
+                              {format(new Date(item.ultimaGestion), "dd/MM", { locale: es })}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       {!item.pagada ? (
