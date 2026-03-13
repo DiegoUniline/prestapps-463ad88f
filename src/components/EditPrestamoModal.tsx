@@ -193,6 +193,17 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
             </div>
           </div>
 
+          {/* Código Interno */}
+          <div>
+            <Label className="text-xs">Código Interno</Label>
+            <Input
+              value={codigoInterno}
+              onChange={(e) => setCodigoInterno(e.target.value)}
+              placeholder="Ej: CI-001, REF-2024..."
+              className="mt-1 h-9 text-sm"
+            />
+          </div>
+
           {/* Notas */}
           <div>
             <Label className="text-xs">Notas</Label>
