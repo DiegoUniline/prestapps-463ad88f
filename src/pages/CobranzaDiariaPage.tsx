@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { VisitaModal } from "@/components/VisitaModal";
+import { ClienteEstadoCuentaSheet } from "@/components/ClienteEstadoCuentaSheet";
 // ── Data Hook ────────────────────────────────────────────────────
 interface CuotaDiaria {
   cuotaId: string;
