@@ -252,7 +252,7 @@ export default function EmpresasPage() {
                   const atLimit = userCount >= e.max_usuarios && e.max_usuarios < 999;
 
                   return (
-                    <TableRow key={e.id} className={!e.activa ? "opacity-50" : ""}>
+                    <TableRow key={e.id} className={`${!e.activa ? "opacity-50" : ""} cursor-pointer hover:bg-muted/50`} onClick={() => setDetailEmpresa(e)}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
