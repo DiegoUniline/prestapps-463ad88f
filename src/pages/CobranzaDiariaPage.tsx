@@ -423,6 +423,7 @@ export default function CobranzaDiariaPage() {
             <SelectItem value="pendientes">Pendientes</SelectItem>
             <SelectItem value="cobradas">Cobradas</SelectItem>
             <SelectItem value="vencidas">Vencidas</SelectItem>
+            <SelectItem value="prometidas">Prometidas</SelectItem>
           </SelectContent>
         </Select>
         <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground cursor-pointer select-none">
