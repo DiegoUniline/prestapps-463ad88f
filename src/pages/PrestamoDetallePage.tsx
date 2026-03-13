@@ -859,6 +859,17 @@ export default function PrestamoDetallePage() {
         rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
         cobradores={cobradoresAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
       />
+
+      {/* Document Preview Modal */}
+      {docPreview.type && (
+        <DocumentPreviewModal
+          open={docPreview.open}
+          onOpenChange={(open) => setDocPreview({ open, type: open ? docPreview.type : null })}
+          title={docTitles[docPreview.type]}
+          fileName={docFileNames[docPreview.type]}
+          generateDoc={generateDocForPreview}
+        />
+      )}
     </div>
   );
 }
