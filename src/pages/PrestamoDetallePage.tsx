@@ -399,7 +399,7 @@ export default function PrestamoDetallePage() {
                   <Phone className="h-3.5 w-3.5" />{cliente.telefono}
                 </a>
               )}
-              <span className="text-[11px] text-muted-foreground/60">PRE-{shortId}</span>
+              <span className="text-[11px] text-muted-foreground/60">{folioId}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
