@@ -623,7 +623,7 @@ export default function PrestamoDetallePage() {
                           <TableCell className="px-3 text-[13px] font-medium">{dash(c.saldo_total) || $$(c.saldo_total)}</TableCell>
                           <TableCell className="px-3"><CuotaStatusBadge status={status} /></TableCell>
                           <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
-                            {c.fecha_pagada ? format(new Date(c.fecha_pagada), "dd/MM/yy") : <span className="text-[hsl(220,14%,83%)]">—</span>}
+                            {c.fecha_pagada ? fmtDate(c.fecha_pagada) : <span className="text-[hsl(220,14%,83%)]">—</span>}
                           </TableCell>
 
                           {showOptional && (
