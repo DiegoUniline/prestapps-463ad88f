@@ -224,7 +224,7 @@ export default function NuevoPrestamoPage() {
       // Insertar cuotas de amortización
       if (amortizacion.length > 0) {
         const baseDate = fechaPrimerPago || new Date();
-        const numCubiertas = esInicial ? (parseInt(cuotasCubiertas) || 0) : 0;
+        const numCubiertas = numCuotasCubiertas;
 
         const cuotasInsert = amortizacion.map((c) => {
           const yaPagada = c.num <= numCubiertas;
