@@ -416,7 +416,7 @@ export default function NuevoPrestamoPage() {
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Total a Pagar</p>
-                    <p className="text-sm font-semibold">${totalConCuotaFinal.toLocaleString()}</p>
+                    <p className="text-sm font-semibold">{$$(totalConCuotaFinal)}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Cuota Fija</p>
