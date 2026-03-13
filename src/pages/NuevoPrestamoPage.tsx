@@ -517,7 +517,8 @@ export default function NuevoPrestamoPage() {
               </div>
             </div>
 
-            {/* Carga inicial checkbox */}
+            {/* Carga inicial checkbox - only for prestamos */}
+            {tipoCuenta === "prestamo" && (
             <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50">
               <Checkbox
                 checked={esInicial}
