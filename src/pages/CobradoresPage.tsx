@@ -228,6 +228,7 @@ export default function CobradoresPage() {
           tipo: "salida",
           monto: corteComision,
           concepto: `Comisión cobrador: ${selectedCobrador.nombre_completo} (${selectedCobrador.porcentaje_comision}%)`,
+          empresa_id: empresaId,
         });
 
         const { data: cajaData2 } = await supabase.from("cajas").select("saldo_actual").eq("id", corteCajaId).single();

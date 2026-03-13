@@ -250,6 +250,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         monto: montoNum,
         prestamo_id: prestamoId,
         concepto: `Pago préstamo PRE-${prestamoId.slice(0, 8)}`,
+        empresa_id: empresaId,
       });
       if (movErr) throw movErr;
 

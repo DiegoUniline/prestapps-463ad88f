@@ -118,6 +118,7 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
           monto: pago.monto_recibido,
           prestamo_id: pago.prestamo_id,
           concepto: `Anulación de pago — ${motivo.trim()}`,
+          empresa_id: empresaId,
         });
       }
 
