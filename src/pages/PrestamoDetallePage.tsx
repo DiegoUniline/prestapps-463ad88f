@@ -105,6 +105,7 @@ export default function PrestamoDetallePage() {
   const [selectedPago, setSelectedPago] = useState<any>(null);
   const [cancelarOpen, setCancelarOpen] = useState(false);
   const [reestructurarOpen, setReestructurarOpen] = useState(false);
+  const [editarOpen, setEditarOpen] = useState(false);
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
