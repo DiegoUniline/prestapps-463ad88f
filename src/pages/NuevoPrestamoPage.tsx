@@ -343,6 +343,7 @@ export default function NuevoPrestamoPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Ruta</Label>
@@ -354,6 +355,7 @@ export default function NuevoPrestamoPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
               </div>
             </div>
 
