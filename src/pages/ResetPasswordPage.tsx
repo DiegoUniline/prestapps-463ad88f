@@ -39,7 +39,7 @@ export default function ResetPasswordPage() {
       toast.error(error.message);
     } else {
       toast.success("Contraseña actualizada exitosamente");
-      navigate("/");
+      navigate("/dashboard");
     }
     setLoading(false);
   };

@@ -20,7 +20,7 @@ export default function SuperAdminGuard({ children }: SuperAdminGuardProps) {
   }
 
   if (user?.email !== SUPER_ADMIN_EMAIL) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
