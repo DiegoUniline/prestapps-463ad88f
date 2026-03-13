@@ -408,7 +408,6 @@ export default function PrestamosPage() {
                   });
                 }}
               >
-              >
                 <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
                 </TableCell>
