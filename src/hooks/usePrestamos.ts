@@ -50,36 +50,44 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
     query = query.eq("cobrador_id", filters.cobradorId);
   }
 
-  const { data: prestamos, error } = await query;
+  const { data: rawPrestamos, error } = await query;
   if (error) throw error;
-  if (!prestamos) return [];
+  if (!rawPrestamos || rawPrestamos.length === 0) return [];
+
+  // Cast to any[] to avoid type inference issues with dynamic columns
+  const prestamos = rawPrestamos as any[];
 
   const ids = prestamos.map((p) => p.id);
-  if (ids.length === 0) return [];
 
-  // Fetch amortization data
-  const { data: amortData } = await supabase
-    .from("amortizacion")
-    .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
-    .in("prestamo_id", ids);
+  // Fetch amortization data with error handling
+  let amortData: any[] = [];
+  try {
+    const { data, error: amortError } = await supabase
+      .from("amortizacion")
+      .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
+      .in("prestamo_id", ids);
+    if (!amortError && data) amortData = data;
+  } catch { /* continue without amort data */ }
 
   // Fetch cobrador names from profiles
   const cobradorIds = [...new Set(prestamos.map((p) => p.cobrador_id).filter(Boolean))] as string[];
   let cobradorMap: Record<string, string> = {};
   if (cobradorIds.length > 0) {
-    const { data: cobProfiles } = await supabase
-      .from("profiles")
-      .select("id, nombre_completo")
-      .in("id", cobradorIds);
-    for (const cp of cobProfiles || []) {
-      cobradorMap[cp.id] = cp.nombre_completo;
-    }
+    try {
+      const { data: cobProfiles } = await supabase
+        .from("profiles")
+        .select("id, nombre_completo")
+        .in("id", cobradorIds);
+      for (const cp of cobProfiles || []) {
+        cobradorMap[cp.id] = cp.nombre_completo;
+      }
+    } catch { /* continue without cobrador names */ }
   }
 
   const today = new Date().toISOString().slice(0, 10);
 
   const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number; tieneAtraso: boolean }> = {};
-  for (const a of amortData || []) {
+  for (const a of amortData) {
     if (!amortByPrestamo[a.prestamo_id]) {
       amortByPrestamo[a.prestamo_id] = { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false };
     }
@@ -91,11 +99,11 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
     }
   }
 
-  return prestamos.map((p) => {
+  return prestamos.map((p: any) => {
     const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false };
-    const cliente = p.clientes as any;
-    const caja = p.cajas as any;
-    const ruta = p.rutas as any;
+    const cliente = p.clientes;
+    const caja = p.cajas;
+    const ruta = p.rutas;
 
     return {
       id: p.id,
@@ -104,7 +112,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       montoSolicitado: Number(p.monto_solicitado || 0),
       montoPagar: Number(p.monto_total_pagar || 0),
       cuotasPagadas: amort.pagadas,
-      totalCuotas: p.num_cuotas,
+      totalCuotas: p.num_cuotas || 0,
       caja: caja?.nombre || "—",
       ruta: ruta?.nombre || "—",
       rutaId: p.ruta_id,
