@@ -73,7 +73,9 @@ const modules: NavModule[] = [
       { title: "Gastos", url: "/gastos", icon: Receipt, roles: ["admin"] },
       { title: "Comisiones", url: "/comisiones", icon: Percent, roles: ["admin"] },
       { title: "Liquidar Ruta", url: "/liquidar-ruta", icon: ClipboardList, roles: ["admin"] },
+      { title: "Rentabilidad", url: "/rentabilidad", icon: PieChart, roles: ["admin"] },
       { title: "Reportes", url: "/reportes", icon: FileText, roles: ["admin", "supervisor"] },
+      { title: "Renovación", url: "/renovacion", icon: RefreshCw, roles: ["admin"] },
     ],
   },
   {
