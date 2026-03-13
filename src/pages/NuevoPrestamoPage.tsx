@@ -438,6 +438,23 @@ export default function NuevoPrestamoPage() {
               </div>
             </label>
 
+            {esInicial && cuotas > 0 && (
+              <div className="space-y-1.5 pl-1">
+                <Label className="text-[13px]">Cuotas ya cubiertas</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max={cuotas}
+                  value={cuotasCubiertas}
+                  onChange={(e) => setCuotasCubiertas(e.target.value)}
+                  placeholder={`0 de ${cuotas}`}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Indica cuántas cuotas ya fueron pagadas. Se marcarán como "Pagada" automáticamente.
+                </p>
+              </div>
+            )}
+
             {!esInicial && !cajaId && (
               <div className="flex items-center gap-2 text-warning text-sm">
                 <AlertTriangle className="h-4 w-4" />
