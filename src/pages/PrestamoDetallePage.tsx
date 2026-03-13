@@ -339,6 +339,21 @@ export default function PrestamoDetallePage() {
             <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }}>
               <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
             </Button>
+            <StripeChargeButton
+              prestamoId={prestamo.id}
+              clienteId={cliente?.id}
+              clienteNombre={cliente?.nombre_completo || ""}
+              clienteTelefono={cliente?.telefono}
+              clienteEmail={cliente?.correo}
+              cuotaId={proximaCuota?.id}
+              monto={proximaCuota ? Number(proximaCuota.saldo_total || 0) : saldoPendiente}
+              cuotaNum={proximaCuota?.num_cuota}
+              onChargeSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ["amortizacion", id] });
+                queryClient.invalidateQueries({ queryKey: ["pagos", id] });
+                queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] });
+              }}
+            />
             <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => setEditarOpen(true)}>
               <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
             </Button>
