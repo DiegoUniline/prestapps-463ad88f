@@ -513,7 +513,7 @@ export default function PrestamoDetallePage() {
                 <SidebarField full label="PRÓXIMA CUOTA" value={`#${proximaCuota.num_cuota} — ${fmtDate(proximaCuota.fecha_vencimiento)} — ${$$(proximaCuota.capital_interes)}`} />
               )}
               {ultimoPago && (
-                <SidebarField full label="ÚLTIMO PAGO" value={`${ultimoPago.created_at ? format(new Date(ultimoPago.created_at), "dd/MM/yyyy") : "—"} — ${$$(Number(ultimoPago.monto_recibido))}`} />
+                <SidebarField full label="ÚLTIMO PAGO" value={`${fmtDate(ultimoPago.created_at)} — ${$$(Number(ultimoPago.monto_recibido))}`} />
               )}
               {prestamo.notas && (
                 <SidebarField full label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
