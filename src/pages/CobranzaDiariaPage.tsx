@@ -378,10 +378,10 @@ export default function CobranzaDiariaPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Control de Cobranza</h1>
-          <p className="text-muted-foreground text-sm">Vista diaria de cuotas por cobrar y cobradas</p>
+          <h1 className="text-xl md:text-2xl font-bold">Control de Cobranza</h1>
+          <p className="text-muted-foreground text-xs md:text-sm">Vista diaria de cuotas por cobrar y cobradas</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={prevDay}>
@@ -389,9 +389,10 @@ export default function CobranzaDiariaPage() {
           </Button>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-[13px]">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-[12px] md:text-[13px]">
                 <CalendarIcon className="h-3.5 w-3.5" />
-                {format(fecha, "EEEE, d 'de' MMMM", { locale: es })}
+                <span className="hidden sm:inline">{format(fecha, "EEEE, d 'de' MMMM", { locale: es })}</span>
+                <span className="sm:hidden">{format(fecha, "d MMM yyyy", { locale: es })}</span>
                 {isToday(fecha) && <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">Hoy</Badge>}
               </Button>
             </PopoverTrigger>
@@ -414,38 +415,33 @@ export default function CobranzaDiariaPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
         {[
           { label: "Total Cuotas", value: kpis.total, icon: Users, color: "text-foreground" },
           { label: "Cobradas", value: kpis.cobradas, icon: CheckCircle2, color: "text-success" },
           { label: "Pendientes", value: kpis.pendientes, icon: Clock, color: "text-warning" },
           { label: "Por Cobrar", value: $$(kpis.porCobrar), icon: DollarSign, color: "text-destructive" },
           { label: "Cobrado", value: $$(kpis.cobrado), icon: HandCoins, color: "text-success" },
-          { label: "Mora Acum.", value: $$(kpis.mora), icon: AlertTriangle, color: "text-destructive" },
+          { label: "Mora", value: $$(kpis.mora), icon: AlertTriangle, color: "text-destructive" },
           { label: "Eficiencia", value: `${kpis.porcentaje.toFixed(1)}%`, icon: TrendingUp, color: "text-primary" },
         ].map((kpi) => (
           <Card key={kpi.label} className="border-border/60">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{kpi.label}</span>
-                <kpi.icon className={cn("h-3.5 w-3.5", kpi.color)} />
+            <CardContent className="p-2.5 md:p-3">
+              <div className="flex items-center justify-between mb-0.5 md:mb-1">
+                <span className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{kpi.label}</span>
+                <kpi.icon className={cn("h-3 w-3 md:h-3.5 md:w-3.5", kpi.color)} />
               </div>
-              <p className={cn("text-lg font-bold", kpi.color)}>{kpi.value}</p>
+              <p className={cn("text-base md:text-lg font-bold", kpi.color)}>{kpi.value}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="bg-filter-bar border border-filter-bar-border rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
+      {/* Desktop Filters */}
+      <div className="hidden md:flex bg-filter-bar border border-filter-bar-border rounded-lg px-4 py-3 flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Buscar cliente..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8 h-8 text-[13px]"
-          />
+          <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
         </div>
         <Select value={filtroRuta} onValueChange={setFiltroRuta}>
           <SelectTrigger className="w-[160px] h-8 text-[13px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
@@ -472,14 +468,34 @@ export default function CobranzaDiariaPage() {
           </SelectContent>
         </Select>
         <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={showVencidas}
-            onChange={(e) => setShowVencidas(e.target.checked)}
-            className="rounded border-border"
-          />
-          Incluir vencidas anteriores
+          <input type="checkbox" checked={showVencidas} onChange={(e) => setShowVencidas(e.target.checked)} className="rounded border-border" />
+          Incluir vencidas
         </label>
+      </div>
+      {/* Mobile Filters */}
+      <div className="md:hidden space-y-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Select value={filtroRuta} onValueChange={setFiltroRuta}>
+            <SelectTrigger className="h-8 text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas rutas</SelectItem>
+              {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+            <SelectTrigger className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="pendientes">Pendientes</SelectItem>
+              <SelectItem value="cobradas">Cobradas</SelectItem>
+              <SelectItem value="vencidas">Vencidas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Summary by Route */}
@@ -523,20 +539,20 @@ export default function CobranzaDiariaPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
+        <>
+        {/* Desktop Table */}
+        <div className="hidden md:block border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-table-header">
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold w-8"></TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Cliente</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Préstamo</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Cuota</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Ruta</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Monto Cuota</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Monto</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Mora</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Total a Cobrar</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Total</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Estado</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Visitas</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -555,29 +571,14 @@ export default function CobranzaDiariaPage() {
                   >
                     <TableCell className="px-3">{getStatusIcon(item)}</TableCell>
                     <TableCell>
-                      <button
-                        className="font-medium hover:text-primary hover:underline text-left"
-                        onClick={() => navigate(`/clientes/${item.clienteId}`)}
-                      >
+                      <button className="font-medium hover:text-primary hover:underline text-left" onClick={() => navigate(`/clientes/${item.clienteId}`)}>
                         {item.clienteNombre}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        className="text-muted-foreground hover:text-primary hover:underline font-mono text-[12px]"
-                        onClick={() => navigate(`/prestamos/${item.prestamoId}`)}
-                      >
-                        {item.prestamoId.slice(0, 8)}
                       </button>
                     </TableCell>
                     <TableCell>
                       <span className="font-medium">#{item.numCuota}</span>
                       <span className="text-muted-foreground">/{item.totalCuotas}</span>
-                      {isOverdue && (
-                        <span className="ml-1 text-[10px] text-destructive font-medium">
-                          ({format(parseISO(item.fechaVencimiento), "dd/MM")})
-                        </span>
-                      )}
+                      {isOverdue && <span className="ml-1 text-[10px] text-destructive font-medium">({format(parseISO(item.fechaVencimiento), "dd/MM")})</span>}
                     </TableCell>
                     <TableCell className="text-[12px] text-muted-foreground">{item.ruta}</TableCell>
                     <TableCell className="text-right font-medium">{$$(item.capitalInteres)}</TableCell>
@@ -586,66 +587,22 @@ export default function CobranzaDiariaPage() {
                     </TableCell>
                     <TableCell className="text-right font-semibold">{$$(item.saldoTotal)}</TableCell>
                     <TableCell className="text-center">
-                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", badge.className)}>
-                        {badge.label}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {item.gestiones > 0 ? (
-                        <div className="flex flex-col items-center gap-0.5">
-                          <Badge variant="outline" className="text-[10px] gap-1">
-                            <MapPin className="h-2.5 w-2.5" />
-                            {item.gestiones}
-                          </Badge>
-                          {item.ultimaGestion && (
-                            <span className="text-[9px] text-muted-foreground">
-                              {format(new Date(item.ultimaGestion), "dd/MM/yyyy", { locale: es })}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground">—</span>
-                      )}
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", badge.className)}>{badge.label}</span>
                     </TableCell>
                     <TableCell className="text-center">
                       {!item.pagada ? (
                         <div className="flex items-center justify-center gap-1">
-                          <Button
-                            size="sm"
-                            className="h-7 text-[11px] px-2.5"
-                            onClick={() => openPago(item)}
-                          >
-                            <HandCoins className="h-3 w-3 mr-1" />
-                            Cobrar
+                          <Button size="sm" className="h-7 text-[11px] px-2.5" onClick={() => openPago(item)}>
+                            <HandCoins className="h-3 w-3 mr-1" />Cobrar
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Registrar visita"
-                            onClick={() => { setVisitaItem(item); setVisitaOpen(true); }}
-                          >
+                          <Button variant="outline" size="icon" className="h-7 w-7" title="Visita" onClick={() => { setVisitaItem(item); setVisitaOpen(true); }}>
                             <MapPin className="h-3.5 w-3.5" />
                           </Button>
                           {item.status !== "Prometida" && (
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Promesa de pago"
-                              onClick={() => { setPromesaItem(item); setPromesaOpen(true); }}
-                            >
+                            <Button variant="outline" size="icon" className="h-7 w-7" title="Promesa" onClick={() => { setPromesaItem(item); setPromesaOpen(true); }}>
                               <CalendarCheck className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => navigate(`/prestamos/${item.prestamoId}`)}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
                         </div>
                       ) : (
                         <span className="text-[11px] text-success font-medium">✓ {$$(item.montoPagado || item.capitalInteres)}</span>
@@ -657,6 +614,68 @@ export default function CobranzaDiariaPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-2">
+          {filtered.map((item) => {
+            const badge = getStatusBadge(item);
+            const isOverdue = item.fechaVencimiento < fechaStr && !item.pagada;
+            return (
+              <div
+                key={item.cuotaId}
+                className={cn(
+                  "bg-card border rounded-lg p-3 space-y-2",
+                  item.pagada && "border-success/30 bg-badge-activo/10",
+                  isOverdue && !item.pagada && "border-destructive/30 bg-badge-vencido/5",
+                )}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {getStatusIcon(item)}
+                    <div className="min-w-0">
+                      <button className="font-medium text-[13px] hover:text-primary truncate block" onClick={() => navigate(`/clientes/${item.clienteId}`)}>
+                        {item.clienteNombre}
+                      </button>
+                      <p className="text-[11px] text-muted-foreground">
+                        Cuota #{item.numCuota}/{item.totalCuotas} · {item.ruta}
+                        {isOverdue && <span className="text-destructive ml-1">({format(parseISO(item.fechaVencimiento), "dd/MM")})</span>}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium shrink-0", badge.className)}>{badge.label}</span>
+                </div>
+                <div className="flex items-center justify-between text-[12px]">
+                  <div className="flex gap-3">
+                    <span>Cuota: <strong>{$$(item.capitalInteres)}</strong></span>
+                    {item.saldoMora > 0 && <span className="text-destructive">Mora: <strong>{$$(item.saldoMora)}</strong></span>}
+                  </div>
+                  <span className="font-bold text-[13px]">{$$(item.saldoTotal)}</span>
+                </div>
+                {!item.pagada ? (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button size="sm" className="h-8 text-[12px] flex-1" onClick={() => openPago(item)}>
+                      <HandCoins className="h-3.5 w-3.5 mr-1.5" />Cobrar
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setVisitaItem(item); setVisitaOpen(true); }}>
+                      <MapPin className="h-3.5 w-3.5" />
+                    </Button>
+                    {item.status !== "Prometida" && (
+                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setPromesaItem(item); setPromesaOpen(true); }}>
+                        <CalendarCheck className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/prestamos/${item.prestamoId}`)}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-success font-medium pt-1">✓ Cobrado: {$$(item.montoPagado || item.capitalInteres)}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        </>
       )}
 
       {/* Payment Modal */}

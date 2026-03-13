@@ -167,10 +167,11 @@ export default function ClientesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Clientes</h1>
-        <Button onClick={() => navigate("/clientes/nuevo")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nuevo
+        <h1 className="text-xl md:text-2xl font-bold">Clientes</h1>
+        <Button size="sm" className="h-8 text-[13px]" onClick={() => navigate("/clientes/nuevo")}>
+          <Plus className="h-4 w-4 mr-1.5" />
+          <span className="hidden sm:inline">Nuevo Cliente</span>
+          <span className="sm:hidden">Nuevo</span>
         </Button>
       </div>
 
@@ -188,13 +189,13 @@ export default function ClientesPage() {
 
         {/* ── Tab: Listado ──────────────────────────────────── */}
         <TabsContent value="listado" className="space-y-4">
-          <div className="flex gap-3">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="relative flex-1 sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
             <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-full sm:w-36">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>
@@ -211,7 +212,9 @@ export default function ClientesPage() {
           {isLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : (
-            <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            <>
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-table-header hover:bg-table-header border-b">
@@ -227,9 +230,7 @@ export default function ClientesPage() {
                 <TableBody>
                   {clientes?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">
-                        No se encontraron clientes
-                      </TableCell>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron clientes</TableCell>
                     </TableRow>
                   ) : (
                     clientes?.map((c) => (
@@ -251,24 +252,46 @@ export default function ClientesPage() {
                 </TableBody>
               </Table>
             </div>
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-2">
+              {clientes?.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron clientes</p>
+              ) : (
+                clientes?.map((c) => (
+                  <div key={c.id} className="bg-card border rounded-lg p-3 cursor-pointer active:bg-muted/50" onClick={() => navigate(`/clientes/${c.id}`)}>
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-[13px] truncate">{c.nombre_completo}</p>
+                        <p className="text-[11px] text-muted-foreground">{c.id_cliente} · {c.telefono || "Sin tel."}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <Badge className={estadoColors[c.estado] || "bg-muted text-muted-foreground"}>{c.estado}</Badge>
+                        <Switch checked={c.activo} onClick={(e) => handleToggleActivo(e, c.id, c.activo)} />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            </>
           )}
         </TabsContent>
 
         {/* ── Tab: Estados de Cuenta ────────────────────────── */}
         <TabsContent value="estados" className="space-y-4">
           {/* KPIs */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="border rounded-lg p-4 bg-card">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Deuda Total</p>
-              <p className="text-2xl font-bold mt-1">{$$(totalDeuda)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="border rounded-lg p-3 md:p-4 bg-card">
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Deuda Total</p>
+              <p className="text-xl md:text-2xl font-bold mt-1">{$$(totalDeuda)}</p>
             </div>
-            <div className="border rounded-lg p-4 bg-card">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Saldo Moroso</p>
-              <p className="text-2xl font-bold mt-1 text-destructive">{$$(totalMoroso)}</p>
+            <div className="border rounded-lg p-3 md:p-4 bg-card">
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Saldo Moroso</p>
+              <p className="text-xl md:text-2xl font-bold mt-1 text-destructive">{$$(totalMoroso)}</p>
             </div>
-            <div className="border rounded-lg p-4 bg-card">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Cuotas Vencidas</p>
-              <p className="text-2xl font-bold mt-1">{totalVencidas}</p>
+            <div className="border rounded-lg p-3 md:p-4 bg-card">
+              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Cuotas Vencidas</p>
+              <p className="text-xl md:text-2xl font-bold mt-1">{totalVencidas}</p>
             </div>
           </div>
 
