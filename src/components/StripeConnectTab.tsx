@@ -93,9 +93,9 @@ export function StripeConnectTab() {
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30">
                   {status.onboarding_complete ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
                   ) : (
-                    <XCircle className="h-5 w-5 text-yellow-500" />
+                    <XCircle className="h-5 w-5 text-accent-foreground" />
                   )}
                   <div>
                     <p className="text-sm font-medium">Onboarding</p>
