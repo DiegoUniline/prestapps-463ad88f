@@ -339,6 +339,13 @@ export default function NuevoPrestamoPage() {
               <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
             </div>
 
+            {/* Código interno */}
+            <div className="space-y-1.5">
+              <Label className="text-[13px]">Código Interno</Label>
+              <Input value={codigoInterno} onChange={(e) => setCodigoInterno(e.target.value)} placeholder="Ej: CI-001, REF-2024..." />
+              <p className="text-[11px] text-muted-foreground">Código de referencia interno opcional</p>
+            </div>
+
             {/* Monto + Tasa + Cuotas */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
