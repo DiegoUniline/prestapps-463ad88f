@@ -429,11 +429,11 @@ export default function DashboardPage() {
 
       {/* ── TABS ─────────────────────────────────────────── */}
       <Tabs defaultValue="principal">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="principal" className="text-xs gap-1"><Eye className="h-3.5 w-3.5" /> Principal</TabsTrigger>
-          <TabsTrigger value="financiero" className="text-xs gap-1"><BadgeDollarSign className="h-3.5 w-3.5" /> Financiero</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+          <TabsTrigger value="principal" className="text-xs gap-1"><Eye className="h-3.5 w-3.5" /><span className="hidden sm:inline">Principal</span><span className="sm:hidden">Inicio</span></TabsTrigger>
+          <TabsTrigger value="financiero" className="text-xs gap-1"><BadgeDollarSign className="h-3.5 w-3.5" /><span className="hidden sm:inline">Financiero</span><span className="sm:hidden">Finanzas</span></TabsTrigger>
           <TabsTrigger value="flujo" className="text-xs gap-1"><Banknote className="h-3.5 w-3.5" /> Flujo</TabsTrigger>
-          <TabsTrigger value="portafolio" className="text-xs gap-1"><CreditCard className="h-3.5 w-3.5" /> Portafolio</TabsTrigger>
+          <TabsTrigger value="portafolio" className="text-xs gap-1"><CreditCard className="h-3.5 w-3.5" /><span className="hidden sm:inline">Portafolio</span><span className="sm:hidden">Cartera</span></TabsTrigger>
         </TabsList>
 
         {/* ════════════════════════════════════════════════════
