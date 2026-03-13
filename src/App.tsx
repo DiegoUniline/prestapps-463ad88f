@@ -46,6 +46,10 @@ const LiquidarRutaPage = lazy(() => import("@/pages/LiquidarRutaPage"));
 const CatalogosPage = lazy(() => import("@/pages/CatalogosPage"));
 const ConfiguracionEmpresaPage = lazy(() => import("@/pages/ConfiguracionEmpresaPage"));
 const PermisosPage = lazy(() => import("@/pages/PermisosPage"));
+const AlertasPage = lazy(() => import("@/pages/AlertasPage"));
+const RenovacionPage = lazy(() => import("@/pages/RenovacionPage"));
+const RentabilidadPage = lazy(() => import("@/pages/RentabilidadPage"));
+const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
@@ -130,6 +134,10 @@ const App = () => (
               <Route path="/catalogos" element={<RoleGuard allowed={["admin"]}><LazyPage><CatalogosPage /></LazyPage></RoleGuard>} />
               <Route path="/configuracion" element={<RoleGuard allowed={["admin"]}><LazyPage><ConfiguracionEmpresaPage /></LazyPage></RoleGuard>} />
               <Route path="/permisos" element={<RoleGuard allowed={["admin"]}><LazyPage><PermisosPage /></LazyPage></RoleGuard>} />
+              <Route path="/alertas" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><AlertasPage /></LazyPage></RoleGuard>} />
+              <Route path="/renovacion" element={<RoleGuard allowed={["admin"]}><LazyPage><RenovacionPage /></LazyPage></RoleGuard>} />
+              <Route path="/rentabilidad" element={<RoleGuard allowed={["admin"]}><LazyPage><RentabilidadPage /></LazyPage></RoleGuard>} />
+              <Route path="/auditoria" element={<RoleGuard allowed={["admin"]}><LazyPage><AuditoriaPage /></LazyPage></RoleGuard>} />
             </Route>
             <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />
           </Routes>

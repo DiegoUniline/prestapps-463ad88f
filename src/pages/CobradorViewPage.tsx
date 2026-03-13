@@ -18,10 +18,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { PagoModal } from "@/components/PagoModal";
+import { VisitaModal } from "@/components/VisitaModal";
+import { PromesaModal } from "@/components/PromesaModal";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   HandCoins, ChevronLeft, ChevronRight, DollarSign, TrendingUp,
-  Eye, Phone, MapPin, Filter, X, Receipt, History,
+  Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
 } from "lucide-react";
 
 const $$ = (n: number) => `$${(n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -246,6 +248,12 @@ export default function CobradorViewPage() {
   const [pagoRutaId, setPagoRutaId] = useState<string | null>(null);
   const [pagoCobradorId, setPagoCobradorId] = useState<string | null>(null);
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();
+
+  // Visita + Promesa modals
+  const [visitaOpen, setVisitaOpen] = useState(false);
+  const [visitaItem, setVisitaItem] = useState<CuotaCobrador | null>(null);
+  const [promesaOpen, setPromesaOpen] = useState(false);
+  const [promesaItem, setPromesaItem] = useState<CuotaCobrador | null>(null);
 
   const fechaDesdeStr = format(fechaDesde, "yyyy-MM-dd");
   const fechaHastaStr = format(fechaHasta, "yyyy-MM-dd");
@@ -473,7 +481,7 @@ export default function CobradorViewPage() {
             <EmptyCard icon={CheckCircle2} title="¡Todo cobrado!" subtitle="No hay cuotas pendientes para este periodo." />
           ) : (
             pendientes.map((item) => (
-              <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} />
+              <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }} onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }} />
             ))
           )}
 
@@ -484,7 +492,7 @@ export default function CobradorViewPage() {
                 Ya cobradas ({cobradas.length})
               </p>
               {cobradas.map((item) => (
-                <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} />
+                <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }} onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }} />
               ))}
             </div>
           )}
@@ -525,16 +533,23 @@ export default function CobradorViewPage() {
 
       {/* ── PagoModal ──────────────────────────────────────── */}
       {pagoOpen && (
-        <PagoModal
-          open={pagoOpen}
-          onOpenChange={handlePagoClose}
-          prestamoId={pagoPrestamoId}
-          cuotasPendientes={pagoCuotas}
-          cajas={cajas || []}
-          rutaId={pagoRutaId}
-          cobradorId={pagoCobradorId}
-          montoInicial={pagoMontoInicial}
-        />
+        <PagoModal open={pagoOpen} onOpenChange={handlePagoClose} prestamoId={pagoPrestamoId}
+          cuotasPendientes={pagoCuotas} cajas={cajas || []} rutaId={pagoRutaId}
+          cobradorId={pagoCobradorId} montoInicial={pagoMontoInicial} />
+      )}
+      {visitaOpen && visitaItem && (
+        <VisitaModal open={visitaOpen}
+          onOpenChange={(o) => { setVisitaOpen(o); if (!o) queryClient.invalidateQueries({ queryKey: ["cobrador-cobranza"] }); }}
+          prestamoId={visitaItem.prestamoId} clienteId={visitaItem.clienteId}
+          clienteNombre={visitaItem.clienteNombre} cuotaId={visitaItem.cuotaId}
+          cuotaNum={visitaItem.numCuota} saldoTotal={visitaItem.saldoTotal} />
+      )}
+      {promesaOpen && promesaItem && (
+        <PromesaModal open={promesaOpen}
+          onOpenChange={(o) => { setPromesaOpen(o); if (!o) queryClient.invalidateQueries({ queryKey: ["cobrador-cobranza"] }); }}
+          prestamoId={promesaItem.prestamoId} cuotaNum={promesaItem.numCuota}
+          cuotaId={promesaItem.cuotaId} saldoTotal={promesaItem.saldoTotal}
+          fechaVencimiento={promesaItem.fechaVencimiento} />
       )}
     </div>
   );
@@ -559,10 +574,12 @@ function KPICard({ label, value, sub, icon: Icon, color }: {
   );
 }
 
-function CuotaCard({ item, onCobrar, onNavigate, showDate }: {
+function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }: {
   item: CuotaCobrador;
   onCobrar: (item: CuotaCobrador) => void;
   onNavigate: (path: string) => void;
+  onVisita?: (item: CuotaCobrador) => void;
+  onPromesa?: (item: CuotaCobrador) => void;
   showDate?: boolean;
 }) {
   const status = getStatusInfo(item);
@@ -632,21 +649,31 @@ function CuotaCard({ item, onCobrar, onNavigate, showDate }: {
                 Cobrar {$$(item.saldoTotal)}
               </Button>
               {item.clienteTelefono && (
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 shrink-0"
-                  onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}
-                >
-                  <Phone className="h-3.5 w-3.5" />
+                <>
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0"
+                    onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}>
+                    <Phone className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 text-green-600"
+                    onClick={() => window.open(`https://wa.me/${item.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              )}
+              {onVisita && (
+                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Registrar visita"
+                  onClick={() => onVisita(item)}>
+                  <MapPin className="h-3.5 w-3.5" />
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}
-              >
+              {onPromesa && item.status !== "Prometida" && (
+                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Promesa de pago"
+                  onClick={() => onPromesa(item)}>
+                  <CalendarCheck className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0"
+                onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}>
                 <Eye className="h-3.5 w-3.5" />
               </Button>
             </>
