@@ -83,6 +83,7 @@ export default function NuevoPrestamoPage() {
   const [valorMora, setValorMora] = useState("");
   const [notas, setNotas] = useState("");
   const [codigoInterno, setCodigoInterno] = useState("");
+  const [tipoCuenta, setTipoCuenta] = useState<string>("prestamo");
 
   // Pre-fill codigoInterno with next PRE-XXXX
   useEffect(() => {
@@ -197,8 +198,10 @@ export default function NuevoPrestamoPage() {
         throw new Error("Completa los campos obligatorios");
       }
 
-      // Validate caja balance if not carga inicial
-      if (!esInicial && cajaId) {
+      const esVenta = tipoCuenta !== "prestamo";
+
+      // Validate caja balance if not carga inicial and not a sale
+      if (!esInicial && !esVenta && cajaId) {
         const { data: caja } = await supabase
           .from("cajas")
           .select("saldo_actual")
@@ -228,6 +231,7 @@ export default function NuevoPrestamoPage() {
           empresa: empresaNombre || null,
           notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
           codigo_interno: codigoInterno || null,
+          tipo_cuenta: tipoCuenta,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
           gps_lat: geo.lat,
@@ -279,8 +283,8 @@ export default function NuevoPrestamoPage() {
         }
       }
 
-      // Register cash outflow ONLY if NOT carga inicial
-      if (!esInicial && cajaId) {
+      // Register cash outflow ONLY if NOT carga inicial AND NOT a sale
+      if (!esInicial && !esVenta && cajaId) {
         await supabase.from("movimientos_caja").insert({
           caja_id: cajaId,
           empresa_id: empresaId,
@@ -308,7 +312,7 @@ export default function NuevoPrestamoPage() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success("Préstamo creado exitosamente");
+      toast.success(tipoCuenta === "prestamo" ? "Préstamo creado exitosamente" : "Venta creada exitosamente");
       queryClient.invalidateQueries({ queryKey: ["prestamos-list"] });
       navigate(`/prestamos/${data.id}`);
     },
@@ -323,16 +327,36 @@ export default function NuevoPrestamoPage() {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/prestamos")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-xl font-semibold">Nuevo Préstamo</h1>
+        <h1 className="text-xl font-semibold">
+          {tipoCuenta === "prestamo" ? "Nuevo Préstamo" : "Nueva Venta a Crédito"}
+        </h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* LEFT — Form */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Datos del Préstamo</CardTitle>
+            <CardTitle className="text-base">
+              {tipoCuenta === "prestamo" ? "Datos del Préstamo" : "Datos de la Venta"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Tipo de Cuenta */}
+            <div className="space-y-1.5">
+              <Label className="text-[13px]">Tipo de Cuenta *</Label>
+              <Select value={tipoCuenta} onValueChange={setTipoCuenta}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="prestamo">💰 Préstamo</SelectItem>
+                  <SelectItem value="venta_seguro">🛡️ Venta de Seguro</SelectItem>
+                  <SelectItem value="venta_producto">📦 Venta de Producto</SelectItem>
+                  <SelectItem value="venta_servicio">🔧 Venta de Servicio</SelectItem>
+                </SelectContent>
+              </Select>
+              {tipoCuenta !== "prestamo" && (
+                <p className="text-[11px] text-muted-foreground">Las ventas no descuentan de caja al crear, solo suman al cobrar.</p>
+              )}
+            </div>
             {/* Código Interno + Cliente */}
             <div className="grid grid-cols-[120px_1fr] gap-3">
               <div className="space-y-1.5">
@@ -493,7 +517,9 @@ export default function NuevoPrestamoPage() {
               </div>
             </div>
 
-            {/* Carga inicial checkbox */}
+            {/* Carga inicial checkbox - only for prestamos */}
+            {tipoCuenta === "prestamo" && (
+            <>
             <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50">
               <Checkbox
                 checked={esInicial}
@@ -569,8 +595,10 @@ export default function NuevoPrestamoPage() {
                 )}
               </div>
             )}
+            </>
+            )}
 
-            {!esInicial && !cajaId && (
+            {tipoCuenta === "prestamo" && !esInicial && !cajaId && (
               <div className="flex items-center gap-2 text-warning text-sm">
                 <AlertTriangle className="h-4 w-4" />
                 <span>Sin caja asignada — no se registrará movimiento de salida.</span>
@@ -615,7 +643,7 @@ export default function NuevoPrestamoPage() {
               <Button variant="outline" onClick={() => navigate("/prestamos")}>Cancelar</Button>
               <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
                 <Save className="h-4 w-4 mr-1.5" />
-                {createMutation.isPending ? "Guardando..." : "Crear Préstamo"}
+                {createMutation.isPending ? "Guardando..." : tipoCuenta === "prestamo" ? "Crear Préstamo" : "Crear Venta"}
               </Button>
             </div>
           </CardContent>

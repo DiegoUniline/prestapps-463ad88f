@@ -55,6 +55,7 @@ interface CuotaDiaria {
   fechaPago: string | null;
   gestiones: number;
   ultimaGestion: string | null;
+  tipoCuenta: string;
 }
 
 function useCobranzaDiaria(fecha: string, empresaId: string) {
@@ -106,10 +107,9 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
 
       // 2) Get prestamos info
       const prestamoIds = [...new Set(allCuotas.map((c) => c.prestamo_id))];
-      const { data: prestamos } = await supabase
-        .from("prestamos")
+      const { data: prestamos } = await (supabase.from as any)("prestamos")
         .select(`
-          id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id,
+          id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, tipo_cuenta,
           clientes ( nombre_completo ),
           rutas ( nombre ),
           cajas ( nombre )
@@ -117,7 +117,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
         .in("id", prestamoIds);
 
       // 3) Get cobradores names from profiles
-      const cobIds = [...new Set((prestamos || []).map((p: any) => p.cobrador_id).filter(Boolean))];
+      const cobIds = [...new Set((prestamos || []).map((p: any) => p.cobrador_id).filter(Boolean))] as string[];
       const cobMap: Record<string, string> = {};
       if (cobIds.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
@@ -194,6 +194,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
           fechaPago: c.fecha_pagada || null,
           gestiones: gestionesByPrestamo[c.prestamo_id]?.count || 0,
           ultimaGestion: gestionesByPrestamo[c.prestamo_id]?.ultima || null,
+          tipoCuenta: pres.tipo_cuenta || "prestamo",
         };
       });
     },
@@ -574,6 +575,11 @@ export default function CobranzaDiariaPage() {
                       <button className="font-medium hover:text-primary hover:underline text-left" onClick={() => navigate(`/clientes/${item.clienteId}`)}>
                         {item.clienteNombre}
                       </button>
+                      {item.tipoCuenta !== "prestamo" && (
+                        <span className="ml-1.5 inline-flex items-center rounded px-1.5 py-0 text-[9px] font-semibold bg-accent text-accent-foreground">
+                          {item.tipoCuenta === "venta_seguro" ? "Seguro" : item.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="font-medium">#{item.numCuota}</span>
@@ -637,6 +643,11 @@ export default function CobranzaDiariaPage() {
                         {item.clienteNombre}
                       </button>
                       <p className="text-[11px] text-muted-foreground">
+                        {item.tipoCuenta !== "prestamo" && (
+                          <span className="inline-flex items-center rounded px-1 py-0 text-[9px] font-semibold bg-accent text-accent-foreground mr-1">
+                            {item.tipoCuenta === "venta_seguro" ? "Seguro" : item.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
+                          </span>
+                        )}
                         Cuota #{item.numCuota}/{item.totalCuotas} · {item.ruta}
                         {isOverdue && <span className="text-destructive ml-1">({format(parseISO(item.fechaVencimiento), "dd/MM")})</span>}
                       </p>

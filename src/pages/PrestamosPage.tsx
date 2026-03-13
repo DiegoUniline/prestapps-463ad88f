@@ -237,9 +237,9 @@ export default function PrestamosPage() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Préstamos</h1>
+        <h1 className="text-xl font-semibold">Préstamos y Ventas</h1>
         <Button onClick={() => navigate("/prestamos/nuevo")} size="sm" className="h-8 text-[13px]">
-          <Plus className="h-3.5 w-3.5 mr-1.5" />Nuevo Préstamo
+          <Plus className="h-3.5 w-3.5 mr-1.5" />Nuevo
         </Button>
       </div>
 
@@ -403,7 +403,14 @@ export default function PrestamosPage() {
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
                 </TableCell>
                 <TableCell className="font-mono text-[11px] text-muted-foreground px-3 whitespace-nowrap">{p.codigoInterno || "—"}</TableCell>
-                <TableCell className="font-mono text-[12px] px-3 whitespace-nowrap">{p.idPrestamo}</TableCell>
+                <TableCell className="font-mono text-[12px] px-3 whitespace-nowrap">
+                  {p.idPrestamo}
+                  {p.tipoCuenta !== "prestamo" && (
+                    <span className="ml-1.5 inline-flex items-center rounded px-1.5 py-0 text-[9px] font-semibold bg-accent text-accent-foreground">
+                      {p.tipoCuenta === "venta_seguro" ? "Seguro" : p.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
+                    </span>
+                  )}
+                </TableCell>
                 <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">{p.cliente}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaRegistro)}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaPrimerPago)}</TableCell>
