@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ArrowLeft, CalendarIcon, Send, AlertTriangle } from "lucide-react";
+import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { toast } from "sonner";
@@ -174,6 +175,7 @@ export default function SolicitudPrestamoPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -246,6 +248,7 @@ export default function SolicitudPrestamoPage() {
                     {cajas.map((c) => (<SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
                 {saldoCaja !== null && (
                   <p className={cn("text-xs", excedeSaldo ? "text-destructive font-medium" : "text-muted-foreground")}>
                     Saldo disponible: {$$(saldoCaja)}
@@ -266,6 +269,7 @@ export default function SolicitudPrestamoPage() {
                     {rutas.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
               </div>
             </div>
 

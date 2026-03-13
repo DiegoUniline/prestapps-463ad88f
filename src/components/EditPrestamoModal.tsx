@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Pencil } from "lucide-react";
+import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 interface EditPrestamoModalProps {
   open: boolean;
@@ -112,6 +113,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
                     {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
               </div>
               <div>
                 <Label className="text-xs">Cobrador</Label>
@@ -132,6 +134,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
                     {cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
               </div>
             </div>
           </div>

@@ -19,6 +19,7 @@ import { format, addDays, addWeeks, addMonths } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
+import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 function useClientesOptions(empresaId: string) {
   return useQuery({
@@ -245,6 +246,7 @@ export default function NuevoPrestamoPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
             </div>
 
             {/* Monto + Tasa + Cuotas */}
@@ -341,6 +343,7 @@ export default function NuevoPrestamoPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Ruta</Label>
@@ -352,6 +355,7 @@ export default function NuevoPrestamoPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
               </div>
             </div>
 
