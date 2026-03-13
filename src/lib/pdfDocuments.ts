@@ -487,5 +487,6 @@ export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData
   });
 
   addFooter(doc);
-  doc.save(`pagos-PRE-${prestamo.id.slice(0, 8)}.pdf`);
+  return doc;
 }
+
