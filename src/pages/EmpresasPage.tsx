@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Pencil, Building2, UserPlus, Crown, Shield, Users } from "lucide-react";
+import { Plus, Pencil, Building2, UserPlus, Crown, Shield, Users, Eye } from "lucide-react";
 
 const PLAN_CONFIG: Record<string, { label: string; maxUsers: number; price: string; icon: React.ReactNode }> = {
   basico: { label: "Básico", maxUsers: 3, price: "$499/mes", icon: <Shield className="h-3.5 w-3.5" /> },
@@ -60,6 +60,7 @@ export default function EmpresasPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<EmpresaForm>(emptyForm);
+  const [detailEmpresa, setDetailEmpresa] = useState<Empresa | null>(null);
 
   const { data: empresas = [], isLoading } = useQuery({
     queryKey: ["empresas-config"],
@@ -91,7 +92,6 @@ export default function EmpresasPage() {
     },
   });
 
-  // Count users per empresa
   const { data: userCountMap = {} } = useQuery({
     queryKey: ["empresas-user-counts"],
     queryFn: async () => {
@@ -104,6 +104,26 @@ export default function EmpresasPage() {
         map[eid] = (map[eid] || 0) + 1;
       }
       return map;
+    },
+  });
+
+  // Users for selected empresa detail
+  const { data: detailUsers = [], isLoading: loadingDetail } = useQuery({
+    queryKey: ["empresa-detail-users", detailEmpresa?.id],
+    enabled: !!detailEmpresa,
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke("manage-users", {
+        body: { action: "list", empresa_id: detailEmpresa!.id },
+      });
+      return (data || []) as Array<{
+        id: string;
+        nombre_completo: string;
+        email: string;
+        rol: string;
+        telefono: string | null;
+        activo: boolean;
+        created_at: string | null;
+      }>;
     },
   });
 
@@ -232,7 +252,7 @@ export default function EmpresasPage() {
                   const atLimit = userCount >= e.max_usuarios && e.max_usuarios < 999;
 
                   return (
-                    <TableRow key={e.id} className={!e.activa ? "opacity-50" : ""}>
+                    <TableRow key={e.id} className={`${!e.activa ? "opacity-50" : ""} cursor-pointer hover:bg-muted/50`} onClick={() => setDetailEmpresa(e)}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -270,7 +290,7 @@ export default function EmpresasPage() {
                           {e.activa ? "Activa" : "Inactiva"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(ev) => ev.stopPropagation()}>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(e)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -369,6 +389,89 @@ export default function EmpresasPage() {
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               {saveMutation.isPending ? "Guardando..." : editId ? "Actualizar" : "Crear Empresa + Admin"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail dialog */}
+      <Dialog open={!!detailEmpresa} onOpenChange={(v) => !v && setDetailEmpresa(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" /> {detailEmpresa?.nombre}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+            {/* Empresa info */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <span className="text-muted-foreground block text-xs">Plan</span>
+                <Badge variant="outline" className="gap-1 mt-0.5">
+                  {PLAN_CONFIG[detailEmpresa?.plan || "basico"]?.icon} {PLAN_CONFIG[detailEmpresa?.plan || "basico"]?.label}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-xs">RUC / NIT</span>
+                <span className="font-medium">{detailEmpresa?.ruc || "—"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-xs">Teléfono</span>
+                <span className="font-medium">{detailEmpresa?.telefono || "—"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-xs">Estado</span>
+                <Badge variant={detailEmpresa?.activa ? "default" : "secondary"} className="mt-0.5">
+                  {detailEmpresa?.activa ? "Activa" : "Inactiva"}
+                </Badge>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Users className="h-4 w-4" /> Usuarios ({detailUsers.length})
+            </div>
+
+            {loadingDetail ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Cargando usuarios...</p>
+            ) : detailUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No hay usuarios registrados</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Correo</TableHead>
+                    <TableHead>Rol</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead>Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {detailUsers.map((u) => {
+                    const rolLabel: Record<string, string> = { admin: "Admin", supervisor: "Supervisor", cobrador: "Cobrador" };
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">{u.nombre_completo}</TableCell>
+                        <TableCell className="text-sm">{u.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{rolLabel[u.rol] || u.rol}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{u.telefono || "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant={u.activo ? "default" : "secondary"}>
+                            {u.activo ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailEmpresa(null)}>Cerrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
