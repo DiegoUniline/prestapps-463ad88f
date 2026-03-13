@@ -594,8 +594,9 @@ export default function NuevoPrestamoPage() {
                 )}
               </div>
             )}
+            )}
 
-            {!esInicial && !cajaId && (
+            {tipoCuenta === "prestamo" && !esInicial && !cajaId && (
               <div className="flex items-center gap-2 text-warning text-sm">
                 <AlertTriangle className="h-4 w-4" />
                 <span>Sin caja asignada — no se registrará movimiento de salida.</span>
