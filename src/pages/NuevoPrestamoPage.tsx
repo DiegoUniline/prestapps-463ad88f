@@ -629,8 +629,7 @@ export default function NuevoPrestamoPage() {
                     </TableHeader>
                     <TableBody>
                       {amortizacion.map((c) => {
-                        const numCubiertas = esInicial ? (parseInt(cuotasCubiertas) || 0) : 0;
-                        const yaPagada = c.num <= numCubiertas;
+                        const yaPagada = c.num <= numCuotasCubiertas;
                         return (
                           <TableRow key={c.num} className={cn("border-b border-border/50", yaPagada && "opacity-50 line-through")}>
                             <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num} {yaPagada && "✓"}</TableCell>
