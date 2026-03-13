@@ -85,6 +85,8 @@ export default function NuevoPrestamoPage() {
   const [cuotaOverride, setCuotaOverride] = useState("");
   const [esInicial, setEsInicial] = useState(false);
   const [cuotasCubiertas, setCuotasCubiertas] = useState("");
+  const [montoPagadoInicial, setMontoPagadoInicial] = useState("");
+  const [inicialMode, setInicialMode] = useState<"cuotas" | "monto">("cuotas");
   const [fechaTexto, setFechaTexto] = useState("");
 
   // Cálculos
