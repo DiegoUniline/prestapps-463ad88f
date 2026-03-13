@@ -42,6 +42,7 @@ export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId
         fecha_prometida: fecha,
         notas: notas || null,
         status: "Pendiente",
+        empresa_id: empresaId,
       });
       if (error) throw error;
 
