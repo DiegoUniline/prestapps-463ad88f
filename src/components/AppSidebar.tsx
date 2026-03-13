@@ -3,6 +3,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole, type AppRole } from "@/hooks/useCurrentUserRole";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
