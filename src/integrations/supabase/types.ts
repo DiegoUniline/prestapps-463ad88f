@@ -1346,6 +1346,175 @@ export type Database = {
           },
         ]
       }
+      stripe_charges_log: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          cuota_id: string | null
+          empresa_id: string
+          error_mensaje: string | null
+          id: string
+          moneda: string
+          monto: number
+          prestamo_id: string
+          status: string
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          cuota_id?: string | null
+          empresa_id: string
+          error_mensaje?: string | null
+          id?: string
+          moneda?: string
+          monto: number
+          prestamo_id: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          cuota_id?: string | null
+          empresa_id?: string
+          error_mensaje?: string | null
+          id?: string
+          moneda?: string
+          monto?: number
+          prestamo_id?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_charges_log_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stripe_charges_log_cuota_id_fkey"
+            columns: ["cuota_id"]
+            isOneToOne: false
+            referencedRelation: "amortizacion"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stripe_charges_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stripe_charges_log_prestamo_id_fkey"
+            columns: ["prestamo_id"]
+            isOneToOne: false
+            referencedRelation: "prestamos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_connect_accounts: {
+        Row: {
+          charges_enabled: boolean
+          created_at: string | null
+          empresa_id: string
+          id: string
+          onboarding_complete: boolean
+          payouts_enabled: boolean
+          stripe_account_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          charges_enabled?: boolean
+          created_at?: string | null
+          empresa_id: string
+          id?: string
+          onboarding_complete?: boolean
+          payouts_enabled?: boolean
+          stripe_account_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          charges_enabled?: boolean
+          created_at?: string | null
+          empresa_id?: string
+          id?: string
+          onboarding_complete?: boolean
+          payouts_enabled?: boolean
+          stripe_account_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_connect_accounts_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stripe_payment_methods: {
+        Row: {
+          activo: boolean
+          brand: string | null
+          cliente_id: string
+          created_at: string | null
+          empresa_id: string
+          exp_month: number | null
+          exp_year: number | null
+          id: string
+          last4: string | null
+          stripe_customer_id: string
+          stripe_payment_method_id: string | null
+        }
+        Insert: {
+          activo?: boolean
+          brand?: string | null
+          cliente_id: string
+          created_at?: string | null
+          empresa_id: string
+          exp_month?: number | null
+          exp_year?: number | null
+          id?: string
+          last4?: string | null
+          stripe_customer_id: string
+          stripe_payment_method_id?: string | null
+        }
+        Update: {
+          activo?: boolean
+          brand?: string | null
+          cliente_id?: string
+          created_at?: string | null
+          empresa_id?: string
+          exp_month?: number | null
+          exp_year?: number | null
+          id?: string
+          last4?: string | null
+          stripe_customer_id?: string
+          stripe_payment_method_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stripe_payment_methods_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stripe_payment_methods_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supervisor_rutas: {
         Row: {
           created_at: string | null
