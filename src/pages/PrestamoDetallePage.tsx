@@ -528,7 +528,7 @@ export default function PrestamoDetallePage() {
               {(prestamo as any).cancelado_en && (
                 <SidebarField full label="CANCELADO/REEST." value={
                   <span className="text-destructive text-[12px]">
-                    {format(new Date((prestamo as any).cancelado_en), "dd/MM/yyyy HH:mm")}
+                    {fmtDateTime((prestamo as any).cancelado_en)}
                     {(prestamo as any).motivo_cancelacion && <><br /><span className="italic text-muted-foreground">{(prestamo as any).motivo_cancelacion}</span></>}
                   </span>
                 } />
