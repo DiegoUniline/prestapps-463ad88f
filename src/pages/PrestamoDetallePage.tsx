@@ -571,6 +571,7 @@ export default function PrestamoDetallePage() {
             enabled={(prestamo as any).cobro_automatico_stripe ?? false}
             disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
             onToggled={() => queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] })}
+            empresaId={empresaId}
           />
         </div>
 
