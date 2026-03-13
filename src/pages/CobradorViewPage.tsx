@@ -567,10 +567,12 @@ function KPICard({ label, value, sub, icon: Icon, color }: {
   );
 }
 
-function CuotaCard({ item, onCobrar, onNavigate, showDate }: {
+function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }: {
   item: CuotaCobrador;
   onCobrar: (item: CuotaCobrador) => void;
   onNavigate: (path: string) => void;
+  onVisita?: (item: CuotaCobrador) => void;
+  onPromesa?: (item: CuotaCobrador) => void;
   showDate?: boolean;
 }) {
   const status = getStatusInfo(item);
