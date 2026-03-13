@@ -539,6 +539,7 @@ export default function CobranzaDiariaPage() {
           </CardContent>
         </Card>
       ) : (
+        <>
         {/* Desktop Table */}
         <div className="hidden md:block border rounded-lg overflow-hidden">
           <Table>
