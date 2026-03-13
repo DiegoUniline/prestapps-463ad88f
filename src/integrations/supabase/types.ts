@@ -901,6 +901,7 @@ export type Database = {
           cancelado_por: string | null
           cliente_id: string
           cobrador_id: string | null
+          cobro_automatico_stripe: boolean
           created_at: string | null
           cuota_calculada: number | null
           cuota_redondeada: number | null
@@ -933,6 +934,7 @@ export type Database = {
           cancelado_por?: string | null
           cliente_id: string
           cobrador_id?: string | null
+          cobro_automatico_stripe?: boolean
           created_at?: string | null
           cuota_calculada?: number | null
           cuota_redondeada?: number | null
@@ -965,6 +967,7 @@ export type Database = {
           cancelado_por?: string | null
           cliente_id?: string
           cobrador_id?: string | null
+          cobro_automatico_stripe?: boolean
           created_at?: string | null
           cuota_calculada?: number | null
           cuota_redondeada?: number | null
