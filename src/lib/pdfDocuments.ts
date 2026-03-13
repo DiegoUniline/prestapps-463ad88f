@@ -404,7 +404,7 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
   // Right signature
   doc.line(120, y + 20, 196, y + 20);
   doc.text("Firma Autorizada", 158, y + 26, { align: "center" });
-  doc.text("Empresa", 158, y + 31, { align: "center" });
+  doc.text(prestamo.empresaNombre || "Empresa", 158, y + 31, { align: "center" });
 
   addFooter(doc);
   doc.save(`contrato-PRE-${prestamo.id.slice(0, 8)}.pdf`);
