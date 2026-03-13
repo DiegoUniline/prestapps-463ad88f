@@ -18,7 +18,7 @@ import { es } from "date-fns/locale";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   XCircle, ChevronLeft, ChevronRight, Users, DollarSign,
-  TrendingUp, HandCoins, Eye,
+  TrendingUp, HandCoins, Eye, MapPin, CalendarCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
