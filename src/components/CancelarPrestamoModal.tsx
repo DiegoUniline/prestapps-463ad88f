@@ -16,8 +16,6 @@ interface CancelarPrestamoModalProps {
   saldoPendiente: number;
 }
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteNombre, saldoPendiente }: CancelarPrestamoModalProps) {
   const queryClient = useQueryClient();
   const [motivo, setMotivo] = useState("");

@@ -31,9 +31,7 @@ interface VisitaModalProps {
   cuotaNum: number;
   saldoTotal: number;
 }
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 export function VisitaModal({ open, onOpenChange, prestamoId, clienteId, clienteNombre, cuotaId, cuotaNum, saldoTotal }: VisitaModalProps) {
   const { empresaId } = useEmpresa();
   const { user } = useAuth();

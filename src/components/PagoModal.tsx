@@ -48,7 +48,7 @@ interface PagoModalProps {
   montoInicial?: number;
 }
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId, montoInicial }: PagoModalProps) {
   const queryClient = useQueryClient();

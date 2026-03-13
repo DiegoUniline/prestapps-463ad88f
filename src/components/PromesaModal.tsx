@@ -18,9 +18,7 @@ interface PromesaModalProps {
   saldoTotal: number;
   fechaVencimiento: string;
 }
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId, saldoTotal, fechaVencimiento }: PromesaModalProps) {
   const [monto, setMonto] = useState(saldoTotal.toString());
   const [fecha, setFecha] = useState("");

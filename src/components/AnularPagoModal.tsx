@@ -23,9 +23,7 @@ interface AnularPagoModalProps {
     cobrador_id: string | null;
   } | null;
 }
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalProps) {
   const queryClient = useQueryClient();
   const [motivo, setMotivo] = useState("");

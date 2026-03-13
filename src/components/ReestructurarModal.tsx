@@ -35,7 +35,7 @@ interface ReestructurarModalProps {
   };
 }
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { $$ } from "@/lib/utils";
 
 function calcNextDate(base: Date, frecuencia: string, n: number): Date {
   switch (frecuencia) {

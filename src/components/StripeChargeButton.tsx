@@ -20,7 +20,7 @@ interface StripeChargeButtonProps {
   onChargeSuccess?: () => void;
 }
 
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 
 export function StripeChargeButton({
   prestamoId, clienteId, clienteNombre, clienteTelefono, clienteEmail,
