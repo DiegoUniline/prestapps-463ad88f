@@ -36,7 +36,7 @@ export function useClientes(filters?: { estado?: string; search?: string; empres
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as Cliente[];
+      return data as unknown as Cliente[];
     },
     staleTime: 5 * 60 * 1000,
   });
