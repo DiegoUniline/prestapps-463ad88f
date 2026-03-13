@@ -704,7 +704,7 @@ export default function PrestamoDetallePage() {
                               "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]",
                               isAnulado && "opacity-50 line-through"
                             )}>
-                              <TableCell className="px-3 text-[12px]">{pg.created_at ? format(new Date(pg.created_at), "dd/MM/yyyy") : "—"}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{fmtDate(pg.created_at)}</TableCell>
                               <TableCell className="px-3 text-[12px] text-muted-foreground">#{i + 1}</TableCell>
                               <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pg.monto_recibido))}</TableCell>
                               <TableCell className={cn("px-3 text-[12px]", (pg.aplicado_mora || 0) > 0 ? "text-destructive" : "text-[hsl(220,14%,83%)]")}>{(pg.aplicado_mora || 0) > 0 ? $$(pg.aplicado_mora) : "—"}</TableCell>
