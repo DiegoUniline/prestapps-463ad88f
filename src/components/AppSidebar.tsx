@@ -65,11 +65,11 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { role } = useCurrentUserRole();
+  const { role, loading } = useCurrentUserRole();
   const isActive = (path: string) => location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
 
-  const visibleMain = mainNav.filter((item) => item.roles.includes(role));
-  const visibleAdmin = adminNav.filter((item) => item.roles.includes(role));
+  const visibleMain = loading ? mainNav : mainNav.filter((item) => item.roles.includes(role));
+  const visibleAdmin = loading ? adminNav : adminNav.filter((item) => item.roles.includes(role));
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
