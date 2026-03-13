@@ -749,6 +749,43 @@ export default function PrestamoDetallePage() {
         currentCobradorId={prestamo.cobrador_id}
         rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
       />
+
+      {/* Anular Pago Modal */}
+      <AnularPagoModal
+        open={anularPagoOpen}
+        onOpenChange={setAnularPagoOpen}
+        pago={selectedPago}
+      />
+
+      {/* Cancelar Préstamo Modal */}
+      <CancelarPrestamoModal
+        open={cancelarOpen}
+        onOpenChange={setCancelarOpen}
+        prestamoId={prestamo.id}
+        clienteNombre={cliente?.nombre_completo || "—"}
+        saldoPendiente={saldoPendiente}
+      />
+
+      {/* Reestructurar Modal */}
+      <ReestructurarModal
+        open={reestructurarOpen}
+        onOpenChange={setReestructurarOpen}
+        prestamoId={prestamo.id}
+        clienteId={prestamo.cliente_id}
+        clienteNombre={cliente?.nombre_completo || "—"}
+        saldoCapital={amort.reduce((s, c) => s + Number(c.saldo_capital || 0), 0)}
+        saldoTotal={saldoPendiente}
+        prestamo={{
+          modalidad: prestamo.modalidad,
+          frecuencia: prestamo.frecuencia,
+          tasa_interes: prestamo.tasa_interes ? Number(prestamo.tasa_interes) : null,
+          tipo_mora: prestamo.tipo_mora,
+          valor_mora: prestamo.valor_mora ? Number(prestamo.valor_mora) : null,
+          caja_id: prestamo.caja_id,
+          ruta_id: prestamo.ruta_id,
+          cobrador_id: prestamo.cobrador_id,
+        }}
+      />
     </div>
   );
 }
