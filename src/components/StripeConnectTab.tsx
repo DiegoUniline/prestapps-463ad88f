@@ -24,12 +24,6 @@ export function StripeConnectTab() {
   const { data: status, isLoading, refetch } = useQuery<ConnectStatus>({
     queryKey: ["stripe-connect-status", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("stripe-connect-status", {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        body: undefined,
-      });
-      // Use query params approach - build URL manually
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const url = `https://${projectId}.supabase.co/functions/v1/stripe-connect-status?empresa_id=${empresaId}`;
       const session = (await supabase.auth.getSession()).data.session;
