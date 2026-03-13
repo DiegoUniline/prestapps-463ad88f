@@ -35,6 +35,7 @@ import {
   MapPin,
   ClipboardList,
   BookOpen,
+  Cog,
 } from "lucide-react";
 
 const mainNav = [
