@@ -794,7 +794,7 @@ export default function PrestamoDetallePage() {
                             {pr.status || "Pendiente"}
                           </span>
                         </TableCell>
-                        <TableCell className="px-3 text-[12px] text-muted-foreground">{pr.created_at ? format(new Date(pr.created_at), "dd/MM/yyyy") : "—"}</TableCell>
+                        <TableCell className="px-3 text-[12px] text-muted-foreground">{fmtDate(pr.created_at)}</TableCell>
                         <TableCell className="px-3">
                           <button className="text-[11px] text-muted-foreground hover:text-primary transition-colors">Editar</button>
                         </TableCell>
