@@ -175,6 +175,7 @@ export default function NuevoPrestamoPage() {
           cuota_redondeada: cuotaFinal,
           gps_lat: geo.lat,
           gps_lng: geo.lng,
+          empresa_id: empresaId,
         } as any)
         .select("id")
         .single();
