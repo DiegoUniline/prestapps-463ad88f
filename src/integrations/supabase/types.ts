@@ -1796,7 +1796,7 @@ export type Database = {
       app_role: "admin" | "supervisor" | "cobrador"
       cliente_estado: "Activo" | "Inactivo" | "Bloqueado" | "En mora"
       cuota_status: "Pendiente" | "Pagada" | "Parcial" | "Vencida" | "Prometida"
-      documento_tipo: "DUI" | "Pasaporte" | "NIT" | "Otro"
+      documento_tipo: "DUI" | "Pasaporte" | "NIT" | "Otro" | "INE"
       estado_civil:
         | "Soltero"
         | "Casado"
@@ -1953,7 +1953,7 @@ export const Constants = {
       app_role: ["admin", "supervisor", "cobrador"],
       cliente_estado: ["Activo", "Inactivo", "Bloqueado", "En mora"],
       cuota_status: ["Pendiente", "Pagada", "Parcial", "Vencida", "Prometida"],
-      documento_tipo: ["DUI", "Pasaporte", "NIT", "Otro"],
+      documento_tipo: ["DUI", "Pasaporte", "NIT", "Otro", "INE"],
       estado_civil: ["Soltero", "Casado", "Unión libre", "Divorciado", "Viudo"],
       frecuencia_pago: ["diario", "semanal", "quincenal", "mensual"],
       metodo_pago: ["Efectivo", "Transferencia", "Otro"],
