@@ -36,7 +36,7 @@ const mainTabs: Record<string, NavTab[]> = {
     { title: "Clientes", url: "/clientes", icon: Users, roles: ["supervisor"] },
   ],
   cobrador: [
-    { title: "Inicio", url: "/", icon: LayoutDashboard, roles: ["cobrador"] },
+    { title: "Inicio", url: "/dashboard", icon: LayoutDashboard, roles: ["cobrador"] },
     { title: "Mi Cobro", url: "/mi-cobranza", icon: HandCoins, roles: ["cobrador"] },
     { title: "Cobranza", url: "/cobranza", icon: ClipboardCheck, roles: ["cobrador"] },
     { title: "Pagos", url: "/pagos", icon: Wallet, roles: ["cobrador"] },
