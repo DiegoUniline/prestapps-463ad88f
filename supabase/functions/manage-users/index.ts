@@ -26,6 +26,38 @@ Deno.serve(async (req) => {
         bono_meta_monto, bono_meta_objetivo, rutas_asignadas
       } = body;
 
+      const targetEmpresaId = empresa_id || "00000000-0000-0000-0000-000000000001";
+
+      // Check user limit for this empresa
+      const { data: empresa } = await supabase
+        .from("empresas")
+        .select("max_usuarios, activa, plan, nombre")
+        .eq("id", targetEmpresaId)
+        .single();
+
+      if (empresa && !empresa.activa) {
+        throw new Error(`La empresa "${empresa.nombre}" está inactiva. No se pueden crear usuarios.`);
+      }
+
+      if (empresa) {
+        const { count } = await supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("empresa_id", targetEmpresaId);
+
+        const currentCount = count || 0;
+        const maxUsers = empresa.max_usuarios || 3;
+
+        if (currentCount >= maxUsers && maxUsers < 999) {
+          const planLabel = empresa.plan === "basico" ? "Básico (3 usuarios)" 
+            : empresa.plan === "profesional" ? "Profesional (10 usuarios)" 
+            : "Enterprise";
+          throw new Error(
+            `Límite de usuarios alcanzado. El plan ${planLabel} permite máximo ${maxUsers} usuarios. Actualmente tiene ${currentCount}. Contacte al administrador para actualizar el plan.`
+          );
+        }
+      }
+
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email, password, email_confirm: true,
       });
@@ -39,7 +71,7 @@ Deno.serve(async (req) => {
         direccion: direccion || null,
         porcentaje_comision: porcentaje_comision || 0,
         activo: activo ?? true,
-        empresa_id: empresa_id || "00000000-0000-0000-0000-000000000001",
+        empresa_id: targetEmpresaId,
         comision_tipo: comision_tipo || "ninguna",
         comision_cobros_equipo: comision_cobros_equipo || 0,
         comision_prestamos: comision_prestamos || 0,
@@ -53,7 +85,6 @@ Deno.serve(async (req) => {
       const { error: roleError } = await supabase.from("user_roles").insert({ user_id: userId, role: dbRole });
       if (roleError) throw roleError;
 
-      // Assign supervisor routes
       if (dbRole === "supervisor" && rutas_asignadas?.length) {
         const rows = rutas_asignadas.map((ruta_id: string) => ({ supervisor_id: userId, ruta_id }));
         await supabase.from("supervisor_rutas").insert(rows);
@@ -92,7 +123,6 @@ Deno.serve(async (req) => {
       await supabase.from("user_roles").delete().eq("user_id", user_id);
       await supabase.from("user_roles").insert({ user_id, role: dbRole });
 
-      // Update supervisor routes
       await supabase.from("supervisor_rutas").delete().eq("supervisor_id", user_id);
       if (dbRole === "supervisor" && rutas_asignadas?.length) {
         const rows = rutas_asignadas.map((ruta_id: string) => ({ supervisor_id: user_id, ruta_id }));
@@ -135,7 +165,6 @@ Deno.serve(async (req) => {
       const emailMap: Record<string, string> = {};
       for (const u of authUsers.users) emailMap[u.id] = u.email || "";
 
-      // Get supervisor routes
       const { data: supRutas } = await supabase.from("supervisor_rutas").select("supervisor_id, ruta_id");
       const rutasMap: Record<string, string[]> = {};
       for (const sr of (supRutas || [])) {
