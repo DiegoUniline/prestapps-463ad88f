@@ -286,6 +286,7 @@ export default function CajasPage() {
     const { error: movErr } = await supabase.from("movimientos_caja").insert({
       caja_id: cajaId, tipo, monto: m,
       concepto: concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"),
+      empresa_id: empresaId,
     });
     if (movErr) { toast.error("Error: " + movErr.message); setSaving(false); return; }
 
