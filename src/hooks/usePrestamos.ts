@@ -56,6 +56,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
     id: string;
     id_prestamo: string;
     codigo_interno: string | null;
+    tipo_cuenta: string | null;
     monto_solicitado: number | null;
     monto_total_pagar: number | null;
     num_cuotas: number | null;
