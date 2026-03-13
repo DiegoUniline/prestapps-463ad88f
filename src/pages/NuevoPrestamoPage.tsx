@@ -336,9 +336,27 @@ export default function NuevoPrestamoPage() {
         {/* LEFT — Form */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Datos del Préstamo</CardTitle>
+            <CardTitle className="text-base">
+              {tipoCuenta === "prestamo" ? "Datos del Préstamo" : "Datos de la Venta"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Tipo de Cuenta */}
+            <div className="space-y-1.5">
+              <Label className="text-[13px]">Tipo de Cuenta *</Label>
+              <Select value={tipoCuenta} onValueChange={setTipoCuenta}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="prestamo">💰 Préstamo</SelectItem>
+                  <SelectItem value="venta_seguro">🛡️ Venta de Seguro</SelectItem>
+                  <SelectItem value="venta_producto">📦 Venta de Producto</SelectItem>
+                  <SelectItem value="venta_servicio">🔧 Venta de Servicio</SelectItem>
+                </SelectContent>
+              </Select>
+              {tipoCuenta !== "prestamo" && (
+                <p className="text-[11px] text-muted-foreground">Las ventas no descuentan de caja al crear, solo suman al cobrar.</p>
+              )}
+            </div>
             {/* Código Interno + Cliente */}
             <div className="grid grid-cols-[120px_1fr] gap-3">
               <div className="space-y-1.5">
