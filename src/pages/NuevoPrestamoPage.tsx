@@ -83,6 +83,7 @@ export default function NuevoPrestamoPage() {
   const [valorMora, setValorMora] = useState("");
   const [notas, setNotas] = useState("");
   const [codigoInterno, setCodigoInterno] = useState("");
+  const [tipoCuenta, setTipoCuenta] = useState<string>("prestamo");
 
   // Pre-fill codigoInterno with next PRE-XXXX
   useEffect(() => {
