@@ -142,6 +142,41 @@ export type Database = {
           },
         ]
       }
+      cat_estados_civiles: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          descripcion: string | null
+          empresa_id: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_estados_civiles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cat_estados_prestamo: {
         Row: {
           activo: boolean
@@ -180,6 +215,41 @@ export type Database = {
           },
         ]
       }
+      cat_frecuencias_pago: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          descripcion: string | null
+          empresa_id: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_frecuencias_pago_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cat_metodos_pago: {
         Row: {
           activo: boolean
@@ -211,6 +281,76 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "cat_metodos_pago_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cat_situaciones_laborales: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          descripcion: string | null
+          empresa_id: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_situaciones_laborales_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cat_tipos_documento: {
+        Row: {
+          activo: boolean
+          created_at: string | null
+          descripcion: string | null
+          empresa_id: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string | null
+          descripcion?: string | null
+          empresa_id?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_tipos_documento_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
