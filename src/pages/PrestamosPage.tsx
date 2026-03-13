@@ -380,15 +380,15 @@ export default function PrestamosPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={12} className="px-3 py-3">
+                  <TableCell colSpan={13} className="px-3 py-3">
                     <Skeleton className="h-4 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : isError ? (
-              <TableRow><TableCell colSpan={12} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
+              <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}
