@@ -6,7 +6,12 @@ const CLIENTE_COLUMNS = `
   id, id_cliente, nombre_completo, telefono, correo,
   documento_identidad, dni, direccion, foto_cliente,
   gps_lat, gps_lng, activo, sexo, situacion_laboral,
-  ingresos, estado_civil, dependientes, estado, created_at, empresa_id
+  ingresos, estado_civil, dependientes, estado, created_at, empresa_id,
+  fecha_nacimiento, tipo_vivienda, gastos_mensuales, notas,
+  trabajo_empresa, trabajo_cargo, trabajo_telefono, trabajo_antiguedad, direccion_trabajo,
+  ref1_nombre, ref1_telefono, ref1_parentesco,
+  ref2_nombre, ref2_telefono, ref2_parentesco,
+  aval_nombre, aval_telefono, aval_direccion, aval_dni, aval_parentesco
 `;
 
 export function useClientes(filters?: { estado?: string; search?: string; empresaId?: string }) {
@@ -31,7 +36,7 @@ export function useClientes(filters?: { estado?: string; search?: string; empres
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as Cliente[];
+      return data as unknown as Cliente[];
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -48,7 +53,7 @@ export function useCliente(id: string | undefined) {
         .eq("id", id)
         .single();
       if (error) throw error;
-      return data as Cliente;
+      return data as unknown as Cliente;
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
@@ -65,7 +70,7 @@ export function useCreateCliente() {
         .select()
         .single();
       if (error) throw error;
-      return data as Cliente;
+      return data as unknown as Cliente;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientes"] });
@@ -84,7 +89,7 @@ export function useUpdateCliente() {
         .select()
         .single();
       if (error) throw error;
-      return data as Cliente;
+      return data as unknown as Cliente;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clientes"] });
