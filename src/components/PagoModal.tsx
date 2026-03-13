@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useMetodosPagoActivos } from "@/hooks/useCatalogos";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { HandCoins, Info, Loader2 } from "lucide-react";
+import { HandCoins, Info, Loader2, AlertTriangle } from "lucide-react";
 
 interface Cuota {
   id: string;
