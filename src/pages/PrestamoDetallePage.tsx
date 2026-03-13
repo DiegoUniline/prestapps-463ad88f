@@ -413,6 +413,21 @@ export default function PrestamoDetallePage() {
               {prestamo.notas && (
                 <SidebarField label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
               )}
+              {(prestamo as any).reestructurado_de && (
+                <SidebarField label="REESTRUCTURADO DE" value={
+                  <Link to={`/prestamos/${(prestamo as any).reestructurado_de}`} className="text-primary hover:underline text-[12px]">
+                    PRE-{((prestamo as any).reestructurado_de as string).slice(0, 8)}
+                  </Link>
+                } />
+              )}
+              {(prestamo as any).cancelado_en && (
+                <SidebarField label="CANCELADO/REEST." value={
+                  <span className="text-destructive text-[12px]">
+                    {format(new Date((prestamo as any).cancelado_en), "dd/MM/yyyy HH:mm")}
+                    {(prestamo as any).motivo_cancelacion && <><br /><span className="italic text-muted-foreground">{(prestamo as any).motivo_cancelacion}</span></>}
+                  </span>
+                } />
+              )}
             </div>
           </div>
         </div>
