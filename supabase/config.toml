@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.stripe-sync-payment-method]
 verify_jwt = false
+
+[functions.stripe-auto-charge]
+verify_jwt = false
