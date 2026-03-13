@@ -963,6 +963,7 @@ export default function PrestamoDetallePage() {
           ruta_id: prestamo.ruta_id,
           cobrador_id: prestamo.cobrador_id,
           notas: prestamo.notas || null,
+          codigo_interno: (prestamo as any).codigo_interno || null,
         }}
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
         rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
