@@ -17,7 +17,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, CalendarIcon, Save, AlertTriangle } from "lucide-react";
-import { format, addDays, addWeeks, addMonths } from "date-fns";
+import { format, addDays, addWeeks, addMonths, parse, isValid } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
@@ -60,7 +60,7 @@ function calcNextDate(base: Date, frecuencia: string, n: number): Date {
 export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { empresaId } = useEmpresa();
+  const { empresaId, empresaNombre } = useEmpresa();
   const { user } = useAuth();
 
   const { data: clientes = [] } = useClientesOptions(empresaId);
@@ -81,10 +81,11 @@ export default function NuevoPrestamoPage() {
   const [gastosLegales, setGastosLegales] = useState("");
   const [tipoMora, setTipoMora] = useState<string>("porcentaje");
   const [valorMora, setValorMora] = useState("");
-  const [empresa, setEmpresa] = useState("");
   const [notas, setNotas] = useState("");
   const [cuotaOverride, setCuotaOverride] = useState("");
   const [esInicial, setEsInicial] = useState(false);
+  const [cuotasCubiertas, setCuotasCubiertas] = useState("");
+  const [fechaTexto, setFechaTexto] = useState("");
 
   // Cálculos
   const monto = parseFloat(montoSolicitado) || 0;
@@ -185,7 +186,7 @@ export default function NuevoPrestamoPage() {
           gastos_legales: parseFloat(gastosLegales) || 0,
           tipo_mora: tipoMora as any,
           valor_mora: parseFloat(valorMora) || 0,
-          empresa: empresa || null,
+          empresa: empresaNombre || null,
           notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
@@ -201,19 +202,27 @@ export default function NuevoPrestamoPage() {
       // Insertar cuotas de amortización
       if (amortizacion.length > 0) {
         const baseDate = fechaPrimerPago || new Date();
-        const cuotasInsert = amortizacion.map((c) => ({
-          prestamo_id: data.id,
-          num_cuota: c.num,
-          capital: c.capital,
-          interes: c.interes,
-          capital_interes: c.cuota,
-          fecha_vencimiento: format(calcNextDate(baseDate, frecuencia, c.num - 1), "yyyy-MM-dd"),
-          saldo_capital: c.capital,
-          saldo_interes: c.interes,
-          saldo_total: c.cuota,
-          status: "Pendiente" as const,
-          empresa_id: empresaId,
-        }));
+        const numCubiertas = esInicial ? (parseInt(cuotasCubiertas) || 0) : 0;
+
+        const cuotasInsert = amortizacion.map((c) => {
+          const yaPagada = c.num <= numCubiertas;
+          return {
+            prestamo_id: data.id,
+            num_cuota: c.num,
+            capital: c.capital,
+            interes: c.interes,
+            capital_interes: c.cuota,
+            fecha_vencimiento: format(calcNextDate(baseDate, frecuencia, c.num - 1), "yyyy-MM-dd"),
+            saldo_capital: yaPagada ? 0 : c.capital,
+            saldo_interes: yaPagada ? 0 : c.interes,
+            saldo_total: yaPagada ? 0 : c.cuota,
+            capital_pagado: yaPagada ? c.capital : 0,
+            interes_pagado: yaPagada ? c.interes : 0,
+            fecha_pagada: yaPagada ? format(new Date(), "yyyy-MM-dd") : null,
+            status: yaPagada ? ("Pagada" as const) : ("Pendiente" as const),
+            empresa_id: empresaId,
+          };
+        });
 
         const { error: amortError } = await supabase
           .from("amortizacion")
@@ -362,17 +371,38 @@ export default function NuevoPrestamoPage() {
             {/* Fecha primer pago */}
             <div className="space-y-1.5">
               <Label className="text-[13px]">Fecha Primer Pago</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !fechaPrimerPago && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {fechaPrimerPago ? format(fechaPrimerPago, "dd/MM/yyyy") : "Seleccionar fecha"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={fechaPrimerPago} onSelect={setFechaPrimerPago} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="dd/mm/aaaa"
+                  value={fechaTexto}
+                  onChange={(e) => {
+                    setFechaTexto(e.target.value);
+                    const parsed = parse(e.target.value, "dd/MM/yyyy", new Date());
+                    if (isValid(parsed) && e.target.value.length === 10) {
+                      setFechaPrimerPago(parsed);
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon" className="shrink-0">
+                      <CalendarIcon className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={fechaPrimerPago}
+                      onSelect={(d) => {
+                        setFechaPrimerPago(d);
+                        if (d) setFechaTexto(format(d, "dd/MM/yyyy"));
+                      }}
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
 
             {/* Caja + Ruta */}
@@ -416,6 +446,23 @@ export default function NuevoPrestamoPage() {
               </div>
             </label>
 
+            {esInicial && cuotas > 0 && (
+              <div className="space-y-1.5 pl-1">
+                <Label className="text-[13px]">Cuotas ya cubiertas</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max={cuotas}
+                  value={cuotasCubiertas}
+                  onChange={(e) => setCuotasCubiertas(e.target.value)}
+                  placeholder={`0 de ${cuotas}`}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Indica cuántas cuotas ya fueron pagadas. Se marcarán como "Pagada" automáticamente.
+                </p>
+              </div>
+            )}
+
             {!esInicial && !cajaId && (
               <div className="flex items-center gap-2 text-warning text-sm">
                 <AlertTriangle className="h-4 w-4" />
@@ -447,7 +494,7 @@ export default function NuevoPrestamoPage() {
             {/* Empresa */}
             <div className="space-y-1.5">
               <Label className="text-[13px]">Empresa</Label>
-              <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Opcional" />
+              <Input value={empresaNombre || ""} disabled className="bg-muted/50" />
             </div>
 
             {/* Notas */}
@@ -512,16 +559,20 @@ export default function NuevoPrestamoPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {amortizacion.map((c) => (
-                        <TableRow key={c.num} className="border-b border-border/50">
-                          <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-muted-foreground">{c.fechaVencimiento}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.capital)}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.interes)}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">{$$(c.cuota)}</TableCell>
-                          <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.saldo)}</TableCell>
-                        </TableRow>
-                      ))}
+                      {amortizacion.map((c) => {
+                        const numCubiertas = esInicial ? (parseInt(cuotasCubiertas) || 0) : 0;
+                        const yaPagada = c.num <= numCubiertas;
+                        return (
+                          <TableRow key={c.num} className={cn("border-b border-border/50", yaPagada && "opacity-50 line-through")}>
+                            <TableCell className="text-[12px] px-2 py-1.5 font-medium">{c.num} {yaPagada && "✓"}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-muted-foreground">{c.fechaVencimiento}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.capital)}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-right">{$$(c.interes)}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-right font-medium">{$$(c.cuota)}</TableCell>
+                            <TableCell className="text-[12px] px-2 py-1.5 text-right">{yaPagada ? "$0.00" : $$(c.saldo)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
