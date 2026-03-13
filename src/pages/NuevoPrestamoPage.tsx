@@ -196,6 +196,7 @@ export default function NuevoPrestamoPage() {
           saldo_interes: c.interes,
           saldo_total: c.cuota,
           status: "Pendiente" as const,
+          empresa_id: empresaId,
         }));
 
         const { error: amortError } = await supabase

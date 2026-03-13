@@ -177,6 +177,7 @@ function RutaDetallePage() {
           nombre: nombre.trim(),
           descripcion: descripcion.trim() || null,
           cobrador_id: cobradorId === "__none__" ? null : (cobradorId || null),
+          empresa_id: empresaId,
         });
         if (error) throw error;
         toast.success("Ruta creada");
