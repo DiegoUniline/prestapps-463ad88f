@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO, startOfDay, endOfDay, isToday, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
@@ -12,11 +13,12 @@ import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Label } from "@/components/ui/label";
 import { PagoModal } from "@/components/PagoModal";
 import { VisitaModal } from "@/components/VisitaModal";
 import { PromesaModal } from "@/components/PromesaModal";
@@ -24,6 +26,7 @@ import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   HandCoins, ChevronLeft, ChevronRight, DollarSign, TrendingUp,
   Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
+  User, Lock, Wallet, FileText,
 } from "lucide-react";
 
 
