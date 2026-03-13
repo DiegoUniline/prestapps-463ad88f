@@ -203,6 +203,14 @@ export default function CobranzaDiariaPage() {
   const [pagoCobradorId, setPagoCobradorId] = useState<string | null>(null);
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();
 
+  // Promesa modal state
+  const [promesaOpen, setPromesaOpen] = useState(false);
+  const [promesaItem, setPromesaItem] = useState<CuotaDiaria | null>(null);
+
+  // Visita modal state
+  const [visitaOpen, setVisitaOpen] = useState(false);
+  const [visitaItem, setVisitaItem] = useState<CuotaDiaria | null>(null);
+
   const fechaStr = format(fecha, "yyyy-MM-dd");
   const { data: cuotas, isLoading } = useCobranzaDiaria(fechaStr, empresaId);
   const { data: cajas } = useCajasAll(empresaId);
