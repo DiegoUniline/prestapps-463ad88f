@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -392,6 +393,9 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── ONBOARDING CHECKLIST ──────────────────────── */}
+      <OnboardingChecklist />
 
       {/* ── TABS ─────────────────────────────────────────── */}
       <Tabs defaultValue="principal">
