@@ -820,7 +820,7 @@ export default function PrestamoDetallePage() {
                         <div>
                           <p className="text-[13px]">{a.desc}</p>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {a.usuario} · {a.fecha ? format(new Date(a.fecha), "dd/MM/yyyy HH:mm") : "—"}
+                            {a.usuario} · {fmtDateTime(a.fecha)}
                           </p>
                         </div>
                       </div>
