@@ -312,7 +312,7 @@ export default function NuevoPrestamoPage() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success("Préstamo creado exitosamente");
+      toast.success(tipoCuenta === "prestamo" ? "Préstamo creado exitosamente" : "Venta creada exitosamente");
       queryClient.invalidateQueries({ queryKey: ["prestamos-list"] });
       navigate(`/prestamos/${data.id}`);
     },
