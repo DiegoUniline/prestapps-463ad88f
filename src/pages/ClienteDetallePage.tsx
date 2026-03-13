@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Pencil, Save, X, Trash2, MapPin, Loader2, User, Briefcase, Users, ShieldCheck, FileText, CreditCard } from "lucide-react";
+import { ArrowLeft, Pencil, Save, X, Trash2, MapPin, Loader2, User, Briefcase, Users, ShieldCheck, FileText, CreditCard, Upload, Camera } from "lucide-react";
 import { useCliente, useCreateCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useClientes";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -143,6 +143,8 @@ export default function ClienteDetallePage() {
   const [editing, setEditing] = useState(isNew);
   const [form, setForm] = useState<ClienteInsert>(emptyForm);
   const [capturingGps, setCapturingGps] = useState(false);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const fotoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (cliente) {
@@ -162,6 +164,28 @@ export default function ClienteDetallePage() {
       (pos) => { setForm((p) => ({ ...p, gps_lat: pos.coords.latitude, gps_lng: pos.coords.longitude })); setCapturingGps(false); toast.success("Ubicación capturada"); },
       () => { setCapturingGps(false); toast.error("No se pudo obtener la ubicación"); }
     );
+  };
+
+  const handleFotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Solo se permiten imágenes"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("La imagen no debe superar 5MB"); return; }
+    setUploadingFoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const fileName = `clientes/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("empresa-assets").upload(fileName, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(fileName);
+      updateField("foto_cliente", urlData.publicUrl);
+      toast.success("Foto subida correctamente");
+    } catch (err: any) {
+      toast.error("Error al subir foto: " + (err.message || err));
+    } finally {
+      setUploadingFoto(false);
+      if (fotoInputRef.current) fotoInputRef.current.value = "";
+    }
   };
 
   const handleSave = () => {
@@ -290,11 +314,46 @@ export default function ClienteDetallePage() {
                 {/* GPS & Photo */}
                 <div className="sm:col-span-2 pt-2 border-t space-y-3">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ubicación y Foto</p>
+                  {/* Photo preview */}
+                  {form.foto_cliente && (
+                    <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-border">
+                      <img src={form.foto_cliente} alt="Foto del cliente" className="w-full h-full object-cover" />
+                      {editing && (
+                        <button
+                          type="button"
+                          onClick={() => updateField("foto_cliente", null)}
+                          className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/80"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {editing ? (
                     <>
                       <div>
-                        <Label className="text-xs text-muted-foreground">URL de Foto</Label>
-                        <Input value={form.foto_cliente || ""} onChange={(e) => updateField("foto_cliente", e.target.value || null)} placeholder="https://..." />
+                        <Label className="text-xs text-muted-foreground">Foto del Cliente</Label>
+                        <input
+                          ref={fotoInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={handleFotoUpload}
+                        />
+                        <div className="flex gap-2 mt-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 h-9 text-[13px]"
+                            onClick={() => fotoInputRef.current?.click()}
+                            disabled={uploadingFoto}
+                          >
+                            {uploadingFoto ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Upload className="h-4 w-4 mr-1.5" />}
+                            {uploadingFoto ? "Subiendo..." : "Subir foto"}
+                          </Button>
+                        </div>
                       </div>
                       <Button type="button" variant="outline" className="w-full" onClick={handleCapturarGPS} disabled={capturingGps}>
                         {capturingGps ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />}
@@ -303,8 +362,12 @@ export default function ClienteDetallePage() {
                     </>
                   ) : (
                     <div>
-                      <Label className="text-xs text-muted-foreground">Foto</Label>
-                      <p className="text-sm font-medium mt-1">{form.foto_cliente || "Sin foto"}</p>
+                      {!form.foto_cliente && (
+                        <>
+                          <Label className="text-xs text-muted-foreground">Foto</Label>
+                          <p className="text-sm font-medium mt-1 text-muted-foreground">Sin foto</p>
+                        </>
+                      )}
                     </div>
                   )}
                   {(form.gps_lat != null && form.gps_lng != null) && (
