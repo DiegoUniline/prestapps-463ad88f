@@ -475,8 +475,8 @@ export default function PrestamoDetallePage() {
                 </span>
               } />
               <SidebarField label="CAJA" value={caja?.nombre || "—"} />
-              <SidebarField label="F. REGISTRO" value={prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—"} />
-              <SidebarField label="F. PRIMER PAGO" value={prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—"} />
+              <SidebarField label="F. REGISTRO" value={fmtDate(prestamo.fecha_registro)} />
+              <SidebarField label="F. PRIMER PAGO" value={fmtDate(prestamo.fecha_primer_pago)} />
             </div>
           </div>
 
