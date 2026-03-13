@@ -93,13 +93,38 @@ const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "M
 const optionalCols = ["Cap.Pag.", "Int.Pag.", "Mora Pag.", "S.Cap", "S.Int", "S.Mora", "Desc.Mora", "Avisado"];
 
 // ── Stripe Auto-Charge Toggle ─────────────────────────────────────
-function StripeAutoChargeToggle({ prestamoId, enabled, disabled, onToggled }: {
-  prestamoId: string; enabled: boolean; disabled: boolean; onToggled: () => void;
+function StripeAutoChargeToggle({ prestamoId, enabled, disabled, onToggled, empresaId }: {
+  prestamoId: string; enabled: boolean; disabled: boolean; onToggled: () => void; empresaId: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [checked, setChecked] = useState(enabled);
 
+  // Check if Stripe Connect is configured for this empresa
+  const { data: stripeStatus } = useQuery({
+    queryKey: ["stripe-connect-status-toggle", empresaId],
+    queryFn: async () => {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const url = `https://${projectId}.supabase.co/functions/v1/stripe-connect-status?empresa_id=${empresaId}`;
+      const session = (await supabase.auth.getSession()).data.session;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+      });
+      if (!res.ok) return { connected: false, charges_enabled: false };
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  const stripeConnected = stripeStatus?.connected && stripeStatus?.charges_enabled;
+
   const handleToggle = async (value: boolean) => {
+    if (!stripeConnected) {
+      toast.error("Primero debes conectar Stripe en Configuración → Stripe Connect");
+      return;
+    }
     setLoading(true);
     try {
       const { error } = await supabase
@@ -128,15 +153,17 @@ function StripeAutoChargeToggle({ prestamoId, enabled, disabled, onToggled }: {
             {checked ? "Activado" : "Desactivado"}
           </p>
           <p className="text-[11px] text-muted-foreground">
-            {checked
-              ? "Las cuotas se cobrarán automáticamente a la tarjeta del cliente en su fecha de vencimiento."
-              : "Active para cobrar automáticamente las cuotas con tarjeta registrada."}
+            {!stripeConnected
+              ? "Stripe no está conectado. Configúralo en Configuración → Stripe Connect."
+              : checked
+                ? "Las cuotas se cobrarán automáticamente a la tarjeta del cliente en su fecha de vencimiento."
+                : "Active para cobrar automáticamente las cuotas con tarjeta registrada."}
           </p>
         </div>
         <Switch
           checked={checked}
           onCheckedChange={handleToggle}
-          disabled={disabled || loading}
+          disabled={disabled || loading || !stripeConnected}
         />
       </div>
     </div>
@@ -544,6 +571,7 @@ export default function PrestamoDetallePage() {
             enabled={(prestamo as any).cobro_automatico_stripe ?? false}
             disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
             onToggled={() => queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] })}
+            empresaId={empresaId}
           />
         </div>
 
