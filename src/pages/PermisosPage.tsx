@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Shield, Save, RotateCcw } from "lucide-react";
+import { Save, RotateCcw } from "lucide-react";
 import {
   MODULE_DEFINITIONS,
   type AppRole,
