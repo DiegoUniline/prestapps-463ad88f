@@ -61,6 +61,7 @@ export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
+  const { user } = useAuth();
 
   const { data: clientes = [] } = useClientesOptions(empresaId);
   const { data: cajas = [] } = useCajasOptions(empresaId);
