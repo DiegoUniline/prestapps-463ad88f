@@ -2,12 +2,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Cliente, ClienteInsert } from "@/types/cliente";
 
+const CLIENTE_COLUMNS = `
+  id, id_cliente, nombre_completo, telefono, correo,
+  documento_identidad, dni, direccion, foto_cliente,
+  gps_lat, gps_lng, activo, sexo, situacion_laboral,
+  ingresos, estado_civil, dependientes, estado, created_at, empresa_id
+`;
+
 export function useClientes(filters?: { estado?: string; search?: string; empresaId?: string }) {
   return useQuery({
     queryKey: ["clientes", filters],
     queryFn: async () => {
       let query = (supabase.from as any)("clientes")
-        .select("*")
+        .select(CLIENTE_COLUMNS)
         .order("created_at", { ascending: false });
 
       if (filters?.empresaId) {
@@ -26,6 +33,7 @@ export function useClientes(filters?: { estado?: string; search?: string; empres
       if (error) throw error;
       return data as Cliente[];
     },
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -36,13 +44,14 @@ export function useCliente(id: string | undefined) {
       if (!id) return null;
       const { data, error } = await supabase
         .from("clientes")
-        .select("*")
+        .select(CLIENTE_COLUMNS)
         .eq("id", id)
         .single();
       if (error) throw error;
       return data as Cliente;
     },
     enabled: !!id,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -9,37 +10,56 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleGuard from "@/components/RoleGuard";
 import AppLayout from "@/components/AppLayout";
-import LoginPage from "@/pages/LoginPage";
-import ResetPasswordPage from "@/pages/ResetPasswordPage";
-import DashboardPage from "@/pages/DashboardPage";
-import PrestamosPage from "@/pages/PrestamosPage";
-import PrestamoDetallePage from "@/pages/PrestamoDetallePage";
-import NuevoPrestamoPage from "@/pages/NuevoPrestamoPage";
-import PagosPage from "@/pages/PagosPage";
-import PromesasPage from "@/pages/PromesasPage";
-import ClientesPage from "@/pages/ClientesPage";
-import ClienteDetallePage from "@/pages/ClienteDetallePage";
-import CajasPage from "@/pages/CajasPage";
-import RutasPage from "@/pages/RutasPage";
-import ReportesPage from "@/pages/ReportesPage";
-import UsuariosPage from "@/pages/UsuariosPage";
-import CobradoresPage from "@/pages/CobradoresPage";
-import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
-import EmpresasPage from "@/pages/EmpresasPage";
-import WhatsAppConfigPage from "@/pages/WhatsAppConfigPage";
-import CrmCobranzaPage from "@/pages/CrmCobranzaPage";
-import LeadScoringPage from "@/pages/LeadScoringPage";
-import GastosPage from "@/pages/GastosPage";
-import ComisionesPage from "@/pages/ComisionesPage";
-import MapaGPSPage from "@/pages/MapaGPSPage";
-import LiquidarRutaPage from "@/pages/LiquidarRutaPage";
-import CatalogosPage from "@/pages/CatalogosPage";
-import ConfiguracionEmpresaPage from "@/pages/ConfiguracionEmpresaPage";
-import SolicitudesPage from "@/pages/SolicitudesPage";
-import SolicitudPrestamoPage from "@/pages/SolicitudPrestamoPage";
-import NotFound from "@/pages/NotFound";
 
-const queryClient = new QueryClient();
+// Lazy-loaded pages
+const LoginPage = lazy(() => import("@/pages/LoginPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/ResetPasswordPage"));
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const PrestamosPage = lazy(() => import("@/pages/PrestamosPage"));
+const PrestamoDetallePage = lazy(() => import("@/pages/PrestamoDetallePage"));
+const NuevoPrestamoPage = lazy(() => import("@/pages/NuevoPrestamoPage"));
+const PagosPage = lazy(() => import("@/pages/PagosPage"));
+const PromesasPage = lazy(() => import("@/pages/PromesasPage"));
+const ClientesPage = lazy(() => import("@/pages/ClientesPage"));
+const ClienteDetallePage = lazy(() => import("@/pages/ClienteDetallePage"));
+const CajasPage = lazy(() => import("@/pages/CajasPage"));
+const RutasPage = lazy(() => import("@/pages/RutasPage"));
+const ReportesPage = lazy(() => import("@/pages/ReportesPage"));
+const UsuariosPage = lazy(() => import("@/pages/UsuariosPage"));
+const CobradoresPage = lazy(() => import("@/pages/CobradoresPage"));
+const CobranzaDiariaPage = lazy(() => import("@/pages/CobranzaDiariaPage"));
+const EmpresasPage = lazy(() => import("@/pages/EmpresasPage"));
+const WhatsAppConfigPage = lazy(() => import("@/pages/WhatsAppConfigPage"));
+const CrmCobranzaPage = lazy(() => import("@/pages/CrmCobranzaPage"));
+const LeadScoringPage = lazy(() => import("@/pages/LeadScoringPage"));
+const GastosPage = lazy(() => import("@/pages/GastosPage"));
+const ComisionesPage = lazy(() => import("@/pages/ComisionesPage"));
+const MapaGPSPage = lazy(() => import("@/pages/MapaGPSPage"));
+const LiquidarRutaPage = lazy(() => import("@/pages/LiquidarRutaPage"));
+const CatalogosPage = lazy(() => import("@/pages/CatalogosPage"));
+const ConfiguracionEmpresaPage = lazy(() => import("@/pages/ConfiguracionEmpresaPage"));
+const SolicitudesPage = lazy(() => import("@/pages/SolicitudesPage"));
+const SolicitudPrestamoPage = lazy(() => import("@/pages/SolicitudPrestamoPage"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30s default
+      gcTime: 5 * 60 * 1000, // 5min garbage collection
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+    </div>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -50,47 +70,46 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-                  {/* Accesible a todos los roles */}
-                  <Route path="/" element={<DashboardPage />} />
-                  <Route path="/cobranza" element={<CobranzaDiariaPage />} />
-                  <Route path="/prestamos" element={<PrestamosPage />} />
-                  <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
-                  <Route path="/pagos" element={<PagosPage />} />
-                  <Route path="/promesas" element={<PromesasPage />} />
-                  <Route path="/solicitudes" element={<SolicitudesPage />} />
-                  <Route path="/solicitudes/nueva" element={<SolicitudPrestamoPage />} />
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/cobranza" element={<CobranzaDiariaPage />} />
+                    <Route path="/prestamos" element={<PrestamosPage />} />
+                    <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
+                    <Route path="/pagos" element={<PagosPage />} />
+                    <Route path="/promesas" element={<PromesasPage />} />
+                    <Route path="/solicitudes" element={<SolicitudesPage />} />
+                    <Route path="/solicitudes/nueva" element={<SolicitudPrestamoPage />} />
 
-                  {/* Admin y Supervisor */}
-                  <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]}><ClientesPage /></RoleGuard>} />
-                  <Route path="/clientes/:id" element={<RoleGuard allowed={["admin", "supervisor"]}><ClienteDetallePage /></RoleGuard>} />
-                  <Route path="/reportes" element={<RoleGuard allowed={["admin", "supervisor"]}><ReportesPage /></RoleGuard>} />
+                    <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]}><ClientesPage /></RoleGuard>} />
+                    <Route path="/clientes/:id" element={<RoleGuard allowed={["admin", "supervisor"]}><ClienteDetallePage /></RoleGuard>} />
+                    <Route path="/reportes" element={<RoleGuard allowed={["admin", "supervisor"]}><ReportesPage /></RoleGuard>} />
 
-                  {/* Solo Admin */}
-                  <Route path="/prestamos/nuevo" element={<RoleGuard allowed={["admin"]}><NuevoPrestamoPage /></RoleGuard>} />
-                  <Route path="/cajas" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
-                  <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
-                  <Route path="/rutas" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
-                  <Route path="/rutas/:id" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
-                  <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><CobradoresPage /></RoleGuard>} />
-                  <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
-                  <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
-                  <Route path="/empresas" element={<RoleGuard allowed={["admin"]}><EmpresasPage /></RoleGuard>} />
-                  <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]}><WhatsAppConfigPage /></RoleGuard>} />
-                  <Route path="/crm" element={<RoleGuard allowed={["admin", "supervisor"]}><CrmCobranzaPage /></RoleGuard>} />
-                  <Route path="/scoring" element={<RoleGuard allowed={["admin", "supervisor"]}><LeadScoringPage /></RoleGuard>} />
-                  <Route path="/gastos" element={<RoleGuard allowed={["admin"]}><GastosPage /></RoleGuard>} />
-                  <Route path="/comisiones" element={<RoleGuard allowed={["admin"]}><ComisionesPage /></RoleGuard>} />
-                  <Route path="/mapa-gps" element={<RoleGuard allowed={["admin", "supervisor"]}><MapaGPSPage /></RoleGuard>} />
-                  <Route path="/liquidar-ruta" element={<RoleGuard allowed={["admin"]}><LiquidarRutaPage /></RoleGuard>} />
-                  <Route path="/catalogos" element={<RoleGuard allowed={["admin"]}><CatalogosPage /></RoleGuard>} />
-                  <Route path="/configuracion" element={<RoleGuard allowed={["admin"]}><ConfiguracionEmpresaPage /></RoleGuard>} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                    <Route path="/prestamos/nuevo" element={<RoleGuard allowed={["admin"]}><NuevoPrestamoPage /></RoleGuard>} />
+                    <Route path="/cajas" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
+                    <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
+                    <Route path="/rutas" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
+                    <Route path="/rutas/:id" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
+                    <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><CobradoresPage /></RoleGuard>} />
+                    <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
+                    <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><UsuariosPage /></RoleGuard>} />
+                    <Route path="/empresas" element={<RoleGuard allowed={["admin"]}><EmpresasPage /></RoleGuard>} />
+                    <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]}><WhatsAppConfigPage /></RoleGuard>} />
+                    <Route path="/crm" element={<RoleGuard allowed={["admin", "supervisor"]}><CrmCobranzaPage /></RoleGuard>} />
+                    <Route path="/scoring" element={<RoleGuard allowed={["admin", "supervisor"]}><LeadScoringPage /></RoleGuard>} />
+                    <Route path="/gastos" element={<RoleGuard allowed={["admin"]}><GastosPage /></RoleGuard>} />
+                    <Route path="/comisiones" element={<RoleGuard allowed={["admin"]}><ComisionesPage /></RoleGuard>} />
+                    <Route path="/mapa-gps" element={<RoleGuard allowed={["admin", "supervisor"]}><MapaGPSPage /></RoleGuard>} />
+                    <Route path="/liquidar-ruta" element={<RoleGuard allowed={["admin"]}><LiquidarRutaPage /></RoleGuard>} />
+                    <Route path="/catalogos" element={<RoleGuard allowed={["admin"]}><CatalogosPage /></RoleGuard>} />
+                    <Route path="/configuracion" element={<RoleGuard allowed={["admin"]}><ConfiguracionEmpresaPage /></RoleGuard>} />
+                  </Route>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </BrowserRouter>
           </TooltipProvider>
         </EmpresaProvider>
