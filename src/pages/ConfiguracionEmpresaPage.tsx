@@ -13,8 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye, Pencil,
+  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye, Pencil, CreditCard,
 } from "lucide-react";
+import { StripeConnectTab } from "@/components/StripeConnectTab";
 import {
   useEmpresaConfig, useSaveEmpresaConfig, useUploadLogo,
   type EmpresaConfig, type TicketCampos, type ContratoCampos,
@@ -581,7 +582,7 @@ export default function ConfiguracionEmpresaPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configuración de la Empresa</h1>
-        <p className="text-muted-foreground text-sm mt-1">Logo, datos, diseño de tickets y plantilla de contratos</p>
+        <p className="text-muted-foreground text-sm mt-1">Logo, datos, tickets, contratos y pagos con tarjeta</p>
       </div>
 
       <Tabs defaultValue="datos" className="space-y-4">
@@ -595,6 +596,9 @@ export default function ConfiguracionEmpresaPage() {
           <TabsTrigger value="contrato" className="gap-1.5">
             <FileText className="h-4 w-4" /> Contrato
           </TabsTrigger>
+          <TabsTrigger value="stripe" className="gap-1.5">
+            <CreditCard className="h-4 w-4" /> Stripe
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
@@ -605,6 +609,9 @@ export default function ConfiguracionEmpresaPage() {
         </TabsContent>
         <TabsContent value="contrato">
           <ContratoTab />
+        </TabsContent>
+        <TabsContent value="stripe">
+          <StripeConnectTab />
         </TabsContent>
       </Tabs>
     </div>

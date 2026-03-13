@@ -1,1 +1,16 @@
 project_id = "oewuzgugsjqtznmgnfhp"
+
+[functions.stripe-connect-onboard]
+verify_jwt = false
+
+[functions.stripe-connect-status]
+verify_jwt = false
+
+[functions.stripe-create-payment-link]
+verify_jwt = false
+
+[functions.stripe-charge-cuota]
+verify_jwt = false
+
+[functions.stripe-sync-payment-method]
+verify_jwt = false
