@@ -211,6 +211,7 @@ export default function CobradoresPage() {
         tipo: "entrada",
         monto: corteDeposito,
         concepto: `Corte cobrador: ${selectedCobrador.nombre_completo}`,
+        empresa_id: empresaId,
       });
 
       const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", corteCajaId).single();
