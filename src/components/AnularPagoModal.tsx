@@ -120,14 +120,14 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
         });
       }
 
-      // 4) Reverse cobrador efectivo
+      // 4) Reverse cobrador efectivo in profiles
       if (pago.cobrador_id) {
-        const { data: cobData } = await (supabase.from as any)("cobradores")
+        const { data: cobData } = await supabase.from("profiles")
           .select("efectivo_en_mano")
           .eq("id", pago.cobrador_id)
           .single();
         if (cobData) {
-          await (supabase.from as any)("cobradores").update({
+          await supabase.from("profiles").update({
             efectivo_en_mano: Math.max(0, Number(cobData.efectivo_en_mano || 0) - pago.monto_recibido),
           }).eq("id", pago.cobrador_id);
         }

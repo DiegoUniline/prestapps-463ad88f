@@ -34,12 +34,12 @@ function useRutas(empresaId: string) {
         .order("nombre");
       if (error) throw error;
 
-      // Get cobrador names
+      // Get cobrador names from profiles
       const cobIds = [...new Set((rutas || []).map(r => r.cobrador_id).filter(Boolean))];
       let cobMap: Record<string, string> = {};
       if (cobIds.length) {
-        const { data: cobs } = await (supabase.from as any)("cobradores").select("id, nombre").in("id", cobIds);
-        for (const c of cobs || []) cobMap[c.id] = c.nombre;
+        const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
+        for (const c of profiles || []) cobMap[c.id] = c.nombre_completo;
       }
 
       // Count prestamos per ruta
@@ -65,8 +65,11 @@ function useCobradores() {
   return useQuery({
     queryKey: ["cobradores-options"],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("cobradores").select("id, nombre").eq("activo", true).order("nombre");
-      return data || [];
+      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "cobrador");
+      if (!roles?.length) return [];
+      const userIds = roles.map((r) => r.user_id);
+      const { data } = await supabase.from("profiles").select("id, nombre_completo").eq("activo", true).in("id", userIds).order("nombre_completo");
+      return (data || []).map((p) => ({ id: p.id, nombre: p.nombre_completo }));
     },
   });
 }
@@ -160,7 +163,7 @@ function RutaDetallePage() {
   if (ruta && !synced) {
     setNombre(ruta.nombre);
     setDescripcion(ruta.descripcion || "");
-    setCobradorId(ruta.cobrador_id || "");
+    setCobradorId(ruta.cobrador_id || "__none__");
     setSynced(true);
   }
 
@@ -172,7 +175,7 @@ function RutaDetallePage() {
         const { error } = await supabase.from("rutas").insert({
           nombre: nombre.trim(),
           descripcion: descripcion.trim() || null,
-          cobrador_id: cobradorId || null,
+          cobrador_id: cobradorId === "__none__" ? null : (cobradorId || null),
         });
         if (error) throw error;
         toast.success("Ruta creada");
@@ -180,7 +183,7 @@ function RutaDetallePage() {
         const { error } = await supabase.from("rutas").update({
           nombre: nombre.trim(),
           descripcion: descripcion.trim() || null,
-          cobrador_id: cobradorId || null,
+          cobrador_id: cobradorId === "__none__" ? null : (cobradorId || null),
         }).eq("id", id!);
         if (error) throw error;
         toast.success("Ruta actualizada");
@@ -200,7 +203,7 @@ function RutaDetallePage() {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  const cobradorNombre = cobradores.find((c: any) => c.id === cobradorId)?.nombre || "Sin asignar";
+  const cobradorNombre = cobradores.find((c: any) => c.id === cobradorId || c.id === (cobradorId === "__none__" ? null : cobradorId))?.nombre || "Sin asignar";
 
   return (
     <div className="space-y-6">
@@ -238,7 +241,7 @@ function RutaDetallePage() {
               <Select value={cobradorId} onValueChange={setCobradorId}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar cobrador" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin asignar</SelectItem>
+                  <SelectItem value="__none__">Sin asignar</SelectItem>
                   {cobradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>

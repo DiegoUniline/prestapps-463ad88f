@@ -117,8 +117,11 @@ export default function PrestamoDetallePage() {
   const { data: cobradoresAll = [] } = useQuery({
     queryKey: ["cobradores-all"],
     queryFn: async () => {
-      const { data } = await supabase.from("cobradores").select("id, nombre").eq("activo", true).order("nombre");
-      return data || [];
+      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "cobrador");
+      if (!roles?.length) return [];
+      const userIds = roles.map((r) => r.user_id);
+      const { data } = await supabase.from("profiles").select("id, nombre_completo").eq("activo", true).in("id", userIds).order("nombre_completo");
+      return (data || []).map((p) => ({ id: p.id, nombre: p.nombre_completo }));
     },
   });
   const empresaId = prestamo?.empresa_id || "00000000-0000-0000-0000-000000000001";
@@ -380,7 +383,7 @@ export default function PrestamoDetallePage() {
                 cliente ? <Link to={`/clientes/${cliente.id}`} className="text-primary hover:underline font-medium">{cliente.nombre_completo}</Link> : "—"
               } />
               <SidebarField label="EMPRESA" value={dashStr(prestamo.empresa)} />
-              <SidebarField label="COBRADOR" value={prestamo.cobrador_id || "—"} />
+              <SidebarField label="COBRADOR" value={cobradoresAll.find((c: any) => c.id === prestamo.cobrador_id)?.nombre || "Sin asignar"} />
               <SidebarField label="RUTA" value={
                 <span className="flex items-center gap-1.5">
                   {ruta?.nombre || "—"}

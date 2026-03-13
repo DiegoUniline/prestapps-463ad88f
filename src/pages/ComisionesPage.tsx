@@ -42,13 +42,28 @@ function useCobradores(empresaId: string) {
   return useQuery({
     queryKey: ["cobradores", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("cobradores")
-        .select("id, nombre, porcentaje_comision, efectivo_en_mano, activo")
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "cobrador");
+      if (!roles?.length) return [];
+
+      const userIds = roles.map((r) => r.user_id);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, nombre_completo, porcentaje_comision, efectivo_en_mano, activo")
         .eq("empresa_id", empresaId)
         .eq("activo", true)
-        .order("nombre");
+        .in("id", userIds)
+        .order("nombre_completo");
       if (error) throw error;
-      return (data || []) as Cobrador[];
+      return (data || []).map((p) => ({
+        id: p.id,
+        nombre: p.nombre_completo,
+        porcentaje_comision: Number(p.porcentaje_comision || 0),
+        efectivo_en_mano: Number(p.efectivo_en_mano || 0),
+        activo: p.activo,
+      })) as Cobrador[];
     },
   });
 }

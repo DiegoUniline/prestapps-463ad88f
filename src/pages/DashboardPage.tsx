@@ -51,7 +51,7 @@ function useDashboardData(empresaId: string) {
         supabase.from("amortizacion").select("prestamo_id, num_cuota, capital, interes, capital_interes, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento, mora, capital_pagado, interes_pagado, mora_pagada").eq("empresa_id", empresaId),
         supabase.from("pagos").select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, created_at, cobrador_id, prestamo_id, caja_id, ruta_id").eq("empresa_id", empresaId),
         supabase.from("cajas").select("id, nombre, saldo_actual").eq("empresa_id", empresaId),
-        (supabase.from as any)("cobradores").select("id, nombre, efectivo_en_mano, activo, porcentaje_comision").eq("empresa_id", empresaId),
+        supabase.from("profiles").select("id, nombre_completo, efectivo_en_mano, activo, porcentaje_comision").eq("empresa_id", empresaId),
         supabase.from("rutas").select("id, nombre, cobrador_id").eq("empresa_id", empresaId),
         supabase.from("clientes").select("id, estado, created_at").eq("empresa_id", empresaId),
         supabase.from("promesas_pago").select("id, monto_prometido, fecha_prometida, status").eq("empresa_id", empresaId),
@@ -275,7 +275,7 @@ export default function DashboardPage() {
       const prestamosAsignados = prestamos.filter(p => p.cobrador_id === c.id && ["Activo", "Al día", "Vencido"].includes(p.estado || "")).length;
       const saldoCob = amort.filter(a => { const pr = prestamos.find(p2 => p2.id === a.prestamo_id); return pr?.cobrador_id === c.id && a.status !== "Pagada"; }).reduce((s, a) => s + Number(a.saldo_total || 0), 0);
       const moraCob = amort.filter(a => { const pr = prestamos.find(p2 => p2.id === a.prestamo_id); return pr?.cobrador_id === c.id; }).reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
-      return { nombre: c.nombre, cobrado: totalCob2, prestamos: prestamosAsignados, efectivo: Number(c.efectivo_en_mano || 0), saldo: saldoCob, mora: moraCob };
+      return { nombre: c.nombre_completo || c.nombre, cobrado: totalCob2, prestamos: prestamosAsignados, efectivo: Number(c.efectivo_en_mano || 0), saldo: saldoCob, mora: moraCob };
     }).sort((a: any, b: any) => b.cobrado - a.cobrado);
 
     const rutaStats = rutas.map((r: any) => {
@@ -359,7 +359,7 @@ export default function DashboardPage() {
             <SelectTrigger className="h-8 w-[150px] text-[12px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos los cobradores</SelectItem>
-              {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+              {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
             </SelectContent>
           </Select>
 
@@ -384,7 +384,7 @@ export default function DashboardPage() {
             {fechaDesde && ` · Desde: ${format(fechaDesde, "dd/MM/yyyy")}`}
             {fechaHasta && ` · Hasta: ${format(fechaHasta, "dd/MM/yyyy")}`}
             {filtroRuta !== "__all__" && ` · Ruta: ${data?.rutas.find((r: any) => r.id === filtroRuta)?.nombre}`}
-            {filtroCobrador !== "__all__" && ` · Cobrador: ${data?.cobradores.find((c: any) => c.id === filtroCobrador)?.nombre}`}
+            {filtroCobrador !== "__all__" && ` · Cobrador: ${data?.cobradores.find((c: any) => c.id === filtroCobrador)?.nombre_completo}`}
             {filtroCaja !== "__all__" && ` · Caja: ${data?.cajas.find((c: any) => c.id === filtroCaja)?.nombre}`}
           </p>
         )}

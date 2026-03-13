@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Route, UserCheck } from "lucide-react";
 
 interface ReasignarModalProps {
@@ -17,17 +17,31 @@ interface ReasignarModalProps {
   rutas: { id: string; nombre: string }[];
 }
 
+function useCobradoresOptions() {
+  return useQuery({
+    queryKey: ["cobradores-options-reasignar"],
+    queryFn: async () => {
+      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "cobrador");
+      if (!roles?.length) return [];
+      const userIds = roles.map((r) => r.user_id);
+      const { data } = await supabase.from("profiles").select("id, nombre_completo").eq("activo", true).in("id", userIds).order("nombre_completo");
+      return (data || []).map((p) => ({ id: p.id, nombre: p.nombre_completo }));
+    },
+  });
+}
+
 export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, currentCobradorId, rutas }: ReasignarModalProps) {
   const queryClient = useQueryClient();
-  const [rutaId, setRutaId] = useState(currentRutaId || "none");
-  const [cobradorId, setCobradorId] = useState(currentCobradorId || "");
+  const { data: cobradores = [] } = useCobradoresOptions();
+  const [rutaId, setRutaId] = useState(currentRutaId || "__none__");
+  const [cobradorId, setCobradorId] = useState(currentCobradorId || "__none__");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
     const update: Record<string, any> = {};
-    update.ruta_id = rutaId === "none" ? null : rutaId;
-    update.cobrador_id = cobradorId || null;
+    update.ruta_id = rutaId === "__none__" ? null : rutaId;
+    update.cobrador_id = cobradorId === "__none__" ? null : cobradorId;
 
     const { error } = await supabase.from("prestamos").update(update).eq("id", prestamoId);
     setSaving(false);
@@ -58,7 +72,7 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
             <Select value={rutaId} onValueChange={setRutaId}>
               <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Sin ruta" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin ruta</SelectItem>
+                <SelectItem value="__none__">Sin ruta</SelectItem>
                 {rutas.map((r) => (
                   <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
                 ))}
@@ -67,14 +81,16 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
           </div>
 
           <div>
-            <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">ID Cobrador</Label>
-            <input
-              type="text"
-              className="mt-1 flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-[13px] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              placeholder="UUID del cobrador (opcional)"
-              value={cobradorId}
-              onChange={(e) => setCobradorId(e.target.value)}
-            />
+            <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Cobrador</Label>
+            <Select value={cobradorId} onValueChange={setCobradorId}>
+              <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Sin cobrador" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sin cobrador</SelectItem>
+                {cobradores.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

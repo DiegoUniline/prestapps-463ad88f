@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Wallet, HandCoins, Receipt, CreditCard, Loader2, UserCheck,
@@ -35,13 +34,30 @@ function useCobradores(empresaId: string) {
   return useQuery({
     queryKey: ["cobradores", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("cobradores")
-        .select("id, nombre, telefono, porcentaje_comision, efectivo_en_mano, activo, user_id")
+      // Get users with cobrador role
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "cobrador");
+      if (!roles?.length) return [];
+
+      const userIds = roles.map((r) => r.user_id);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, nombre_completo, telefono, porcentaje_comision, efectivo_en_mano, activo")
         .eq("empresa_id", empresaId)
         .eq("activo", true)
-        .order("nombre");
+        .in("id", userIds)
+        .order("nombre_completo");
       if (error) throw error;
-      return (data || []) as Cobrador[];
+      return (data || []).map((p) => ({
+        id: p.id,
+        nombre: p.nombre_completo,
+        telefono: p.telefono,
+        porcentaje_comision: Number(p.porcentaje_comision || 0),
+        efectivo_en_mano: Number(p.efectivo_en_mano || 0),
+        activo: p.activo,
+      })) as Cobrador[];
     },
   });
 }
@@ -60,12 +76,27 @@ function useLiquidaciones(empresaId: string) {
   return useQuery({
     queryKey: ["liquidaciones", empresaId],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("cortes")
-        .select("*, cobradores ( nombre ), cajas ( nombre )")
+      const { data } = await supabase
+        .from("cortes")
+        .select("*, cajas ( nombre )")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(50);
-      return data || [];
+      
+      if (!data?.length) return [];
+
+      // Get cobrador names from profiles
+      const cobIds = [...new Set(data.map((d: any) => d.cobrador_id).filter(Boolean))];
+      let cobMap: Record<string, string> = {};
+      if (cobIds.length) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, nombre_completo")
+          .in("id", cobIds);
+        for (const p of profiles || []) cobMap[p.id] = p.nombre_completo;
+      }
+
+      return data.map((l: any) => ({ ...l, cobrador_nombre: cobMap[l.cobrador_id] || "—" }));
     },
   });
 }
@@ -109,8 +140,8 @@ export default function LiquidarRutaPage() {
 
     setSaving(true);
     try {
-      // 1) Reduce cobrador efectivo
-      await (supabase.from as any)("cobradores")
+      // 1) Reduce cobrador efectivo in profiles
+      await supabase.from("profiles")
         .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
         .eq("id", selectedCobrador.id);
 
@@ -129,7 +160,7 @@ export default function LiquidarRutaPage() {
 
       // 4) Register corte
       const comision = montoNum * (selectedCobrador.porcentaje_comision / 100);
-      await (supabase.from as any)("cortes").insert({
+      await supabase.from("cortes").insert({
         cobrador_id: selectedCobrador.id,
         caja_id: cajaId,
         total_cobrado: montoNum,
@@ -163,12 +194,11 @@ export default function LiquidarRutaPage() {
 
     setSaving(true);
     try {
-      // Reduce cobrador efectivo
-      await (supabase.from as any)("cobradores")
+      // Reduce cobrador efectivo in profiles
+      await supabase.from("profiles")
         .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
         .eq("id", selectedCobrador.id);
 
-      // Register as movimiento_caja salida (using first caja for tracking)
       const targetCaja = cajaId || cajas[0]?.id;
       if (targetCaja) {
         await supabase.from("movimientos_caja").insert({
@@ -198,12 +228,10 @@ export default function LiquidarRutaPage() {
 
     setSaving(true);
     try {
-      // Reduce cobrador efectivo (the loan was delivered from their cash)
-      await (supabase.from as any)("cobradores")
+      await supabase.from("profiles")
         .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
         .eq("id", selectedCobrador.id);
 
-      // Register as movimiento
       const targetCaja = cajaId || cajas[0]?.id;
       if (targetCaja) {
         await supabase.from("movimientos_caja").insert({
@@ -325,35 +353,14 @@ export default function LiquidarRutaPage() {
                     <TableCell className="text-right text-[13px]">{c.porcentaje_comision}%</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="h-7 text-[11px] px-2.5"
-                          disabled={c.efectivo_en_mano <= 0}
-                          onClick={() => openModal(c, "depositar")}
-                        >
-                          <ArrowDownToLine className="h-3 w-3 mr-1" />
-                          Depositar
+                        <Button size="sm" variant="default" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "depositar")}>
+                          <ArrowDownToLine className="h-3 w-3 mr-1" />Depositar
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-[11px] px-2.5"
-                          disabled={c.efectivo_en_mano <= 0}
-                          onClick={() => openModal(c, "gasto")}
-                        >
-                          <MinusCircle className="h-3 w-3 mr-1" />
-                          Gasto
+                        <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "gasto")}>
+                          <MinusCircle className="h-3 w-3 mr-1" />Gasto
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-[11px] px-2.5"
-                          disabled={c.efectivo_en_mano <= 0}
-                          onClick={() => openModal(c, "prestamo_entregado")}
-                        >
-                          <CreditCard className="h-3 w-3 mr-1" />
-                          Préstamo
+                        <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "prestamo_entregado")}>
+                          <CreditCard className="h-3 w-3 mr-1" />Préstamo
                         </Button>
                       </div>
                     </TableCell>
@@ -388,7 +395,7 @@ export default function LiquidarRutaPage() {
                 {liquidaciones.map((l: any) => (
                   <TableRow key={l.id}>
                     <TableCell className="text-[12px]">{format(new Date(l.created_at), "dd/MM/yyyy HH:mm")}</TableCell>
-                    <TableCell className="text-[13px] font-medium">{l.cobradores?.nombre || "—"}</TableCell>
+                    <TableCell className="text-[13px] font-medium">{l.cobrador_nombre || "—"}</TableCell>
                     <TableCell className="text-right text-[13px] font-semibold">{$$(l.monto_depositado)}</TableCell>
                     <TableCell className="text-right text-[13px]">{$$(l.monto_comision)}</TableCell>
                     <TableCell className="text-[12px]">{l.cajas?.nombre || "—"}</TableCell>
@@ -413,7 +420,6 @@ export default function LiquidarRutaPage() {
               </DialogHeader>
 
               <div className="space-y-4">
-                {/* Cobrador info */}
                 <div className="bg-secondary rounded-lg px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-[11px] text-muted-foreground uppercase">Cobrador</p>
@@ -425,62 +431,42 @@ export default function LiquidarRutaPage() {
                   </div>
                 </div>
 
-                {/* Monto */}
                 <div>
-                  <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">
-                    Monto ($)
-                  </Label>
+                  <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Monto ($)</Label>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max={selectedCobrador.efectivo_en_mano}
-                    placeholder="0.00"
-                    value={monto}
-                    onChange={(e) => setMonto(e.target.value)}
-                    className="mt-1 h-9 text-[13px]"
-                    autoFocus
+                    type="number" step="0.01" min="0" max={selectedCobrador.efectivo_en_mano}
+                    placeholder="0.00" value={monto} onChange={(e) => setMonto(e.target.value)}
+                    className="mt-1 h-9 text-[13px]" autoFocus
                   />
                   {modal === "depositar" && (
-                    <Button
-                      variant="link"
-                      className="text-[11px] p-0 h-auto mt-1"
-                      onClick={() => setMonto(selectedCobrador.efectivo_en_mano.toFixed(2))}
-                    >
+                    <Button variant="link" className="text-[11px] p-0 h-auto mt-1"
+                      onClick={() => setMonto(selectedCobrador.efectivo_en_mano.toFixed(2))}>
                       Depositar todo ({$$(selectedCobrador.efectivo_en_mano)})
                     </Button>
                   )}
                 </div>
 
-                {/* Caja selector for deposits */}
                 {cfg.showCaja && (
                   <div>
                     <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
                     <Select value={cajaId} onValueChange={setCajaId}>
                       <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                       <SelectContent>
-                        {cajas.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                        ))}
+                        {cajas.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
 
-                {/* Concepto for gastos/prestamos */}
                 {cfg.conceptoLabel && (
                   <div>
                     <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">{cfg.conceptoLabel}</Label>
-                    <Textarea
-                      value={concepto}
-                      onChange={(e) => setConcepto(e.target.value)}
+                    <Textarea value={concepto} onChange={(e) => setConcepto(e.target.value)}
                       className="mt-1 text-[13px] min-h-[60px]"
-                      placeholder={modal === "gasto" ? "Ej: Gasolina, comida, taxi..." : "Ej: Cliente Juan Pérez, préstamo rápido..."}
-                    />
+                      placeholder={modal === "gasto" ? "Ej: Gasolina, comida, taxi..." : "Ej: Cliente Juan Pérez, préstamo rápido..."} />
                   </div>
                 )}
 
-                {/* Summary for deposit */}
                 {modal === "depositar" && parseFloat(monto) > 0 && (
                   <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5 text-[12px] space-y-1">
                     <div className="flex justify-between">

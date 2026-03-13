@@ -75,15 +75,15 @@ function useEstadosCuenta() {
         .neq("status", "Pagada");
       if (aErr) throw aErr;
 
-      // 4. Cobradores
+      // 4. Cobradores from profiles
       const cobradorIds = [...new Set((prestamos || []).map((p) => p.cobrador_id).filter(Boolean))];
       let cobradorMap: Record<string, string> = {};
       if (cobradorIds.length > 0) {
-        const { data: cobradores } = await (supabase.from as any)("cobradores")
-          .select("id, nombre")
+        const { data: profiles } = await supabase.from("profiles")
+          .select("id, nombre_completo")
           .in("id", cobradorIds);
-        for (const c of cobradores || []) {
-          cobradorMap[c.id] = c.nombre;
+        for (const c of profiles || []) {
+          cobradorMap[c.id] = c.nombre_completo;
         }
       }
 
