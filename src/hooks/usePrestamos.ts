@@ -36,7 +36,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id,
       clientes ( id, nombre_completo ),
       cajas ( nombre ),
-      rutas ( nombre, cobrador_id )
+      rutas ( nombre )
     `)
     .order("created_at", { ascending: false });
 
