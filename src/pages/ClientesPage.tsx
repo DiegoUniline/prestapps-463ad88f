@@ -212,7 +212,8 @@ export default function ClientesPage() {
           {isLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : (
-            <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-table-header hover:bg-table-header border-b">
@@ -228,9 +229,7 @@ export default function ClientesPage() {
                 <TableBody>
                   {clientes?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">
-                        No se encontraron clientes
-                      </TableCell>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron clientes</TableCell>
                     </TableRow>
                   ) : (
                     clientes?.map((c) => (
@@ -251,6 +250,27 @@ export default function ClientesPage() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-2">
+              {clientes?.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron clientes</p>
+              ) : (
+                clientes?.map((c) => (
+                  <div key={c.id} className="bg-card border rounded-lg p-3 cursor-pointer active:bg-muted/50" onClick={() => navigate(`/clientes/${c.id}`)}>
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-[13px] truncate">{c.nombre_completo}</p>
+                        <p className="text-[11px] text-muted-foreground">{c.id_cliente} · {c.telefono || "Sin tel."}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <Badge className={estadoColors[c.estado] || "bg-muted text-muted-foreground"}>{c.estado}</Badge>
+                        <Switch checked={c.activo} onClick={(e) => handleToggleActivo(e, c.id, c.activo)} />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </TabsContent>
