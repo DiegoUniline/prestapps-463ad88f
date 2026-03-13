@@ -65,8 +65,11 @@ function useCobradores() {
   return useQuery({
     queryKey: ["cobradores-options"],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("cobradores").select("id, nombre").eq("activo", true).order("nombre");
-      return data || [];
+      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "cobrador");
+      if (!roles?.length) return [];
+      const userIds = roles.map((r) => r.user_id);
+      const { data } = await supabase.from("profiles").select("id, nombre_completo").eq("activo", true).in("id", userIds).order("nombre_completo");
+      return (data || []).map((p) => ({ id: p.id, nombre: p.nombre_completo }));
     },
   });
 }
