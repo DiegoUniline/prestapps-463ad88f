@@ -126,7 +126,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       }
 
       // 4) Get payments for these cuotas to check if paid today
-      const cuotaIds = cuotas.map((c) => c.id);
+      const cuotaIds = allCuotas.map((c) => c.id);
       const { data: pagos } = await supabase
         .from("pagos")
         .select("cuota_id, monto_recibido, created_at")
