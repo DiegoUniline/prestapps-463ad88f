@@ -354,7 +354,7 @@ export default function SolicitudesPage() {
           <div className="space-y-4">
             <p className="text-sm">
               ¿Aprobar solicitud de <strong>{approveTarget?.clientes?.nombre_completo}</strong> por{" "}
-              <strong>${Number(approveTarget?.monto_solicitado || 0).toLocaleString()}</strong>?
+              <strong>{$$(Number(approveTarget?.monto_solicitado || 0))}</strong>?
             </p>
 
             {approveTarget?.caja_id && (
