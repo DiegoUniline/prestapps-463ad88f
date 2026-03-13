@@ -122,6 +122,7 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
 
 export default function PrestamosPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role, rutaIds, cobradorId } = useCurrentUserRole();
   const { empresaId } = useEmpresa();
   const roleFilters = role === "admin" ? { empresaId } : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId, empresaId };
