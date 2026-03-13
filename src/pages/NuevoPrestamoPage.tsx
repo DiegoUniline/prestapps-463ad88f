@@ -283,8 +283,8 @@ export default function NuevoPrestamoPage() {
         }
       }
 
-      // Register cash outflow ONLY if NOT carga inicial
-      if (!esInicial && cajaId) {
+      // Register cash outflow ONLY if NOT carga inicial AND NOT a sale
+      if (!esInicial && !esVenta && cajaId) {
         await supabase.from("movimientos_caja").insert({
           caja_id: cajaId,
           empresa_id: empresaId,
