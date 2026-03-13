@@ -106,7 +106,7 @@ export function StripeConnectTab() {
                 </div>
                 <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/30">
                   {status.charges_enabled ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
                   ) : (
                     <XCircle className="h-5 w-5 text-destructive" />
                   )}
