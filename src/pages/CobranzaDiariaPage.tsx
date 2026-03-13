@@ -643,6 +643,11 @@ export default function CobranzaDiariaPage() {
                         {item.clienteNombre}
                       </button>
                       <p className="text-[11px] text-muted-foreground">
+                        {item.tipoCuenta !== "prestamo" && (
+                          <span className="inline-flex items-center rounded px-1 py-0 text-[9px] font-semibold bg-accent text-accent-foreground mr-1">
+                            {item.tipoCuenta === "venta_seguro" ? "Seguro" : item.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
+                          </span>
+                        )}
                         Cuota #{item.numCuota}/{item.totalCuotas} · {item.ruta}
                         {isOverdue && <span className="text-destructive ml-1">({format(parseISO(item.fechaVencimiento), "dd/MM")})</span>}
                       </p>
