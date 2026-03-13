@@ -30,9 +30,9 @@ export function TopBar() {
           <span className="font-bold text-sm">PrestApp</span>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 md:gap-3">
         {empresas.length > 1 && (
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
             <Select value={empresaId} onValueChange={setEmpresaId}>
               <SelectTrigger className="w-48 h-8 text-xs">
@@ -46,13 +46,13 @@ export function TopBar() {
             </Select>
           </div>
         )}
-        <Button variant="ghost" size="icon" onClick={toggleTheme}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
           {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </Button>
-        <Button variant="ghost" size="icon">
-          <Bell className="h-4 w-4" />
-        </Button>
-        <Badge variant="secondary" className="text-[10px] h-6">{roleLabel[role] || role}</Badge>
+        <Badge variant="secondary" className="text-[10px] h-6 hidden md:flex">{roleLabel[role] || role}</Badge>
+        <Avatar className="h-8 w-8">
+          <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
+        </Avatar>
         <Avatar className="h-8 w-8">
           <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
         </Avatar>
