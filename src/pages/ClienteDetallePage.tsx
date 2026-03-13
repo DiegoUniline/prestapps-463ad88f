@@ -148,7 +148,7 @@ export default function ClienteDetallePage() {
 
   useEffect(() => {
     if (cliente) {
-      const { id: _id, id_cliente: _idc, created_at: _ca, ...rest } = cliente;
+      const { id: _id, created_at: _ca, ...rest } = cliente;
       setForm(rest);
     }
   }, [cliente]);
