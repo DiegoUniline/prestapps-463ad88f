@@ -269,9 +269,21 @@ export default function PrestamoDetallePage() {
   }));
 
   const handlePdf = async (type: "estado" | "contrato" | "pagos") => {
-    if (type === "estado") await generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
-    else if (type === "contrato") await generarContrato(pdfPrestamo, pdfCuotas);
-    else await generarReciboPagos(pdfPrestamo, pdfPagos);
+    setDocPreview({ open: true, type });
+  };
+
+  const docTitles: Record<string, string> = { estado: "Estado de Cuenta", contrato: "Contrato de Préstamo", pagos: "Recibo de Pagos" };
+  const docFileNames: Record<string, string> = {
+    estado: `estado-cuenta-PRE-${shortId}.pdf`,
+    contrato: `contrato-PRE-${shortId}.pdf`,
+    pagos: `pagos-PRE-${shortId}.pdf`,
+  };
+
+  const generateDocForPreview = async () => {
+    const t = docPreview.type!;
+    if (t === "estado") return generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
+    if (t === "contrato") return generarContrato(pdfPrestamo, pdfCuotas);
+    return generarReciboPagos(pdfPrestamo, pdfPagos);
   };
 
   return (
