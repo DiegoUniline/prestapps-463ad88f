@@ -376,7 +376,7 @@ export default function PrestamoDetallePage() {
             <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground mb-1">
               <Link to="/prestamos" className="hover:text-foreground transition-colors">Préstamos</Link>
               <span>/</span>
-              <span className="text-foreground">PRE-{shortId}</span>
+              <span className="text-foreground">{folioId}</span>
             </div>
             <div className="flex items-center gap-3 mt-0.5">
               <h1 className="text-xl font-bold tracking-tight">
