@@ -317,7 +317,7 @@ export default function SolicitudPrestamoPage() {
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Total a Pagar</p>
-                    <p className="font-semibold text-sm">${montoTotalPagar.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    <p className="font-semibold text-sm">{$$(montoTotalPagar)}</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Cuota</p>
