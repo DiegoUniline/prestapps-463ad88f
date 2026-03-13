@@ -60,7 +60,7 @@ function calcNextDate(base: Date, frecuencia: string, n: number): Date {
 export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { empresaId } = useEmpresa();
+  const { empresaId, empresaNombre } = useEmpresa();
   const { user } = useAuth();
 
   const { data: clientes = [] } = useClientesOptions(empresaId);
