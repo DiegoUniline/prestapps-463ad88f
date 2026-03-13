@@ -62,6 +62,7 @@ const adminNav = [
   { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"] },
   { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
   { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"] },
+  { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"] },
 ];
 
 export function AppSidebar() {
