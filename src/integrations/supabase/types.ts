@@ -1159,6 +1159,44 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          action: string
+          allowed: boolean
+          created_at: string | null
+          empresa_id: string | null
+          id: string
+          module: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          action: string
+          allowed?: boolean
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          module: string
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          action?: string
+          allowed?: boolean
+          created_at?: string | null
+          empresa_id?: string | null
+          id?: string
+          module?: string
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rutas: {
         Row: {
           cobrador_id: string | null
