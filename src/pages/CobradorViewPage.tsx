@@ -642,21 +642,31 @@ function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }
                 Cobrar {$$(item.saldoTotal)}
               </Button>
               {item.clienteTelefono && (
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-9 w-9 shrink-0"
-                  onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}
-                >
-                  <Phone className="h-3.5 w-3.5" />
+                <>
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0"
+                    onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}>
+                    <Phone className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 text-green-600"
+                    onClick={() => window.open(`https://wa.me/${item.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                  </Button>
+                </>
+              )}
+              {onVisita && (
+                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Registrar visita"
+                  onClick={() => onVisita(item)}>
+                  <MapPin className="h-3.5 w-3.5" />
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}
-              >
+              {onPromesa && item.status !== "Prometida" && (
+                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Promesa de pago"
+                  onClick={() => onPromesa(item)}>
+                  <CalendarCheck className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0"
+                onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}>
                 <Eye className="h-3.5 w-3.5" />
               </Button>
             </>
