@@ -24,7 +24,7 @@ interface NavTab {
 
 const mainTabs: Record<string, NavTab[]> = {
   admin: [
-    { title: "Inicio", url: "/", icon: LayoutDashboard, roles: ["admin"] },
+    { title: "Inicio", url: "/dashboard", icon: LayoutDashboard, roles: ["admin"] },
     { title: "Cobranza", url: "/cobranza", icon: ClipboardCheck, roles: ["admin"] },
     { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin"] },
     { title: "Alertas", url: "/alertas", icon: Bell, roles: ["admin"] },
