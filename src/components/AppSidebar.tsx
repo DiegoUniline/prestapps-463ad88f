@@ -32,6 +32,7 @@ interface NavItem {
   url: string;
   icon: LucideIcon;
   roles: AppRole[];
+  superAdminOnly?: boolean;
 }
 
 interface NavModule {
