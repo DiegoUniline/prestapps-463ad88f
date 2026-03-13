@@ -575,6 +575,11 @@ export default function CobranzaDiariaPage() {
                       <button className="font-medium hover:text-primary hover:underline text-left" onClick={() => navigate(`/clientes/${item.clienteId}`)}>
                         {item.clienteNombre}
                       </button>
+                      {item.tipoCuenta !== "prestamo" && (
+                        <span className="ml-1.5 inline-flex items-center rounded px-1.5 py-0 text-[9px] font-semibold bg-accent text-accent-foreground">
+                          {item.tipoCuenta === "venta_seguro" ? "Seguro" : item.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="font-medium">#{item.numCuota}</span>
