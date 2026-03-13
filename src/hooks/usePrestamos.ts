@@ -110,6 +110,7 @@ export function usePrestamos(filters?: FetchFilters) {
   return useQuery({
     queryKey: ["prestamos-list", filters?.rutaIds, filters?.cobradorId, filters?.empresaId],
     queryFn: () => fetchPrestamos(filters),
+    staleTime: 1000 * 60 * 5,
   });
 }
 

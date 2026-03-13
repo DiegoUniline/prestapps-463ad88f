@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -121,6 +122,7 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
 
 export default function PrestamosPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role, rutaIds, cobradorId } = useCurrentUserRole();
   const { empresaId } = useEmpresa();
   const roleFilters = role === "admin" ? { empresaId } : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId, empresaId };
@@ -395,6 +397,16 @@ export default function PrestamosPage() {
                   selectedRows.has(p.id) ? "bg-table-selected" : "hover:bg-table-hover"
                 )}
                 onClick={() => navigate(`/prestamos/${p.id}`)}
+                onMouseEnter={() => {
+                  queryClient.prefetchQuery({
+                    queryKey: ["prestamo-detalle", p.id],
+                    staleTime: 1000 * 60 * 5,
+                  });
+                  queryClient.prefetchQuery({
+                    queryKey: ["amortizacion", p.id],
+                    staleTime: 1000 * 60 * 5,
+                  });
+                }}
               >
                 <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
