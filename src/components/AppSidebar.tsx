@@ -36,6 +36,7 @@ import {
   ClipboardList,
   BookOpen,
   Cog,
+  FileInput,
   type LucideIcon,
 } from "lucide-react";
 
