@@ -503,6 +503,9 @@ export default function PrestamoDetallePage() {
                 </span>
               } />
               <SidebarField label="CAJA" value={caja?.nombre || "—"} />
+              {(prestamo as any).codigo_interno && (
+                <SidebarField label="CÓD. INTERNO" value={<span className="font-mono font-semibold">{(prestamo as any).codigo_interno}</span>} />
+              )}
               <SidebarField label="F. REGISTRO" value={fmtDate(prestamo.fecha_registro)} />
               <SidebarField label="F. PRIMER PAGO" value={fmtDate(prestamo.fecha_primer_pago)} />
             </div>
@@ -960,6 +963,7 @@ export default function PrestamoDetallePage() {
           ruta_id: prestamo.ruta_id,
           cobrador_id: prestamo.cobrador_id,
           notas: prestamo.notas || null,
+          codigo_interno: (prestamo as any).codigo_interno || null,
         }}
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
         rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}

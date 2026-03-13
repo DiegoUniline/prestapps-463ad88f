@@ -82,6 +82,7 @@ export default function NuevoPrestamoPage() {
   const [tipoMora, setTipoMora] = useState<string>("porcentaje");
   const [valorMora, setValorMora] = useState("");
   const [notas, setNotas] = useState("");
+  const [codigoInterno, setCodigoInterno] = useState("");
   const [cuotaOverride, setCuotaOverride] = useState("");
   const [esInicial, setEsInicial] = useState(false);
   const [cuotasCubiertas, setCuotasCubiertas] = useState("");
@@ -210,6 +211,7 @@ export default function NuevoPrestamoPage() {
           valor_mora: parseFloat(valorMora) || 0,
           empresa: empresaNombre || null,
           notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
+          codigo_interno: codigoInterno || null,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
           gps_lat: geo.lat,
@@ -335,6 +337,13 @@ export default function NuevoPrestamoPage() {
                 ) : null;
               })()}
               <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
+            </div>
+
+            {/* Código interno */}
+            <div className="space-y-1.5">
+              <Label className="text-[13px]">Código Interno</Label>
+              <Input value={codigoInterno} onChange={(e) => setCodigoInterno(e.target.value)} placeholder="Ej: CI-001, REF-2024..." />
+              <p className="text-[11px] text-muted-foreground">Código de referencia interno opcional</p>
             </div>
 
             {/* Monto + Tasa + Cuotas */}

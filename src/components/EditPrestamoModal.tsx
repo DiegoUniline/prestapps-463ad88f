@@ -24,6 +24,7 @@ interface EditPrestamoModalProps {
     ruta_id: string | null;
     cobrador_id: string | null;
     notas: string | null;
+    codigo_interno: string | null;
   };
   cajas: { id: string; nombre: string }[];
   rutas: { id: string; nombre: string }[];
@@ -42,6 +43,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
   const [rutaId, setRutaId] = useState("");
   const [cobradorId, setCobradorId] = useState("");
   const [notas, setNotas] = useState("");
+  const [codigoInterno, setCodigoInterno] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -53,6 +55,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
       setRutaId(prestamo.ruta_id ?? "");
       setCobradorId(prestamo.cobrador_id ?? "");
       setNotas(prestamo.notas ?? "");
+      setCodigoInterno((prestamo as any).codigo_interno ?? "");
     }
   }, [open, prestamo]);
 
@@ -68,6 +71,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
         ruta_id: rutaId || null,
         cobrador_id: cobradorId || null,
         notas: notas || null,
+        codigo_interno: codigoInterno || null,
       };
 
       const { error } = await supabase
@@ -187,6 +191,17 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
                 />
               </div>
             </div>
+          </div>
+
+          {/* Código Interno */}
+          <div>
+            <Label className="text-xs">Código Interno</Label>
+            <Input
+              value={codigoInterno}
+              onChange={(e) => setCodigoInterno(e.target.value)}
+              placeholder="Ej: CI-001, REF-2024..."
+              className="mt-1 h-9 text-sm"
+            />
           </div>
 
           {/* Notas */}
