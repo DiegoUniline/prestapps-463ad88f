@@ -139,9 +139,10 @@ interface PagoData {
 }
 
 // ── 1. ESTADO DE CUENTA ──────────────────────────────────────────
-export function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaData[], pagos: PagoData[]) {
+export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaData[], pagos: PagoData[]) {
   const doc = new jsPDF();
-  let y = addHeader(doc, "ESTADO DE CUENTA", prestamo.id, prestamo.clienteNombre);
+  const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
+  let y = addHeader(doc, "ESTADO DE CUENTA", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
   // Summary section
   const totalPagado = cuotas.reduce((s, c) => s + (c.capital_pagado || 0) + (c.interes_pagado || 0) + (c.mora_pagada || 0), 0);
