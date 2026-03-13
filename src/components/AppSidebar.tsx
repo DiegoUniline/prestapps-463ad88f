@@ -147,10 +147,16 @@ export function AppSidebar() {
   const isActive = (path: string) =>
     location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
 
+  const userEmail = useAuthStore((s) => s.user?.email);
+  const superAdmin = isSuperAdmin(userEmail);
+
   const visibleModules = modules
     .map((mod) => ({
       ...mod,
-      items: loading ? mod.items : mod.items.filter((item) => item.roles.includes(role)),
+      items: loading ? mod.items : mod.items.filter((item) => {
+        if (item.superAdminOnly && !superAdmin) return false;
+        return item.roles.includes(role);
+      }),
     }))
     .filter((mod) => mod.items.length > 0);
 
