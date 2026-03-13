@@ -35,6 +35,8 @@ import MapaGPSPage from "@/pages/MapaGPSPage";
 import LiquidarRutaPage from "@/pages/LiquidarRutaPage";
 import CatalogosPage from "@/pages/CatalogosPage";
 import ConfiguracionEmpresaPage from "@/pages/ConfiguracionEmpresaPage";
+import SolicitudesPage from "@/pages/SolicitudesPage";
+import SolicitudPrestamoPage from "@/pages/SolicitudPrestamoPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
