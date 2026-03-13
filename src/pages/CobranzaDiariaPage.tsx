@@ -594,6 +594,23 @@ export default function CobranzaDiariaPage() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
+                      {item.gestiones > 0 ? (
+                        <div className="flex flex-col items-center gap-0.5">
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <MapPin className="h-2.5 w-2.5" />
+                            {item.gestiones}
+                          </Badge>
+                          {item.ultimaGestion && (
+                            <span className="text-[9px] text-muted-foreground">
+                              {format(new Date(item.ultimaGestion), "dd/MM", { locale: es })}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
                       {!item.pagada ? (
                         <div className="flex items-center justify-center gap-1">
                           <Button
