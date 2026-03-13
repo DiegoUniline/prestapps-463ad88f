@@ -392,8 +392,8 @@ export default function PrestamoDetallePage() {
           {/* Datos del Préstamo */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Datos del Préstamo</h3>
-            <div className="space-y-2.5">
-              <SidebarField label="CLIENTE" value={
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <SidebarField full label="CLIENTE" value={
                 cliente ? <Link to={`/clientes/${cliente.id}`} className="text-primary hover:underline font-medium">{cliente.nombre_completo}</Link> : "—"
               } />
               <SidebarField label="EMPRESA" value={dashStr(prestamo.empresa)} />
@@ -406,10 +406,9 @@ export default function PrestamoDetallePage() {
                   </button>
                 </span>
               } />
-              <SidebarField label="GENERADO POR" value="—" />
+              <SidebarField label="CAJA" value={caja?.nombre || "—"} />
               <SidebarField label="F. REGISTRO" value={prestamo.fecha_registro ? format(new Date(prestamo.fecha_registro), "dd/MM/yyyy") : "—"} />
               <SidebarField label="F. PRIMER PAGO" value={prestamo.fecha_primer_pago ? format(new Date(prestamo.fecha_primer_pago), "dd/MM/yyyy") : "—"} />
-              <SidebarField label="CAJA" value={caja?.nombre || "—"} />
             </div>
           </div>
 
