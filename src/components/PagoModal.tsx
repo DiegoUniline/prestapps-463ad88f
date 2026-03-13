@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useMetodosPagoActivos } from "@/hooks/useCatalogos";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { HandCoins, Info, Loader2 } from "lucide-react";
+import { HandCoins, Info, Loader2, AlertTriangle } from "lucide-react";
 
 interface Cuota {
   id: string;
@@ -53,12 +54,18 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
   const geo = useGeoLocation();
+  const { data: metodosPago = [] } = useMetodosPagoActivos();
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
-  const [metodo, setMetodo] = useState("Efectivo");
+  const [metodo, setMetodo] = useState("");
   const [cajaId, setCajaId] = useState(cajas[0]?.id || "");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+
+  // Set default payment method when catalog loads
+  if (metodosPago.length > 0 && !metodo) {
+    setMetodo(metodosPago[0].nombre);
+  }
 
   // Pre-fill monto when modal opens with montoInicial
   if (open && montoInicial && !initialized) {
@@ -348,13 +355,19 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Método de Pago</Label>
               <Select value={metodo} onValueChange={setMetodo}>
-                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Efectivo">Efectivo</SelectItem>
-                  <SelectItem value="Transferencia">Transferencia</SelectItem>
-                  <SelectItem value="Otro">Otro</SelectItem>
+                  {metodosPago.map((m) => (
+                    <SelectItem key={m.id} value={m.nombre}>{m.nombre}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {metodosPago.find((m) => m.nombre === metodo)?.requiere_validacion && (
+                <div className="flex items-center gap-1.5 mt-1.5 text-amber-600 text-[11px]">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Este método requiere validación de comprobante</span>
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
