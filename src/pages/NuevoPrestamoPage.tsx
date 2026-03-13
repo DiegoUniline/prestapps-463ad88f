@@ -202,19 +202,27 @@ export default function NuevoPrestamoPage() {
       // Insertar cuotas de amortización
       if (amortizacion.length > 0) {
         const baseDate = fechaPrimerPago || new Date();
-        const cuotasInsert = amortizacion.map((c) => ({
-          prestamo_id: data.id,
-          num_cuota: c.num,
-          capital: c.capital,
-          interes: c.interes,
-          capital_interes: c.cuota,
-          fecha_vencimiento: format(calcNextDate(baseDate, frecuencia, c.num - 1), "yyyy-MM-dd"),
-          saldo_capital: c.capital,
-          saldo_interes: c.interes,
-          saldo_total: c.cuota,
-          status: "Pendiente" as const,
-          empresa_id: empresaId,
-        }));
+        const numCubiertas = esInicial ? (parseInt(cuotasCubiertas) || 0) : 0;
+
+        const cuotasInsert = amortizacion.map((c) => {
+          const yaPagada = c.num <= numCubiertas;
+          return {
+            prestamo_id: data.id,
+            num_cuota: c.num,
+            capital: c.capital,
+            interes: c.interes,
+            capital_interes: c.cuota,
+            fecha_vencimiento: format(calcNextDate(baseDate, frecuencia, c.num - 1), "yyyy-MM-dd"),
+            saldo_capital: yaPagada ? 0 : c.capital,
+            saldo_interes: yaPagada ? 0 : c.interes,
+            saldo_total: yaPagada ? 0 : c.cuota,
+            capital_pagado: yaPagada ? c.capital : 0,
+            interes_pagado: yaPagada ? c.interes : 0,
+            fecha_pagada: yaPagada ? format(new Date(), "yyyy-MM-dd") : null,
+            status: (yaPagada ? "Pagada" : "Pendiente") as const,
+            empresa_id: empresaId,
+          };
+        });
 
         const { error: amortError } = await supabase
           .from("amortizacion")
