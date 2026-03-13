@@ -221,9 +221,9 @@ export default function PrestamosPage() {
 
   const kpis = [
     { label: "Total Préstamos", value: String(totalPrestamos), icon: FileText, accent: "text-primary" },
-    { label: "Monto Colocado", value: `$${montoColocado.toLocaleString()}`, icon: DollarSign, accent: "text-success" },
-    { label: "Por Cobrar", value: `$${porCobrar.toLocaleString()}`, icon: TrendingUp, accent: "text-warning" },
-    { label: `En Mora (${morosos.length})`, value: `$${totalMora.toLocaleString()}`, icon: AlertTriangle, accent: "text-destructive" },
+    { label: "Monto Colocado", value: $$(montoColocado), icon: DollarSign, accent: "text-success" },
+    { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning" },
+    { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
   ];
 
   const tabCounts = useMemo(() => ({
