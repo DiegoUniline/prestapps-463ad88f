@@ -231,6 +231,7 @@ export default function NuevoPrestamoPage() {
           empresa: empresaNombre || null,
           notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
           codigo_interno: codigoInterno || null,
+          tipo_cuenta: tipoCuenta,
           cuota_calculada: cuotaCalculada,
           cuota_redondeada: cuotaFinal,
           gps_lat: geo.lat,
