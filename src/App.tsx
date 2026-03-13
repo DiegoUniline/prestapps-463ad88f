@@ -46,6 +46,10 @@ const LiquidarRutaPage = lazy(() => import("@/pages/LiquidarRutaPage"));
 const CatalogosPage = lazy(() => import("@/pages/CatalogosPage"));
 const ConfiguracionEmpresaPage = lazy(() => import("@/pages/ConfiguracionEmpresaPage"));
 const PermisosPage = lazy(() => import("@/pages/PermisosPage"));
+const AlertasPage = lazy(() => import("@/pages/AlertasPage"));
+const RenovacionPage = lazy(() => import("@/pages/RenovacionPage"));
+const RentabilidadPage = lazy(() => import("@/pages/RentabilidadPage"));
+const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
