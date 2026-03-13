@@ -30,8 +30,7 @@ interface FetchFilters {
 }
 
 async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[]> {
-  let query = supabase
-    .from("prestamos")
+  let query = (supabase.from as any)("prestamos")
     .select(
       "id, id_prestamo, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id"
     )
@@ -51,7 +50,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   if (error) throw error;
   if (!rawPrestamos || rawPrestamos.length === 0) return [];
 
-  const prestamos = rawPrestamos as Array<{
+  const prestamos = rawPrestamos as unknown as Array<{
     id: string;
     id_prestamo: string;
     monto_solicitado: number | null;
