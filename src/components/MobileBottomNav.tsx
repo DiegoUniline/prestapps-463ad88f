@@ -30,7 +30,7 @@ const mainTabs: Record<string, NavTab[]> = {
     { title: "Alertas", url: "/alertas", icon: Bell, roles: ["admin"] },
   ],
   supervisor: [
-    { title: "Inicio", url: "/", icon: LayoutDashboard, roles: ["supervisor"] },
+    { title: "Inicio", url: "/dashboard", icon: LayoutDashboard, roles: ["supervisor"] },
     { title: "Cobranza", url: "/cobranza", icon: ClipboardCheck, roles: ["supervisor"] },
     { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["supervisor"] },
     { title: "Clientes", url: "/clientes", icon: Users, roles: ["supervisor"] },
