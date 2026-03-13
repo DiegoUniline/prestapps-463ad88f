@@ -392,6 +392,89 @@ export default function EmpresasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Detail dialog */}
+      <Dialog open={!!detailEmpresa} onOpenChange={(v) => !v && setDetailEmpresa(null)}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" /> {detailEmpresa?.nombre}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+            {/* Empresa info */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div>
+                <span className="text-muted-foreground block text-xs">Plan</span>
+                <Badge variant="outline" className="gap-1 mt-0.5">
+                  {PLAN_CONFIG[detailEmpresa?.plan || "basico"]?.icon} {PLAN_CONFIG[detailEmpresa?.plan || "basico"]?.label}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-xs">RUC / NIT</span>
+                <span className="font-medium">{detailEmpresa?.ruc || "—"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-xs">Teléfono</span>
+                <span className="font-medium">{detailEmpresa?.telefono || "—"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-xs">Estado</span>
+                <Badge variant={detailEmpresa?.activa ? "default" : "secondary"} className="mt-0.5">
+                  {detailEmpresa?.activa ? "Activa" : "Inactiva"}
+                </Badge>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Users className="h-4 w-4" /> Usuarios ({detailUsers.length})
+            </div>
+
+            {loadingDetail ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">Cargando usuarios...</p>
+            ) : detailUsers.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No hay usuarios registrados</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Correo</TableHead>
+                    <TableHead>Rol</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead>Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {detailUsers.map((u) => {
+                    const rolLabel: Record<string, string> = { admin: "Admin", supervisor: "Supervisor", cobrador: "Cobrador" };
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">{u.nombre_completo}</TableCell>
+                        <TableCell className="text-sm">{u.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{rolLabel[u.rol] || u.rol}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{u.telefono || "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant={u.activo ? "default" : "secondary"}>
+                            {u.activo ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailEmpresa(null)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
