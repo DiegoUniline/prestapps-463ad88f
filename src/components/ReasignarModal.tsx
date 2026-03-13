@@ -79,6 +79,7 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
                 ))}
               </SelectContent>
             </Select>
+            <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
           </div>
 
           <div>

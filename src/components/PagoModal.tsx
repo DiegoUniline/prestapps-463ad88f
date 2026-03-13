@@ -366,6 +366,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                   ))}
                 </SelectContent>
               </Select>
+              <QuickCreateButton entityType="metodo_pago" onCreated={(_id, label) => setMetodo(label)} />
               {metodosPago.find((m) => m.nombre === metodo)?.requiere_validacion && (
                 <div className="flex items-center gap-1.5 mt-1.5 text-amber-600 text-[11px]">
                   <AlertTriangle className="h-3 w-3" />
@@ -383,6 +384,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                   ))}
                 </SelectContent>
               </Select>
+              <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
             </div>
           </div>
 

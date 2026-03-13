@@ -248,6 +248,7 @@ export default function SolicitudPrestamoPage() {
                     {cajas.map((c) => (<SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
                 {saldoCaja !== null && (
                   <p className={cn("text-xs", excedeSaldo ? "text-destructive font-medium" : "text-muted-foreground")}>
                     Saldo disponible: {$$(saldoCaja)}
@@ -268,6 +269,7 @@ export default function SolicitudPrestamoPage() {
                     {rutas.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>))}
                   </SelectContent>
                 </Select>
+                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
               </div>
             </div>
 
