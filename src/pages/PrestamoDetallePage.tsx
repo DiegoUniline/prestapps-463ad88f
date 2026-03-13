@@ -147,7 +147,7 @@ export default function PrestamoDetallePage() {
   const ultimoPago = pagosRaw.length > 0 ? pagosRaw[pagosRaw.length - 1] : null;
   const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
 
-  const estado = prestamo.estado || "Activo";
+  const estado = (prestamo.estado || "Activo") as string;
   const shortId = prestamo.id?.slice(0, 8) || id;
 
   const kpis = [
