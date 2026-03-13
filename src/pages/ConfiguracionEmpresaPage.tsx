@@ -582,7 +582,7 @@ export default function ConfiguracionEmpresaPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configuración de la Empresa</h1>
-        <p className="text-muted-foreground text-sm mt-1">Logo, datos, diseño de tickets y plantilla de contratos</p>
+        <p className="text-muted-foreground text-sm mt-1">Logo, datos, tickets, contratos y pagos con tarjeta</p>
       </div>
 
       <Tabs defaultValue="datos" className="space-y-4">
