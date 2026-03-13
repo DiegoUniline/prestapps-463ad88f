@@ -791,6 +791,9 @@ export type Database = {
       }
       pagos: {
         Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
           aplicado_capital: number | null
           aplicado_interes: number | null
           aplicado_mora: number | null
@@ -804,11 +807,15 @@ export type Database = {
           id: string
           metodo_pago: Database["public"]["Enums"]["metodo_pago"] | null
           monto_recibido: number
+          motivo_anulacion: string | null
           prestamo_id: string
           registrado_por: string | null
           ruta_id: string | null
         }
         Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
           aplicado_capital?: number | null
           aplicado_interes?: number | null
           aplicado_mora?: number | null
@@ -822,11 +829,15 @@ export type Database = {
           id?: string
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
           monto_recibido: number
+          motivo_anulacion?: string | null
           prestamo_id: string
           registrado_por?: string | null
           ruta_id?: string | null
         }
         Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
           aplicado_capital?: number | null
           aplicado_interes?: number | null
           aplicado_mora?: number | null
@@ -840,6 +851,7 @@ export type Database = {
           id?: string
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
           monto_recibido?: number
+          motivo_anulacion?: string | null
           prestamo_id?: string
           registrado_por?: string | null
           ruta_id?: string | null
@@ -885,6 +897,8 @@ export type Database = {
       prestamos: {
         Row: {
           caja_id: string | null
+          cancelado_en: string | null
+          cancelado_por: string | null
           cliente_id: string
           cobrador_id: string | null
           created_at: string | null
@@ -904,8 +918,10 @@ export type Database = {
           modalidad: Database["public"]["Enums"]["prestamo_modalidad"]
           monto_solicitado: number
           monto_total_pagar: number | null
+          motivo_cancelacion: string | null
           notas: string | null
           num_cuotas: number
+          reestructurado_de: string | null
           ruta_id: string | null
           tasa_interes: number | null
           tipo_mora: Database["public"]["Enums"]["tipo_mora"] | null
@@ -913,6 +929,8 @@ export type Database = {
         }
         Insert: {
           caja_id?: string | null
+          cancelado_en?: string | null
+          cancelado_por?: string | null
           cliente_id: string
           cobrador_id?: string | null
           created_at?: string | null
@@ -932,8 +950,10 @@ export type Database = {
           modalidad: Database["public"]["Enums"]["prestamo_modalidad"]
           monto_solicitado: number
           monto_total_pagar?: number | null
+          motivo_cancelacion?: string | null
           notas?: string | null
           num_cuotas: number
+          reestructurado_de?: string | null
           ruta_id?: string | null
           tasa_interes?: number | null
           tipo_mora?: Database["public"]["Enums"]["tipo_mora"] | null
@@ -941,6 +961,8 @@ export type Database = {
         }
         Update: {
           caja_id?: string | null
+          cancelado_en?: string | null
+          cancelado_por?: string | null
           cliente_id?: string
           cobrador_id?: string | null
           created_at?: string | null
@@ -960,8 +982,10 @@ export type Database = {
           modalidad?: Database["public"]["Enums"]["prestamo_modalidad"]
           monto_solicitado?: number
           monto_total_pagar?: number | null
+          motivo_cancelacion?: string | null
           notas?: string | null
           num_cuotas?: number
+          reestructurado_de?: string | null
           ruta_id?: string | null
           tasa_interes?: number | null
           tipo_mora?: Database["public"]["Enums"]["tipo_mora"] | null
@@ -987,6 +1011,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prestamos_reestructurado_de_fkey"
+            columns: ["reestructurado_de"]
+            isOneToOne: false
+            referencedRelation: "prestamos"
             referencedColumns: ["id"]
           },
           {
@@ -1378,6 +1409,7 @@ export type Database = {
         | "Liquidado"
         | "Cancelado"
         | "Juridico"
+        | "Reestructurado"
       prestamo_modalidad: "fijo" | "insolutos"
       sexo_tipo: "Masculino" | "Femenino" | "Otro"
       situacion_laboral:
@@ -1529,6 +1561,7 @@ export const Constants = {
         "Liquidado",
         "Cancelado",
         "Juridico",
+        "Reestructurado",
       ],
       prestamo_modalidad: ["fijo", "insolutos"],
       sexo_tipo: ["Masculino", "Femenino", "Otro"],
