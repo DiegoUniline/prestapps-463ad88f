@@ -94,6 +94,7 @@ const modules: NavModule[] = [
       { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"] },
       { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
       { title: "Permisos", url: "/permisos", icon: ShieldCheck, roles: ["admin"] },
+      { title: "Auditoría", url: "/auditoria", icon: ScrollText, roles: ["admin"] },
     ],
   },
 ];
