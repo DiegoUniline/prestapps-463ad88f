@@ -113,7 +113,6 @@ export default function PermisosPage() {
       <PageHeader
         title="Permisos por Rol"
         description="Configura qué puede ver y hacer cada rol en el sistema"
-        icon={Shield}
       />
 
       <Tabs value={activeRole} onValueChange={(v) => setActiveRole(v as AppRole)}>
