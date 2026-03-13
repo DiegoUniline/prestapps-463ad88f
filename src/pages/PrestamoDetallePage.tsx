@@ -159,11 +159,12 @@ export default function PrestamoDetallePage() {
     { label: "Saldo Moroso", value: $$(saldoMoroso), color: saldoMoroso > 0 ? "text-destructive" : "text-foreground" },
   ];
 
-  // Pagos totals
-  const totalPagosMonto = pagosRaw.reduce((s, pg) => s + Number(pg.monto_recibido || 0), 0);
-  const totalPagosMora = pagosRaw.reduce((s, pg) => s + Number(pg.aplicado_mora || 0), 0);
-  const totalPagosInteres = pagosRaw.reduce((s, pg) => s + Number(pg.aplicado_interes || 0), 0);
-  const totalPagosCapital = pagosRaw.reduce((s, pg) => s + Number(pg.aplicado_capital || 0), 0);
+  // Pagos totals (exclude annulled)
+  const validPagos = pagosRaw.filter((pg) => !(pg as any).anulado);
+  const totalPagosMonto = validPagos.reduce((s, pg) => s + Number(pg.monto_recibido || 0), 0);
+  const totalPagosMora = validPagos.reduce((s, pg) => s + Number(pg.aplicado_mora || 0), 0);
+  const totalPagosInteres = validPagos.reduce((s, pg) => s + Number(pg.aplicado_interes || 0), 0);
+  const totalPagosCapital = validPagos.reduce((s, pg) => s + Number(pg.aplicado_capital || 0), 0);
 
   // Activity timeline
   const actividad = [
