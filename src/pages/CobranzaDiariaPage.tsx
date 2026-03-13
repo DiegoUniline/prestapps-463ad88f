@@ -257,6 +257,7 @@ export default function CobranzaDiariaPage() {
       if (filtroEstado === "cobradas" && !c.pagada) return false;
       if (filtroEstado === "pendientes" && c.pagada) return false;
       if (filtroEstado === "vencidas" && (c.pagada || c.diasAtraso === 0)) return false;
+      if (filtroEstado === "prometidas" && c.status !== "Prometida") return false;
       return true;
     });
   }, [roleCuotas, search, filtroRuta, filtroCobrador, filtroEstado, showVencidas, fechaStr]);
