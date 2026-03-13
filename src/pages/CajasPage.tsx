@@ -503,7 +503,7 @@ export default function CajasPage() {
                 kardexDesde && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
               )}>
                 <CalendarIcon className="h-3 w-3" />
-                {kardexDesde ? format(kardexDesde, "dd/MM/yy") : "Desde"}
+                {kardexDesde ? fmtDate(kardexDesde) : "Desde"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
