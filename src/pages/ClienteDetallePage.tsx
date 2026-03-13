@@ -274,7 +274,7 @@ export default function ClienteDetallePage() {
               <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Identificación y Estado</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <ReadOrSelect label="Tipo de Documento" value={form.documento_identidad} formValue={form.documento_identidad} onChange={(v) => updateField("documento_identidad", v as any)} editing={editing}
-                  options={[{ value: "DUI", label: "DUI" }, { value: "Pasaporte", label: "Pasaporte" }, { value: "NIT", label: "NIT" }, { value: "Otro", label: "Otro" }]} />
+                  options={[{ value: "INE", label: "INE" }, { value: "DUI", label: "DUI" }, { value: "Pasaporte", label: "Pasaporte" }, { value: "NIT", label: "NIT" }, { value: "Otro", label: "Otro" }]} />
                 <ReadOrInput label="Número de Documento" value={form.dni || ""} formValue={form.dni} onChange={(v) => updateField("dni", v)} editing={editing} />
                 <ReadOrSelect label="Estado del Cliente" value={form.estado} formValue={form.estado} onChange={(v) => updateField("estado", v as any)} editing={editing}
                   options={[{ value: "Activo", label: "Activo" }, { value: "Inactivo", label: "Inactivo" }, { value: "Bloqueado", label: "Bloqueado" }, { value: "En mora", label: "En mora" }]} />
