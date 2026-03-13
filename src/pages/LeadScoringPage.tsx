@@ -277,7 +277,6 @@ function IconoAccion({ tipo }: { tipo: ClienteScore["icono"] }) {
   }
 }
 
-import { $$ } from "@/lib/utils";
 
 // ── Page component ─────────────────────────────────────────────
 export default function LeadScoringPage() {
