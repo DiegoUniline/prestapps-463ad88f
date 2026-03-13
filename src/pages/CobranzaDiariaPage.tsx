@@ -109,7 +109,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       const { data: prestamos } = await supabase
         .from("prestamos")
         .select(`
-          id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id,
+          id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, tipo_cuenta,
           clientes ( nombre_completo ),
           rutas ( nombre ),
           cajas ( nombre )
