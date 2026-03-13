@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
+import { StripeChargeButton } from "@/components/StripeChargeButton";
 import { PromesaModal } from "@/components/PromesaModal";
 import { ReasignarModal } from "@/components/ReasignarModal";
 import { AnularPagoModal } from "@/components/AnularPagoModal";
