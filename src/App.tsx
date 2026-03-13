@@ -32,6 +32,7 @@ import LeadScoringPage from "@/pages/LeadScoringPage";
 import GastosPage from "@/pages/GastosPage";
 import ComisionesPage from "@/pages/ComisionesPage";
 import MapaGPSPage from "@/pages/MapaGPSPage";
+import LiquidarRutaPage from "@/pages/LiquidarRutaPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
