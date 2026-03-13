@@ -417,15 +417,15 @@ export default function PrestamoDetallePage() {
           {/* Configuración del Crédito */}
           <div>
             <h3 className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Configuración del Crédito</h3>
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
               <SidebarField label="MODALIDAD" value={prestamo.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"} />
-              <SidebarField label="MONTO SOLICITADO" value={$$(prestamo.monto_solicitado)} />
-              <SidebarField label="CUOTAS — FRECUENCIA" value={`${prestamo.num_cuotas} — ${prestamo.frecuencia}`} />
-              <SidebarField label="TASA DE INTERÉS" value={prestamo.tasa_interes ? `${prestamo.tasa_interes}%` : "—"} />
-              <SidebarField label="CUOTA ESTÁNDAR" value={$$(prestamo.cuota_calculada)} />
-              <SidebarField label="CUOTA REDONDEADA" value={prestamo.cuota_redondeada ? $$(prestamo.cuota_redondeada) : "—"} />
-              <SidebarField label="TIPO MORA / VALOR" value={prestamo.tipo_mora ? `${prestamo.tipo_mora} — ${prestamo.valor_mora}${prestamo.tipo_mora === "porcentaje" ? "%" : ""}` : "—"} />
-              <SidebarField label="GASTOS LEGALES" value={$$(prestamo.gastos_legales)} />
+              <SidebarField label="MONTO" value={$$(prestamo.monto_solicitado)} />
+              <SidebarField label="CUOTAS" value={`${prestamo.num_cuotas} — ${prestamo.frecuencia}`} />
+              <SidebarField label="TASA INTERÉS" value={prestamo.tasa_interes ? `${prestamo.tasa_interes}%` : "—"} />
+              <SidebarField label="CUOTA" value={$$(prestamo.cuota_calculada)} />
+              <SidebarField label="REDONDEADA" value={prestamo.cuota_redondeada ? $$(prestamo.cuota_redondeada) : "—"} />
+              <SidebarField label="MORA" value={prestamo.tipo_mora ? `${prestamo.tipo_mora} — ${prestamo.valor_mora}${prestamo.tipo_mora === "porcentaje" ? "%" : ""}` : "—"} />
+              <SidebarField label="GASTOS LEG." value={$$(prestamo.gastos_legales)} />
             </div>
           </div>
 
