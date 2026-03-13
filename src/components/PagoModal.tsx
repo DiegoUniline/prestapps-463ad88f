@@ -54,12 +54,18 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
   const geo = useGeoLocation();
+  const { data: metodosPago = [] } = useMetodosPagoActivos();
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
-  const [metodo, setMetodo] = useState("Efectivo");
+  const [metodo, setMetodo] = useState("");
   const [cajaId, setCajaId] = useState(cajas[0]?.id || "");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+
+  // Set default payment method when catalog loads
+  if (metodosPago.length > 0 && !metodo) {
+    setMetodo(metodosPago[0].nombre);
+  }
 
   // Pre-fill monto when modal opens with montoInicial
   if (open && montoInicial && !initialized) {
