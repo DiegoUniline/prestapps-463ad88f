@@ -108,7 +108,7 @@ function DatePick({ value, onChange, placeholder }: { value: Date | undefined; o
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className={cn("h-8 text-[12px] justify-start gap-1.5 min-w-[130px]", !value && "text-muted-foreground")}>
           <CalendarIcon className="h-3.5 w-3.5" />
-          {value ? format(value, "dd/MM/yyyy") : placeholder}
+          {value ? fmtDate(value) : placeholder}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
