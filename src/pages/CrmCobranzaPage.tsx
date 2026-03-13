@@ -423,7 +423,7 @@ export default function CrmCobranzaPage() {
                             </div>
                             {g.notas && <p className="text-muted-foreground mt-1">{g.notas}</p>}
                             <p className="text-[10px] text-muted-foreground mt-1">
-                              {g.created_at ? format(new Date(g.created_at), "dd/MM/yy HH:mm", { locale: es }) : ""}
+                              {g.created_at ? format(new Date(g.created_at), "dd/MM/yyyy HH:mm", { locale: es }) : ""}
                               {g.fecha_seguimiento ? ` • Seguimiento: ${g.fecha_seguimiento}` : ""}
                             </p>
                           </div>

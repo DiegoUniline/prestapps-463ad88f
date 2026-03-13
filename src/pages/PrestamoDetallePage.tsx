@@ -866,7 +866,7 @@ export default function PrestamoDetallePage() {
           cuotaNum={selectedCuota.num_cuota}
           cuotaId={selectedCuota.id}
           saldoTotal={Number(selectedCuota.saldo_total || 0)}
-          fechaVencimiento={format(new Date(selectedCuota.fecha_vencimiento), "dd/MM/yyyy")}
+          fechaVencimiento={fmtDate(selectedCuota.fecha_vencimiento)}
         />
       )}
 

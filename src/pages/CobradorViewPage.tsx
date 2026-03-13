@@ -718,7 +718,7 @@ function PagoCard({ pago, onNavigate }: { pago: PagoHistorial; onNavigate: (path
               {pago.numCuota && <span className="text-[11px] text-muted-foreground">Cuota #{pago.numCuota}</span>}
               <span className="text-[11px] text-muted-foreground">{pago.metodoPago}</span>
               <span className="text-[11px] text-muted-foreground">
-                {format(new Date(pago.fechaPago), "dd/MM HH:mm", { locale: es })}
+                {format(new Date(pago.fechaPago), "dd/MM/yyyy HH:mm", { locale: es })}
               </span>
             </div>
           </div>

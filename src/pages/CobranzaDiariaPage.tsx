@@ -599,7 +599,7 @@ export default function CobranzaDiariaPage() {
                           </Badge>
                           {item.ultimaGestion && (
                             <span className="text-[9px] text-muted-foreground">
-                              {format(new Date(item.ultimaGestion), "dd/MM", { locale: es })}
+                              {format(new Date(item.ultimaGestion), "dd/MM/yyyy", { locale: es })}
                             </span>
                           )}
                         </div>
