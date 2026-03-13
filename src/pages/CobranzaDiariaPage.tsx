@@ -388,6 +388,50 @@ export default function CobranzaDiariaPage() {
     return Object.values(map).sort((a, b) => b.montoPendiente - a.montoPendiente);
   }, [filtered]);
 
+  // Group by client for the main view
+  interface ClienteAgrupado {
+    clienteId: string;
+    clienteNombre: string;
+    cuotas: CuotaDiaria[];
+    totalSaldo: number;
+    totalMora: number;
+    cuotasPendientes: number;
+    cuotasCobradas: number;
+    cuentasActivas: number;
+    ruta: string;
+    tieneVencidas: boolean;
+    todasCobradas: boolean;
+  }
+  const clientesAgrupados = useMemo((): ClienteAgrupado[] => {
+    const map = new Map<string, CuotaDiaria[]>();
+    for (const c of filtered) {
+      if (!map.has(c.clienteId)) map.set(c.clienteId, []);
+      map.get(c.clienteId)!.push(c);
+    }
+    return Array.from(map, ([clienteId, cuotas]) => {
+      const pendientes = cuotas.filter((c) => !c.pagada);
+      const cobradas = cuotas.filter((c) => c.pagada);
+      const cuentasIds = new Set(cuotas.map((c) => c.prestamoId));
+      return {
+        clienteId,
+        clienteNombre: cuotas[0].clienteNombre,
+        cuotas,
+        totalSaldo: pendientes.reduce((s, c) => s + c.saldoTotal, 0),
+        totalMora: pendientes.reduce((s, c) => s + c.saldoMora, 0),
+        cuotasPendientes: pendientes.length,
+        cuotasCobradas: cobradas.length,
+        cuentasActivas: cuentasIds.size,
+        ruta: cuotas[0].ruta,
+        tieneVencidas: pendientes.some((c) => c.diasAtraso > 0),
+        todasCobradas: pendientes.length === 0,
+      };
+    }).sort((a, b) => {
+      // Pending first, then by saldo desc
+      if (a.todasCobradas !== b.todasCobradas) return a.todasCobradas ? 1 : -1;
+      return b.totalSaldo - a.totalSaldo;
+    });
+  }, [filtered]);
+
   return (
     <div className="space-y-4">
       {/* Header */}
