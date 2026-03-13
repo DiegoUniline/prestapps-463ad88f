@@ -28,6 +28,7 @@ import CajasPage from "@/pages/CajasPage";
 import RutasPage from "@/pages/RutasPage";
 import CobradoresPage from "@/pages/CobradoresPage";
 import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
+import CobradorViewPage from "@/pages/CobradorViewPage";
 import SolicitudesPage from "@/pages/SolicitudesPage";
 import SolicitudPrestamoPage from "@/pages/SolicitudPrestamoPage";
 import GastosPage from "@/pages/GastosPage";
@@ -97,6 +98,7 @@ const App = () => (
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/cobranza" element={<CobranzaDiariaPage />} />
+              <Route path="/mi-cobranza" element={<CobradorViewPage />} />
               <Route path="/prestamos" element={<PrestamosPage />} />
               <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
               <Route path="/pagos" element={<PagosPage />} />
