@@ -212,6 +212,7 @@ export default function ClientesPage() {
           {isLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : (
+            <>
             {/* Desktop Table */}
             <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
               <Table>
