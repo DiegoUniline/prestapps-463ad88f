@@ -397,6 +397,17 @@ export default function PrestamosPage() {
                   selectedRows.has(p.id) ? "bg-table-selected" : "hover:bg-table-hover"
                 )}
                 onClick={() => navigate(`/prestamos/${p.id}`)}
+                onMouseEnter={() => {
+                  queryClient.prefetchQuery({
+                    queryKey: ["prestamo-detalle", p.id],
+                    staleTime: 1000 * 60 * 5,
+                  });
+                  queryClient.prefetchQuery({
+                    queryKey: ["amortizacion", p.id],
+                    staleTime: 1000 * 60 * 5,
+                  });
+                }}
+              >
               >
                 <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
