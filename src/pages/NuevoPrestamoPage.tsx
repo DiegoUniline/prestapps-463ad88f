@@ -643,7 +643,7 @@ export default function NuevoPrestamoPage() {
               <Button variant="outline" onClick={() => navigate("/prestamos")}>Cancelar</Button>
               <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
                 <Save className="h-4 w-4 mr-1.5" />
-                {createMutation.isPending ? "Guardando..." : "Crear Préstamo"}
+                {createMutation.isPending ? "Guardando..." : tipoCuenta === "prestamo" ? "Crear Préstamo" : "Crear Venta"}
               </Button>
             </div>
           </CardContent>
