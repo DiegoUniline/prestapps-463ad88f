@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { VisitaModal } from "@/components/VisitaModal";
+import { ClienteEstadoCuentaSheet } from "@/components/ClienteEstadoCuentaSheet";
 // ── Data Hook ────────────────────────────────────────────────────
 interface CuotaDiaria {
   cuotaId: string;
@@ -256,6 +257,17 @@ export default function CobranzaDiariaPage() {
   const [visitaOpen, setVisitaOpen] = useState(false);
   const [visitaItem, setVisitaItem] = useState<CuotaDiaria | null>(null);
 
+  // Estado de cuenta sheet state
+  const [estadoCuentaOpen, setEstadoCuentaOpen] = useState(false);
+  const [estadoCuentaClienteId, setEstadoCuentaClienteId] = useState("");
+  const [estadoCuentaClienteNombre, setEstadoCuentaClienteNombre] = useState("");
+
+  const openEstadoCuenta = (clienteId: string, clienteNombre: string) => {
+    setEstadoCuentaClienteId(clienteId);
+    setEstadoCuentaClienteNombre(clienteNombre);
+    setEstadoCuentaOpen(true);
+  };
+
   const fechaStr = format(fecha, "yyyy-MM-dd");
   const { data: cuotas, isLoading } = useCobranzaDiaria(fechaStr, empresaId);
   const { data: cajas } = useCajasAll(empresaId);
@@ -374,6 +386,50 @@ export default function CobranzaDiariaPage() {
       else { map[key].pendientes++; map[key].montoPendiente += c.saldoTotal; }
     }
     return Object.values(map).sort((a, b) => b.montoPendiente - a.montoPendiente);
+  }, [filtered]);
+
+  // Group by client for the main view
+  interface ClienteAgrupado {
+    clienteId: string;
+    clienteNombre: string;
+    cuotas: CuotaDiaria[];
+    totalSaldo: number;
+    totalMora: number;
+    cuotasPendientes: number;
+    cuotasCobradas: number;
+    cuentasActivas: number;
+    ruta: string;
+    tieneVencidas: boolean;
+    todasCobradas: boolean;
+  }
+  const clientesAgrupados = useMemo((): ClienteAgrupado[] => {
+    const map = new Map<string, CuotaDiaria[]>();
+    for (const c of filtered) {
+      if (!map.has(c.clienteId)) map.set(c.clienteId, []);
+      map.get(c.clienteId)!.push(c);
+    }
+    return Array.from(map, ([clienteId, cuotas]) => {
+      const pendientes = cuotas.filter((c) => !c.pagada);
+      const cobradas = cuotas.filter((c) => c.pagada);
+      const cuentasIds = new Set(cuotas.map((c) => c.prestamoId));
+      return {
+        clienteId,
+        clienteNombre: cuotas[0].clienteNombre,
+        cuotas,
+        totalSaldo: pendientes.reduce((s, c) => s + c.saldoTotal, 0),
+        totalMora: pendientes.reduce((s, c) => s + c.saldoMora, 0),
+        cuotasPendientes: pendientes.length,
+        cuotasCobradas: cobradas.length,
+        cuentasActivas: cuentasIds.size,
+        ruta: cuotas[0].ruta,
+        tieneVencidas: pendientes.some((c) => c.diasAtraso > 0),
+        todasCobradas: pendientes.length === 0,
+      };
+    }).sort((a, b) => {
+      // Pending first, then by saldo desc
+      if (a.todasCobradas !== b.todasCobradas) return a.todasCobradas ? 1 : -1;
+      return b.totalSaldo - a.totalSaldo;
+    });
   }, [filtered]);
 
   return (
@@ -526,12 +582,12 @@ export default function CobranzaDiariaPage() {
         </div>
       )}
 
-      {/* Main Table */}
+      {/* Main Client List */}
       {isLoading ? (
         <div className="space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : clientesAgrupados.length === 0 ? (
         <Card className="border-border/60">
           <CardContent className="p-12 text-center">
             <CheckCircle2 className="h-12 w-12 text-success mx-auto mb-3" />
@@ -541,155 +597,162 @@ export default function CobranzaDiariaPage() {
         </Card>
       ) : (
         <>
-        {/* Desktop Table */}
+        {/* Desktop Table — grouped by client */}
         <div className="hidden md:block border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-table-header">
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold w-8"></TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Cliente</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Cuota</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Cuentas</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Cuotas Hoy</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Ruta</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Monto</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Mora</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Total</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Saldo del Día</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Estado</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((item) => {
-                const badge = getStatusBadge(item);
-                const isOverdue = item.fechaVencimiento < fechaStr && !item.pagada;
-                return (
-                  <TableRow
-                    key={item.cuotaId}
-                    className={cn(
-                      "text-[13px]",
-                      item.pagada && "bg-badge-activo/20",
-                      isOverdue && !item.pagada && "bg-badge-vencido/10",
+              {clientesAgrupados.map((cli) => (
+                <TableRow
+                  key={cli.clienteId}
+                  className={cn(
+                    "text-[13px] cursor-pointer hover:bg-muted/50 transition-colors",
+                    cli.todasCobradas && "bg-badge-activo/20",
+                    cli.tieneVencidas && !cli.todasCobradas && "bg-badge-vencido/10",
+                  )}
+                  onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
+                >
+                  <TableCell className="px-3">
+                    {cli.todasCobradas ? (
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                    ) : cli.tieneVencidas ? (
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-muted-foreground" />
                     )}
-                  >
-                    <TableCell className="px-3">{getStatusIcon(item)}</TableCell>
-                    <TableCell>
-                      <button className="font-medium hover:text-primary hover:underline text-left" onClick={() => navigate(`/clientes/${item.clienteId}`)}>
-                        {item.clienteNombre}
-                      </button>
-                      {item.tipoCuenta !== "prestamo" && (
-                        <span className="ml-1.5 inline-flex items-center rounded px-1.5 py-0 text-[9px] font-semibold bg-accent text-accent-foreground">
-                          {item.tipoCuenta === "venta_seguro" ? "Seguro" : item.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium">#{item.numCuota}</span>
-                      <span className="text-muted-foreground">/{item.totalCuotas}</span>
-                      {isOverdue && <span className="ml-1 text-[10px] text-destructive font-medium">({format(parseISO(item.fechaVencimiento), "dd/MM")})</span>}
-                    </TableCell>
-                    <TableCell className="text-[12px] text-muted-foreground">{item.ruta}</TableCell>
-                    <TableCell className="text-right font-medium">{$$(item.capitalInteres)}</TableCell>
-                    <TableCell className={cn("text-right", item.saldoMora > 0 ? "text-destructive font-medium" : "text-muted-foreground")}>
-                      {item.saldoMora > 0 ? $$(item.saldoMora) : "—"}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">{$$(item.saldoTotal)}</TableCell>
-                    <TableCell className="text-center">
-                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", badge.className)}>{badge.label}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {!item.pagada ? (
-                        <div className="flex items-center justify-center gap-1">
-                          <Button size="sm" className="h-7 text-[11px] px-2.5" onClick={() => openPago(item)}>
-                            <HandCoins className="h-3 w-3 mr-1" />Cobrar
-                          </Button>
-                          <Button variant="outline" size="icon" className="h-7 w-7" title="Visita" onClick={() => { setVisitaItem(item); setVisitaOpen(true); }}>
-                            <MapPin className="h-3.5 w-3.5" />
-                          </Button>
-                          {item.status !== "Prometida" && (
-                            <Button variant="outline" size="icon" className="h-7 w-7" title="Promesa" onClick={() => { setPromesaItem(item); setPromesaOpen(true); }}>
-                              <CalendarCheck className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-success font-medium">✓ {$$(item.montoPagado || item.capitalInteres)}</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium">{cli.clienteNombre}</span>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <span className="text-[12px]">{cli.cuentasActivas}</span>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <span className="text-[12px]">
+                      {cli.cuotasCobradas > 0 && <span className="text-success">{cli.cuotasCobradas}✓ </span>}
+                      {cli.cuotasPendientes > 0 && <span className="text-muted-foreground">{cli.cuotasPendientes} pte</span>}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-[12px] text-muted-foreground">{cli.ruta}</TableCell>
+                  <TableCell className={cn("text-right", cli.totalMora > 0 ? "text-destructive font-medium" : "text-muted-foreground")}>
+                    {cli.totalMora > 0 ? $$(cli.totalMora) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">{$$(cli.totalSaldo)}</TableCell>
+                  <TableCell className="text-center">
+                    {cli.todasCobradas ? (
+                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-activo text-badge-activo-foreground">Al día</span>
+                    ) : cli.tieneVencidas ? (
+                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-vencido text-badge-vencido-foreground">Vencido</span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-liquidado text-badge-liquidado-foreground">Pendiente</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                    {!cli.todasCobradas ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <Button size="sm" className="h-7 text-[11px] px-2.5" onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}>
+                          <HandCoins className="h-3 w-3 mr-1" />Cobrar
+                        </Button>
+                        <Button variant="outline" size="icon" className="h-7 w-7" title="Visita" onClick={() => {
+                          const first = cli.cuotas.find((c) => !c.pagada) || cli.cuotas[0];
+                          setVisitaItem(first); setVisitaOpen(true);
+                        }}>
+                          <MapPin className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-success font-medium">✓ Cobrado</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
 
-        {/* Mobile Card View */}
+        {/* Mobile Card View — grouped by client */}
         <div className="md:hidden space-y-2">
-          {filtered.map((item) => {
-            const badge = getStatusBadge(item);
-            const isOverdue = item.fechaVencimiento < fechaStr && !item.pagada;
-            return (
-              <div
-                key={item.cuotaId}
-                className={cn(
-                  "bg-card border rounded-lg p-3 space-y-2",
-                  item.pagada && "border-success/30 bg-badge-activo/10",
-                  isOverdue && !item.pagada && "border-destructive/30 bg-badge-vencido/5",
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {getStatusIcon(item)}
-                    <div className="min-w-0">
-                      <button className="font-medium text-[13px] hover:text-primary truncate block" onClick={() => navigate(`/clientes/${item.clienteId}`)}>
-                        {item.clienteNombre}
-                      </button>
-                      <p className="text-[11px] text-muted-foreground">
-                        {item.tipoCuenta !== "prestamo" && (
-                          <span className="inline-flex items-center rounded px-1 py-0 text-[9px] font-semibold bg-accent text-accent-foreground mr-1">
-                            {item.tipoCuenta === "venta_seguro" ? "Seguro" : item.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
-                          </span>
-                        )}
-                        Cuota #{item.numCuota}/{item.totalCuotas} · {item.ruta}
-                        {isOverdue && <span className="text-destructive ml-1">({format(parseISO(item.fechaVencimiento), "dd/MM")})</span>}
-                      </p>
-                    </div>
+          {clientesAgrupados.map((cli) => (
+            <div
+              key={cli.clienteId}
+              className={cn(
+                "bg-card border rounded-lg p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all",
+                cli.todasCobradas && "border-success/30 bg-badge-activo/10",
+                cli.tieneVencidas && !cli.todasCobradas && "border-destructive/30 bg-badge-vencido/5",
+              )}
+              onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  {cli.todasCobradas ? (
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                  ) : cli.tieneVencidas ? (
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                  ) : (
+                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium text-[13px] truncate">{cli.clienteNombre}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {cli.cuentasActivas} cuenta{cli.cuentasActivas !== 1 ? "s" : ""} · {cli.cuotasPendientes} cuota{cli.cuotasPendientes !== 1 ? "s" : ""} pte · {cli.ruta}
+                    </p>
                   </div>
-                  <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium shrink-0", badge.className)}>{badge.label}</span>
                 </div>
-                <div className="flex items-center justify-between text-[12px]">
-                  <div className="flex gap-3">
-                    <span>Cuota: <strong>{$$(item.capitalInteres)}</strong></span>
-                    {item.saldoMora > 0 && <span className="text-destructive">Mora: <strong>{$$(item.saldoMora)}</strong></span>}
-                  </div>
-                  <span className="font-bold text-[13px]">{$$(item.saldoTotal)}</span>
+                <div className="text-right shrink-0">
+                  <p className="font-bold text-[14px]">{$$(cli.totalSaldo)}</p>
+                  {cli.totalMora > 0 && <p className="text-[10px] text-destructive font-medium">+{$$(cli.totalMora)} mora</p>}
                 </div>
-                {!item.pagada ? (
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button size="sm" className="h-8 text-[12px] flex-1" onClick={() => openPago(item)}>
-                      <HandCoins className="h-3.5 w-3.5 mr-1.5" />Cobrar
-                    </Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setVisitaItem(item); setVisitaOpen(true); }}>
-                      <MapPin className="h-3.5 w-3.5" />
-                    </Button>
-                    {item.status !== "Prometida" && (
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setPromesaItem(item); setPromesaOpen(true); }}>
-                        <CalendarCheck className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/prestamos/${item.prestamoId}`)}>
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-[12px] text-success font-medium pt-1">✓ Cobrado: {$$(item.montoPagado || item.capitalInteres)}</p>
-                )}
               </div>
-            );
-          })}
+              {!cli.todasCobradas ? (
+                <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <Button size="sm" className="h-8 text-[12px] flex-1" onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}>
+                    <HandCoins className="h-3.5 w-3.5 mr-1.5" />Ver Estado de Cuenta
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
+                    const first = cli.cuotas.find((c) => !c.pagada) || cli.cuotas[0];
+                    setVisitaItem(first); setVisitaOpen(true);
+                  }}>
+                    <MapPin className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-[12px] text-success font-medium pt-1">✓ Todas las cuotas cobradas</p>
+              )}
+            </div>
+          ))}
         </div>
         </>
       )}
 
-      {/* Payment Modal */}
+      {/* Estado de Cuenta Sheet */}
+      {estadoCuentaOpen && (
+        <ClienteEstadoCuentaSheet
+          open={estadoCuentaOpen}
+          onOpenChange={(open) => {
+            setEstadoCuentaOpen(open);
+            if (!open) queryClient.invalidateQueries({ queryKey: ["cobranza-diaria", fechaStr] });
+          }}
+          clienteId={estadoCuentaClienteId}
+          clienteNombre={estadoCuentaClienteNombre}
+          empresaId={empresaId}
+          cajas={cajas || []}
+          fechaCobranza={fechaStr}
+        />
+      )}
+
+      {/* Payment Modal (direct from old flow, kept for backwards compat) */}
       {pagoOpen && (
         <PagoModal
           open={pagoOpen}
