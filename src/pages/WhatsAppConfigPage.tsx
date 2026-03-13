@@ -113,7 +113,7 @@ export default function WhatsAppConfigPage() {
     queryKey: ["whatsapp-templates", empresaId],
     queryFn: async () => {
       const { data } = await (supabase.from as any)("whatsapp_templates")
-        .select("*")
+        .select("id, empresa_id, tipo, nombre, mensaje, activo, created_at")
         .eq("empresa_id", empresaId);
       return (data || []) as any[];
     },
