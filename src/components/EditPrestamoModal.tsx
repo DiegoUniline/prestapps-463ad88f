@@ -105,10 +105,10 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Ruta</Label>
-                <Select value={rutaId} onValueChange={setRutaId}>
+                <Select value={rutaId || "__none__"} onValueChange={(v) => setRutaId(v === "__none__" ? "" : v)}>
                   <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin ruta" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin ruta</SelectItem>
+                    <SelectItem value="__none__">Sin ruta</SelectItem>
                     {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
                   </SelectContent>
                 </Select>
