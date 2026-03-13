@@ -405,14 +405,14 @@ export default function PrestamosPage() {
                 <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">{p.cliente}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{p.fechaRegistro ? format(new Date(p.fechaRegistro), "dd/MM/yyyy") : "—"}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{p.fechaPrimerPago ? format(new Date(p.fechaPrimerPago), "dd/MM/yyyy") : "—"}</TableCell>
-                <TableCell className="text-right text-[13px] px-3">${p.montoSolicitado.toLocaleString()}</TableCell>
-                <TableCell className="text-right text-[13px] px-3">${p.montoPagar.toLocaleString()}</TableCell>
-                <TableCell className="text-[13px] px-3">{p.cuotasPagadas}/{p.totalCuotas}</TableCell>
+                <TableCell className="text-right text-[13px] px-3">${(p.montoSolicitado ?? 0).toLocaleString()}</TableCell>
+                <TableCell className="text-right text-[13px] px-3">${(p.montoPagar ?? 0).toLocaleString()}</TableCell>
+                <TableCell className="text-[13px] px-3">{p.cuotasPagadas ?? 0}/{p.totalCuotas ?? 0}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
                 <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.ruta}</TableCell>
-                <TableCell className="text-right font-medium text-[13px] px-3">${p.saldo.toLocaleString()}</TableCell>
-                <TableCell className={cn("text-right font-bold text-[13px] px-3", p.mora > 0 ? "text-destructive" : "text-muted-foreground")}>
-                  {p.mora > 0 ? `$${p.mora.toLocaleString()}` : "$0"}
+                <TableCell className="text-right font-medium text-[13px] px-3">${(p.saldo ?? 0).toLocaleString()}</TableCell>
+                <TableCell className={cn("text-right font-bold text-[13px] px-3", (p.mora ?? 0) > 0 ? "text-destructive" : "text-muted-foreground")}>
+                  {(p.mora ?? 0) > 0 ? `$${(p.mora ?? 0).toLocaleString()}` : "$0"}
                 </TableCell>
                 <TableCell className="px-3">
                   <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium", estadoBadge[p.estado] || "bg-muted text-muted-foreground")}>
