@@ -120,7 +120,7 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
 
 const metodoOptions = ["Efectivo", "Transferencia", "Otro"];
 
-import { $$ } from "@/lib/utils";
+
 
 // ── Metodo dot ────────────────────────────────────────────────────
 function MetodoDot({ metodo }: { metodo: string }) {
