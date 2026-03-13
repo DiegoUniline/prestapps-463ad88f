@@ -479,6 +479,53 @@ export type Database = {
           },
         ]
       }
+      empresa_config: {
+        Row: {
+          contrato_campos: Json | null
+          contrato_plantilla: string | null
+          created_at: string | null
+          empresa_id: string
+          id: string
+          ticket_campos: Json | null
+          ticket_encabezado: string | null
+          ticket_mostrar_logo: boolean | null
+          ticket_pie: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          contrato_campos?: Json | null
+          contrato_plantilla?: string | null
+          created_at?: string | null
+          empresa_id: string
+          id?: string
+          ticket_campos?: Json | null
+          ticket_encabezado?: string | null
+          ticket_mostrar_logo?: boolean | null
+          ticket_pie?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          contrato_campos?: Json | null
+          contrato_plantilla?: string | null
+          created_at?: string | null
+          empresa_id?: string
+          id?: string
+          ticket_campos?: Json | null
+          ticket_encabezado?: string | null
+          ticket_mostrar_logo?: boolean | null
+          ticket_pie?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresas: {
         Row: {
           activa: boolean
