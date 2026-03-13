@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface PrestamoListItem {
   id: string;
   idPrestamo: string;
+  codigoInterno: string;
   cliente: string;
   clienteId: string;
   montoSolicitado: number;
