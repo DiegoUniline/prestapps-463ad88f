@@ -300,7 +300,7 @@ export default function NuevoPrestamoPage() {
               <div className="space-y-1.5">
                 <Label className="text-[13px]">
                   Cuota Fija
-                  <span className="text-muted-foreground ml-1">(calculada: ${Math.ceil(cuotaCalculada).toLocaleString()})</span>
+                  <span className="text-muted-foreground ml-1">(calculada: {$$(Math.ceil(cuotaCalculada))})</span>
                 </Label>
                 <Input
                   type="number"
