@@ -149,15 +149,14 @@ export default function ClienteDetallePage() {
   // Pre-fill id_cliente for new clients
   useEffect(() => {
     if (isNew && !form.id_cliente) {
-      supabase.from("clientes").select("id_cliente").order("created_at", { ascending: false }).limit(1)
+      supabase.from("clientes").select("id_cliente")
         .then(({ data }) => {
-          if (data?.[0]?.id_cliente) {
-            const match = data[0].id_cliente.match(/(\d+)/);
-            const next = match ? parseInt(match[1]) + 1 : 1;
-            setForm(p => ({ ...p, id_cliente: `CLI-${String(next).padStart(4, "0")}` }));
-          } else {
-            setForm(p => ({ ...p, id_cliente: "CLI-0001" }));
+          let maxNum = 0;
+          for (const row of data || []) {
+            const m = row.id_cliente?.match(/(\d+)/);
+            if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
           }
+          setForm(p => ({ ...p, id_cliente: `CLI-${String(maxNum + 1).padStart(4, "0")}` }));
         });
     }
   }, [isNew]);
