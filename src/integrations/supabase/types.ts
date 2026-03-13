@@ -774,7 +774,7 @@ export type Database = {
           ultimo_folio: number
         }
         Insert: {
-          empresa_id: string
+          empresa_id?: string
           id?: string
           prefijo?: string
           tipo: string
@@ -1433,7 +1433,7 @@ export type Database = {
           cliente_id: string
           created_at?: string | null
           cuota_id?: string | null
-          empresa_id: string
+          empresa_id?: string
           error_mensaje?: string | null
           id?: string
           moneda?: string
@@ -1500,7 +1500,7 @@ export type Database = {
         Insert: {
           charges_enabled?: boolean
           created_at?: string | null
-          empresa_id: string
+          empresa_id?: string
           id?: string
           onboarding_complete?: boolean
           payouts_enabled?: boolean
@@ -1546,7 +1546,7 @@ export type Database = {
           brand?: string | null
           cliente_id: string
           created_at?: string | null
-          empresa_id: string
+          empresa_id?: string
           exp_month?: number | null
           exp_year?: number | null
           id?: string
