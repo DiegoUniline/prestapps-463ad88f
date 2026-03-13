@@ -34,6 +34,7 @@ import {
   Percent,
   MapPin,
   ClipboardList,
+  BookOpen,
 } from "lucide-react";
 
 const mainNav = [
