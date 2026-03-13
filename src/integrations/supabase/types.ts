@@ -968,6 +968,7 @@ export type Database = {
           cliente_id: string
           cobrador_id: string | null
           cobro_automatico_stripe: boolean
+          codigo_interno: string | null
           created_at: string | null
           cuota_calculada: number | null
           cuota_redondeada: number | null
@@ -1002,6 +1003,7 @@ export type Database = {
           cliente_id: string
           cobrador_id?: string | null
           cobro_automatico_stripe?: boolean
+          codigo_interno?: string | null
           created_at?: string | null
           cuota_calculada?: number | null
           cuota_redondeada?: number | null
@@ -1036,6 +1038,7 @@ export type Database = {
           cliente_id?: string
           cobrador_id?: string | null
           cobro_automatico_stripe?: boolean
+          codigo_interno?: string | null
           created_at?: string | null
           cuota_calculada?: number | null
           cuota_redondeada?: number | null
