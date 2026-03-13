@@ -194,6 +194,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
           fechaPago: c.fecha_pagada || null,
           gestiones: gestionesByPrestamo[c.prestamo_id]?.count || 0,
           ultimaGestion: gestionesByPrestamo[c.prestamo_id]?.ultima || null,
+          tipoCuenta: pres.tipo_cuenta || "prestamo",
         };
       });
     },
