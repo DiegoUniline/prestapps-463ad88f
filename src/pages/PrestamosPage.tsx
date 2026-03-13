@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, FileText, TrendingUp, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
 
 const estadoBadge: Record<string, string> = {
