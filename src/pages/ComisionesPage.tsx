@@ -15,9 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { DollarSign, Calculator, Loader2, Percent, UserCheck, Wallet, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-
-const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
+import { $$ } from "@/lib/utils";
 // ── Types & hooks ─────────────────────────────────────────────────
 interface Cobrador {
   id: string;
