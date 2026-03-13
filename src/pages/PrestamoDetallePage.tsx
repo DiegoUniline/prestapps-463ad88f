@@ -613,7 +613,7 @@ export default function PrestamoDetallePage() {
                           <TableCell className="px-3 text-[12px]">{dash(c.capital) || $$(c.capital)}</TableCell>
                           <TableCell className="px-3 text-[12px]">{dash(c.interes) || $$(c.interes)}</TableCell>
                           <TableCell className="px-3 text-[13px] font-medium">{$$(c.capital_interes)}</TableCell>
-                          <TableCell className="px-3 text-[12px] whitespace-nowrap">{format(new Date(c.fecha_vencimiento), "dd/MM/yy")}</TableCell>
+                          <TableCell className="px-3 text-[12px] whitespace-nowrap">{fmtDate(c.fecha_vencimiento)}</TableCell>
                           <TableCell className={cn("px-3 text-[12px]", (c.dias_atraso || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
                             {(c.dias_atraso || 0) > 0 ? c.dias_atraso : "—"}
                           </TableCell>
