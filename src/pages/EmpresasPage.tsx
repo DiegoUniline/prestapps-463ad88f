@@ -92,7 +92,6 @@ export default function EmpresasPage() {
     },
   });
 
-  // Count users per empresa
   const { data: userCountMap = {} } = useQuery({
     queryKey: ["empresas-user-counts"],
     queryFn: async () => {
@@ -105,6 +104,26 @@ export default function EmpresasPage() {
         map[eid] = (map[eid] || 0) + 1;
       }
       return map;
+    },
+  });
+
+  // Users for selected empresa detail
+  const { data: detailUsers = [], isLoading: loadingDetail } = useQuery({
+    queryKey: ["empresa-detail-users", detailEmpresa?.id],
+    enabled: !!detailEmpresa,
+    queryFn: async () => {
+      const { data } = await supabase.functions.invoke("manage-users", {
+        body: { action: "list", empresa_id: detailEmpresa!.id },
+      });
+      return (data || []) as Array<{
+        id: string;
+        nombre_completo: string;
+        email: string;
+        rol: string;
+        telefono: string | null;
+        activo: boolean;
+        created_at: string | null;
+      }>;
     },
   });
 
