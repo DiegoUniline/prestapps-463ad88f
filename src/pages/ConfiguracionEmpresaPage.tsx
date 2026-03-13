@@ -596,6 +596,9 @@ export default function ConfiguracionEmpresaPage() {
           <TabsTrigger value="contrato" className="gap-1.5">
             <FileText className="h-4 w-4" /> Contrato
           </TabsTrigger>
+          <TabsTrigger value="stripe" className="gap-1.5">
+            <CreditCard className="h-4 w-4" /> Stripe
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
