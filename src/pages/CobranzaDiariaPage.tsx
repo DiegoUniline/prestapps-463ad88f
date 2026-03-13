@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
+import { PromesaModal } from "@/components/PromesaModal";
+import { VisitaModal } from "@/components/VisitaModal";
 
 const $$ = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
