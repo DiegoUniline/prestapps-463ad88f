@@ -65,6 +65,7 @@ function usePagosAll(empresaId: string) {
         metodo: p.metodo_pago || "Efectivo",
         caja: (p.cajas as any)?.nombre || "—",
         ruta: p.prestamos?.rutas?.nombre || "—",
+        anulado: p.anulado || false,
       })) as PagoListItem[];
     },
   });
