@@ -74,7 +74,7 @@ export default function SolicitudesPage() {
 
         if (caja && Number(caja.saldo_actual) < monto) {
           throw new Error(
-            `Saldo insuficiente en caja "${caja.nombre}". Saldo: $${Number(caja.saldo_actual).toLocaleString()}, Monto solicitado: $${monto.toLocaleString()}`
+            `Saldo insuficiente en caja "${caja.nombre}". Saldo: ${$$(Number(caja.saldo_actual))}, Monto solicitado: ${$$(monto)}`
           );
         }
       }
