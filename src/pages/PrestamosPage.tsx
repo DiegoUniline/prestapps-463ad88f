@@ -361,7 +361,7 @@ export default function PrestamosPage() {
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
               </TableHead>
               {([
-                ["idPrestamo", "Folio"], ["cliente", "Cliente"], ["fechaRegistro", "F. Registro"], ["fechaPrimerPago", "F. 1er Pago"],
+                ["codigoInterno", "Cód."], ["idPrestamo", "Folio"], ["cliente", "Cliente"], ["fechaRegistro", "F. Registro"], ["fechaPrimerPago", "F. 1er Pago"],
                 ["montoSolicitado", "Prestado"], ["montoPagar", "A Pagar"], ["cuotasPagadas", "Cuotas"],
                 ["caja", "Caja"], ["ruta", "Ruta"],
                 ["saldo", "Saldo"], ["mora", "Mora"], ["estado", "Estado"],
