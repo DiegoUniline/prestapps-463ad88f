@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import logoIcon from "@/assets/logo-icon.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
