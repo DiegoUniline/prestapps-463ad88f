@@ -3,6 +3,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole, type AppRole } from "@/hooks/useCurrentUserRole";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
@@ -115,41 +116,41 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { role, loading } = useCurrentUserRole();
+  const { empresaId } = useEmpresa();
   const queryClient = useQueryClient();
 
-  // Prefetch main views on mount
+  // Prefetch main views on mount — keys MUST match actual hook keys
   useEffect(() => {
-    const prefetchAll = async () => {
-      queryClient.prefetchQuery({
-        queryKey: ["prestamos-list", undefined, undefined, undefined],
-        queryFn: async () => {
-          const { data } = await supabase
-            .from("prestamos")
-            .select("id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id, clientes(id, nombre_completo), cajas(nombre), rutas(nombre, cobrador_id)")
-            .order("created_at", { ascending: false });
-          return data || [];
-        },
-        staleTime: 1000 * 60 * 5,
-      });
-      queryClient.prefetchQuery({
-        queryKey: ["cajas-options", undefined],
-        queryFn: async () => {
-          const { data } = await supabase.from("cajas").select("id, nombre").order("nombre");
-          return data || [];
-        },
-        staleTime: 1000 * 60 * 5,
-      });
-      queryClient.prefetchQuery({
-        queryKey: ["rutas-options", undefined],
-        queryFn: async () => {
-          const { data } = await supabase.from("rutas").select("id, nombre").order("nombre");
-          return data || [];
-        },
-        staleTime: 1000 * 60 * 5,
-      });
-    };
-    prefetchAll();
-  }, [queryClient]);
+    if (!empresaId) return;
+    queryClient.prefetchQuery({
+      queryKey: ["prestamos-list", undefined, undefined, empresaId],
+      queryFn: async () => {
+        const { data: prestamos } = await supabase
+          .from("prestamos")
+          .select("id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id, clientes(id, nombre_completo), cajas(nombre), rutas(nombre, cobrador_id)")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false });
+        return prestamos || [];
+      },
+      staleTime: 1000 * 60 * 5,
+    });
+    queryClient.prefetchQuery({
+      queryKey: ["cajas-options", empresaId],
+      queryFn: async () => {
+        const { data } = await supabase.from("cajas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
+        return data || [];
+      },
+      staleTime: 1000 * 60 * 5,
+    });
+    queryClient.prefetchQuery({
+      queryKey: ["rutas-options", empresaId],
+      queryFn: async () => {
+        const { data } = await supabase.from("rutas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
+        return data || [];
+      },
+      staleTime: 1000 * 60 * 5,
+    });
+  }, [queryClient, empresaId]);
 
   const isActive = (path: string) =>
     location.pathname === path || (path !== "/" && location.pathname.startsWith(path));

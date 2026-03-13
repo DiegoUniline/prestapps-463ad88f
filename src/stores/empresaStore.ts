@@ -11,6 +11,7 @@ interface EmpresaState {
   empresaNombre: string;
   empresas: Empresa[];
   loading: boolean;
+  _profileLoadedFor: string | null;
 
   setEmpresaId: (id: string) => void;
   initialize: () => () => void;
@@ -23,6 +24,7 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   empresaNombre: "Empresa",
   empresas: [],
   loading: true,
+  _profileLoadedFor: null,
 
   setEmpresaId: (id: string) => {
     set({ empresaId: id, empresaNombre: get().empresas.find((e) => e.id === id)?.nombre || "Empresa" });
@@ -30,8 +32,10 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   },
 
   initialize: () => {
-    // Non-blocking: fire-and-forget profile load
     const loadProfile = (userId: string) => {
+      // Deduplicate
+      if (get()._profileLoadedFor === userId) return;
+      set({ _profileLoadedFor: userId });
       supabase
         .from("profiles")
         .select("empresa_id")
@@ -51,8 +55,9 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        // Defer to avoid Supabase deadlock
         setTimeout(() => loadProfile(session.user.id), 0);
+      } else {
+        set({ _profileLoadedFor: null });
       }
     });
 

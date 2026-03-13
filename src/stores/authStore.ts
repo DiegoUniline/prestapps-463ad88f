@@ -14,6 +14,7 @@ interface AuthState {
   cobradorId: string | null;
   rutaIds: string[];
   inactivityTimer: ReturnType<typeof setTimeout> | null;
+  _roleFetchedFor: string | null; // track which user we already fetched role for
 
   initialize: () => () => void;
   signOut: () => Promise<void>;
@@ -33,17 +34,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   cobradorId: null,
   rutaIds: [],
   inactivityTimer: null,
+  _roleFetchedFor: null,
 
   initialize: () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         set({ session, user: session?.user ?? null, loading: false });
         if (session?.user) {
-          // Defer role fetch to avoid Supabase deadlock
-          setTimeout(() => get().fetchRole(session.user.id), 0);
+          // Only fetch role if not already fetched for this user
+          if (get()._roleFetchedFor !== session.user.id) {
+            setTimeout(() => get().fetchRole(session.user.id), 0);
+          }
           get().resetInactivityTimer();
         } else {
-          set({ role: "admin", roleLoading: false, cobradorId: null, rutaIds: [] });
+          set({ role: "admin", roleLoading: false, cobradorId: null, rutaIds: [], _roleFetchedFor: null });
         }
       }
     );
@@ -51,7 +55,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     supabase.auth.getSession().then(({ data: { session } }) => {
       set({ session, user: session?.user ?? null, loading: false });
       if (session?.user) {
-        get().fetchRole(session.user.id);
+        if (get()._roleFetchedFor !== session.user.id) {
+          get().fetchRole(session.user.id);
+        }
         get().resetInactivityTimer();
       } else {
         set({ roleLoading: false });
@@ -74,8 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     const timer = get().inactivityTimer;
     if (timer) clearTimeout(timer);
-    // Clear state FIRST so UI responds immediately
-    set({ session: null, user: null, role: "admin", roleLoading: false, cobradorId: null, rutaIds: [], inactivityTimer: null });
+    set({ session: null, user: null, role: "admin", roleLoading: false, cobradorId: null, rutaIds: [], inactivityTimer: null, _roleFetchedFor: null });
     try {
       await supabase.auth.signOut();
     } catch {
@@ -84,7 +89,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchRole: async (userId: string) => {
-    set({ roleLoading: true });
+    // Deduplicate: skip if already fetched/fetching for this user
+    if (get()._roleFetchedFor === userId) return;
+    set({ roleLoading: true, _roleFetchedFor: userId });
     try {
       const { data: roleRows } = await supabase
         .from("user_roles")
