@@ -253,7 +253,7 @@ export default function PrestamoDetallePage() {
     })),
     ...promesasRaw.map((pr) => ({
       tipo: pr.status === "Incumplida" ? "promesa_incumplida" : "promesa",
-      desc: `Promesa de pago — ${$$(Number(pr.monto_prometido))} para ${pr.fecha_prometida ? format(new Date(pr.fecha_prometida), "dd/MM/yyyy") : "—"}`,
+      desc: `Promesa de pago — ${$$(Number(pr.monto_prometido))} para ${fmtDate(pr.fecha_prometida)}`,
       usuario: "—",
       fecha: pr.created_at || "",
     })),
