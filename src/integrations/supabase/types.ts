@@ -361,10 +361,16 @@ export type Database = {
       clientes: {
         Row: {
           activo: boolean | null
+          aval_direccion: string | null
+          aval_dni: string | null
+          aval_nombre: string | null
+          aval_parentesco: string | null
+          aval_telefono: string | null
           correo: string | null
           created_at: string | null
           dependientes: number | null
           direccion: string | null
+          direccion_trabajo: string | null
           dni: string | null
           documento_identidad:
             | Database["public"]["Enums"]["documento_tipo"]
@@ -372,25 +378,45 @@ export type Database = {
           empresa_id: string | null
           estado: Database["public"]["Enums"]["cliente_estado"] | null
           estado_civil: Database["public"]["Enums"]["estado_civil"] | null
+          fecha_nacimiento: string | null
           foto_cliente: string | null
+          gastos_mensuales: number | null
           gps_lat: number | null
           gps_lng: number | null
           id: string
           id_cliente: string
           ingresos: number | null
           nombre_completo: string
+          notas: string | null
+          ref1_nombre: string | null
+          ref1_parentesco: string | null
+          ref1_telefono: string | null
+          ref2_nombre: string | null
+          ref2_parentesco: string | null
+          ref2_telefono: string | null
           sexo: Database["public"]["Enums"]["sexo_tipo"] | null
           situacion_laboral:
             | Database["public"]["Enums"]["situacion_laboral"]
             | null
           telefono: string | null
+          tipo_vivienda: string | null
+          trabajo_antiguedad: string | null
+          trabajo_cargo: string | null
+          trabajo_empresa: string | null
+          trabajo_telefono: string | null
         }
         Insert: {
           activo?: boolean | null
+          aval_direccion?: string | null
+          aval_dni?: string | null
+          aval_nombre?: string | null
+          aval_parentesco?: string | null
+          aval_telefono?: string | null
           correo?: string | null
           created_at?: string | null
           dependientes?: number | null
           direccion?: string | null
+          direccion_trabajo?: string | null
           dni?: string | null
           documento_identidad?:
             | Database["public"]["Enums"]["documento_tipo"]
@@ -398,25 +424,45 @@ export type Database = {
           empresa_id?: string | null
           estado?: Database["public"]["Enums"]["cliente_estado"] | null
           estado_civil?: Database["public"]["Enums"]["estado_civil"] | null
+          fecha_nacimiento?: string | null
           foto_cliente?: string | null
+          gastos_mensuales?: number | null
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
           id_cliente?: string
           ingresos?: number | null
           nombre_completo: string
+          notas?: string | null
+          ref1_nombre?: string | null
+          ref1_parentesco?: string | null
+          ref1_telefono?: string | null
+          ref2_nombre?: string | null
+          ref2_parentesco?: string | null
+          ref2_telefono?: string | null
           sexo?: Database["public"]["Enums"]["sexo_tipo"] | null
           situacion_laboral?:
             | Database["public"]["Enums"]["situacion_laboral"]
             | null
           telefono?: string | null
+          tipo_vivienda?: string | null
+          trabajo_antiguedad?: string | null
+          trabajo_cargo?: string | null
+          trabajo_empresa?: string | null
+          trabajo_telefono?: string | null
         }
         Update: {
           activo?: boolean | null
+          aval_direccion?: string | null
+          aval_dni?: string | null
+          aval_nombre?: string | null
+          aval_parentesco?: string | null
+          aval_telefono?: string | null
           correo?: string | null
           created_at?: string | null
           dependientes?: number | null
           direccion?: string | null
+          direccion_trabajo?: string | null
           dni?: string | null
           documento_identidad?:
             | Database["public"]["Enums"]["documento_tipo"]
@@ -424,18 +470,32 @@ export type Database = {
           empresa_id?: string | null
           estado?: Database["public"]["Enums"]["cliente_estado"] | null
           estado_civil?: Database["public"]["Enums"]["estado_civil"] | null
+          fecha_nacimiento?: string | null
           foto_cliente?: string | null
+          gastos_mensuales?: number | null
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
           id_cliente?: string
           ingresos?: number | null
           nombre_completo?: string
+          notas?: string | null
+          ref1_nombre?: string | null
+          ref1_parentesco?: string | null
+          ref1_telefono?: string | null
+          ref2_nombre?: string | null
+          ref2_parentesco?: string | null
+          ref2_telefono?: string | null
           sexo?: Database["public"]["Enums"]["sexo_tipo"] | null
           situacion_laboral?:
             | Database["public"]["Enums"]["situacion_laboral"]
             | null
           telefono?: string | null
+          tipo_vivienda?: string | null
+          trabajo_antiguedad?: string | null
+          trabajo_cargo?: string | null
+          trabajo_empresa?: string | null
+          trabajo_telefono?: string | null
         }
         Relationships: [
           {

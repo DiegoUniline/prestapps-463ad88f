@@ -20,7 +20,7 @@ export default function RoleGuard({ children, allowed }: RoleGuardProps) {
   }
 
   if (!allowed.includes(role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
