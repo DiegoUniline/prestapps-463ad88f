@@ -106,8 +106,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
 
       // 2) Get prestamos info
       const prestamoIds = [...new Set(allCuotas.map((c) => c.prestamo_id))];
-      const { data: prestamos } = await supabase
-        .from("prestamos")
+      const { data: prestamos } = await (supabase.from as any)("prestamos")
         .select(`
           id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, tipo_cuenta,
           clientes ( nombre_completo ),
