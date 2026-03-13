@@ -325,7 +325,7 @@ export default function SolicitudPrestamoPage() {
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
                     <p className="text-[11px] text-muted-foreground">Interés</p>
-                    <p className="font-semibold text-sm">${interesTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    <p className="font-semibold text-sm">{$$(interesTotal)}</p>
                   </div>
                 </div>
                 <div className="max-h-[400px] overflow-auto">
