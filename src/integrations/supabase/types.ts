@@ -1181,6 +1181,120 @@ export type Database = {
           },
         ]
       }
+      solicitudes_prestamo: {
+        Row: {
+          aprobado_por: string | null
+          caja_id: string | null
+          cliente_id: string
+          created_at: string | null
+          empresa_id: string | null
+          fecha_primer_pago: string | null
+          frecuencia: Database["public"]["Enums"]["frecuencia_pago"] | null
+          gastos_legales: number | null
+          id: string
+          modalidad: Database["public"]["Enums"]["prestamo_modalidad"]
+          monto_solicitado: number
+          motivo_rechazo: string | null
+          notas: string | null
+          num_cuotas: number
+          prestamo_generado_id: string | null
+          rechazado_por: string | null
+          resuelto_en: string | null
+          ruta_id: string | null
+          solicitado_por: string | null
+          status: string
+          tasa_interes: number | null
+          tipo_mora: Database["public"]["Enums"]["tipo_mora"] | null
+          valor_mora: number | null
+        }
+        Insert: {
+          aprobado_por?: string | null
+          caja_id?: string | null
+          cliente_id: string
+          created_at?: string | null
+          empresa_id?: string | null
+          fecha_primer_pago?: string | null
+          frecuencia?: Database["public"]["Enums"]["frecuencia_pago"] | null
+          gastos_legales?: number | null
+          id?: string
+          modalidad: Database["public"]["Enums"]["prestamo_modalidad"]
+          monto_solicitado: number
+          motivo_rechazo?: string | null
+          notas?: string | null
+          num_cuotas: number
+          prestamo_generado_id?: string | null
+          rechazado_por?: string | null
+          resuelto_en?: string | null
+          ruta_id?: string | null
+          solicitado_por?: string | null
+          status?: string
+          tasa_interes?: number | null
+          tipo_mora?: Database["public"]["Enums"]["tipo_mora"] | null
+          valor_mora?: number | null
+        }
+        Update: {
+          aprobado_por?: string | null
+          caja_id?: string | null
+          cliente_id?: string
+          created_at?: string | null
+          empresa_id?: string | null
+          fecha_primer_pago?: string | null
+          frecuencia?: Database["public"]["Enums"]["frecuencia_pago"] | null
+          gastos_legales?: number | null
+          id?: string
+          modalidad?: Database["public"]["Enums"]["prestamo_modalidad"]
+          monto_solicitado?: number
+          motivo_rechazo?: string | null
+          notas?: string | null
+          num_cuotas?: number
+          prestamo_generado_id?: string | null
+          rechazado_por?: string | null
+          resuelto_en?: string | null
+          ruta_id?: string | null
+          solicitado_por?: string | null
+          status?: string
+          tasa_interes?: number | null
+          tipo_mora?: Database["public"]["Enums"]["tipo_mora"] | null
+          valor_mora?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "solicitudes_prestamo_caja_id_fkey"
+            columns: ["caja_id"]
+            isOneToOne: false
+            referencedRelation: "cajas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_prestamo_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_prestamo_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_prestamo_prestamo_generado_id_fkey"
+            columns: ["prestamo_generado_id"]
+            isOneToOne: false
+            referencedRelation: "prestamos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "solicitudes_prestamo_ruta_id_fkey"
+            columns: ["ruta_id"]
+            isOneToOne: false
+            referencedRelation: "rutas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supervisor_rutas: {
         Row: {
           created_at: string | null
