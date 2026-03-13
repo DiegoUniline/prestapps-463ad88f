@@ -53,7 +53,7 @@ export function useCliente(id: string | undefined) {
         .eq("id", id)
         .single();
       if (error) throw error;
-      return data as Cliente;
+      return data as unknown as Cliente;
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
