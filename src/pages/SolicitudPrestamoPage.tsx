@@ -248,7 +248,7 @@ export default function SolicitudPrestamoPage() {
                 </Select>
                 {saldoCaja !== null && (
                   <p className={cn("text-xs", excedeSaldo ? "text-destructive font-medium" : "text-muted-foreground")}>
-                    Saldo disponible: ${saldoCaja.toLocaleString()}
+                    Saldo disponible: {$$(saldoCaja)}
                     {excedeSaldo && (
                       <span className="flex items-center gap-1 mt-0.5">
                         <AlertTriangle className="h-3 w-3" />
