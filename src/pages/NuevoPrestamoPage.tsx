@@ -82,6 +82,7 @@ export default function NuevoPrestamoPage() {
   const [tipoMora, setTipoMora] = useState<string>("porcentaje");
   const [valorMora, setValorMora] = useState("");
   const [notas, setNotas] = useState("");
+  const [codigoInterno, setCodigoInterno] = useState("");
   const [cuotaOverride, setCuotaOverride] = useState("");
   const [esInicial, setEsInicial] = useState(false);
   const [cuotasCubiertas, setCuotasCubiertas] = useState("");
