@@ -484,6 +484,16 @@ export default function PrestamoDetallePage() {
               )}
             </div>
           </div>
+
+          <div className="border-t border-[hsl(220,14%,91%)]" />
+
+          {/* Cobro Automático Stripe */}
+          <StripeAutoChargeToggle
+            prestamoId={prestamo.id}
+            enabled={(prestamo as any).cobro_automatico_stripe ?? false}
+            disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
+            onToggled={() => queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] })}
+          />
         </div>
 
         {/* RIGHT CONTENT (72%) */}
