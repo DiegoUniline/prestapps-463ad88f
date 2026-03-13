@@ -290,7 +290,7 @@ export default function EmpresasPage() {
                           {e.activa ? "Activa" : "Inactiva"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(ev) => ev.stopPropagation()}>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(e)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
