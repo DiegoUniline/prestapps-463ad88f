@@ -67,13 +67,13 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
       // 2. Prestamos activos per cobrador
       const { data: prestamos } = await supabase
         .from("prestamos")
-        .select("id, cobrador_id, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
+        .select("id, cobrador_id, generado_por, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
         .eq("empresa_id", empresaId);
 
       // 3. Pagos in period & previous
       const { data: pagos } = await supabase
         .from("pagos")
-        .select("id, cobrador_id, monto_recibido, created_at, prestamo_id, fecha_pago")
+        .select("id, cobrador_id, registrado_por, monto_recibido, created_at, prestamo_id, fecha_pago")
         .eq("empresa_id", empresaId)
         .eq("anulado", false)
         .gte("fecha_pago", prevDesde)
