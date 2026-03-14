@@ -146,7 +146,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
       const { data: empresa } = await supabase
         .from("empresas")
-        .select("nombre, telefono, direccion")
+        .select("nombre, telefono, direccion, logo_url")
         .eq("id", empresaId)
         .single();
 

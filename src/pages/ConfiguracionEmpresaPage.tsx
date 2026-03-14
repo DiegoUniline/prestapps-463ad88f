@@ -738,6 +738,7 @@ function SimuladorTab() {
     nombre: empresa?.nombre || "Mi Empresa",
     telefono: empresa?.telefono || "",
     direccion: empresa?.direccion || "",
+    logo_url: empresa?.logo_url || null,
   };
 
   const handleSendTicket = async () => {
