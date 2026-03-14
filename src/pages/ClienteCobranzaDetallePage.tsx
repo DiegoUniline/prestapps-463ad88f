@@ -413,64 +413,109 @@ export default function ClienteCobranzaDetallePage() {
         </div>
       </div>
 
-      {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card>
-          <CardContent className="p-3.5">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Cuentas Activas</span>
-              <CreditCard className="h-3.5 w-3.5 text-primary" />
+      {/* ── Resumen Financiero Rápido ── */}
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calculator className="h-4 w-4 text-primary" />
+            <span className="text-xs font-bold uppercase tracking-wider text-primary">Resumen Financiero</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {/* Total Prestado */}
+            <div className="bg-background rounded-lg p-3 border">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Banknote className="h-3 w-3 text-muted-foreground" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Prestado</span>
+              </div>
+              <p className="text-lg font-bold">{$$(totales.totalPrestado)}</p>
+              <p className="text-[10px] text-muted-foreground">{totales.cuentas} cuenta{totales.cuentas !== 1 ? "s" : ""} activa{totales.cuentas !== 1 ? "s" : ""}</p>
             </div>
-            <p className="text-xl font-bold">{totales.cuentas}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3.5">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Deuda Total</span>
-              <DollarSign className="h-3.5 w-3.5 text-destructive" />
+
+            {/* Total Abonado */}
+            <div className="bg-background rounded-lg p-3 border border-success/30">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Receipt className="h-3 w-3 text-success" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Ha Abonado</span>
+              </div>
+              <p className="text-lg font-bold text-success">{$$(totales.totalAbonado)}</p>
+              <p className="text-[10px] text-muted-foreground">{(pagos || []).filter((p: any) => !p.anulado).length} pagos</p>
             </div>
-            <p className="text-xl font-bold text-destructive">{$$(totales.saldo)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3.5">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Mora Total</span>
-              <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+
+            {/* Deuda Pendiente */}
+            <div className="bg-background rounded-lg p-3 border border-destructive/30">
+              <div className="flex items-center gap-1.5 mb-1">
+                <DollarSign className="h-3 w-3 text-destructive" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Debe</span>
+              </div>
+              <p className="text-lg font-bold text-destructive">{$$(totales.saldo)}</p>
+              <p className="text-[10px] text-muted-foreground">{totales.cuotasTotales - totales.cuotasPagadas} cuotas restantes</p>
             </div>
-            <p className={cn("text-xl font-bold", totales.mora > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(totales.mora)}</p>
-          </CardContent>
-        </Card>
-        <Card className={cn(totales.alCorriente > 0 && "border-warning/50 bg-warning/5")}>
-          <CardContent className="p-3.5">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Para Al Corriente</span>
-              <TrendingDown className="h-3.5 w-3.5 text-warning" />
+
+            {/* Mora */}
+            <div className={cn("bg-background rounded-lg p-3 border", totales.mora > 0 ? "border-destructive/50 bg-destructive/5" : "")}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <AlertTriangle className="h-3 w-3 text-destructive" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Mora</span>
+              </div>
+              <p className={cn("text-lg font-bold", totales.mora > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(totales.mora)}</p>
+              <p className="text-[10px] text-muted-foreground">{totales.cuotasVencidas} vencida{totales.cuotasVencidas !== 1 ? "s" : ""}</p>
             </div>
-            <p className="text-xl font-bold text-warning">{$$(totales.alCorriente)}</p>
-            <p className="text-[10px] text-muted-foreground">{totales.cuotasVencidas} cuota{totales.cuotasVencidas !== 1 ? "s" : ""} vencida{totales.cuotasVencidas !== 1 ? "s" : ""}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3.5 flex flex-col justify-between h-full">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Cobrar</span>
-            <div className="flex gap-1.5 mt-2">
+
+            {/* Al Corriente */}
+            <div className={cn("bg-background rounded-lg p-3 border", totales.alCorriente > 0 ? "border-warning/50 bg-warning/5" : "")}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Target className="h-3 w-3 text-warning" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Al Corriente</span>
+              </div>
+              <p className={cn("text-lg font-bold", totales.alCorriente > 0 ? "text-warning" : "text-success")}>{totales.alCorriente > 0 ? $$(totales.alCorriente) : "✓ Al día"}</p>
+              <p className="text-[10px] text-muted-foreground">{totales.alCorriente > 0 ? "para ponerse al día" : "sin atrasos"}</p>
+            </div>
+
+            {/* Liquidación */}
+            <div className="bg-background rounded-lg p-3 border border-primary/30">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Zap className="h-3 w-3 text-primary" />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Liquida con</span>
+              </div>
+              <p className="text-lg font-bold text-primary">{$$(totales.liquidacion)}</p>
+              <p className="text-[10px] text-muted-foreground">solo capital restante</p>
+            </div>
+          </div>
+
+          {/* Próxima cuota + progreso + acciones rápidas */}
+          <div className="mt-3 pt-3 border-t flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-6 flex-wrap">
+              {totales.proximaCuota && (
+                <div className="flex items-center gap-2">
+                  <CalendarCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Próxima cuota:</span>
+                  <span className={cn("text-xs font-semibold", totales.proximaCuota.diasAtraso > 0 ? "text-destructive" : "")}>
+                    {format(parseISO(totales.proximaFecha), "dd MMM yyyy", { locale: es })} — {$$(totales.proximoMonto)}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground">Avance:</span>
+                <Progress value={totales.cuotasTotales > 0 ? (totales.cuotasPagadas / totales.cuotasTotales) * 100 : 0} className="w-24 h-2" />
+                <span className="text-[11px] font-medium">{totales.cuotasPagadas}/{totales.cuotasTotales}</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
               {cuentas && cuentas.length === 1 ? (
-                <Button size="sm" className="h-8 text-xs flex-1" onClick={() => openPagoCuenta(cuentas[0])}>
-                  <HandCoins className="h-3.5 w-3.5 mr-1" />Abonar
+                <Button size="sm" className="h-8 text-xs" onClick={() => openPagoCuenta(cuentas[0])}>
+                  <HandCoins className="h-3.5 w-3.5 mr-1" />Registrar Abono
                 </Button>
               ) : cuentaSeleccionada ? (
-                <Button size="sm" className="h-8 text-xs flex-1" onClick={() => openPagoCuenta(cuentaSeleccionada)}>
+                <Button size="sm" className="h-8 text-xs" onClick={() => openPagoCuenta(cuentaSeleccionada)}>
                   <HandCoins className="h-3.5 w-3.5 mr-1" />Abonar {cuentaSeleccionada.idPrestamo}
                 </Button>
               ) : (
-                <p className="text-[11px] text-muted-foreground">Filtra por cuenta para abonar</p>
+                <span className="text-[11px] text-muted-foreground italic">Selecciona una cuenta para abonar ↓</span>
               )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ── Préstamos/Cuentas Resumen ── */}
       {cuentas && cuentas.length > 0 && (
@@ -478,6 +523,7 @@ export default function ClienteCobranzaDetallePage() {
           {cuentas.map((cuenta) => {
             const progreso = cuenta.cuotasTotales > 0 ? (cuenta.cuotasPagadas / cuenta.cuotasTotales) * 100 : 0;
             const isSelected = filtroPrestamo === cuenta.prestamoId;
+            const capitalRestante = cuenta.cuotasPendientes.reduce((s, q) => s + q.saldoCapital, 0);
             return (
               <Card
                 key={cuenta.prestamoId}
