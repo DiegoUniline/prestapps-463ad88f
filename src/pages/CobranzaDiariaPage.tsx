@@ -12,8 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, $$ } from "@/lib/utils";
-import { format, isToday, parseISO } from "date-fns";
+import { format, isToday, parseISO, startOfDay, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
@@ -24,6 +25,83 @@ import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { VisitaModal } from "@/components/VisitaModal";
+
+// ── Weekly cut helpers ────────────────────────────────────────────
+/** Get the start date of the current "week" based on the empresa's configured start day (0=Sun..6=Sat) */
+function getWeekStart(today: Date, startDay: number): Date {
+  const d = startOfDay(today);
+  const currentDay = d.getDay(); // 0=Sun
+  let diff = currentDay - startDay;
+  if (diff < 0) diff += 7;
+  return addDays(d, -diff);
+}
+
+function getWeekEnd(weekStart: Date): Date {
+  return addDays(weekStart, 6);
+}
+
+// Hook to fetch empresa corte config
+function useEmpresaCorteConfig(empresaId: string) {
+  return useQuery({
+    queryKey: ["empresa-corte", empresaId],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("empresas")
+        .select("corte_dia_semana, corte_color_cobrado")
+        .eq("id", empresaId)
+        .single();
+      return {
+        corteDiaSemana: (data?.corte_dia_semana ?? 1) as number,
+        corteColor: (data?.corte_color_cobrado || "#22c55e") as string,
+      };
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+// Hook to check which clients have been "attended" (pago or visita) in the current week
+function useClientesAtendidosSemana(empresaId: string, weekStartStr: string, weekEndStr: string) {
+  return useQuery({
+    queryKey: ["clientes-atendidos-semana", empresaId, weekStartStr, weekEndStr],
+    queryFn: async () => {
+      // Get payments in this week
+      const { data: pagos } = await supabase
+        .from("pagos")
+        .select("prestamo_id")
+        .eq("empresa_id", empresaId)
+        .eq("anulado", false)
+        .gte("created_at", weekStartStr + "T00:00:00")
+        .lte("created_at", weekEndStr + "T23:59:59");
+
+      // Get visits (gestiones) in this week
+      const { data: gestiones } = await supabase
+        .from("crm_gestiones")
+        .select("cliente_id")
+        .eq("empresa_id", empresaId)
+        .gte("created_at", weekStartStr + "T00:00:00")
+        .lte("created_at", weekEndStr + "T23:59:59");
+
+      // Get cliente_ids from pagos via prestamos
+      const prestamoIds = [...new Set((pagos || []).map((p: any) => p.prestamo_id))];
+      const clienteIdsFromGestiones = new Set((gestiones || []).map((g: any) => g.cliente_id));
+
+      let clienteIdsFromPagos = new Set<string>();
+      if (prestamoIds.length > 0) {
+        const { data: prestamos } = await supabase
+          .from("prestamos")
+          .select("cliente_id")
+          .in("id", prestamoIds);
+        for (const p of prestamos || []) {
+          clienteIdsFromPagos.add(p.cliente_id);
+        }
+      }
+
+      // Merge both sets
+      const atendidos = new Set([...clienteIdsFromPagos, ...clienteIdsFromGestiones]);
+      return atendidos;
+    },
+    staleTime: 30 * 1000, // refresh every 30s
+  });
+}
 
 // ── Data Hook ────────────────────────────────────────────────────
 interface CuotaDiaria {
@@ -263,6 +341,16 @@ export default function CobranzaDiariaPage() {
     navigate(`/cobranza/cliente/${clienteId}?fecha=${fechaStr}`);
   };
 
+  // Weekly cut indicator
+  const { data: corteConfig } = useEmpresaCorteConfig(empresaId);
+  const corteDia = corteConfig?.corteDiaSemana ?? 1;
+  const corteColor = corteConfig?.corteColor ?? "#22c55e";
+  const weekStart = useMemo(() => getWeekStart(new Date(), corteDia), [corteDia]);
+  const weekEnd = useMemo(() => getWeekEnd(weekStart), [weekStart]);
+  const weekStartStr = format(weekStart, "yyyy-MM-dd");
+  const weekEndStr = format(weekEnd, "yyyy-MM-dd");
+  const { data: clientesAtendidos } = useClientesAtendidosSemana(empresaId, weekStartStr, weekEndStr);
+
   const fechaStr = format(fecha, "yyyy-MM-dd");
   const { data: cuotas, isLoading } = useCobranzaDiaria(fechaStr, empresaId);
   const { data: cajas } = useCajasAll(empresaId);
@@ -396,6 +484,7 @@ export default function CobranzaDiariaPage() {
     ruta: string;
     tieneVencidas: boolean;
     todasCobradas: boolean;
+    atendidoSemana: boolean;
   }
   const clientesAgrupados = useMemo((): ClienteAgrupado[] => {
     const map = new Map<string, CuotaDiaria[]>();
@@ -419,13 +508,14 @@ export default function CobranzaDiariaPage() {
         ruta: cuotas[0].ruta,
         tieneVencidas: pendientes.some((c) => c.diasAtraso > 0),
         todasCobradas: pendientes.length === 0,
+        atendidoSemana: clientesAtendidos?.has(clienteId) ?? false,
       };
     }).sort((a, b) => {
       // Pending first, then by saldo desc
       if (a.todasCobradas !== b.todasCobradas) return a.todasCobradas ? 1 : -1;
       return b.totalSaldo - a.totalSaldo;
     });
-  }, [filtered]);
+  }, [filtered, clientesAtendidos]);
 
   return (
     <div className="space-y-4">
@@ -620,13 +710,28 @@ export default function CobranzaDiariaPage() {
                   onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
                 >
                   <TableCell className="px-3">
-                    {cli.todasCobradas ? (
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                    ) : cli.tieneVencidas ? (
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    ) : (
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="inline-block h-3 w-3 rounded-full shrink-0 border border-border/40"
+                            style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs">
+                          {cli.atendidoSemana
+                            ? `Atendido esta semana (${format(weekStart, "d MMM", { locale: es })} - ${format(weekEnd, "d MMM", { locale: es })})`
+                            : `Sin atender esta semana`}
+                        </TooltipContent>
+                      </Tooltip>
+                      {cli.todasCobradas ? (
+                        <CheckCircle2 className="h-4 w-4 text-success" />
+                      ) : cli.tieneVencidas ? (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <span className="font-medium">{cli.clienteNombre}</span>
@@ -691,6 +796,10 @@ export default function CobranzaDiariaPage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="inline-block h-3 w-3 rounded-full shrink-0 border border-border/40"
+                    style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
+                  />
                   {cli.todasCobradas ? (
                     <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                   ) : cli.tieneVencidas ? (
