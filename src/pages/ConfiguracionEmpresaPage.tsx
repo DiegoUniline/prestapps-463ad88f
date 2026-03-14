@@ -88,6 +88,7 @@ function DatosGeneralesTab() {
         ruc: empresa.ruc || "",
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
+        dias_gracia: empresa.dias_gracia ?? 0,
       });
     }
     setEditing(false);
