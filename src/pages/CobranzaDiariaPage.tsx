@@ -502,6 +502,7 @@ export default function CobranzaDiariaPage() {
       return {
         clienteId,
         clienteNombre: cuotas[0].clienteNombre,
+        clienteFoto: cuotas[0].clienteFoto,
         cuotas,
         totalSaldo: pendientes.reduce((s, c) => s + c.saldoTotal, 0),
         totalMora: pendientes.reduce((s, c) => s + c.saldoMora, 0),
