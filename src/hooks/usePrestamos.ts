@@ -133,7 +133,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   }
 
   return prestamos.map((p) => {
-    const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false };
+    const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
 
     return {
       id: p.id,
