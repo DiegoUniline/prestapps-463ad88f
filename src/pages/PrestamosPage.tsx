@@ -357,6 +357,23 @@ export default function PrestamosPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
   const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
+  // Grouping
+  const [groupBy, setGroupBy] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const groupByOptions = [
+    { key: "estado", label: "Estado" },
+    { key: "cliente", label: "Cliente" },
+    { key: "tipoCuenta", label: "Tipo de préstamo" },
+    { key: "mesCreacion", label: "Mes de creación" },
+  ];
+  const toggleGroup = (g: string) => {
+    setExpandedGroups((prev) => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
+  };
+  const handleGroupByChange = (key: string | null) => {
+    setGroupBy(key);
+    setExpandedGroups(new Set());
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       if (sortDir === "asc") setSortDir("desc");
