@@ -710,13 +710,28 @@ export default function CobranzaDiariaPage() {
                   onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
                 >
                   <TableCell className="px-3">
-                    {cli.todasCobradas ? (
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                    ) : cli.tieneVencidas ? (
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    ) : (
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="inline-block h-3 w-3 rounded-full shrink-0 border border-border/40"
+                            style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="text-xs">
+                          {cli.atendidoSemana
+                            ? `Atendido esta semana (${format(weekStart, "d MMM", { locale: es })} - ${format(weekEnd, "d MMM", { locale: es })})`
+                            : `Sin atender esta semana`}
+                        </TooltipContent>
+                      </Tooltip>
+                      {cli.todasCobradas ? (
+                        <CheckCircle2 className="h-4 w-4 text-success" />
+                      ) : cli.tieneVencidas ? (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <span className="font-medium">{cli.clienteNombre}</span>
