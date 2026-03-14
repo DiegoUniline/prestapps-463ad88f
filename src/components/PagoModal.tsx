@@ -4,15 +4,19 @@ import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useMetodosPagoActivos } from "@/hooks/useCatalogos";
+import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { cn, $$ } from "@/lib/utils";
-import { HandCoins, Info, Loader2, AlertTriangle } from "lucide-react";
+import { HandCoins, Info, Loader2, AlertTriangle, CalendarIcon } from "lucide-react";
 import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 interface Cuota {
