@@ -147,6 +147,7 @@ export default function PrestamosPage() {
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
