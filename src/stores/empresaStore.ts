@@ -29,6 +29,12 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   setEmpresaId: (id: string) => {
     set({ empresaId: id, empresaNombre: get().empresas.find((e) => e.id === id)?.nombre || "Empresa" });
     localStorage.setItem("empresa_id", id);
+    // Update profile so get_user_empresa_id() returns the new empresa (RLS)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        supabase.from("profiles").update({ empresa_id: id }).eq("id", session.user.id).then(() => {});
+      }
+    });
   },
 
   initialize: () => {
