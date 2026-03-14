@@ -452,6 +452,9 @@ export default function PrestamosPage() {
 
         </TabsContent>
       </Tabs>
+      {lightboxPhoto && (
+        <PhotoLightbox open={!!lightboxPhoto} onOpenChange={(o) => !o && setLightboxPhoto(null)} src={lightboxPhoto.src} alt={lightboxPhoto.alt} />
+      )}
     </div>
   );
 }
