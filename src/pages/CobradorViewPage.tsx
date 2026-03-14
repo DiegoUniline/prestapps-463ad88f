@@ -437,11 +437,12 @@ export default function CobradorViewPage() {
 
   const setSemana = useCallback(() => {
     setRangePreset("semana");
-    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const end = endOfWeek(new Date(), { weekStartsOn: 1 });
+    const ws = (weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6) ?? 1;
+    const start = startOfWeek(new Date(), { weekStartsOn: ws });
+    const end = endOfWeek(new Date(), { weekStartsOn: ws });
     setFechaDesde(start);
     setFechaHasta(end);
-  }, []);
+  }, [weekStartsOn]);
 
   // Filter cuotas
   const filtered = useMemo(() => {
