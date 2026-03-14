@@ -387,10 +387,11 @@ export default function CobradorViewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
-  const { cobradorId, role } = useCurrentUserRole();
+  const { cobradorId, role, profileId } = useCurrentUserRole();
+  const { user } = useAuth();
 
-  // Effective cobrador id (admin can also use this page for testing)
-  const effectiveCobradorId = cobradorId;
+  // Use the logged-in user's ID as cobrador — if they're assigned as cobrador on any loan, they'll see it
+  const effectiveCobradorId = user?.id || cobradorId || profileId;
 
   // Empresa week config
   const { data: weekStartsOn = 1 } = useEmpresaSemana(empresaId);
@@ -428,7 +429,7 @@ export default function CobradorViewPage() {
   const { data: cajas } = useCajasAll(empresaId);
   const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, empresaId);
   const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(empresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6);
-  const { user } = useAuth();
+  
   // Preset handlers
   const setHoy = useCallback(() => {
     setRangePreset("hoy");
@@ -519,14 +520,14 @@ export default function CobradorViewPage() {
     [filteredPagos]
   );
 
-  if (!effectiveCobradorId && role === "cobrador") {
+  if (!effectiveCobradorId) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">
         <Card className="max-w-sm w-full">
           <CardContent className="p-6 text-center">
             <AlertTriangle className="h-10 w-10 text-warning mx-auto mb-3" />
-            <p className="font-semibold">Sin cobrador asignado</p>
-            <p className="text-sm text-muted-foreground mt-1">Tu usuario no tiene un cobrador vinculado. Contacta al administrador.</p>
+            <p className="font-semibold">Sin sesión activa</p>
+            <p className="text-sm text-muted-foreground mt-1">Inicia sesión para ver tu cobranza.</p>
           </CardContent>
         </Card>
       </div>
