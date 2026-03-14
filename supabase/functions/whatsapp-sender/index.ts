@@ -96,27 +96,6 @@ Deno.serve(async (req) => {
     if (action === "send-receipt") {
       const { phone, pago_data, empresa_data, cliente_data, prestamo_data } = body;
 
-      // Build the receipt HTML ticket
-      const receiptHtml = buildReceiptHtml(pago_data, empresa_data, cliente_data, prestamo_data);
-      
-      // Use a free HTML-to-image API
-      const imageUrl = await htmlToImage(receiptHtml);
-
-      if (!imageUrl) {
-        await supabase.from("whatsapp_log").insert({
-          empresa_id,
-          telefono: phone,
-          tipo: "recibo",
-          mensaje: "Error generando imagen del recibo",
-          status: "error",
-          error_detalle: "No se pudo generar la imagen del recibo",
-          referencia_id: pago_data.pago_id || null,
-        });
-        return new Response(JSON.stringify({ success: false, error: "No se pudo generar imagen" }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       // Get template for receipt message
       const { data: template } = await supabase
         .from("whatsapp_templates")
@@ -125,28 +104,45 @@ Deno.serve(async (req) => {
         .eq("tipo", "recibo_pago")
         .single();
 
-      let caption = template?.mensaje || "✅ Recibo de pago #{folio} por ${monto}. Gracias por su pago.";
+      let caption = template?.mensaje || "✅ Recibo de pago {folio} por ${monto_recibido}. Gracias por su pago.";
       caption = replaceVariables(caption, { ...pago_data, ...cliente_data, ...empresa_data, ...prestamo_data });
 
-      const result = await sendWhatsApp(config.api_url, config.api_token, {
-        action: "send-image",
-        phone,
-        url: imageUrl,
-        caption,
-      });
+      // Build the receipt HTML ticket
+      const receiptHtml = buildReceiptHtml(pago_data, empresa_data, cliente_data, prestamo_data);
+      const imageUrl = await htmlToImage(receiptHtml);
+
+      let result;
+      let mensajeLog = caption;
+
+      if (imageUrl) {
+        result = await sendWhatsApp(config.api_url, config.api_token, {
+          action: "send-image",
+          phone,
+          url: imageUrl,
+          caption,
+        });
+      } else {
+        const fallbackText = `${caption}\n\n⚠️ No se pudo adjuntar imagen del recibo en esta prueba.`;
+        result = await sendWhatsApp(config.api_url, config.api_token, {
+          action: "send-text",
+          phone,
+          message: fallbackText,
+        });
+        mensajeLog = fallbackText;
+      }
 
       await supabase.from("whatsapp_log").insert({
         empresa_id,
         telefono: phone,
         tipo: "recibo",
-        mensaje: caption,
+        mensaje: mensajeLog,
         imagen_url: imageUrl,
         status: result.success ? "enviado" : "error",
-        error_detalle: result.error || null,
+        error_detalle: result.error || (!imageUrl ? "Fallo la generación de imagen, se usó fallback de texto" : null),
         referencia_id: pago_data.pago_id || null,
       });
 
-      return new Response(JSON.stringify(result), {
+      return new Response(JSON.stringify({ ...result, fallback_used: !imageUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
