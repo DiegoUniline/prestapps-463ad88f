@@ -61,12 +61,31 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const { empresaId } = useEmpresa();
   const geo = useGeoLocation();
   const user = useAuthStore((s) => s.user);
+  const { role } = useCurrentUserRole();
   const { data: metodosPago = [] } = useMetodosPagoActivos();
+
+  // Fetch cobradores for admin/supervisor to pick who gets the commission
+  const isNonCobrador = role === "admin" || role === "supervisor";
+  const { data: cobradores = [] } = useQuery({
+    queryKey: ["profiles-cobradores", empresaId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, nombre_completo")
+        .eq("empresa_id", empresaId)
+        .eq("activo", true)
+        .order("nombre_completo");
+      return data || [];
+    },
+    enabled: isNonCobrador && open,
+  });
+
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("");
   const [cajaId, setCajaId] = useState(cajas[0]?.id || "");
   const [fechaPago, setFechaPago] = useState<Date>(new Date());
+  const [selectedCobradorId, setSelectedCobradorId] = useState<string>(cobradorId || "");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
