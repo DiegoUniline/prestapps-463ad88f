@@ -25,6 +25,7 @@ export interface PrestamoListItem {
   fechaRegistro: string;
   fechaPrimerPago: string;
   tieneAtraso: boolean;
+  diasAtraso: number;
 }
 
 interface FetchFilters {
@@ -113,22 +114,26 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   const cobradorMap = Object.fromEntries(cobradoresData.map((c) => [c.id, c.nombre_completo || "—"]));
 
   const today = new Date().toISOString().slice(0, 10);
-  const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number; tieneAtraso: boolean }> = {};
+  const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number }> = {};
 
   for (const a of amortData) {
     if (!amortByPrestamo[a.prestamo_id]) {
-      amortByPrestamo[a.prestamo_id] = { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false };
+      amortByPrestamo[a.prestamo_id] = { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
     }
     amortByPrestamo[a.prestamo_id].saldo += Number(a.saldo_total || 0);
     amortByPrestamo[a.prestamo_id].mora += Number(a.saldo_mora || 0);
     if (a.status === "Pagada") amortByPrestamo[a.prestamo_id].pagadas += 1;
     if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
       amortByPrestamo[a.prestamo_id].tieneAtraso = true;
+      const diffDays = Math.floor((new Date(today).getTime() - new Date(a.fecha_vencimiento).getTime()) / 86400000);
+      if (diffDays > amortByPrestamo[a.prestamo_id].diasAtraso) {
+        amortByPrestamo[a.prestamo_id].diasAtraso = diffDays;
+      }
     }
   }
 
   return prestamos.map((p) => {
-    const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false };
+    const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
 
     return {
       id: p.id,
@@ -153,6 +158,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       fechaRegistro: p.fecha_registro || "",
       fechaPrimerPago: p.fecha_primer_pago || "",
       tieneAtraso: amort.tieneAtraso,
+      diasAtraso: amort.diasAtraso,
     };
   });
 }
