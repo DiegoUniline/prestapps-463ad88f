@@ -535,7 +535,7 @@ export default function CobradorViewPage() {
   }
 
   return (
-    <div className="space-y-3 pb-20">
+    <div className="space-y-3 pb-20 overflow-x-hidden">
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex flex-col gap-2">
         <h1 className="text-xl sm:text-2xl font-bold">Mi Cobranza</h1>
@@ -674,28 +674,23 @@ export default function CobradorViewPage() {
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-10">
-          <TabsTrigger value="cobranza" className="text-xs sm:text-sm gap-1">
-            <HandCoins className="h-3.5 w-3.5 hidden sm:inline" />
+        <TabsList className="w-full grid grid-cols-5 h-10 p-1">
+          <TabsTrigger value="cobranza" className="text-[11px] sm:text-sm px-1 gap-0.5">
             Cobrar
             {kpis.pendientes > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 min-w-5 text-[10px] px-1">{kpis.pendientes}</Badge>
+              <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{kpis.pendientes}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="cartera" className="text-xs sm:text-sm gap-1">
-            <Briefcase className="h-3.5 w-3.5 hidden sm:inline" />
+          <TabsTrigger value="cartera" className="text-[11px] sm:text-sm px-1">
             Cartera
           </TabsTrigger>
-          <TabsTrigger value="historial" className="text-xs sm:text-sm gap-1">
-            <History className="h-3.5 w-3.5 hidden sm:inline" />
+          <TabsTrigger value="historial" className="text-[11px] sm:text-sm px-1">
             Historial
           </TabsTrigger>
-          <TabsTrigger value="pagos" className="text-xs sm:text-sm gap-1">
-            <Receipt className="h-3.5 w-3.5 hidden sm:inline" />
+          <TabsTrigger value="pagos" className="text-[11px] sm:text-sm px-1">
             Pagos
           </TabsTrigger>
-          <TabsTrigger value="perfil" className="text-xs sm:text-sm gap-1">
-            <User className="h-3.5 w-3.5 hidden sm:inline" />
+          <TabsTrigger value="perfil" className="text-[11px] sm:text-sm px-1">
             Perfil
           </TabsTrigger>
         </TabsList>
@@ -1068,7 +1063,7 @@ function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }
             >
               {item.clienteNombre}
             </button>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-1 mt-0.5 flex-wrap">
               <span className="text-[11px] text-muted-foreground">
                 Cuota <span className="font-medium">#{item.numCuota}</span>/{item.totalCuotas}
               </span>
@@ -1104,45 +1099,47 @@ function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }
         </div>
 
         {/* Row 3: Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {!item.pagada ? (
             <>
               <Button
                 size="sm"
-                className="flex-1 h-9 text-xs font-medium"
+                className="h-8 text-[11px] font-medium min-w-0 flex-1"
                 onClick={() => onCobrar(item)}
               >
-                <HandCoins className="h-3.5 w-3.5 mr-1.5" />
-                Cobrar {$$(item.saldoTotal)}
+                <HandCoins className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <span className="truncate">Cobrar {$$(item.saldoTotal)}</span>
               </Button>
-              {item.clienteTelefono && (
-                <>
-                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0"
-                    onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}>
-                    <Phone className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1 shrink-0">
+                {item.clienteTelefono && (
+                  <>
+                    <Button variant="outline" size="icon" className="h-8 w-8"
+                      onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}>
+                      <Phone className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-8 w-8 text-green-600"
+                      onClick={() => window.open(`https://wa.me/${item.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+                {onVisita && (
+                  <Button variant="outline" size="icon" className="h-8 w-8" title="Registrar visita"
+                    onClick={() => onVisita(item)}>
+                    <MapPin className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 text-green-600"
-                    onClick={() => window.open(`https://wa.me/${item.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
-                    <MessageSquare className="h-3.5 w-3.5" />
+                )}
+                {onPromesa && item.status !== "Prometida" && (
+                  <Button variant="outline" size="icon" className="h-8 w-8" title="Promesa de pago"
+                    onClick={() => onPromesa(item)}>
+                    <CalendarCheck className="h-3.5 w-3.5" />
                   </Button>
-                </>
-              )}
-              {onVisita && (
-                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Registrar visita"
-                  onClick={() => onVisita(item)}>
-                  <MapPin className="h-3.5 w-3.5" />
+                )}
+                <Button variant="outline" size="icon" className="h-8 w-8"
+                  onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}>
+                  <Eye className="h-3.5 w-3.5" />
                 </Button>
-              )}
-              {onPromesa && item.status !== "Prometida" && (
-                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Promesa de pago"
-                  onClick={() => onPromesa(item)}>
-                  <CalendarCheck className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0"
-                onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}>
-                <Eye className="h-3.5 w-3.5" />
-              </Button>
+              </div>
             </>
           ) : (
             <div className="flex items-center justify-between w-full">
