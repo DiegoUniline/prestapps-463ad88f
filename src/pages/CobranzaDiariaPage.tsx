@@ -739,7 +739,15 @@ export default function CobranzaDiariaPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium">{cli.clienteNombre}</span>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+                        {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
+                        <AvatarFallback className="text-[11px] font-semibold bg-primary/10 text-primary rounded-lg">
+                          {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{cli.clienteNombre}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-center">
                     <span className="text-[12px]">{cli.cuentasActivas}</span>
