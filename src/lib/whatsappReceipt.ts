@@ -164,7 +164,18 @@ export async function sendReceiptAsImage(
       },
     });
 
-    if (invokeErr) throw invokeErr;
+    if (invokeErr) {
+      // Try to extract meaningful error from edge function response
+      let errMsg = invokeErr.message || "Error al enviar por WhatsApp";
+      try {
+        const ctx = (invokeErr as any).context;
+        if (ctx && typeof ctx.json === "function") {
+          const body = await ctx.json();
+          if (body?.error) errMsg = body.error;
+        }
+      } catch { /* ignore */ }
+      throw new Error(errMsg);
+    }
 
     // 5. Cleanup storage after a delay (give WhatsApp time to download)
     setTimeout(async () => {
