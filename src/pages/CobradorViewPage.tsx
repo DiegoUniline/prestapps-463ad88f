@@ -522,6 +522,20 @@ export default function CobradorViewPage() {
     [filteredPagos]
   );
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] p-4">
+        <Card className="max-w-sm w-full">
+          <CardContent className="p-6 text-center">
+            <AlertTriangle className="h-10 w-10 text-warning mx-auto mb-3" />
+            <p className="font-semibold">Acceso restringido</p>
+            <p className="text-sm text-muted-foreground mt-1">No tienes permisos para ver Mi Cobranza.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!effectiveCobradorId) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">
