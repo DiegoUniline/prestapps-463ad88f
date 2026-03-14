@@ -60,13 +60,14 @@ function DatosGeneralesTab() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.nombre.trim()) throw new Error("El nombre es requerido");
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("empresas")
         .update({
           nombre: form.nombre.trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
+          dias_gracia: form.dias_gracia,
         })
         .eq("id", empresaId);
       if (error) throw error;
