@@ -240,6 +240,7 @@ export default function CajasPage() {
   const [saving, setSaving] = useState(false);
 
   const [selectedCaja, setSelectedCaja] = useState<string | null>(null);
+  const [cajasView, setCajasView] = useState<"table" | "cards">("table");
 
   // Kardex filters
   const [selCategoria, setSelCategoria] = useState<Set<string>>(new Set());
