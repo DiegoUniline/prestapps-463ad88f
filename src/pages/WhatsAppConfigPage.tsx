@@ -88,25 +88,47 @@ export default function WhatsAppConfigPage() {
     }
   }, [config]);
 
-  const savingConfig = useMutation({
-    mutationFn: async () => {
+  // Auto-save with debounce
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialLoad = useRef(true);
+
+  const doSave = useCallback(async (formData: typeof form) => {
+    const payload = { ...formData };
+    try {
       if (config?.id) {
         const { error } = await (supabase.from as any)("whatsapp_config")
-          .update({ ...form })
+          .update(payload)
           .eq("id", config.id);
         if (error) throw error;
       } else {
         const { error } = await (supabase.from as any)("whatsapp_config")
-          .insert({ ...form, empresa_id: empresaId });
+          .insert({ ...payload, empresa_id: empresaId });
         if (error) throw error;
       }
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["whatsapp-config", empresaId] });
       toast.success("Configuración guardada");
-    },
-    onError: (e: any) => toast.error("Error: " + e.message),
-  });
+    } catch (e: any) {
+      toast.error("Error: " + e.message);
+    }
+  }, [config, empresaId, queryClient]);
+
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
+    }
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => doSave(form), 800);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [form, doSave]);
+
+  // Auto-activate when token is pasted
+  const handleTokenChange = (val: string) => {
+    const shouldActivate = val.trim().length > 0;
+    setForm((f) => ({ ...f, api_token: val, activo: shouldActivate ? true : f.activo }));
+  };
+
+  const savingConfig = { isPending: false };
 
   // ── Templates ────────────────────────────────
   const { data: templates, isLoading: loadingTemplates } = useQuery({
