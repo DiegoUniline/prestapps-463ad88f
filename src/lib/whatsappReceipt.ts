@@ -102,14 +102,18 @@ export async function sendReceiptAsImage(
   let el: HTMLDivElement | null = null;
 
   try {
-    // 1. Render offscreen and convert to PNG
+    // 1. Render element and wait for layout
     el = buildReceiptElement(data);
     document.body.appendChild(el);
+
+    // Wait for browser to layout the element
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const dataUrl = await toPng(el, {
       cacheBust: true,
       pixelRatio: 3,
       backgroundColor: "#ffffff",
+      style: { opacity: "1" },
     });
 
     document.body.removeChild(el);
