@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PagoModal } from "@/components/PagoModal";
 import { VisitaModal } from "@/components/VisitaModal";
 import { PromesaModal } from "@/components/PromesaModal";
