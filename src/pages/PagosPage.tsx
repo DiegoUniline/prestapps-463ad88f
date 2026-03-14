@@ -53,7 +53,7 @@ function usePagosAll(empresaId: string) {
           .order("created_at", { ascending: false })
       );
 
-      return (data || []).map((p: any) => ({
+      return (raw || []).map((p: any) => ({
         id: p.id,
         cliente: p.prestamos?.clientes?.nombre_completo || "—",
         prestamoId: p.prestamo_id,
