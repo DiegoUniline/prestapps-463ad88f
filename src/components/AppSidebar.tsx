@@ -24,7 +24,7 @@ import {
 import {
   LayoutDashboard, CreditCard, Users, Wallet, Route, FileText, HandCoins,
   CalendarCheck, Settings, UserCheck, ClipboardCheck, Building2, MessageSquare,
-  Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog,
+  Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog, BarChart3,
   FileInput, ShieldCheck, Bell, RefreshCw, PieChart, ScrollText,
   type LucideIcon,
 } from "lucide-react";
@@ -78,6 +78,7 @@ const modules: NavModule[] = [
       { title: "Comisiones", url: "/comisiones", icon: Percent, roles: ["admin"] },
       { title: "Liquidar Ruta", url: "/liquidar-ruta", icon: ClipboardList, roles: ["admin"] },
       { title: "Rentabilidad", url: "/rentabilidad", icon: PieChart, roles: ["admin"] },
+      { title: "Productividad", url: "/productividad", icon: BarChart3, roles: ["admin", "supervisor"] },
       { title: "Reportes", url: "/reportes", icon: FileText, roles: ["admin", "supervisor"] },
       { title: "Renovación", url: "/renovacion", icon: RefreshCw, roles: ["admin"] },
     ],
