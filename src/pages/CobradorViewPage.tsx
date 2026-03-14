@@ -672,13 +672,17 @@ export default function CobradorViewPage() {
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-4 h-10">
+        <TabsList className="w-full grid grid-cols-5 h-10">
           <TabsTrigger value="cobranza" className="text-xs sm:text-sm gap-1">
             <HandCoins className="h-3.5 w-3.5 hidden sm:inline" />
             Cobrar
             {kpis.pendientes > 0 && (
               <Badge variant="destructive" className="ml-1 h-5 min-w-5 text-[10px] px-1">{kpis.pendientes}</Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="cartera" className="text-xs sm:text-sm gap-1">
+            <Briefcase className="h-3.5 w-3.5 hidden sm:inline" />
+            Cartera
           </TabsTrigger>
           <TabsTrigger value="historial" className="text-xs sm:text-sm gap-1">
             <History className="h-3.5 w-3.5 hidden sm:inline" />
