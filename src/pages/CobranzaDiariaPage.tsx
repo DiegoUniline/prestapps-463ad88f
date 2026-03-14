@@ -796,6 +796,10 @@ export default function CobranzaDiariaPage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="inline-block h-3 w-3 rounded-full shrink-0 border border-border/40"
+                    style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
+                  />
                   {cli.todasCobradas ? (
                     <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                   ) : cli.tieneVencidas ? (
