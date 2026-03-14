@@ -732,6 +732,7 @@ export type Database = {
           corte_color_cobrado: string
           corte_dia_semana: number
           created_at: string | null
+          dias_gracia: number
           direccion: string | null
           id: string
           logo_url: string | null
@@ -746,6 +747,7 @@ export type Database = {
           corte_color_cobrado?: string
           corte_dia_semana?: number
           created_at?: string | null
+          dias_gracia?: number
           direccion?: string | null
           id?: string
           logo_url?: string | null
@@ -760,6 +762,7 @@ export type Database = {
           corte_color_cobrado?: string
           corte_dia_semana?: number
           created_at?: string | null
+          dias_gracia?: number
           direccion?: string | null
           id?: string
           logo_url?: string | null
@@ -1790,6 +1793,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      actualizar_estados_prestamos: {
+        Args: { p_empresa_id?: string }
+        Returns: number
+      }
       get_cobrador_by_user: {
         Args: { p_user_id: string }
         Returns: {
