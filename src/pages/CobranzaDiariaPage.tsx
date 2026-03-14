@@ -477,6 +477,7 @@ export default function CobranzaDiariaPage() {
   interface ClienteAgrupado {
     clienteId: string;
     clienteNombre: string;
+    clienteFoto: string | null;
     cuotas: CuotaDiaria[];
     totalSaldo: number;
     totalMora: number;
