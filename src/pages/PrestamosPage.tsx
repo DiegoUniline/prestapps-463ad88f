@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -12,7 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, FileText, TrendingUp, AlertTriangle, Columns3 } from "lucide-react";
+import { Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight as ChevronRightIcon, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, FileText, TrendingUp, AlertTriangle, Columns3 } from "lucide-react";
+import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useNavigate } from "react-router-dom";
@@ -356,6 +357,23 @@ export default function PrestamosPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
   const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
+  // Grouping
+  const [groupBy, setGroupBy] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const groupByOptions = [
+    { key: "estado", label: "Estado" },
+    { key: "cliente", label: "Cliente" },
+    { key: "tipoCuenta", label: "Tipo de préstamo" },
+    { key: "mesCreacion", label: "Mes de creación" },
+  ];
+  const toggleGroup = (g: string) => {
+    setExpandedGroups((prev) => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
+  };
+  const handleGroupByChange = (key: string | null) => {
+    setGroupBy(key);
+    setExpandedGroups(new Set());
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       if (sortDir === "asc") setSortDir("desc");
@@ -409,6 +427,26 @@ export default function PrestamosPage() {
     }
     return data;
   }, [tabFiltered, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
+
+  // Grouped data computation
+  const groupedData = useMemo(() => {
+    if (!groupBy) return null;
+    const groups: Record<string, PrestamoListItem[]> = {};
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    for (const p of filtered) {
+      let key: string;
+      if (groupBy === "estado") key = p.estado;
+      else if (groupBy === "cliente") key = p.cliente;
+      else if (groupBy === "tipoCuenta") key = p.tipoCuenta === "prestamo" ? "Préstamo" : p.tipoCuenta === "venta_seguro" ? "Seguro" : p.tipoCuenta === "venta_producto" ? "Producto" : "Servicio";
+      else if (groupBy === "mesCreacion") {
+        const d = p.fechaRegistro ? new Date(p.fechaRegistro) : null;
+        key = d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : "Sin fecha";
+      } else key = "—";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered, groupBy]);
 
   const toggleRow = (id: string) => {
     const next = new Set(selectedRows);
@@ -486,6 +524,8 @@ export default function PrestamosPage() {
 
       {/* DESKTOP filter bar */}
       <div className="hidden md:flex items-center gap-2 bg-filter-bar border border-filter-bar-border rounded-lg px-3 py-2">
+        <GroupByDropdown options={groupByOptions} value={groupBy} onChange={handleGroupByChange} />
+        <div className="w-px h-5 bg-border" />
         <MultiFilterDropdown label="Estado" options={estadoOptions} selected={selEstado} onChange={setSelEstado} />
         <MultiFilterDropdown label="Caja" options={cajasOpts} selected={selCaja} onChange={setSelCaja} />
         <MultiFilterDropdown label="Ruta" options={rutasOpts} selected={selRuta} onChange={setSelRuta} />
@@ -602,6 +642,79 @@ export default function PrestamosPage() {
               <TableRow><TableCell colSpan={colSpanTotal} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={colSpanTotal} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
+            ) : groupedData ? (
+              <>
+                {groupedData.map(([groupName, items]) => {
+                  const isExpanded = expandedGroups.has(groupName);
+                  const sumMonto = items.reduce((s, p) => s + p.montoSolicitado, 0);
+                  const sumSaldo = items.reduce((s, p) => s + p.saldo, 0);
+                  const sumMora = items.reduce((s, p) => s + p.mora, 0);
+                  return (
+                    <React.Fragment key={groupName}>
+                      <TableRow
+                        className="bg-muted/60 hover:bg-muted/80 cursor-pointer border-b border-border"
+                        onClick={() => toggleGroup(groupName)}
+                      >
+                        <TableCell colSpan={1} className="px-3 py-2">
+                          {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
+                        </TableCell>
+                        <TableCell colSpan={Math.max(1, visibleColumns.length - 3)} className="px-3 py-2">
+                          <span className="font-bold text-[13px]">{groupName}</span>
+                          <span className="ml-2 text-[11px] text-muted-foreground font-medium">({items.length})</span>
+                        </TableCell>
+                        {visibleColumns.some(c => c.key === "montoSolicitado") && (
+                          <TableCell className="text-right px-3 py-2">
+                            <span className="font-semibold text-[12px]">{$$(sumMonto)}</span>
+                          </TableCell>
+                        )}
+                        {visibleColumns.some(c => c.key === "saldo") && (
+                          <TableCell className="text-right px-3 py-2">
+                            <span className="font-semibold text-[12px]">{$$(sumSaldo)}</span>
+                          </TableCell>
+                        )}
+                        {visibleColumns.some(c => c.key === "mora") && (
+                          <TableCell className="text-right px-3 py-2">
+                            <span className={cn("font-semibold text-[12px]", sumMora > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(sumMora)}</span>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                      {isExpanded && items.map((p) => (
+                        <TableRow
+                          key={p.id}
+                          className={cn(
+                            "cursor-pointer border-b border-border/50 transition-colors group",
+                            selectedRows.has(p.id) ? "bg-table-selected" : "hover:bg-table-hover"
+                          )}
+                          onClick={() => navigate(`/prestamos/${p.id}`)}
+                        >
+                          <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
+                          </TableCell>
+                          {visibleColumns.map((col) => (
+                            <TableCell key={col.key} className={cn("px-3", col.className)}>
+                              {col.render(p, { setLightboxPhoto })}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+                {/* Totals row */}
+                <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                  <TableCell className="px-3" />
+                  {visibleColumns.map((col) => (
+                    <TableCell key={col.key} className={cn("px-3 text-[12px]", col.className)}>
+                      {col.key === "montoSolicitado" ? $$(filtered.reduce((s, p) => s + p.montoSolicitado, 0)) :
+                       col.key === "montoPagar" ? $$(filtered.reduce((s, p) => s + p.montoPagar, 0)) :
+                       col.key === "saldo" ? $$(filtered.reduce((s, p) => s + p.saldo, 0)) :
+                       col.key === "mora" ? $$(filtered.reduce((s, p) => s + p.mora, 0)) :
+                       col.key === "codigoInterno" ? <span className="font-bold text-[11px] uppercase text-muted-foreground">Totales</span> :
+                       ""}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </>
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}

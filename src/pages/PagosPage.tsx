@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
@@ -11,7 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, HandCoins, TrendingUp, Hash } from "lucide-react";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight as ChevronRightIcon, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, HandCoins, TrendingUp, Hash } from "lucide-react";
+import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
@@ -154,6 +155,23 @@ export default function PagosPage() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
 
+  // Grouping
+  const [groupBy, setGroupBy] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const groupByOptions = [
+    { key: "anulado", label: "Estado del pago" },
+    { key: "shortId", label: "Préstamo" },
+    { key: "metodo", label: "Método de pago" },
+    { key: "mesPago", label: "Mes de pago" },
+  ];
+  const toggleGroup = (g: string) => {
+    setExpandedGroups((prev) => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
+  };
+  const handleGroupByChange = (key: string | null) => {
+    setGroupBy(key);
+    setExpandedGroups(new Set());
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       if (sortDir === "asc") setSortDir("desc");
@@ -200,7 +218,26 @@ export default function PagosPage() {
     return data;
   }, [pagos, search, selMetodo, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
 
-  // KPIs
+  // Grouped data computation
+  const groupedData = useMemo(() => {
+    if (!groupBy) return null;
+    const groups: Record<string, typeof filtered> = {};
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    for (const p of filtered) {
+      let key: string;
+      if (groupBy === "anulado") key = p.anulado ? "Anulado" : "Válido";
+      else if (groupBy === "shortId") key = `${p.shortId} — ${p.cliente}`;
+      else if (groupBy === "metodo") key = p.metodo;
+      else if (groupBy === "mesPago") {
+        const d = p.fecha ? new Date(p.fecha) : null;
+        key = d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : "Sin fecha";
+      } else key = "—";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered, groupBy]);
+
   const totalPagos = pagos.length;
   const totalRecaudado = pagos.reduce((s, p) => s + p.montoRecibido, 0);
   const totalMora = pagos.reduce((s, p) => s + p.aplicadoMora, 0);
@@ -243,6 +280,8 @@ export default function PagosPage() {
 
       {/* DESKTOP filter bar */}
       <div className="hidden md:flex items-center gap-2 bg-filter-bar border border-filter-bar-border rounded-lg px-3 py-2">
+        <GroupByDropdown options={groupByOptions} value={groupBy} onChange={handleGroupByChange} />
+        <div className="w-px h-5 bg-border" />
         <MultiFilterDropdown label="Método" options={metodoOptions} selected={selMetodo} onChange={setSelMetodo} />
         <MultiFilterDropdown label="Caja" options={cajasOpts} selected={selCaja} onChange={setSelCaja} />
         <MultiFilterDropdown label="Ruta" options={rutasOpts} selected={selRuta} onChange={setSelRuta} />
@@ -379,13 +418,69 @@ export default function PagosPage() {
               <TableRow><TableCell colSpan={10} className="text-center py-8 text-destructive text-[13px]">Error al cargar pagos</TableCell></TableRow>
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron pagos</TableCell></TableRow>
+            ) : groupedData ? (
+              <>
+                {groupedData.map(([groupName, items]) => {
+                  const isExpanded = expandedGroups.has(groupName);
+                  const sumRecibido = items.reduce((s, p) => s + p.montoRecibido, 0);
+                  const sumMora = items.reduce((s, p) => s + p.aplicadoMora, 0);
+                  const sumInteres = items.reduce((s, p) => s + p.aplicadoInteres, 0);
+                  const sumCapital = items.reduce((s, p) => s + p.aplicadoCapital, 0);
+                  return (
+                    <React.Fragment key={groupName}>
+                      <TableRow
+                        className="bg-muted/60 hover:bg-muted/80 cursor-pointer border-b border-border"
+                        onClick={() => toggleGroup(groupName)}
+                      >
+                        <TableCell className="px-3 py-2">
+                          {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
+                        </TableCell>
+                        <TableCell colSpan={2} className="px-3 py-2">
+                          <span className="font-bold text-[13px]">{groupName}</span>
+                          <span className="ml-2 text-[11px] text-muted-foreground font-medium">({items.length})</span>
+                        </TableCell>
+                        <TableCell className="text-right px-3 py-2"><span className="font-semibold text-[12px]">{$$(sumRecibido)}</span></TableCell>
+                        <TableCell className="text-right px-3 py-2"><span className={cn("font-semibold text-[12px]", sumMora > 0 && "text-destructive")}>{$$(sumMora)}</span></TableCell>
+                        <TableCell className="text-right px-3 py-2"><span className="font-semibold text-[12px]">{$$(sumInteres)}</span></TableCell>
+                        <TableCell className="text-right px-3 py-2"><span className="font-semibold text-[12px]">{$$(sumCapital)}</span></TableCell>
+                        <TableCell colSpan={3} />
+                      </TableRow>
+                      {isExpanded && items.map((p) => (
+                        <TableRow
+                          key={p.id}
+                          className={cn("border-b border-border/50 transition-colors hover:bg-table-hover", p.anulado && "opacity-50")}
+                        >
+                          <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
+                          <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
+                          <TableCell className="text-[12px] text-muted-foreground px-3">{p.shortId}</TableCell>
+                          <TableCell className={cn("text-right font-medium text-[13px] px-3", p.anulado && "line-through")}>{$$(p.montoRecibido)}</TableCell>
+                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoMora > 0 ? "text-destructive font-medium" : "text-muted-foreground/50")}>{$$(p.aplicadoMora)}</TableCell>
+                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoInteres === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoInteres)}</TableCell>
+                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoCapital === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoCapital)}</TableCell>
+                          <TableCell className="px-3"><MetodoDot metodo={p.metodo} /></TableCell>
+                          <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
+                          <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">
+                            {p.anulado ? <span className="text-destructive font-medium">Anulado</span> : p.ruta}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+                {/* Totals row */}
+                <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                  <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={3}>Totales</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.montoRecibido, 0))}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoMora, 0))}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoInteres, 0))}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoCapital, 0))}</TableCell>
+                  <TableCell colSpan={3} />
+                </TableRow>
+              </>
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}
-                className={cn(
-                  "border-b border-border/50 transition-colors hover:bg-table-hover",
-                  p.anulado && "opacity-50"
-                )}
+                className={cn("border-b border-border/50 transition-colors hover:bg-table-hover", p.anulado && "opacity-50")}
               >
                 <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
                 <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
