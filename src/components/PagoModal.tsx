@@ -59,11 +59,13 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
   const geo = useGeoLocation();
+  const user = useAuthStore((s) => s.user);
   const { data: metodosPago = [] } = useMetodosPagoActivos();
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("");
   const [cajaId, setCajaId] = useState(cajas[0]?.id || "");
+  const [fechaPago, setFechaPago] = useState<Date>(new Date());
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
