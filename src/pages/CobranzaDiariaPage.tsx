@@ -338,6 +338,7 @@ export default function CobranzaDiariaPage() {
   // Visita modal state
   const [visitaOpen, setVisitaOpen] = useState(false);
   const [visitaItem, setVisitaItem] = useState<CuotaDiaria | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   // Navigation to detail page
 
