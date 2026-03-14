@@ -27,7 +27,7 @@ import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   HandCoins, ChevronLeft, ChevronRight, DollarSign, TrendingUp,
   Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
-  User, Lock, Wallet, FileText,
+  User, Lock, Wallet, FileText, Briefcase,
 } from "lucide-react";
 
 
