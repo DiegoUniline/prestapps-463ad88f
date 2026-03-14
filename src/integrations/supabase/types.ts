@@ -874,6 +874,7 @@ export type Database = {
           created_at: string | null
           cuota_id: string | null
           empresa_id: string | null
+          fecha_pago: string | null
           gps_lat: number | null
           gps_lng: number | null
           id: string
@@ -896,6 +897,7 @@ export type Database = {
           created_at?: string | null
           cuota_id?: string | null
           empresa_id?: string | null
+          fecha_pago?: string | null
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
@@ -918,6 +920,7 @@ export type Database = {
           created_at?: string | null
           cuota_id?: string | null
           empresa_id?: string | null
+          fecha_pago?: string | null
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
