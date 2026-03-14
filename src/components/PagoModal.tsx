@@ -307,7 +307,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       }
 
       // 6) Increment cobrador efectivo_en_mano in profiles if cobrador is assigned
-      const effectiveCobradorId = isNonCobrador ? selectedCobradorId : cobradorId;
+      const effectiveCobradorId = selectedCobradorId || cobradorId;
       if (effectiveCobradorId) {
         const { data: cobData } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", effectiveCobradorId).single();
         if (cobData) {
