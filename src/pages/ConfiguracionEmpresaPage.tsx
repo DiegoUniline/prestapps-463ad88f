@@ -33,17 +33,17 @@ function DatosGeneralesTab() {
   const { data: empresa, isLoading } = useQuery({
     queryKey: ["empresa-datos", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("empresas")
-        .select("id, nombre, ruc, telefono, direccion, logo_url, activa")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia")
         .eq("id", empresaId)
         .single();
       if (error) throw error;
-      return data;
+      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number };
     },
   });
 
-  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "" });
+  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0 });
 
   useEffect(() => {
     if (empresa) {
@@ -52,6 +52,7 @@ function DatosGeneralesTab() {
         ruc: empresa.ruc || "",
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
+        dias_gracia: empresa.dias_gracia ?? 0,
       });
     }
   }, [empresa]);
@@ -59,13 +60,14 @@ function DatosGeneralesTab() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.nombre.trim()) throw new Error("El nombre es requerido");
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("empresas")
         .update({
           nombre: form.nombre.trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
+          dias_gracia: form.dias_gracia,
         })
         .eq("id", empresaId);
       if (error) throw error;
@@ -86,6 +88,7 @@ function DatosGeneralesTab() {
         ruc: empresa.ruc || "",
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
+        dias_gracia: empresa.dias_gracia ?? 0,
       });
     }
     setEditing(false);
@@ -192,6 +195,15 @@ function DatosGeneralesTab() {
               <Textarea value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} rows={2} />
             ) : (
               <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.direccion || "—"}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>Días de gracia para mora</Label>
+            <p className="text-xs text-muted-foreground">Número de días después del vencimiento antes de marcar como "Vencido"</p>
+            {editing ? (
+              <Input type="number" min={0} max={90} value={form.dias_gracia} onChange={(e) => setForm({ ...form, dias_gracia: parseInt(e.target.value) || 0 })} />
+            ) : (
+              <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.dias_gracia} día{form.dias_gracia !== 1 ? "s" : ""}</p>
             )}
           </div>
           {editing && (

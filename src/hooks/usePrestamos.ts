@@ -35,6 +35,17 @@ interface FetchFilters {
 }
 
 async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[]> {
+  // Fetch dias_gracia for the empresa
+  let diasGracia = 0;
+  if (filters?.empresaId) {
+    const { data: empData } = await (supabase as any)
+      .from("empresas")
+      .select("dias_gracia")
+      .eq("id", filters.empresaId)
+      .single();
+    diasGracia = empData?.dias_gracia ?? 0;
+  }
+
   let query = (supabase.from as any)("prestamos")
     .select(
       "id, id_prestamo, codigo_interno, tipo_cuenta, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id"
@@ -135,6 +146,18 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   return prestamos.map((p) => {
     const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
 
+    // Compute visual estado: override DB estado if real-time data says otherwise
+    let estado = p.estado || "Activo";
+    if (estado !== "Cancelado" && estado !== "Liquidado" && estado !== "Juridico") {
+      if (amort.pagadas >= Number(p.num_cuotas || 0) && Number(p.num_cuotas || 0) > 0) {
+        estado = "Liquidado";
+      } else if (amort.diasAtraso > diasGracia) {
+        estado = "Vencido";
+      } else {
+        estado = "Activo";
+      }
+    }
+
     return {
       id: p.id,
       idPrestamo: p.id_prestamo || p.id.slice(0, 8),
@@ -154,7 +177,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       cobradorId: p.cobrador_id,
       saldo: amort.saldo,
       mora: amort.mora,
-      estado: p.estado || "Activo",
+      estado,
       fechaRegistro: p.fecha_registro || "",
       fechaPrimerPago: p.fecha_primer_pago || "",
       tieneAtraso: amort.tieneAtraso,
@@ -164,11 +187,18 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
 }
 
 export function usePrestamos(filters?: FetchFilters) {
-  return useQuery({
+  const result = useQuery({
     queryKey: ["prestamos-list-v2", filters?.rutaIds, filters?.cobradorId, filters?.empresaId],
-    queryFn: () => fetchPrestamos(filters),
+    queryFn: async () => {
+      // Fire-and-forget: sync estados in DB (background)
+      if (filters?.empresaId) {
+        supabase.rpc("actualizar_estados_prestamos" as any, { p_empresa_id: filters.empresaId }).then(() => {});
+      }
+      return fetchPrestamos(filters);
+    },
     staleTime: 1000 * 30,
   });
+  return result;
 }
 
 export function useCajasOptions(empresaId?: string) {
