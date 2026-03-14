@@ -133,6 +133,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       codigoInterno: p.codigo_interno || "",
       tipoCuenta: p.tipo_cuenta || "prestamo",
       cliente: clientesMap[p.cliente_id] || "—",
+      clienteFoto: clientesFotoMap[p.cliente_id] || null,
       clienteId: p.cliente_id,
       montoSolicitado: Number(p.monto_solicitado || 0),
       montoPagar: Number(p.monto_total_pagar || 0),
