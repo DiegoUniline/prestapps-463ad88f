@@ -280,6 +280,8 @@ export default function PagosPage() {
 
       {/* DESKTOP filter bar */}
       <div className="hidden md:flex items-center gap-2 bg-filter-bar border border-filter-bar-border rounded-lg px-3 py-2">
+        <GroupByDropdown options={groupByOptions} value={groupBy} onChange={handleGroupByChange} />
+        <div className="w-px h-5 bg-border" />
         <MultiFilterDropdown label="Método" options={metodoOptions} selected={selMetodo} onChange={setSelMetodo} />
         <MultiFilterDropdown label="Caja" options={cajasOpts} selected={selCaja} onChange={setSelCaja} />
         <MultiFilterDropdown label="Ruta" options={rutasOpts} selected={selRuta} onChange={setSelRuta} />
