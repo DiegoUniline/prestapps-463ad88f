@@ -22,6 +22,7 @@ import {
   TrendingUp, HandCoins, Eye, MapPin, CalendarCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { VisitaModal } from "@/components/VisitaModal";
@@ -108,6 +109,7 @@ interface CuotaDiaria {
   cuotaId: string;
   prestamoId: string;
   clienteNombre: string;
+  clienteFoto: string | null;
   clienteId: string;
   numCuota: number;
   totalCuotas: number;
@@ -189,7 +191,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       const { data: prestamos } = await (supabase.from as any)("prestamos")
         .select(`
           id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, tipo_cuenta,
-          clientes ( nombre_completo ),
+          clientes ( nombre_completo, foto_cliente ),
           rutas ( nombre ),
           cajas ( nombre )
         `)
@@ -247,6 +249,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
           cuotaId: c.id,
           prestamoId: c.prestamo_id,
           clienteNombre: cliente?.nombre_completo || "—",
+          clienteFoto: cliente?.foto_cliente || null,
           clienteId: pres.cliente_id || "",
           numCuota: c.num_cuota,
           totalCuotas: pres.num_cuotas || 0,
@@ -475,6 +478,7 @@ export default function CobranzaDiariaPage() {
   interface ClienteAgrupado {
     clienteId: string;
     clienteNombre: string;
+    clienteFoto: string | null;
     cuotas: CuotaDiaria[];
     totalSaldo: number;
     totalMora: number;
@@ -499,6 +503,7 @@ export default function CobranzaDiariaPage() {
       return {
         clienteId,
         clienteNombre: cuotas[0].clienteNombre,
+        clienteFoto: cuotas[0].clienteFoto,
         cuotas,
         totalSaldo: pendientes.reduce((s, c) => s + c.saldoTotal, 0),
         totalMora: pendientes.reduce((s, c) => s + c.saldoMora, 0),
@@ -734,7 +739,15 @@ export default function CobranzaDiariaPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="font-medium">{cli.clienteNombre}</span>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+                        {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
+                        <AvatarFallback className="text-[11px] font-semibold bg-primary/10 text-primary rounded-lg">
+                          {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{cli.clienteNombre}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-center">
                     <span className="text-[12px]">{cli.cuentasActivas}</span>
@@ -807,6 +820,12 @@ export default function CobranzaDiariaPage() {
                   ) : (
                     <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
+                  <Avatar className="h-10 w-10 shrink-0 rounded-lg">
+                    {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
+                    <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary rounded-lg">
+                      {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0">
                     <p className="font-medium text-[13px] truncate">{cli.clienteNombre}</p>
                     <p className="text-[11px] text-muted-foreground">
