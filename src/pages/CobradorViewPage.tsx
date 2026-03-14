@@ -1104,45 +1104,47 @@ function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }
         </div>
 
         {/* Row 3: Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {!item.pagada ? (
             <>
               <Button
                 size="sm"
-                className="flex-1 h-9 text-xs font-medium"
+                className="h-8 text-[11px] font-medium min-w-0 flex-1"
                 onClick={() => onCobrar(item)}
               >
-                <HandCoins className="h-3.5 w-3.5 mr-1.5" />
-                Cobrar {$$(item.saldoTotal)}
+                <HandCoins className="h-3.5 w-3.5 mr-1 shrink-0" />
+                <span className="truncate">Cobrar {$$(item.saldoTotal)}</span>
               </Button>
-              {item.clienteTelefono && (
-                <>
-                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0"
-                    onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}>
-                    <Phone className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1 shrink-0">
+                {item.clienteTelefono && (
+                  <>
+                    <Button variant="outline" size="icon" className="h-8 w-8"
+                      onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}>
+                      <Phone className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-8 w-8 text-green-600"
+                      onClick={() => window.open(`https://wa.me/${item.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
+                      <MessageSquare className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
+                {onVisita && (
+                  <Button variant="outline" size="icon" className="h-8 w-8" title="Registrar visita"
+                    onClick={() => onVisita(item)}>
+                    <MapPin className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 text-green-600"
-                    onClick={() => window.open(`https://wa.me/${item.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
-                    <MessageSquare className="h-3.5 w-3.5" />
+                )}
+                {onPromesa && item.status !== "Prometida" && (
+                  <Button variant="outline" size="icon" className="h-8 w-8" title="Promesa de pago"
+                    onClick={() => onPromesa(item)}>
+                    <CalendarCheck className="h-3.5 w-3.5" />
                   </Button>
-                </>
-              )}
-              {onVisita && (
-                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Registrar visita"
-                  onClick={() => onVisita(item)}>
-                  <MapPin className="h-3.5 w-3.5" />
+                )}
+                <Button variant="outline" size="icon" className="h-8 w-8"
+                  onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}>
+                  <Eye className="h-3.5 w-3.5" />
                 </Button>
-              )}
-              {onPromesa && item.status !== "Prometida" && (
-                <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" title="Promesa de pago"
-                  onClick={() => onPromesa(item)}>
-                  <CalendarCheck className="h-3.5 w-3.5" />
-                </Button>
-              )}
-              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0"
-                onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}>
-                <Eye className="h-3.5 w-3.5" />
-              </Button>
+              </div>
             </>
           ) : (
             <div className="flex items-center justify-between w-full">
