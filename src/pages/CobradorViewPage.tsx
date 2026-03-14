@@ -387,10 +387,11 @@ export default function CobradorViewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
-  const { cobradorId, role } = useCurrentUserRole();
+  const { cobradorId, role, profileId } = useCurrentUserRole();
+  const { user } = useAuth();
 
-  // Effective cobrador id (admin can also use this page for testing)
-  const effectiveCobradorId = cobradorId;
+  // Use the logged-in user's ID as cobrador — if they're assigned as cobrador on any loan, they'll see it
+  const effectiveCobradorId = user?.id || cobradorId || profileId;
 
   // Empresa week config
   const { data: weekStartsOn = 1 } = useEmpresaSemana(empresaId);
