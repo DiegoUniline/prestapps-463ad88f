@@ -202,10 +202,12 @@ export default function PrestamoDetallePage() {
   const { data: cobradoresAll = [] } = useQuery({
     queryKey: ["cobradores-all"],
     queryFn: async () => {
-      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "cobrador");
-      if (!roles?.length) return [];
-      const userIds = roles.map((r) => r.user_id);
-      const { data } = await supabase.from("profiles").select("id, nombre_completo").eq("activo", true).in("id", userIds).order("nombre_completo");
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, nombre_completo")
+        .eq("activo", true)
+        .order("nombre_completo");
+      if (error) throw error;
       return (data || []).map((p) => ({ id: p.id, nombre: p.nombre_completo }));
     },
   });
