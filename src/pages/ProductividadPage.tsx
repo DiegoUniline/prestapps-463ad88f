@@ -67,13 +67,13 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
       // 2. Prestamos activos per cobrador
       const { data: prestamos } = await supabase
         .from("prestamos")
-        .select("id, cobrador_id, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
+        .select("id, cobrador_id, generado_por, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
         .eq("empresa_id", empresaId);
 
       // 3. Pagos in period & previous
       const { data: pagos } = await supabase
         .from("pagos")
-        .select("id, cobrador_id, monto_recibido, created_at, prestamo_id, fecha_pago")
+        .select("id, cobrador_id, registrado_por, monto_recibido, created_at, prestamo_id, fecha_pago")
         .eq("empresa_id", empresaId)
         .eq("anulado", false)
         .gte("fecha_pago", prevDesde)
@@ -124,35 +124,48 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
 
       // ── Build per-advisor metrics ──
       const advisorMap = new Map<string, AdvisorMetrics>();
+
+      // Helper: resolve the effective advisor for a prestamo
+      const resolveAdvisor = (cobrador_id: string | null, generado_por: string | null) =>
+        cobrador_id || generado_por || null;
+
+      // Collect all advisor IDs referenced in data (even if not in profiles)
+      const allAdvisorIds = new Set<string>();
       for (const p of profiles || []) {
-        if (!p.activo) continue;
-        advisorMap.set(p.id, {
-          id: p.id,
-          nombre: p.nombre_completo || "Sin nombre",
-          prestamosActivos: 0,
-          prestamosCreados: 0,
-          montoColocado: 0,
-          totalCobrado: 0,
-          pagosCuenta: 0,
-          clientesMorosos: 0,
-          clientesTotales: 0,
-          moraRate: 0,
-          montoMora: 0,
-          visitasRealizadas: 0,
-          visitasProgramadas: 0,
-          visitaRate: 0,
-          moraRatePrev: 0,
-          cobradoPrev: 0,
-          prestamosCreatedPrev: 0,
-          clientesSinVisita: [],
-        });
+        if (p.activo) allAdvisorIds.add(p.id);
       }
+      for (const pr of prestamos || []) {
+        const adv = resolveAdvisor(pr.cobrador_id, pr.generado_por);
+        if (adv) allAdvisorIds.add(adv);
+      }
+      for (const pg of pagos || []) {
+        const adv = pg.cobrador_id || pg.registrado_por;
+        if (adv) allAdvisorIds.add(adv);
+      }
+
+      const profileMap = new Map((profiles || []).map((p) => [p.id, p.nombre_completo || "Sin nombre"]));
+
+      // Add "Sin asignar" for null cases
+      const SIN_ASIGNAR = "__sin_asignar__";
+      const initAdvisor = (id: string): AdvisorMetrics => ({
+        id,
+        nombre: id === SIN_ASIGNAR ? "Sin asignar" : (profileMap.get(id) || "Usuario " + id.slice(0, 6)),
+        prestamosActivos: 0, prestamosCreados: 0, montoColocado: 0,
+        totalCobrado: 0, pagosCuenta: 0,
+        clientesMorosos: 0, clientesTotales: 0, moraRate: 0, montoMora: 0,
+        visitasRealizadas: 0, visitasProgramadas: 0, visitaRate: 0,
+        moraRatePrev: 0, cobradoPrev: 0, prestamosCreatedPrev: 0,
+        clientesSinVisita: [],
+      });
+
+      for (const id of allAdvisorIds) advisorMap.set(id, initAdvisor(id));
+      advisorMap.set(SIN_ASIGNAR, initAdvisor(SIN_ASIGNAR));
 
       // Prestamos
       const prestamosByAdvisor = new Map<string, Set<string>>();
       for (const pr of prestamos || []) {
-        const adv = pr.cobrador_id;
-        if (!adv || !advisorMap.has(adv)) continue;
+        const adv = resolveAdvisor(pr.cobrador_id, pr.generado_por) || SIN_ASIGNAR;
+        if (!advisorMap.has(adv)) advisorMap.set(adv, initAdvisor(adv));
         const m = advisorMap.get(adv)!;
 
         if (pr.estado !== "Liquidado" && pr.estado !== "Cancelado") {
@@ -180,7 +193,8 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
       // Mora per prestamo → advisor
       const prestamoAdvisorMap = new Map<string, string>();
       for (const pr of prestamos || []) {
-        if (pr.cobrador_id) prestamoAdvisorMap.set(pr.id, pr.cobrador_id);
+        const adv = resolveAdvisor(pr.cobrador_id, pr.generado_por) || SIN_ASIGNAR;
+        prestamoAdvisorMap.set(pr.id, adv);
       }
 
       const morososByAdvisor = new Map<string, Set<string>>();
@@ -203,8 +217,8 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
 
       // Pagos
       for (const pg of pagos || []) {
-        const adv = pg.cobrador_id;
-        if (!adv || !advisorMap.has(adv)) continue;
+        const adv = pg.cobrador_id || pg.registrado_por || SIN_ASIGNAR;
+        if (!advisorMap.has(adv)) advisorMap.set(adv, initAdvisor(adv));
         const fecha = (pg.fecha_pago || pg.created_at || "").slice(0, 10);
         if (fecha >= desdeStr && fecha <= hastaStr) {
           advisorMap.get(adv)!.totalCobrado += Number(pg.monto_recibido || 0);
