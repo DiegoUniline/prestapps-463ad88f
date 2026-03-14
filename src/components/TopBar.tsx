@@ -5,6 +5,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { isSuperAdmin } from "@/components/SuperAdminGuard";
 import { Moon, Sun, Bell, Building2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -20,6 +21,7 @@ export function TopBar() {
 
   const initials = user?.email?.slice(0, 2).toUpperCase() || "??";
   const roleLabel: Record<string, string> = { admin: "Admin", supervisor: "Supervisor", cobrador: "Cobrador" };
+  const showEmpresaSwitcher = isSuperAdmin(user?.email) && empresas.length > 1;
 
   return (
     <header className="h-14 border-b flex items-center justify-between px-3 md:px-4 bg-card shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
@@ -31,7 +33,7 @@ export function TopBar() {
         </div>
       </div>
       <div className="flex items-center gap-1.5 md:gap-3">
-        {empresas.length > 1 && (
+        {showEmpresaSwitcher && (
           <div className="hidden md:flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
             <Select value={empresaId} onValueChange={setEmpresaId}>

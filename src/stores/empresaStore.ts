@@ -13,7 +13,7 @@ interface EmpresaState {
   loading: boolean;
   _profileLoadedFor: string | null;
 
-  setEmpresaId: (id: string) => void;
+  setEmpresaId: (id: string) => Promise<void>;
   initialize: () => () => void;
 }
 
@@ -26,9 +26,15 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   loading: true,
   _profileLoadedFor: null,
 
-  setEmpresaId: (id: string) => {
-    set({ empresaId: id, empresaNombre: get().empresas.find((e) => e.id === id)?.nombre || "Empresa" });
+  setEmpresaId: async (id: string) => {
     localStorage.setItem("empresa_id", id);
+    // Update profile first so get_user_empresa_id() returns the new empresa (RLS)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await supabase.from("profiles").update({ empresa_id: id }).eq("id", session.user.id);
+    }
+    // Now update state — queries will refetch with correct RLS context
+    set({ empresaId: id, empresaNombre: get().empresas.find((e) => e.id === id)?.nombre || "Empresa" });
   },
 
   initialize: () => {
