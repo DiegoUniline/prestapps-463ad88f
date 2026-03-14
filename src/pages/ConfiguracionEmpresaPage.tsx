@@ -206,7 +206,6 @@ function DatosGeneralesTab() {
               <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.dias_gracia} día{form.dias_gracia !== 1 ? "s" : ""}</p>
             )}
           </div>
-          </div>
           {editing && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleCancel} className="flex-1">
