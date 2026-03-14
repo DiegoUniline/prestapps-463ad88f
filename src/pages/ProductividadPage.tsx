@@ -217,8 +217,8 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
 
       // Pagos
       for (const pg of pagos || []) {
-        const adv = pg.cobrador_id;
-        if (!adv || !advisorMap.has(adv)) continue;
+        const adv = pg.cobrador_id || pg.registrado_por || SIN_ASIGNAR;
+        if (!advisorMap.has(adv)) advisorMap.set(adv, initAdvisor(adv));
         const fecha = (pg.fecha_pago || pg.created_at || "").slice(0, 10);
         if (fecha >= desdeStr && fecha <= hastaStr) {
           advisorMap.get(adv)!.totalCobrado += Number(pg.monto_recibido || 0);
