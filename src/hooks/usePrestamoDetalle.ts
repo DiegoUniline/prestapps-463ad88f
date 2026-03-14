@@ -15,7 +15,7 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
           valor_mora, notas, cuota_calculada, cuota_redondeada, empresa,
           cancelado_por, cancelado_en, motivo_cancelacion, reestructurado_de,
           gps_lat, gps_lng, created_at, generado_por, empresa_id, codigo_interno,
-          clientes ( id, id_cliente, nombre_completo, dni, direccion, telefono, correo ),
+          clientes ( id, id_cliente, nombre_completo, dni, direccion, telefono, correo, foto_cliente ),
           cajas ( id, nombre ),
           rutas ( id, nombre )
         `)

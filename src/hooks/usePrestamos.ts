@@ -7,6 +7,7 @@ export interface PrestamoListItem {
   codigoInterno: string;
   tipoCuenta: string;
   cliente: string;
+  clienteFoto: string | null;
   clienteId: string;
   montoSolicitado: number;
   montoPagar: number;
@@ -84,7 +85,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
       .in("prestamo_id", prestamoIds),
     clienteIds.length > 0
-      ? supabase.from("clientes").select("id, nombre_completo").in("id", clienteIds)
+      ? supabase.from("clientes").select("id, nombre_completo, foto_cliente").in("id", clienteIds)
       : Promise.resolve({ data: [], error: null }),
     cajaIds.length > 0
       ? supabase.from("cajas").select("id, nombre").in("id", cajaIds)
@@ -104,6 +105,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   const cobradoresData = cobradoresRes.error ? [] : cobradoresRes.data || [];
 
   const clientesMap = Object.fromEntries(clientesData.map((c) => [c.id, c.nombre_completo || "—"]));
+  const clientesFotoMap = Object.fromEntries(clientesData.map((c) => [c.id, c.foto_cliente || null]));
   const cajasMap = Object.fromEntries(cajasData.map((c) => [c.id, c.nombre || "—"]));
   const rutasMap = Object.fromEntries(rutasData.map((r) => [r.id, r.nombre || "—"]));
   const cobradorMap = Object.fromEntries(cobradoresData.map((c) => [c.id, c.nombre_completo || "—"]));
@@ -132,6 +134,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       codigoInterno: p.codigo_interno || "",
       tipoCuenta: p.tipo_cuenta || "prestamo",
       cliente: clientesMap[p.cliente_id] || "—",
+      clienteFoto: clientesFotoMap[p.cliente_id] || null,
       clienteId: p.cliente_id,
       montoSolicitado: Number(p.monto_solicitado || 0),
       montoPagar: Number(p.monto_total_pagar || 0),
