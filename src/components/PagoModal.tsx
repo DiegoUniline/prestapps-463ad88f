@@ -64,8 +64,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const { role } = useCurrentUserRole();
   const { data: metodosPago = [] } = useMetodosPagoActivos();
 
-  // Fetch cobradores for admin/supervisor to pick who gets the commission
-  const isNonCobrador = role === "admin" || role === "supervisor";
+  // Only admin can override the cobrador assignment
+  const isAdmin = role === "admin";
   const { data: cobradores = [] } = useQuery({
     queryKey: ["profiles-cobradores", empresaId],
     queryFn: async () => {
@@ -77,7 +77,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         .order("nombre_completo");
       return data || [];
     },
-    enabled: isNonCobrador && open,
+    enabled: isAdmin && open,
   });
 
   const [montoRecibido, setMontoRecibido] = useState("");
@@ -243,7 +243,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           metodo_pago: metodo as any,
           caja_id: cajaId,
           ruta_id: rutaId || null,
-          cobrador_id: (isNonCobrador ? selectedCobradorId : cobradorId) || null,
+          cobrador_id: selectedCobradorId || cobradorId || null,
           gps_lat: geo.lat,
           gps_lng: geo.lng,
           empresa_id: empresaId,
@@ -307,7 +307,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       }
 
       // 6) Increment cobrador efectivo_en_mano in profiles if cobrador is assigned
-      const effectiveCobradorId = isNonCobrador ? selectedCobradorId : cobradorId;
+      const effectiveCobradorId = selectedCobradorId || cobradorId;
       if (effectiveCobradorId) {
         const { data: cobData } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", effectiveCobradorId).single();
         if (cobData) {
@@ -423,8 +423,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
               </Select>
               <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
             </div>
-            {/* Cobrador selector for admin/supervisor */}
-            {isNonCobrador && (
+            {/* Cobrador selector — only admin can change it */}
+            {isAdmin && (
               <div className="col-span-2">
                 <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Cobrador (comisión)</Label>
                 <Select value={selectedCobradorId} onValueChange={setSelectedCobradorId}>
@@ -436,7 +436,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                   </SelectContent>
                 </Select>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  La comisión de este pago se asignará al cobrador seleccionado.
+                  Se pre-asigna el cobrador del préstamo. Solo cambia si es necesario.
                 </p>
               </div>
             )}
