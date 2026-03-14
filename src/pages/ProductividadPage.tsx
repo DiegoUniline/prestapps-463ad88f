@@ -193,7 +193,8 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
       // Mora per prestamo → advisor
       const prestamoAdvisorMap = new Map<string, string>();
       for (const pr of prestamos || []) {
-        if (pr.cobrador_id) prestamoAdvisorMap.set(pr.id, pr.cobrador_id);
+        const adv = resolveAdvisor(pr.cobrador_id, pr.generado_por) || SIN_ASIGNAR;
+        prestamoAdvisorMap.set(pr.id, adv);
       }
 
       const morososByAdvisor = new Map<string, Set<string>>();
