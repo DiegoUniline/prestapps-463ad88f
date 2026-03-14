@@ -535,7 +535,7 @@ export default function CobradorViewPage() {
   }
 
   return (
-    <div className="space-y-3 pb-20">
+    <div className="space-y-3 pb-20 overflow-x-hidden">
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex flex-col gap-2">
         <h1 className="text-xl sm:text-2xl font-bold">Mi Cobranza</h1>
