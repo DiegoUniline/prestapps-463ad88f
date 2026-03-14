@@ -746,9 +746,10 @@ function SimuladorTab() {
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-sender", {
         body: {
-          action: "send-receipt",
+           action: "send-receipt",
           empresa_id: empresaId,
           phone: phone.trim(),
+          test: true,
           pago_data: mockPago,
           empresa_data: mockEmpresa,
           cliente_data: mockCliente,
@@ -775,11 +776,12 @@ function SimuladorTab() {
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-sender", {
         body: {
-          action: "send-text",
+           action: "send-text",
           empresa_id: empresaId,
           phone: phone.trim(),
           message: testMessage.trim(),
           tipo: "prueba",
+          test: true,
         },
       });
       if (error) throw error;

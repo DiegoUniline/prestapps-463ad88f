@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.stripe-auto-charge]
 verify_jwt = false
+
+[functions.whatsapp-sender]
+verify_jwt = false
