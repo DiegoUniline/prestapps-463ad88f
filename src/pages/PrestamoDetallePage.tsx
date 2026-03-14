@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { cn, $$, fmtDate, fmtDateTime } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
