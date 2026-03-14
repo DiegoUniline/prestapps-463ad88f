@@ -33,13 +33,13 @@ function DatosGeneralesTab() {
   const { data: empresa, isLoading } = useQuery({
     queryKey: ["empresa-datos", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("empresas")
-        .select("id, nombre, ruc, telefono, direccion, logo_url, activa")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia")
         .eq("id", empresaId)
         .single();
       if (error) throw error;
-      return data;
+      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number };
     },
   });
 
