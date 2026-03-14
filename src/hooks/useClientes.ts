@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import type { Cliente, ClienteInsert } from "@/types/cliente";
 
 const CLIENTE_COLUMNS = `
