@@ -546,7 +546,7 @@ export default function ClienteCobranzaDetallePage() {
                     <StatusBadge status={cuenta.estado} />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                  <div className="grid grid-cols-4 gap-2 text-center mb-3">
                     <div>
                       <p className="text-[10px] text-muted-foreground">Monto</p>
                       <p className="text-sm font-semibold">{$$(cuenta.montoSolicitado)}</p>
@@ -560,6 +560,10 @@ export default function ClienteCobranzaDetallePage() {
                       <p className={cn("text-sm font-semibold", cuenta.totalMora > 0 ? "text-destructive" : "text-muted-foreground")}>
                         {cuenta.totalMora > 0 ? $$(cuenta.totalMora) : "—"}
                       </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">Liquida con</p>
+                      <p className="text-sm font-semibold text-primary">{$$(capitalRestante)}</p>
                     </div>
                   </div>
 
