@@ -1,7 +1,8 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -11,14 +12,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, FileText, TrendingUp, AlertTriangle, User } from "lucide-react";
+import { Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, FileText, TrendingUp, AlertTriangle, Columns3 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
 
+// ── Estado badge styles ───────────────────────────────────────────
 const estadoBadge: Record<string, string> = {
   Activo: "bg-badge-activo text-badge-activo-foreground",
   "Al día": "bg-badge-aldia text-badge-aldia-foreground",
@@ -31,7 +32,174 @@ const estadoBadge: Record<string, string> = {
 type SortKey = keyof PrestamoListItem;
 const estadoOptions = ["Activo", "Vencido", "Al día", "Liquidado", "Juridico", "Cancelado"];
 
-// --- Multi-select dropdown filter ---
+// ── All available columns definition ──────────────────────────────
+interface ColumnDef {
+  key: string;
+  label: string;
+  sortKey?: SortKey;
+  defaultVisible: boolean;
+  render: (p: PrestamoListItem, helpers: { setLightboxPhoto: (v: { src: string; alt: string }) => void }) => React.ReactNode;
+  className?: string;
+}
+
+const ALL_COLUMNS: ColumnDef[] = [
+  {
+    key: "codigoInterno", label: "Cód. Interno", sortKey: "codigoInterno", defaultVisible: true,
+    render: (p) => <span className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">{p.codigoInterno || "—"}</span>,
+  },
+  {
+    key: "idPrestamo", label: "Folio", sortKey: "idPrestamo", defaultVisible: true,
+    render: (p) => (
+      <span className="font-mono text-[12px] whitespace-nowrap">
+        {p.idPrestamo}
+        {p.tipoCuenta !== "prestamo" && (
+          <span className="ml-1.5 inline-flex items-center rounded px-1.5 py-0 text-[9px] font-semibold bg-accent text-accent-foreground">
+            {p.tipoCuenta === "venta_seguro" ? "Seguro" : p.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
+          </span>
+        )}
+      </span>
+    ),
+  },
+  {
+    key: "cliente", label: "Cliente", sortKey: "cliente", defaultVisible: true,
+    render: (p, { setLightboxPhoto }) => (
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <Avatar
+          className={cn("h-6 w-6 shrink-0", p.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+          onClick={(e) => { if (p.clienteFoto) { e.stopPropagation(); setLightboxPhoto({ src: p.clienteFoto, alt: p.cliente }); } }}
+        >
+          {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
+          <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+            {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <span className="font-medium text-[13px]">{p.cliente}</span>
+      </div>
+    ),
+  },
+  {
+    key: "fechaRegistro", label: "F. Registro", sortKey: "fechaRegistro", defaultVisible: true,
+    render: (p) => <span className="text-[12px] text-muted-foreground">{fmtDate(p.fechaRegistro)}</span>,
+  },
+  {
+    key: "fechaPrimerPago", label: "F. 1er Pago", sortKey: "fechaPrimerPago", defaultVisible: false,
+    render: (p) => <span className="text-[12px] text-muted-foreground">{fmtDate(p.fechaPrimerPago)}</span>,
+  },
+  {
+    key: "montoSolicitado", label: "Prestado", sortKey: "montoSolicitado", defaultVisible: true,
+    render: (p) => <span className="text-right text-[13px]">{$$(p.montoSolicitado)}</span>,
+    className: "text-right",
+  },
+  {
+    key: "montoPagar", label: "A Pagar", sortKey: "montoPagar", defaultVisible: false,
+    render: (p) => <span className="text-right text-[13px]">{$$(p.montoPagar)}</span>,
+    className: "text-right",
+  },
+  {
+    key: "cuotasPagadas", label: "Cuotas", sortKey: "cuotasPagadas", defaultVisible: true,
+    render: (p) => <span className="text-[13px]">{p.cuotasPagadas ?? 0}/{p.totalCuotas ?? 0}</span>,
+  },
+  {
+    key: "cobrador", label: "Cobrador", sortKey: "cobrador", defaultVisible: false,
+    render: (p) => <span className="text-muted-foreground text-[12px] whitespace-nowrap">{p.cobrador}</span>,
+  },
+  {
+    key: "caja", label: "Caja", sortKey: "caja", defaultVisible: false,
+    render: (p) => <span className="text-muted-foreground text-[12px] whitespace-nowrap">{p.caja}</span>,
+  },
+  {
+    key: "ruta", label: "Ruta", sortKey: "ruta", defaultVisible: true,
+    render: (p) => <span className="text-muted-foreground text-[12px] whitespace-nowrap">{p.ruta}</span>,
+  },
+  {
+    key: "saldo", label: "Saldo", sortKey: "saldo", defaultVisible: true,
+    render: (p) => <span className="text-right font-medium text-[13px]">{$$(p.saldo)}</span>,
+    className: "text-right",
+  },
+  {
+    key: "mora", label: "Mora", sortKey: "mora", defaultVisible: true,
+    render: (p) => (
+      <span className={cn("text-right font-bold text-[13px]", (p.mora ?? 0) > 0 ? "text-destructive" : "text-muted-foreground")}>
+        {(p.mora ?? 0) > 0 ? $$(p.mora) : "$0.00"}
+      </span>
+    ),
+    className: "text-right",
+  },
+  {
+    key: "diasAtraso", label: "Días Atraso", sortKey: "diasAtraso", defaultVisible: true,
+    render: (p) => {
+      const d = p.diasAtraso ?? 0;
+      if (d === 0) return <span className="text-muted-foreground text-[12px]">—</span>;
+      const color = d > 30 ? "bg-destructive text-destructive-foreground" : d > 7 ? "bg-warning text-warning-foreground" : "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
+      return (
+        <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold min-w-[32px]", color)}>
+          {d}d
+        </span>
+      );
+    },
+  },
+  {
+    key: "estado", label: "Estado", sortKey: "estado", defaultVisible: true,
+    render: (p) => (
+      <span className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-sm border",
+        estadoBadge[p.estado] || "bg-muted text-muted-foreground border-border"
+      )}>
+        <span className={cn(
+          "w-1.5 h-1.5 rounded-full mr-1.5",
+          p.estado === "Activo" ? "bg-emerald-500" :
+          p.estado === "Vencido" ? "bg-red-500" :
+          p.estado === "Liquidado" ? "bg-blue-500" :
+          p.estado === "Cancelado" ? "bg-gray-500" :
+          p.estado === "Juridico" ? "bg-purple-500" :
+          "bg-current"
+        )} />
+        {p.estado}
+      </span>
+    ),
+  },
+];
+
+// ── Column visibility persistence ─────────────────────────────────
+const STORAGE_KEY_PREFIX = "prestamos-columns-v1-";
+
+function useColumnVisibility(userId: string | undefined) {
+  const storageKey = STORAGE_KEY_PREFIX + (userId || "anon");
+
+  const [visible, setVisible] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.key));
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify([...visible]));
+    } catch {}
+  }, [visible, storageKey]);
+
+  const toggle = useCallback((key: string) => {
+    setVisible(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setVisible(new Set(ALL_COLUMNS.map(c => c.key)));
+  }, []);
+
+  const resetDefaults = useCallback(() => {
+    setVisible(new Set(ALL_COLUMNS.filter(c => c.defaultVisible).map(c => c.key)));
+  }, []);
+
+  return { visible, toggle, selectAll, resetDefaults };
+}
+
+// ── Multi-filter dropdown ─────────────────────────────────────────
 function MultiFilterDropdown({ label, options, selected, onChange }: {
   label: string; options: string[]; selected: Set<string>; onChange: (s: Set<string>) => void;
 }) {
@@ -78,7 +246,41 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
   );
 }
 
-// --- Filters for mobile sheet ---
+// ── Column picker popover ─────────────────────────────────────────
+function ColumnPicker({ visible, toggle, selectAll, resetDefaults }: ReturnType<typeof useColumnVisibility>) {
+  const allChecked = visible.size === ALL_COLUMNS.length;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-filter-bar-border hover:bg-primary/5">
+          <Columns3 className="h-3.5 w-3.5" />
+          Columnas
+          <span className="text-[10px] opacity-60">{visible.size}/{ALL_COLUMNS.length}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-52 p-2" align="end">
+        <div className="space-y-0.5 max-h-[320px] overflow-y-auto">
+          <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-[13px] font-semibold border-b border-border mb-1 pb-2">
+            <Checkbox checked={allChecked} onCheckedChange={() => allChecked ? resetDefaults() : selectAll()} />
+            <span>Todas las columnas</span>
+          </label>
+          {ALL_COLUMNS.map((col) => (
+            <label key={col.key} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-[13px]">
+              <Checkbox checked={visible.has(col.key)} onCheckedChange={() => toggle(col.key)} />
+              <span>{col.label}</span>
+            </label>
+          ))}
+        </div>
+        <Button variant="ghost" size="sm" className="w-full mt-1.5 h-7 text-xs" onClick={resetDefaults}>
+          Restaurar predeterminado
+        </Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ── Filters for mobile sheet ──────────────────────────────────────
 function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta, setSelRuta, cajasOpts, rutasOpts,
   regDesde, setRegDesde, regHasta, setRegHasta, clearAll }: any) {
   return (
@@ -122,9 +324,11 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
   );
 }
 
+// ── Main page ─────────────────────────────────────────────────────
 export default function PrestamosPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { role, rutaIds, cobradorId } = useCurrentUserRole();
   const { empresaId } = useEmpresa();
   const roleFilters = role === "admin" ? { empresaId } : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId, empresaId };
@@ -134,6 +338,9 @@ export default function PrestamosPage() {
 
   const cajasOpts = cajasRaw.map((c) => c.nombre);
   const rutasOpts = rutasRaw.map((r) => r.nombre);
+
+  const colVis = useColumnVisibility(user?.id);
+  const visibleColumns = useMemo(() => ALL_COLUMNS.filter(c => colVis.visible.has(c.key)), [colVis.visible]);
 
   const [search, setSearch] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
@@ -169,7 +376,6 @@ export default function PrestamosPage() {
     setRegDesde(undefined); setRegHasta(undefined); setSortKey(null); setSortDir(null);
   };
 
-  // Tab-based pre-filter
   const tabFiltered = useMemo(() => {
     if (activeTab === "todos") return prestamos;
     if (activeTab === "vigentes") return prestamos.filter((p) => !p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado");
@@ -215,7 +421,6 @@ export default function PrestamosPage() {
     else setSelectedRows(new Set(filtered.map((p) => p.id)));
   };
 
-  // KPI data from all prestamos (not just filtered)
   const totalPrestamos = prestamos.length;
   const montoColocado = prestamos.reduce((s, p) => s + p.montoSolicitado, 0);
   const porCobrar = prestamos.reduce((s, p) => s + p.saldo, 0);
@@ -235,6 +440,8 @@ export default function PrestamosPage() {
     atrasados: prestamos.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
     liquidados: prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado").length,
   }), [prestamos]);
+
+  const colSpanTotal = visibleColumns.length + 1; // +1 for checkbox
 
   return (
     <div className="space-y-5">
@@ -269,7 +476,7 @@ export default function PrestamosPage() {
         </TabsList>
         <TabsContent value={activeTab} className="space-y-5 mt-4">
 
-      {/* Search bar centered — Odoo style */}
+      {/* Search bar */}
       <div className="hidden md:flex justify-center">
         <div className="relative w-full max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -311,6 +518,7 @@ export default function PrestamosPage() {
           </PopoverContent>
         </Popover>
         <div className="flex-1" />
+        <ColumnPicker {...colVis} />
         {hasFilters && (
           <Button variant="ghost" size="sm" className="h-8 text-xs whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground" onClick={clearAll}>
             <X className="h-3 w-3 mr-1" />Limpiar
@@ -339,6 +547,7 @@ export default function PrestamosPage() {
             </div>
           </SheetContent>
         </Sheet>
+        <ColumnPicker {...colVis} />
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-8 text-[13px]" />
@@ -363,18 +572,19 @@ export default function PrestamosPage() {
               <TableHead className="w-10 px-3">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
               </TableHead>
-              {([
-                ["codigoInterno", "Cód."], ["idPrestamo", "Folio"], ["cliente", "Cliente"], ["fechaRegistro", "F. Registro"], ["fechaPrimerPago", "F. 1er Pago"],
-                ["montoSolicitado", "Prestado"], ["montoPagar", "A Pagar"], ["cuotasPagadas", "Cuotas"],
-                ["caja", "Caja"], ["ruta", "Ruta"],
-                ["saldo", "Saldo"], ["mora", "Mora"], ["estado", "Estado"],
-              ] as [SortKey, string][]).map(([key, label]) => (
+              {visibleColumns.map((col) => (
                 <TableHead
-                  key={key}
-                  className="cursor-pointer select-none whitespace-nowrap text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5"
-                  onClick={() => toggleSort(key)}
+                  key={col.key}
+                  className={cn(
+                    "cursor-pointer select-none whitespace-nowrap text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5",
+                    col.className
+                  )}
+                  onClick={() => col.sortKey && toggleSort(col.sortKey)}
                 >
-                  <div className="flex items-center gap-1">{label}<SortIcon col={key} /></div>
+                  <div className="flex items-center gap-1">
+                    {col.label}
+                    {col.sortKey && <SortIcon col={col.sortKey} />}
+                  </div>
                 </TableHead>
               ))}
             </TableRow>
@@ -383,15 +593,15 @@ export default function PrestamosPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={14} className="px-3 py-3">
+                  <TableCell colSpan={colSpanTotal} className="px-3 py-3">
                     <Skeleton className="h-4 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : isError ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
+              <TableRow><TableCell colSpan={colSpanTotal} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
+              <TableRow><TableCell colSpan={colSpanTotal} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}
@@ -400,50 +610,15 @@ export default function PrestamosPage() {
                   selectedRows.has(p.id) ? "bg-table-selected" : "hover:bg-table-hover"
                 )}
                 onClick={() => navigate(`/prestamos/${p.id}`)}
-                
               >
                 <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
                   <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
                 </TableCell>
-                <TableCell className="font-mono text-[11px] text-muted-foreground px-3 whitespace-nowrap">{p.codigoInterno || "—"}</TableCell>
-                <TableCell className="font-mono text-[12px] px-3 whitespace-nowrap">
-                  {p.idPrestamo}
-                  {p.tipoCuenta !== "prestamo" && (
-                    <span className="ml-1.5 inline-flex items-center rounded px-1.5 py-0 text-[9px] font-semibold bg-accent text-accent-foreground">
-                      {p.tipoCuenta === "venta_seguro" ? "Seguro" : p.tipoCuenta === "venta_producto" ? "Producto" : "Servicio"}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">
-                  <div className="flex items-center gap-2">
-                    <Avatar
-                      className={cn("h-6 w-6 shrink-0", p.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
-                      onClick={(e) => { if (p.clienteFoto) { e.stopPropagation(); setLightboxPhoto({ src: p.clienteFoto, alt: p.cliente }); } }}
-                    >
-                      {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
-                      <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                        {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {p.cliente}
-                  </div>
-                </TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaRegistro)}</TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaPrimerPago)}</TableCell>
-                <TableCell className="text-right text-[13px] px-3">{$$(p.montoSolicitado)}</TableCell>
-                <TableCell className="text-right text-[13px] px-3">{$$(p.montoPagar)}</TableCell>
-                <TableCell className="text-[13px] px-3">{p.cuotasPagadas ?? 0}/{p.totalCuotas ?? 0}</TableCell>
-                <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
-                <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.ruta}</TableCell>
-                <TableCell className="text-right font-medium text-[13px] px-3">{$$(p.saldo)}</TableCell>
-                <TableCell className={cn("text-right font-bold text-[13px] px-3", (p.mora ?? 0) > 0 ? "text-destructive" : "text-muted-foreground")}>
-                  {(p.mora ?? 0) > 0 ? $$(p.mora) : "$0.00"}
-                </TableCell>
-                <TableCell className="px-3">
-                  <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium", estadoBadge[p.estado] || "bg-muted text-muted-foreground")}>
-                    {p.estado}
-                  </span>
-                </TableCell>
+                {visibleColumns.map((col) => (
+                  <TableCell key={col.key} className={cn("px-3", col.className)}>
+                    {col.render(p, { setLightboxPhoto })}
+                  </TableCell>
+                ))}
               </TableRow>
             ))}
           </TableBody>
