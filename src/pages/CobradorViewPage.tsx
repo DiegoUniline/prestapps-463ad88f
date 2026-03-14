@@ -520,14 +520,14 @@ export default function CobradorViewPage() {
     [filteredPagos]
   );
 
-  if (!effectiveCobradorId && role === "cobrador") {
+  if (!effectiveCobradorId) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">
         <Card className="max-w-sm w-full">
           <CardContent className="p-6 text-center">
             <AlertTriangle className="h-10 w-10 text-warning mx-auto mb-3" />
-            <p className="font-semibold">Sin cobrador asignado</p>
-            <p className="text-sm text-muted-foreground mt-1">Tu usuario no tiene un cobrador vinculado. Contacta al administrador.</p>
+            <p className="font-semibold">Sin sesión activa</p>
+            <p className="text-sm text-muted-foreground mt-1">Inicia sesión para ver tu cobranza.</p>
           </CardContent>
         </Card>
       </div>
