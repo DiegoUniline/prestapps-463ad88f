@@ -15,7 +15,7 @@ interface ReceiptData {
     proxima_cuota?: string;
     monto_proxima?: number;
   };
-  empresa: { nombre: string; telefono?: string; direccion?: string };
+  empresa: { nombre: string; telefono?: string; direccion?: string; logo_url?: string | null };
   cliente: { nombre: string };
   prestamo: { folio: string; num_cuotas: number };
 }
