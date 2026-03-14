@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCan } from "@/hooks/usePermisos";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO, startOfDay, endOfDay, isToday, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
