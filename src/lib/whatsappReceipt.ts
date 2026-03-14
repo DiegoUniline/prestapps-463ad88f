@@ -37,6 +37,7 @@ function buildReceiptElement(data: ReceiptData): HTMLDivElement {
   `;
   el.innerHTML = `
     <div style="text-align:center;border-bottom:2px dashed #333;padding-bottom:12px;margin-bottom:12px">
+      ${empresa.logo_url ? `<img src="${empresa.logo_url}" style="max-height:50px;max-width:200px;margin:0 auto 8px;display:block" crossorigin="anonymous" />` : ""}
       <h1 style="font-size:18px;font-weight:bold;text-transform:uppercase;letter-spacing:2px;margin:0">${empresa.nombre}</h1>
       ${empresa.telefono ? `<p style="font-size:11px;color:#555;margin:4px 0 0">Tel: ${empresa.telefono}</p>` : ""}
       ${empresa.direccion ? `<p style="font-size:11px;color:#555;margin:2px 0 0">${empresa.direccion}</p>` : ""}
