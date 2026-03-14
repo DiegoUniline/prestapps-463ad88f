@@ -128,7 +128,6 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
   const sendWhatsAppReceipt = async (dist: PaymentDistribution[], monto: number, metodoPago: string, descuentoMonto: number) => {
     try {
-      // Check if WhatsApp is configured and receipt sending is enabled
       const { data: waConfig } = await (supabase.from as any)("whatsapp_config")
         .select("activo, enviar_recibo_pago")
         .eq("empresa_id", empresaId)
@@ -136,7 +135,6 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
       if (!waConfig?.activo || !waConfig?.enviar_recibo_pago) return;
 
-      // Get prestamo + cliente data
       const { data: prestamo } = await supabase
         .from("prestamos")
         .select("id, num_cuotas, monto_solicitado, clientes!inner(nombre_completo, telefono)")
@@ -146,14 +144,12 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       const cliente = (prestamo as any)?.clientes;
       if (!cliente?.telefono) return;
 
-      // Get empresa data
       const { data: empresa } = await supabase
         .from("empresas")
         .select("nombre, telefono, direccion")
         .eq("id", empresaId)
         .single();
 
-      // Calculate remaining balance
       const { data: remainingCuotas } = await supabase
         .from("amortizacion")
         .select("saldo_total, num_cuota, fecha_vencimiento")
@@ -167,13 +163,15 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       const totalMora = dist.reduce((s, d) => s + d.mora, 0);
       const totalInteres = dist.reduce((s, d) => s + d.interes, 0);
       const totalCapital = dist.reduce((s, d) => s + d.capital, 0);
+      const folio = `PAG-${prestamoId.slice(0, 8)}`;
 
-      await supabase.functions.invoke("whatsapp-sender", {
-        body: {
-          action: "send-receipt",
-          empresa_id: empresaId,
-          phone: cliente.telefono,
-          pago_data: {
+      const { sendReceiptAsImage } = await import("@/lib/whatsappReceipt");
+      await sendReceiptAsImage(
+        empresaId,
+        cliente.telefono,
+        {
+          pago: {
+            folio,
             monto_recibido: monto,
             aplicado_mora: totalMora,
             aplicado_interes: totalInteres,
@@ -184,15 +182,14 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
             saldo_restante: saldoRestante,
             proxima_cuota: proxima?.fecha_vencimiento || "",
             monto_proxima: proxima?.saldo_total || 0,
-            folio: `PAG-${prestamoId.slice(0, 8)}`,
           },
-          empresa_data: empresa,
-          cliente_data: { nombre: cliente.nombre_completo },
-          prestamo_data: { num_cuotas: prestamo?.num_cuotas, folio: `PRE-${prestamoId.slice(0, 8)}` },
+          empresa: empresa || { nombre: "Empresa" },
+          cliente: { nombre: cliente.nombre_completo },
+          prestamo: { folio: `PRE-${prestamoId.slice(0, 8)}`, num_cuotas: prestamo?.num_cuotas || 0 },
         },
-      });
+        `✅ Recibo de pago ${folio} por $${monto.toFixed(2)}. Gracias por su pago.`,
+      );
     } catch (e) {
-      // Silent fail - don't interrupt payment flow
       console.error("WhatsApp receipt error:", e);
     }
   };
