@@ -393,6 +393,35 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
               </Select>
               <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
             </div>
+            <div className="col-span-2">
+              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Fecha de Pago</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "mt-1 w-full h-9 justify-start text-left text-[13px] font-normal",
+                      !fechaPago && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {fechaPago ? format(fechaPago, "dd/MM/yyyy") : "Seleccionar fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={fechaPago}
+                    onSelect={(d) => d && setFechaPago(d)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Fecha en que se realizó el pago. El sistema registra automáticamente cuándo y quién lo capturó.
+              </p>
+            </div>
           </div>
 
           {/* Payment summary: Monto a Pagar vs Monto Pagado */}
