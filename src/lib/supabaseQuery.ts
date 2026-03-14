@@ -6,6 +6,34 @@ interface QueryResult<T> {
 }
 
 /**
+ * Fetches ALL rows from a Supabase query by paginating in chunks of `pageSize`.
+ * Supabase has a default limit of 1000 rows — this function loops until all rows are retrieved.
+ * Pass a query builder (before calling .then or awaiting) — the function will add .range() automatically.
+ */
+export async function fetchAllRows<T = any>(
+  queryBuilder: any,
+  pageSize = 1000
+): Promise<T[]> {
+  const all: T[] = [];
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await queryBuilder.range(from, from + pageSize - 1);
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    all.push(...(data as T[]));
+    if (data.length < pageSize) {
+      hasMore = false;
+    } else {
+      from += pageSize;
+    }
+  }
+
+  return all;
+}
+
+/**
  * Typed wrapper for Supabase queries with centralized error handling.
  * Logs technical errors in dev, shows generic toast to user.
  */
