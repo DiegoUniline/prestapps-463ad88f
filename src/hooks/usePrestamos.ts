@@ -69,23 +69,6 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
 
   if (prestamos.length === 0) return [];
 
-  const prestamos = rawPrestamos as unknown as Array<{
-    id: string;
-    id_prestamo: string;
-    codigo_interno: string | null;
-    tipo_cuenta: string | null;
-    monto_solicitado: number | null;
-    monto_total_pagar: number | null;
-    num_cuotas: number | null;
-    estado: string | null;
-    fecha_registro: string | null;
-    fecha_primer_pago: string | null;
-    cliente_id: string;
-    caja_id: string | null;
-    ruta_id: string | null;
-    cobrador_id: string | null;
-  }>;
-
   const unique = (values: Array<string | null | undefined>) =>
     [...new Set(values.filter(Boolean) as string[])];
 

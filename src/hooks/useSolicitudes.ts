@@ -41,9 +41,7 @@ export function useSolicitudes(empresaId?: string, statusFilter?: string) {
       if (empresaId) query = query.eq("empresa_id", empresaId);
       if (statusFilter && statusFilter !== "todos") query = query.eq("status", statusFilter);
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as Solicitud[];
+      return await fetchAllRows<Solicitud>(query);
     },
   });
 }
