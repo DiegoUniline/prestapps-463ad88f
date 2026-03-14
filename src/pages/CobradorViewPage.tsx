@@ -790,6 +790,7 @@ export default function CobradorViewPage() {
               ))}
             </>
           )}
+        </TabsContent>
 
         {/* ── Tab: Historial ─────────────────────────────────── */}
         <TabsContent value="historial" className="mt-3 space-y-2">
