@@ -306,6 +306,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       onOpenChange(false);
       setMontoRecibido("");
       setDescuento("");
+      setFechaPago(new Date());
     } catch (err: any) {
       toast.error("Error al registrar pago: " + (err.message || err));
     } finally {
