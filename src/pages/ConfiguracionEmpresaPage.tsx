@@ -744,23 +744,23 @@ function SimuladorTab() {
     if (!phone.trim()) { toast.error("Ingresa un número de teléfono"); return; }
     setSendingTicket(true);
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-sender", {
-        body: {
-           action: "send-receipt",
-          empresa_id: empresaId,
-          phone: phone.trim(),
-          test: true,
-          pago_data: mockPago,
-          empresa_data: mockEmpresa,
-          cliente_data: mockCliente,
-          prestamo_data: mockPrestamo,
+      const { sendReceiptAsImage } = await import("@/lib/whatsappReceipt");
+      const result = await sendReceiptAsImage(
+        empresaId,
+        phone.trim(),
+        {
+          pago: mockPago,
+          empresa: mockEmpresa,
+          cliente: { nombre: mockCliente.nombre },
+          prestamo: mockPrestamo,
         },
-      });
-      if (error) throw error;
-      if (data?.success) {
+        `✅ Recibo de pago ${mockPago.folio} por $${mockPago.monto_recibido.toFixed(2)}. Gracias por su pago.`,
+        true,
+      );
+      if (result.success) {
         toast.success("Ticket enviado correctamente por WhatsApp");
       } else {
-        toast.error(data?.error || "Error al enviar el ticket");
+        toast.error(result.error || "Error al enviar el ticket");
       }
     } catch (e: any) {
       toast.error(e.message || "Error al enviar");
