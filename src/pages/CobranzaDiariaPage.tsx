@@ -484,6 +484,7 @@ export default function CobranzaDiariaPage() {
     ruta: string;
     tieneVencidas: boolean;
     todasCobradas: boolean;
+    atendidoSemana: boolean;
   }
   const clientesAgrupados = useMemo((): ClienteAgrupado[] => {
     const map = new Map<string, CuotaDiaria[]>();
@@ -507,13 +508,14 @@ export default function CobranzaDiariaPage() {
         ruta: cuotas[0].ruta,
         tieneVencidas: pendientes.some((c) => c.diasAtraso > 0),
         todasCobradas: pendientes.length === 0,
+        atendidoSemana: clientesAtendidos?.has(clienteId) ?? false,
       };
     }).sort((a, b) => {
       // Pending first, then by saldo desc
       if (a.todasCobradas !== b.todasCobradas) return a.todasCobradas ? 1 : -1;
       return b.totalSaldo - a.totalSaldo;
     });
-  }, [filtered]);
+  }, [filtered, clientesAtendidos]);
 
   return (
     <div className="space-y-4">
