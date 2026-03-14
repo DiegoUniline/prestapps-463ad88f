@@ -35,13 +35,14 @@ export default function AuditoriaPage() {
   const { data: pagos, isLoading: lp } = useQuery({
     queryKey: ["audit-pagos", empresaId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("pagos")
-        .select("id, monto_recibido, anulado, anulado_por, anulado_en, motivo_anulacion, created_at, registrado_por, prestamo_id, prestamos!inner(clientes!inner(nombre_completo))")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      return data || [];
+      const data = await fetchAllRows<any>(
+        supabase
+          .from("pagos")
+          .select("id, monto_recibido, anulado, anulado_por, anulado_en, motivo_anulacion, created_at, registrado_por, prestamo_id, prestamos!inner(clientes!inner(nombre_completo))")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false })
+      );
+      return data;
     },
   });
 
