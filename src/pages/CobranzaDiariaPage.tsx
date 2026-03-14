@@ -108,6 +108,7 @@ interface CuotaDiaria {
   cuotaId: string;
   prestamoId: string;
   clienteNombre: string;
+  clienteFoto: string | null;
   clienteId: string;
   numCuota: number;
   totalCuotas: number;
