@@ -92,6 +92,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── send-file ────────────────────────────────
+    if (action === "send-file") {
+      const { phone, url, fileName, tipo, referencia_id } = body;
+
+      const result = await sendWhatsApp(config.api_url, config.api_token, {
+        action: "send-file",
+        phone,
+        url,
+        fileName: fileName || "documento.pdf",
+      });
+
+      await supabase.from("whatsapp_log").insert({
+        empresa_id,
+        telefono: phone,
+        tipo: tipo || "documento",
+        mensaje: fileName || "",
+        status: result.success ? "enviado" : "error",
+        error_detalle: result.error || null,
+        referencia_id: referencia_id || null,
+      });
+
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ── send-receipt is now handled client-side (html-to-image → storage → send-image) ──
 
     // ── send-reminder (batch reminders) ────────────────────
