@@ -158,6 +158,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       fechaRegistro: p.fecha_registro || "",
       fechaPrimerPago: p.fecha_primer_pago || "",
       tieneAtraso: amort.tieneAtraso,
+      diasAtraso: amort.diasAtraso,
     };
   });
 }
