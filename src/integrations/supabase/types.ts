@@ -1800,6 +1800,7 @@ export type Database = {
         Returns: string
       }
       recalcular_mora: { Args: { p_prestamo_id: string }; Returns: undefined }
+      switch_empresa: { Args: { p_empresa_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "supervisor" | "cobrador"
