@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useMetodosPagoActivos } from "@/hooks/useCatalogos";
 import { useAuthStore } from "@/stores/authStore";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -60,18 +61,45 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const { empresaId } = useEmpresa();
   const geo = useGeoLocation();
   const user = useAuthStore((s) => s.user);
+  const { role } = useCurrentUserRole();
   const { data: metodosPago = [] } = useMetodosPagoActivos();
+
+  // Fetch cobradores for admin/supervisor to pick who gets the commission
+  const isNonCobrador = role === "admin" || role === "supervisor";
+  const { data: cobradores = [] } = useQuery({
+    queryKey: ["profiles-cobradores", empresaId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, nombre_completo")
+        .eq("empresa_id", empresaId)
+        .eq("activo", true)
+        .order("nombre_completo");
+      return data || [];
+    },
+    enabled: isNonCobrador && open,
+  });
+
   const [montoRecibido, setMontoRecibido] = useState("");
   const [descuento, setDescuento] = useState("");
   const [metodo, setMetodo] = useState("");
   const [cajaId, setCajaId] = useState(cajas[0]?.id || "");
   const [fechaPago, setFechaPago] = useState<Date>(new Date());
+  const [selectedCobradorId, setSelectedCobradorId] = useState<string>(cobradorId || "");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   // Set default payment method when catalog loads
   if (metodosPago.length > 0 && !metodo) {
     setMetodo(metodosPago[0].nombre);
+  }
+
+  // Sync selectedCobradorId when prop changes
+  if (open && cobradorId && !selectedCobradorId) {
+    setSelectedCobradorId(cobradorId);
+  }
+  if (!open && selectedCobradorId !== (cobradorId || "")) {
+    setSelectedCobradorId(cobradorId || "");
   }
 
   // Pre-fill monto when modal opens with montoInicial
@@ -215,7 +243,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           metodo_pago: metodo as any,
           caja_id: cajaId,
           ruta_id: rutaId || null,
-          cobrador_id: cobradorId || null,
+          cobrador_id: (isNonCobrador ? selectedCobradorId : cobradorId) || null,
           gps_lat: geo.lat,
           gps_lng: geo.lng,
           empresa_id: empresaId,
@@ -279,12 +307,13 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       }
 
       // 6) Increment cobrador efectivo_en_mano in profiles if cobrador is assigned
-      if (cobradorId) {
-        const { data: cobData } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", cobradorId).single();
+      const effectiveCobradorId = isNonCobrador ? selectedCobradorId : cobradorId;
+      if (effectiveCobradorId) {
+        const { data: cobData } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", effectiveCobradorId).single();
         if (cobData) {
           await supabase.from("profiles").update({
             efectivo_en_mano: Number(cobData.efectivo_en_mano || 0) + montoNum,
-          }).eq("id", cobradorId);
+          }).eq("id", effectiveCobradorId);
         }
       }
 
@@ -394,6 +423,23 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
               </Select>
               <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
             </div>
+            {/* Cobrador selector for admin/supervisor */}
+            {isNonCobrador && (
+              <div className="col-span-2">
+                <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Cobrador (comisión)</Label>
+                <Select value={selectedCobradorId} onValueChange={setSelectedCobradorId}>
+                  <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    {cobradores.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  La comisión de este pago se asignará al cobrador seleccionado.
+                </p>
+              </div>
+            )}
             <div className="col-span-2">
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Fecha de Pago</Label>
               <Popover>
