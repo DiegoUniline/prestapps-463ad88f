@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { format, parseISO, startOfDay, endOfDay, isToday, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn, $$ } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -205,6 +206,82 @@ function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: str
   });
 }
 
+// ── Get empresa week start day ──────────────────────────────────
+function useEmpresaSemana(empresaId: string) {
+  return useQuery({
+    queryKey: ["empresa-semana", empresaId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("empresas")
+        .select("corte_dia_semana")
+        .eq("id", empresaId)
+        .single();
+      return (data?.corte_dia_semana ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+function getWeekRange(weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
+  const start = startOfWeek(new Date(), { weekStartsOn });
+  const end = endOfWeek(new Date(), { weekStartsOn });
+  return { start, end };
+}
+
+// ── Weekly summary hook ─────────────────────────────────────────
+function useResumenSemanal(empresaId: string, cobradorId: string | null, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
+  const { start, end } = getWeekRange(weekStartsOn);
+  const desde = format(start, "yyyy-MM-dd");
+  const hasta = format(end, "yyyy-MM-dd");
+
+  return useQuery({
+    queryKey: ["cobrador-resumen-semanal", desde, hasta, empresaId, cobradorId],
+    enabled: !!cobradorId,
+    queryFn: async () => {
+      // Cuotas that fall in this week
+      const { data: cuotas } = await supabase
+        .from("amortizacion")
+        .select("id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento")
+        .eq("empresa_id", empresaId)
+        .gte("fecha_vencimiento", desde)
+        .lte("fecha_vencimiento", hasta);
+
+      if (!cuotas?.length) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
+
+      // Filter by cobrador
+      const prestamoIds = [...new Set(cuotas.map((c) => c.prestamo_id))];
+      const { data: prestamos } = await supabase
+        .from("prestamos")
+        .select("id")
+        .in("id", prestamoIds)
+        .eq("cobrador_id", cobradorId!);
+
+      const validIds = new Set((prestamos || []).map((p) => p.id));
+      const filtered = cuotas.filter((c) => validIds.has(c.prestamo_id));
+
+      // Payments received this week for these cuotas
+      const cuotaIds = filtered.map((c) => c.id);
+      let pagadoTotal = 0;
+      if (cuotaIds.length > 0) {
+        const { data: pagos } = await supabase
+          .from("pagos")
+          .select("monto_recibido")
+          .in("cuota_id", cuotaIds)
+          .eq("anulado", false)
+          .eq("cobrador_id", cobradorId!);
+        pagadoTotal = (pagos || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+      }
+
+      const totalEsperado = filtered.reduce((s, c) => s + Number(c.capital_interes || 0), 0);
+      const porCobrar = Math.max(0, totalEsperado - pagadoTotal);
+      const pct = totalEsperado > 0 ? Math.min(100, (pagadoTotal / totalEsperado) * 100) : 0;
+
+      return { porCobrar, cobrado: pagadoTotal, total: totalEsperado, pct, start, end };
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
 function useCajasAll(empresaId: string) {
   return useQuery({
     queryKey: ["cajas-all", empresaId],
@@ -314,6 +391,9 @@ export default function CobradorViewPage() {
   // Effective cobrador id (admin can also use this page for testing)
   const effectiveCobradorId = cobradorId;
 
+  // Empresa week config
+  const { data: weekStartsOn = 1 } = useEmpresaSemana(empresaId);
+
   // Date range state
   const today = new Date();
   const [rangePreset, setRangePreset] = useState<RangePreset>("hoy");
@@ -346,6 +426,7 @@ export default function CobradorViewPage() {
   const { data: pagos, isLoading: loadingPagos } = usePagosCobrador(fechaDesdeStr, fechaHastaStr, empresaId, effectiveCobradorId);
   const { data: cajas } = useCajasAll(empresaId);
   const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, empresaId);
+  const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(empresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6);
   const { user } = useAuth();
   // Preset handlers
   const setHoy = useCallback(() => {
@@ -356,11 +437,12 @@ export default function CobradorViewPage() {
 
   const setSemana = useCallback(() => {
     setRangePreset("semana");
-    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const end = endOfWeek(new Date(), { weekStartsOn: 1 });
+    const ws = (weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6) ?? 1;
+    const start = startOfWeek(new Date(), { weekStartsOn: ws });
+    const end = endOfWeek(new Date(), { weekStartsOn: ws });
     setFechaDesde(start);
     setFechaHasta(end);
-  }, []);
+  }, [weekStartsOn]);
 
   // Filter cuotas
   const filtered = useMemo(() => {
@@ -513,6 +595,56 @@ export default function CobradorViewPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Resumen Semanal ────────────────────────────────── */}
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarCheck className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Resumen Semanal</span>
+            </div>
+            {resumenSemanal && (
+              <span className="text-[10px] text-muted-foreground">
+                {format(resumenSemanal.start, "dd/MM", { locale: es })} — {format(resumenSemanal.end, "dd/MM", { locale: es })}
+              </span>
+            )}
+          </div>
+
+          {loadingResumen ? (
+            <Skeleton className="h-16 w-full" />
+          ) : resumenSemanal ? (
+            <>
+              <div className="flex items-end justify-between gap-4">
+                <div className="flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Cobrado</span>
+                    <span className="font-bold text-primary">{$$(resumenSemanal.cobrado)}</span>
+                  </div>
+                  <Progress value={resumenSemanal.pct} className="h-3" />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Meta semanal</span>
+                    <span className="font-semibold">{$$(resumenSemanal.total)}</span>
+                  </div>
+                </div>
+                <div className="text-center shrink-0">
+                  <span className="text-3xl" role="img" aria-label="estado">
+                    {resumenSemanal.pct >= 100 ? "🎉" : resumenSemanal.pct >= 70 ? "😊" : resumenSemanal.pct >= 40 ? "😐" : "😟"}
+                  </span>
+                  <p className="text-[10px] font-bold text-primary mt-0.5">{resumenSemanal.pct.toFixed(0)}%</p>
+                </div>
+              </div>
+              {resumenSemanal.porCobrar > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Falta por cobrar: <span className="font-semibold text-foreground">{$$(resumenSemanal.porCobrar)}</span>
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-2">Sin datos para esta semana</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── KPI Cards (mobile: 2 cols) ─────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
