@@ -248,6 +248,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
           cuotaId: c.id,
           prestamoId: c.prestamo_id,
           clienteNombre: cliente?.nombre_completo || "—",
+          clienteFoto: cliente?.foto_cliente || null,
           clienteId: pres.cliente_id || "",
           numCuota: c.num_cuota,
           totalCuotas: pres.num_cuotas || 0,
