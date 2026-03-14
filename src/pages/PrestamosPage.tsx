@@ -428,6 +428,26 @@ export default function PrestamosPage() {
     return data;
   }, [tabFiltered, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
 
+  // Grouped data computation
+  const groupedData = useMemo(() => {
+    if (!groupBy) return null;
+    const groups: Record<string, PrestamoListItem[]> = {};
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    for (const p of filtered) {
+      let key: string;
+      if (groupBy === "estado") key = p.estado;
+      else if (groupBy === "cliente") key = p.cliente;
+      else if (groupBy === "tipoCuenta") key = p.tipoCuenta === "prestamo" ? "Préstamo" : p.tipoCuenta === "venta_seguro" ? "Seguro" : p.tipoCuenta === "venta_producto" ? "Producto" : "Servicio";
+      else if (groupBy === "mesCreacion") {
+        const d = p.fechaRegistro ? new Date(p.fechaRegistro) : null;
+        key = d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : "Sin fecha";
+      } else key = "—";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered, groupBy]);
+
   const toggleRow = (id: string) => {
     const next = new Set(selectedRows);
     next.has(id) ? next.delete(id) : next.add(id);
