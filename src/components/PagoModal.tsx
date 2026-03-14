@@ -64,8 +64,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const { role } = useCurrentUserRole();
   const { data: metodosPago = [] } = useMetodosPagoActivos();
 
-  // Fetch cobradores for admin/supervisor to pick who gets the commission
-  const isNonCobrador = role === "admin" || role === "supervisor";
+  // Only admin can override the cobrador assignment
+  const isAdmin = role === "admin";
   const { data: cobradores = [] } = useQuery({
     queryKey: ["profiles-cobradores", empresaId],
     queryFn: async () => {
@@ -77,7 +77,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         .order("nombre_completo");
       return data || [];
     },
-    enabled: isNonCobrador && open,
+    enabled: isAdmin && open,
   });
 
   const [montoRecibido, setMontoRecibido] = useState("");
