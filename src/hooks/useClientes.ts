@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import type { Cliente, ClienteInsert } from "@/types/cliente";
 
 const CLIENTE_COLUMNS = `
@@ -34,9 +35,7 @@ export function useClientes(filters?: { estado?: string; search?: string; empres
         );
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as unknown as Cliente[];
+      return await fetchAllRows<Cliente>(query);
     },
     staleTime: 5 * 60 * 1000,
   });

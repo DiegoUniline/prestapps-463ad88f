@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 
 export interface Solicitud {
   id: string;
@@ -40,9 +41,7 @@ export function useSolicitudes(empresaId?: string, statusFilter?: string) {
       if (empresaId) query = query.eq("empresa_id", empresaId);
       if (statusFilter && statusFilter !== "todos") query = query.eq("status", statusFilter);
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []) as Solicitud[];
+      return await fetchAllRows<Solicitud>(query);
     },
   });
 }

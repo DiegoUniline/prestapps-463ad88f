@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,13 +35,14 @@ export default function AuditoriaPage() {
   const { data: pagos, isLoading: lp } = useQuery({
     queryKey: ["audit-pagos", empresaId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("pagos")
-        .select("id, monto_recibido, anulado, anulado_por, anulado_en, motivo_anulacion, created_at, registrado_por, prestamo_id, prestamos!inner(clientes!inner(nombre_completo))")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      return data || [];
+      const data = await fetchAllRows<any>(
+        supabase
+          .from("pagos")
+          .select("id, monto_recibido, anulado, anulado_por, anulado_en, motivo_anulacion, created_at, registrado_por, prestamo_id, prestamos!inner(clientes!inner(nombre_completo))")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false })
+      );
+      return data;
     },
   });
 
@@ -48,13 +50,14 @@ export default function AuditoriaPage() {
   const { data: gestiones, isLoading: lg } = useQuery({
     queryKey: ["audit-gestiones", empresaId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("crm_gestiones")
-        .select("id, tipo_gestion, resultado, notas, created_at, registrado_por, prestamo_id, clientes!inner(nombre_completo)")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      return data || [];
+      const data = await fetchAllRows<any>(
+        supabase
+          .from("crm_gestiones")
+          .select("id, tipo_gestion, resultado, notas, created_at, registrado_por, prestamo_id, clientes!inner(nombre_completo)")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false })
+      );
+      return data;
     },
   });
 
@@ -62,13 +65,14 @@ export default function AuditoriaPage() {
   const { data: promesas, isLoading: lpr } = useQuery({
     queryKey: ["audit-promesas", empresaId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("promesas_pago")
-        .select("id, monto_prometido, fecha_prometida, status, created_at, prestamo_id")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      return data || [];
+      const data = await fetchAllRows<any>(
+        supabase
+          .from("promesas_pago")
+          .select("id, monto_prometido, fecha_prometida, status, created_at, prestamo_id")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false })
+      );
+      return data;
     },
   });
 

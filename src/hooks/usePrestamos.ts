@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 
 export interface PrestamoListItem {
   id: string;
@@ -49,11 +50,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
     query = query.eq("cobrador_id", filters.cobradorId);
   }
 
-  const { data: rawPrestamos, error } = await query;
-  if (error) throw error;
-  if (!rawPrestamos || rawPrestamos.length === 0) return [];
-
-  const prestamos = rawPrestamos as unknown as Array<{
+  const prestamos = await fetchAllRows<{
     id: string;
     id_prestamo: string;
     codigo_interno: string | null;
@@ -68,7 +65,9 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
     caja_id: string | null;
     ruta_id: string | null;
     cobrador_id: string | null;
-  }>;
+  }>(query);
+
+  if (prestamos.length === 0) return [];
 
   const unique = (values: Array<string | null | undefined>) =>
     [...new Set(values.filter(Boolean) as string[])];
@@ -79,11 +78,15 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   const rutaIds = unique(prestamos.map((p) => p.ruta_id));
   const cobradorIds = unique(prestamos.map((p) => p.cobrador_id));
 
-  const [amortRes, clientesRes, cajasRes, rutasRes, cobradoresRes] = await Promise.all([
-    supabase
-      .from("amortizacion")
-      .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
-      .in("prestamo_id", prestamoIds),
+  // Amortization can exceed 1000 rows — use fetchAllRows
+  // Other lookups (clientes, cajas, rutas, profiles) are bounded by unique IDs so they're fine
+  const [amortData, clientesRes, cajasRes, rutasRes, cobradoresRes] = await Promise.all([
+    fetchAllRows<any>(
+      supabase
+        .from("amortizacion")
+        .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
+        .in("prestamo_id", prestamoIds)
+    ),
     clienteIds.length > 0
       ? supabase.from("clientes").select("id, nombre_completo, foto_cliente").in("id", clienteIds)
       : Promise.resolve({ data: [], error: null }),
@@ -98,7 +101,6 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       : Promise.resolve({ data: [], error: null }),
   ]);
 
-  const amortData = amortRes.error ? [] : amortRes.data || [];
   const clientesData = clientesRes.error ? [] : clientesRes.data || [];
   const cajasData = cajasRes.error ? [] : cajasRes.data || [];
   const rutasData = rutasRes.error ? [] : rutasRes.data || [];
