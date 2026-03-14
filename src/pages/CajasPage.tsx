@@ -394,57 +394,120 @@ export default function CajasPage() {
         ))}
       </div>
 
-      {/* Cajas cards with per-caja stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {isLoading ? (
-          Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-lg" />)
-        ) : cajas.map((c) => {
-          const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
-          return (
-            <div
-              key={c.id}
-              className={cn(
-                "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
-                selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
-              )}
-              onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
-            >
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-[14px]">{c.nombre}</p>
-                <Wallet className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <p className="text-2xl font-bold mt-1">{$$(Number(c.saldo_actual || 0))}</p>
-              {c.descripcion && <p className="text-[12px] text-muted-foreground mt-0.5">{c.descripcion}</p>}
-              <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50">
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Activos</p>
-                  <p className="text-[13px] font-semibold">{cs.activos}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Colocado</p>
-                  <p className="text-[13px] font-semibold">{$$(cs.colocado)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Por Cobrar</p>
-                  <p className="text-[13px] font-semibold">{$$(cs.porCobrar)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ganancia</p>
-                  <p className="text-[13px] font-semibold text-success">{$$(cs.gananciaProyectada)}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">En Mora</p>
-                  <p className={cn("text-[13px] font-semibold", cs.enMora > 0 ? "text-destructive" : "")}>{cs.enMora}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Mora $</p>
-                  <p className={cn("text-[13px] font-semibold", cs.moraTotal > 0 ? "text-destructive" : "")}>{$$(cs.moraTotal)}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      {/* Cajas view toggle */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-[14px] font-semibold">Cajas ({cajas.length})</h2>
+        <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
+          <Button variant={cajasView === "table" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setCajasView("table")}>
+            <List className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant={cajasView === "cards" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setCajasView("cards")}>
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
+
+      {/* Cajas TABLE view */}
+      {cajasView === "table" ? (
+        <div className="rounded-lg border border-border overflow-hidden bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-[hsl(var(--table-header))]">
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))]">Caja</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">Saldo</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">Activos</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">Colocado</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">Por Cobrar</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">Ganancia</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">En Mora</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">Mora $</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                ))
+              ) : cajas.map((c) => {
+                const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+                return (
+                  <TableRow
+                    key={c.id}
+                    className={cn("cursor-pointer", selectedCaja === c.id && "bg-[hsl(var(--table-selected))]")}
+                    onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
+                  >
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-[13px]">{c.nombre}</p>
+                        {c.descripcion && <p className="text-[11px] text-muted-foreground">{c.descripcion}</p>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold text-[13px]">{$$(Number(c.saldo_actual || 0))}</TableCell>
+                    <TableCell className="text-right text-[13px]">{cs.activos}</TableCell>
+                    <TableCell className="text-right text-[13px]">{$$(cs.colocado)}</TableCell>
+                    <TableCell className="text-right text-[13px]">{$$(cs.porCobrar)}</TableCell>
+                    <TableCell className="text-right text-[13px] text-success">{$$(cs.gananciaProyectada)}</TableCell>
+                    <TableCell className={cn("text-right text-[13px]", cs.enMora > 0 && "text-destructive")}>{cs.enMora}</TableCell>
+                    <TableCell className={cn("text-right text-[13px]", cs.moraTotal > 0 && "text-destructive")}>{$$(cs.moraTotal)}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        /* Cajas CARDS view */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-lg" />)
+          ) : cajas.map((c) => {
+            const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+            return (
+              <div
+                key={c.id}
+                className={cn(
+                  "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
+                  selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
+                )}
+                onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-[14px]">{c.nombre}</p>
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-2xl font-bold mt-1">{$$(Number(c.saldo_actual || 0))}</p>
+                {c.descripcion && <p className="text-[12px] text-muted-foreground mt-0.5">{c.descripcion}</p>}
+                <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Activos</p>
+                    <p className="text-[13px] font-semibold">{cs.activos}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Colocado</p>
+                    <p className="text-[13px] font-semibold">{$$(cs.colocado)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Por Cobrar</p>
+                    <p className="text-[13px] font-semibold">{$$(cs.porCobrar)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ganancia</p>
+                    <p className="text-[13px] font-semibold text-success">{$$(cs.gananciaProyectada)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">En Mora</p>
+                    <p className={cn("text-[13px] font-semibold", cs.enMora > 0 ? "text-destructive" : "")}>{cs.enMora}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Mora $</p>
+                    <p className={cn("text-[13px] font-semibold", cs.moraTotal > 0 ? "text-destructive" : "")}>{$$(cs.moraTotal)}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Kardex table */}
       <div>
