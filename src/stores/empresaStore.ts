@@ -31,7 +31,7 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
     // Use SECURITY DEFINER function to bypass RLS when switching empresa
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      await supabase.rpc("switch_empresa", { p_empresa_id: id });
+      await (supabase.rpc as any)("switch_empresa", { p_empresa_id: id });
     }
     // Now update state — queries will refetch with correct RLS context
     set({ empresaId: id, empresaNombre: get().empresas.find((e) => e.id === id)?.nombre || "Empresa" });
