@@ -107,23 +107,35 @@ Deno.serve(async (req) => {
       let caption = template?.mensaje || "✅ Recibo de pago {folio} por ${monto_recibido}. Gracias por su pago.";
       caption = replaceVariables(caption, { ...pago_data, ...cliente_data, ...empresa_data, ...prestamo_data });
 
-      // Build receipt HTML and generate image via storage
+      // Build receipt HTML and upload to storage
       const receiptHtml = buildReceiptHtml(pago_data, empresa_data, cliente_data, prestamo_data);
-      const { imageUrl, cleanupPaths } = await generateReceiptImage(supabase, receiptHtml, empresa_id);
+      const { fileUrl, cleanupPath } = await generateReceiptUrl(supabase, receiptHtml, empresa_id);
+      const cleanupPaths = cleanupPath ? [cleanupPath] : [];
 
       let result;
       let mensajeLog = caption;
 
-      if (imageUrl) {
-        result = await sendWhatsApp(config.api_url, config.api_token, {
-          action: "send-image",
+      if (fileUrl) {
+        // First send the caption text
+        await sendWhatsApp(config.api_url, config.api_token, {
+          action: "send-text",
           phone,
-          url: imageUrl,
-          caption,
+          message: caption,
         });
+
+        // Then send the receipt as a file
+        result = await sendWhatsApp(config.api_url, config.api_token, {
+          action: "send-file",
+          phone,
+          url: fileUrl,
+          fileName: `Recibo-${pago_data?.folio || "pago"}.html`,
+        });
+
+        // Wait a moment for WhatsApp to download, then cleanup
+        setTimeout(() => cleanupStorage(supabase, cleanupPaths), 15000);
       } else {
-        // Fallback to text
-        const fallbackText = `${caption}\n\n📋 Desglose:\n• Mora: $${(pago_data?.aplicado_mora || 0).toFixed(2)}\n• Interés: $${(pago_data?.aplicado_interes || 0).toFixed(2)}\n• Capital: $${(pago_data?.aplicado_capital || 0).toFixed(2)}\n• Total: $${(pago_data?.monto_recibido || 0).toFixed(2)}\n• Saldo restante: $${(pago_data?.saldo_restante || 0).toFixed(2)}`;
+        // Fallback to formatted text
+        const fallbackText = `${caption}\n\n📋 Desglose:\n• Mora: $${(pago_data?.aplicado_mora || 0).toFixed(2)}\n• Interés: $${(pago_data?.aplicado_interes || 0).toFixed(2)}\n• Capital: $${(pago_data?.aplicado_capital || 0).toFixed(2)}\n• Total: $${(pago_data?.monto_recibido || 0).toFixed(2)}\n• Saldo: $${(pago_data?.saldo_restante || 0).toFixed(2)}`;
         result = await sendWhatsApp(config.api_url, config.api_token, {
           action: "send-text",
           phone,
@@ -132,21 +144,17 @@ Deno.serve(async (req) => {
         mensajeLog = fallbackText;
       }
 
-      // Cleanup temp files from storage immediately
-      await cleanupStorage(supabase, cleanupPaths);
-
       await supabase.from("whatsapp_log").insert({
         empresa_id,
         telefono: phone,
         tipo: "recibo",
         mensaje: mensajeLog,
-        imagen_url: imageUrl ? "(temporal - eliminada)" : null,
         status: result.success ? "enviado" : "error",
-        error_detalle: result.error || (!imageUrl ? "Imagen no generada, se usó fallback de texto" : null),
+        error_detalle: result.error || null,
         referencia_id: pago_data.pago_id || null,
       });
 
-      return new Response(JSON.stringify({ ...result, image_sent: !!imageUrl }), {
+      return new Response(JSON.stringify({ ...result, file_sent: !!fileUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
