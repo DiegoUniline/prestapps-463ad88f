@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { cn, $$, fmtDate, fmtDateTime } from "@/lib/utils";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
@@ -189,6 +190,7 @@ export default function PrestamoDetallePage() {
   const [reestructurarOpen, setReestructurarOpen] = useState(false);
   const [editarOpen, setEditarOpen] = useState(false);
   const [docPreview, setDocPreview] = useState<{ open: boolean; type: "estado" | "contrato" | "pagos" | null }>({ open: false, type: null });
+  const [fotoLightbox, setFotoLightbox] = useState(false);
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
@@ -380,12 +382,18 @@ export default function PrestamoDetallePage() {
               <span className="text-foreground">{folioId}</span>
             </div>
             <div className="flex items-center gap-3 mt-0.5">
-              <Avatar className="h-20 w-20 shrink-0 rounded-xl">
+              <Avatar
+                className={cn("h-20 w-20 shrink-0 rounded-xl", cliente?.foto_cliente && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+                onClick={() => cliente?.foto_cliente && setFotoLightbox(true)}
+              >
                 {cliente?.foto_cliente ? <AvatarImage src={cliente.foto_cliente} alt={cliente.nombre_completo} className="rounded-xl object-cover" /> : null}
                 <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary rounded-xl">
                   {(cliente?.nombre_completo || "C").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              {cliente?.foto_cliente && (
+                <PhotoLightbox open={fotoLightbox} onOpenChange={setFotoLightbox} src={cliente.foto_cliente} alt={cliente.nombre_completo} />
+              )}
               <h1 className="text-xl font-bold tracking-tight">
                 {cliente ? (
                   <Link to={`/clientes/${cliente.id}`} className="hover:text-primary transition-colors">{cliente.nombre_completo}</Link>

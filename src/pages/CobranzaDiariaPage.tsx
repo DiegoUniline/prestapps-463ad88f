@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { VisitaModal } from "@/components/VisitaModal";
@@ -337,6 +338,7 @@ export default function CobranzaDiariaPage() {
   // Visita modal state
   const [visitaOpen, setVisitaOpen] = useState(false);
   const [visitaItem, setVisitaItem] = useState<CuotaDiaria | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   // Navigation to detail page
 
@@ -740,7 +742,10 @@ export default function CobranzaDiariaPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+                      <Avatar
+                        className={cn("h-8 w-8 shrink-0 rounded-lg", cli.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+                        onClick={() => cli.clienteFoto && setLightboxPhoto({ src: cli.clienteFoto, alt: cli.clienteNombre })}
+                      >
                         {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
                         <AvatarFallback className="text-[11px] font-semibold bg-primary/10 text-primary rounded-lg">
                           {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
@@ -820,7 +825,10 @@ export default function CobranzaDiariaPage() {
                   ) : (
                     <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
-                  <Avatar className="h-10 w-10 shrink-0 rounded-lg">
+                  <Avatar
+                    className={cn("h-10 w-10 shrink-0 rounded-lg", cli.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+                    onClick={() => cli.clienteFoto && setLightboxPhoto({ src: cli.clienteFoto, alt: cli.clienteNombre })}
+                  >
                     {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
                     <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary rounded-lg">
                       {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
@@ -904,6 +912,9 @@ export default function CobranzaDiariaPage() {
           cuotaNum={visitaItem.numCuota}
           saldoTotal={visitaItem.saldoTotal}
         />
+      )}
+      {lightboxPhoto && (
+        <PhotoLightbox open={!!lightboxPhoto} onOpenChange={(o) => !o && setLightboxPhoto(null)} src={lightboxPhoto.src} alt={lightboxPhoto.alt} />
       )}
     </div>
   );

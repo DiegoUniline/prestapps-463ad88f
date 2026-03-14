@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, FileText, TrendingUp, AlertTriangle, User } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
@@ -146,6 +147,7 @@ export default function PrestamosPage() {
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -414,7 +416,10 @@ export default function PrestamosPage() {
                 </TableCell>
                 <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">
                   <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6 shrink-0">
+                    <Avatar
+                      className={cn("h-6 w-6 shrink-0", p.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+                      onClick={(e) => { if (p.clienteFoto) { e.stopPropagation(); setLightboxPhoto({ src: p.clienteFoto, alt: p.cliente }); } }}
+                    >
                       {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
                       <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
                         {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
@@ -447,6 +452,9 @@ export default function PrestamosPage() {
 
         </TabsContent>
       </Tabs>
+      {lightboxPhoto && (
+        <PhotoLightbox open={!!lightboxPhoto} onOpenChange={(o) => !o && setLightboxPhoto(null)} src={lightboxPhoto.src} alt={lightboxPhoto.alt} />
+      )}
     </div>
   );
 }
