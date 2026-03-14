@@ -269,15 +269,42 @@ export default function ClienteCobranzaDetallePage() {
 
   // ── Computed ──
   const totales = useMemo(() => {
-    if (!cuentas?.length) return { saldo: 0, mora: 0, cuentas: 0, alCorriente: 0, cuotasVencidas: 0 };
+    if (!cuentas?.length) return { saldo: 0, mora: 0, cuentas: 0, alCorriente: 0, cuotasVencidas: 0, totalAbonado: 0, totalPrestado: 0, totalAPagar: 0, liquidacion: 0, cuotasTotales: 0, cuotasPagadas: 0, proximaCuota: null as Cuota | null, proximaFecha: "", proximoMonto: 0 };
+
+    const saldo = cuentas.reduce((s, c) => s + c.totalSaldo, 0);
+    const mora = cuentas.reduce((s, c) => s + c.totalMora, 0);
+    const alCorriente = cuentas.reduce((s, c) => s + c.montoAlCorriente, 0);
+    const cuotasVencidas = cuentas.reduce((s, c) => s + c.cuotasVencidas, 0);
+    const totalPrestado = cuentas.reduce((s, c) => s + c.montoSolicitado, 0);
+    const totalAPagar = cuentas.reduce((s, c) => s + c.montoTotalPagar, 0);
+    const cuotasTotales = cuentas.reduce((s, c) => s + c.cuotasTotales, 0);
+    const cuotasPagadas = cuentas.reduce((s, c) => s + c.cuotasPagadas, 0);
+
+    // Total abonado = total pagos no anulados
+    const totalAbonado = (pagos || []).filter((p: any) => !p.anulado).reduce((s: number, p: any) => s + Number(p.monto_recibido || 0), 0);
+
+    // Liquidación = solo saldo capital restante (sin intereses futuros ni mora)
+    const liquidacion = cuentas.reduce((s, c) => s + c.cuotasPendientes.reduce((sc, q) => sc + q.saldoCapital, 0), 0);
+
+    // Próxima cuota más cercana no pagada
+    let proximaCuota: Cuota | null = null;
+    for (const c of cuentas) {
+      for (const q of c.cuotasPendientes) {
+        if (!proximaCuota || q.fechaVencimiento < proximaCuota.fechaVencimiento) {
+          proximaCuota = q;
+        }
+      }
+    }
+
     return {
-      saldo: cuentas.reduce((s, c) => s + c.totalSaldo, 0),
-      mora: cuentas.reduce((s, c) => s + c.totalMora, 0),
-      cuentas: cuentas.length,
-      alCorriente: cuentas.reduce((s, c) => s + c.montoAlCorriente, 0),
-      cuotasVencidas: cuentas.reduce((s, c) => s + c.cuotasVencidas, 0),
+      saldo, mora, cuentas: cuentas.length, alCorriente, cuotasVencidas,
+      totalAbonado, totalPrestado, totalAPagar, liquidacion,
+      cuotasTotales, cuotasPagadas,
+      proximaCuota,
+      proximaFecha: proximaCuota?.fechaVencimiento || "",
+      proximoMonto: proximaCuota?.saldoTotal || 0,
     };
-  }, [cuentas]);
+  }, [cuentas, pagos]);
 
   // Flatten all cuotas, apply filters
   const cuotasFiltradas = useMemo(() => {
