@@ -913,6 +913,9 @@ export default function CobranzaDiariaPage() {
           saldoTotal={visitaItem.saldoTotal}
         />
       )}
+      {lightboxPhoto && (
+        <PhotoLightbox open={!!lightboxPhoto} onOpenChange={(o) => !o && setLightboxPhoto(null)} src={lightboxPhoto.src} alt={lightboxPhoto.alt} />
+      )}
     </div>
   );
 }
