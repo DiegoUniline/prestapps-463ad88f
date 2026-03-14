@@ -341,6 +341,16 @@ export default function CobranzaDiariaPage() {
     navigate(`/cobranza/cliente/${clienteId}?fecha=${fechaStr}`);
   };
 
+  // Weekly cut indicator
+  const { data: corteConfig } = useEmpresaCorteConfig(empresaId);
+  const corteDia = corteConfig?.corteDiaSemana ?? 1;
+  const corteColor = corteConfig?.corteColor ?? "#22c55e";
+  const weekStart = useMemo(() => getWeekStart(new Date(), corteDia), [corteDia]);
+  const weekEnd = useMemo(() => getWeekEnd(weekStart), [weekStart]);
+  const weekStartStr = format(weekStart, "yyyy-MM-dd");
+  const weekEndStr = format(weekEnd, "yyyy-MM-dd");
+  const { data: clientesAtendidos } = useClientesAtendidosSemana(empresaId, weekStartStr, weekEndStr);
+
   const fechaStr = format(fecha, "yyyy-MM-dd");
   const { data: cuotas, isLoading } = useCobranzaDiaria(fechaStr, empresaId);
   const { data: cajas } = useCajasAll(empresaId);
