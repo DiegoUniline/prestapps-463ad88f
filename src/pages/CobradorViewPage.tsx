@@ -429,7 +429,7 @@ export default function CobradorViewPage() {
   const { data: cajas } = useCajasAll(empresaId);
   const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, empresaId);
   const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(empresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6);
-  const { user } = useAuth();
+  
   // Preset handlers
   const setHoy = useCallback(() => {
     setRangePreset("hoy");
