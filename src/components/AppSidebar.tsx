@@ -24,7 +24,7 @@ import {
 import {
   LayoutDashboard, CreditCard, Users, Wallet, Route, FileText, HandCoins,
   CalendarCheck, Settings, UserCheck, ClipboardCheck, Building2, MessageSquare,
-  Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog,
+  Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog, BarChart3,
   FileInput, ShieldCheck, Bell, RefreshCw, PieChart, ScrollText,
   type LucideIcon,
 } from "lucide-react";
