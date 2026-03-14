@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Download, X, MessageCircle, Loader2 } from "lucide-react";
+import { Download, MessageCircle, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { sendDocumentViaWhatsApp } from "@/lib/whatsappDocument";
 import jsPDF from "jspdf";
 
 interface DocumentPreviewModalProps {
@@ -10,21 +13,30 @@ interface DocumentPreviewModalProps {
   title: string;
   fileName: string;
   generateDoc: () => Promise<jsPDF>;
-  onSendWhatsApp?: (blobUrl: string) => void;
+  empresaId?: string;
+  clientePhone?: string;
 }
 
 export function DocumentPreviewModal({
-  open, onOpenChange, title, fileName, generateDoc, onSendWhatsApp,
+  open, onOpenChange, title, fileName, generateDoc, empresaId, clientePhone,
 }: DocumentPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [docRef, setDocRef] = useState<jsPDF | null>(null);
+  const [sending, setSending] = useState(false);
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [phone, setPhone] = useState(clientePhone || "");
+
+  useEffect(() => {
+    if (clientePhone) setPhone(clientePhone);
+  }, [clientePhone]);
 
   useEffect(() => {
     if (!open) {
       if (blobUrl) URL.revokeObjectURL(blobUrl);
       setBlobUrl(null);
       setDocRef(null);
+      setShowPhoneInput(false);
       return;
     }
     let cancelled = false;
@@ -47,6 +59,36 @@ export function DocumentPreviewModal({
     docRef.save(fileName);
   };
 
+  const handleWhatsApp = async () => {
+    if (!phone.trim()) {
+      setShowPhoneInput(true);
+      return;
+    }
+    if (!docRef || !empresaId) return;
+
+    setSending(true);
+    try {
+      const blob = docRef.output("blob");
+      const result = await sendDocumentViaWhatsApp(
+        empresaId,
+        phone.trim(),
+        blob,
+        fileName,
+        `📄 ${title} - ${fileName}`,
+      );
+      if (result.success) {
+        toast.success("Documento enviado por WhatsApp");
+        setShowPhoneInput(false);
+      } else {
+        toast.error(result.error || "Error al enviar");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Error al enviar");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0">
@@ -54,9 +96,28 @@ export function DocumentPreviewModal({
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
             <div className="flex items-center gap-2">
-              {onSendWhatsApp && blobUrl && (
-                <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => onSendWhatsApp(blobUrl)}>
-                  <MessageCircle className="h-3.5 w-3.5 mr-1.5" />WhatsApp
+              {showPhoneInput && (
+                <Input
+                  placeholder="Número WhatsApp"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-8 w-40 text-[12px]"
+                />
+              )}
+              {empresaId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-[12px]"
+                  onClick={handleWhatsApp}
+                  disabled={!docRef || sending}
+                >
+                  {sending ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  WhatsApp
                 </Button>
               )}
               <Button variant="default" size="sm" className="h-8 text-[12px]" onClick={handleDownload} disabled={!docRef}>

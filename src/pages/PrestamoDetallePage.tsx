@@ -978,6 +978,8 @@ export default function PrestamoDetallePage() {
           title={docTitles[docPreview.type]}
           fileName={docFileNames[docPreview.type]}
           generateDoc={generateDocForPreview}
+          empresaId={empresaId}
+          clientePhone={cliente?.telefono || ""}
         />
       )}
     </div>
