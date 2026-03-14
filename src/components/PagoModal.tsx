@@ -307,12 +307,13 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       }
 
       // 6) Increment cobrador efectivo_en_mano in profiles if cobrador is assigned
-      if (cobradorId) {
-        const { data: cobData } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", cobradorId).single();
+      const effectiveCobradorId = isNonCobrador ? selectedCobradorId : cobradorId;
+      if (effectiveCobradorId) {
+        const { data: cobData } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", effectiveCobradorId).single();
         if (cobData) {
           await supabase.from("profiles").update({
             efectivo_en_mano: Number(cobData.efectivo_en_mano || 0) + montoNum,
-          }).eq("id", cobradorId);
+          }).eq("id", effectiveCobradorId);
         }
       }
 
