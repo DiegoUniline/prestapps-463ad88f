@@ -84,7 +84,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
       .in("prestamo_id", prestamoIds),
     clienteIds.length > 0
-      ? supabase.from("clientes").select("id, nombre_completo").in("id", clienteIds)
+      ? supabase.from("clientes").select("id, nombre_completo, foto_cliente").in("id", clienteIds)
       : Promise.resolve({ data: [], error: null }),
     cajaIds.length > 0
       ? supabase.from("cajas").select("id, nombre").in("id", cajaIds)
