@@ -104,6 +104,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   const cobradoresData = cobradoresRes.error ? [] : cobradoresRes.data || [];
 
   const clientesMap = Object.fromEntries(clientesData.map((c) => [c.id, c.nombre_completo || "—"]));
+  const clientesFotoMap = Object.fromEntries(clientesData.map((c) => [c.id, c.foto_cliente || null]));
   const cajasMap = Object.fromEntries(cajasData.map((c) => [c.id, c.nombre || "—"]));
   const rutasMap = Object.fromEntries(rutasData.map((r) => [r.id, r.nombre || "—"]));
   const cobradorMap = Object.fromEntries(cobradoresData.map((c) => [c.id, c.nombre_completo || "—"]));
