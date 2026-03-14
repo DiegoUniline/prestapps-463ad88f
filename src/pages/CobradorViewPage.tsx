@@ -391,6 +391,9 @@ export default function CobradorViewPage() {
   // Effective cobrador id (admin can also use this page for testing)
   const effectiveCobradorId = cobradorId;
 
+  // Empresa week config
+  const { data: weekStartsOn = 1 } = useEmpresaSemana(empresaId);
+
   // Date range state
   const today = new Date();
   const [rangePreset, setRangePreset] = useState<RangePreset>("hoy");
@@ -423,6 +426,7 @@ export default function CobradorViewPage() {
   const { data: pagos, isLoading: loadingPagos } = usePagosCobrador(fechaDesdeStr, fechaHastaStr, empresaId, effectiveCobradorId);
   const { data: cajas } = useCajasAll(empresaId);
   const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, empresaId);
+  const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(empresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6);
   const { user } = useAuth();
   // Preset handlers
   const setHoy = useCallback(() => {
