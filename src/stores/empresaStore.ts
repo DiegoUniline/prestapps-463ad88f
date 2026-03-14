@@ -13,7 +13,7 @@ interface EmpresaState {
   loading: boolean;
   _profileLoadedFor: string | null;
 
-  setEmpresaId: (id: string) => void;
+  setEmpresaId: (id: string) => Promise<void>;
   initialize: () => () => void;
 }
 
