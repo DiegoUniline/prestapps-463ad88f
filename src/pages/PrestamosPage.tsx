@@ -642,6 +642,79 @@ export default function PrestamosPage() {
               <TableRow><TableCell colSpan={colSpanTotal} className="text-center py-8 text-destructive text-[13px]">Error al cargar préstamos</TableCell></TableRow>
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={colSpanTotal} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</TableCell></TableRow>
+            ) : groupedData ? (
+              <>
+                {groupedData.map(([groupName, items]) => {
+                  const isExpanded = expandedGroups.has(groupName);
+                  const sumMonto = items.reduce((s, p) => s + p.montoSolicitado, 0);
+                  const sumSaldo = items.reduce((s, p) => s + p.saldo, 0);
+                  const sumMora = items.reduce((s, p) => s + p.mora, 0);
+                  return (
+                    <React.Fragment key={groupName}>
+                      <TableRow
+                        className="bg-muted/60 hover:bg-muted/80 cursor-pointer border-b border-border"
+                        onClick={() => toggleGroup(groupName)}
+                      >
+                        <TableCell colSpan={1} className="px-3 py-2">
+                          {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
+                        </TableCell>
+                        <TableCell colSpan={Math.max(1, visibleColumns.length - 3)} className="px-3 py-2">
+                          <span className="font-bold text-[13px]">{groupName}</span>
+                          <span className="ml-2 text-[11px] text-muted-foreground font-medium">({items.length})</span>
+                        </TableCell>
+                        {visibleColumns.some(c => c.key === "montoSolicitado") && (
+                          <TableCell className="text-right px-3 py-2">
+                            <span className="font-semibold text-[12px]">{$$(sumMonto)}</span>
+                          </TableCell>
+                        )}
+                        {visibleColumns.some(c => c.key === "saldo") && (
+                          <TableCell className="text-right px-3 py-2">
+                            <span className="font-semibold text-[12px]">{$$(sumSaldo)}</span>
+                          </TableCell>
+                        )}
+                        {visibleColumns.some(c => c.key === "mora") && (
+                          <TableCell className="text-right px-3 py-2">
+                            <span className={cn("font-semibold text-[12px]", sumMora > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(sumMora)}</span>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                      {isExpanded && items.map((p) => (
+                        <TableRow
+                          key={p.id}
+                          className={cn(
+                            "cursor-pointer border-b border-border/50 transition-colors group",
+                            selectedRows.has(p.id) ? "bg-table-selected" : "hover:bg-table-hover"
+                          )}
+                          onClick={() => navigate(`/prestamos/${p.id}`)}
+                        >
+                          <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
+                          </TableCell>
+                          {visibleColumns.map((col) => (
+                            <TableCell key={col.key} className={cn("px-3", col.className)}>
+                              {col.render(p, { setLightboxPhoto })}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+                {/* Totals row */}
+                <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                  <TableCell className="px-3" />
+                  {visibleColumns.map((col) => (
+                    <TableCell key={col.key} className={cn("px-3 text-[12px]", col.className)}>
+                      {col.key === "montoSolicitado" ? $$(filtered.reduce((s, p) => s + p.montoSolicitado, 0)) :
+                       col.key === "montoPagar" ? $$(filtered.reduce((s, p) => s + p.montoPagar, 0)) :
+                       col.key === "saldo" ? $$(filtered.reduce((s, p) => s + p.saldo, 0)) :
+                       col.key === "mora" ? $$(filtered.reduce((s, p) => s + p.mora, 0)) :
+                       col.key === "codigoInterno" ? <span className="font-bold text-[11px] uppercase text-muted-foreground">Totales</span> :
+                       ""}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </>
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}
