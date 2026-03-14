@@ -206,6 +206,82 @@ function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: str
   });
 }
 
+// ── Get empresa week start day ──────────────────────────────────
+function useEmpresaSemana(empresaId: string) {
+  return useQuery({
+    queryKey: ["empresa-semana", empresaId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("empresas")
+        .select("corte_dia_semana")
+        .eq("id", empresaId)
+        .single();
+      return (data?.corte_dia_semana ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+function getWeekRange(weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
+  const start = startOfWeek(new Date(), { weekStartsOn });
+  const end = endOfWeek(new Date(), { weekStartsOn });
+  return { start, end };
+}
+
+// ── Weekly summary hook ─────────────────────────────────────────
+function useResumenSemanal(empresaId: string, cobradorId: string | null, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
+  const { start, end } = getWeekRange(weekStartsOn);
+  const desde = format(start, "yyyy-MM-dd");
+  const hasta = format(end, "yyyy-MM-dd");
+
+  return useQuery({
+    queryKey: ["cobrador-resumen-semanal", desde, hasta, empresaId, cobradorId],
+    enabled: !!cobradorId,
+    queryFn: async () => {
+      // Cuotas that fall in this week
+      const { data: cuotas } = await supabase
+        .from("amortizacion")
+        .select("id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento")
+        .eq("empresa_id", empresaId)
+        .gte("fecha_vencimiento", desde)
+        .lte("fecha_vencimiento", hasta);
+
+      if (!cuotas?.length) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
+
+      // Filter by cobrador
+      const prestamoIds = [...new Set(cuotas.map((c) => c.prestamo_id))];
+      const { data: prestamos } = await supabase
+        .from("prestamos")
+        .select("id")
+        .in("id", prestamoIds)
+        .eq("cobrador_id", cobradorId!);
+
+      const validIds = new Set((prestamos || []).map((p) => p.id));
+      const filtered = cuotas.filter((c) => validIds.has(c.prestamo_id));
+
+      // Payments received this week for these cuotas
+      const cuotaIds = filtered.map((c) => c.id);
+      let pagadoTotal = 0;
+      if (cuotaIds.length > 0) {
+        const { data: pagos } = await supabase
+          .from("pagos")
+          .select("monto_recibido")
+          .in("cuota_id", cuotaIds)
+          .eq("anulado", false)
+          .eq("cobrador_id", cobradorId!);
+        pagadoTotal = (pagos || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+      }
+
+      const totalEsperado = filtered.reduce((s, c) => s + Number(c.capital_interes || 0), 0);
+      const porCobrar = Math.max(0, totalEsperado - pagadoTotal);
+      const pct = totalEsperado > 0 ? Math.min(100, (pagadoTotal / totalEsperado) * 100) : 0;
+
+      return { porCobrar, cobrado: pagadoTotal, total: totalEsperado, pct, start, end };
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
 function useCajasAll(empresaId: string) {
   return useQuery({
     queryKey: ["cajas-all", empresaId],
