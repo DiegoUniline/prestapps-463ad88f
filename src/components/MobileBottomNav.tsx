@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { useCan } from "@/hooks/usePermisos";
 import {
   LayoutDashboard, HandCoins, CreditCard, Users, Wallet,
   ClipboardCheck, MoreHorizontal, Bell, FileText, PieChart,
@@ -20,34 +21,46 @@ interface NavTab {
   url: string;
   icon: LucideIcon;
   roles: string[];
+  highlight?: boolean;
 }
 
+// Tabs sin Mi Cobranza (se inyecta dinámicamente en el centro)
 const mainTabs: Record<string, NavTab[]> = {
   admin: [
     { title: "Inicio", url: "/dashboard", icon: LayoutDashboard, roles: ["admin"] },
     { title: "Cobranza", url: "/cobranza", icon: ClipboardCheck, roles: ["admin"] },
+    // Mi Cobranza se inserta aquí dinámicamente
     { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin"] },
     { title: "Alertas", url: "/alertas", icon: Bell, roles: ["admin"] },
   ],
   supervisor: [
     { title: "Inicio", url: "/dashboard", icon: LayoutDashboard, roles: ["supervisor"] },
     { title: "Cobranza", url: "/cobranza", icon: ClipboardCheck, roles: ["supervisor"] },
+    // Mi Cobranza se inserta aquí dinámicamente
     { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["supervisor"] },
     { title: "Clientes", url: "/clientes", icon: Users, roles: ["supervisor"] },
   ],
   cobrador: [
     { title: "Inicio", url: "/dashboard", icon: LayoutDashboard, roles: ["cobrador"] },
-    { title: "Mi Cobro", url: "/mi-cobranza", icon: HandCoins, roles: ["cobrador"] },
+    // Mi Cobranza se inserta aquí dinámicamente
     { title: "Cobranza", url: "/cobranza", icon: ClipboardCheck, roles: ["cobrador"] },
     { title: "Pagos", url: "/pagos", icon: Wallet, roles: ["cobrador"] },
   ],
+};
+
+const miCobranzaTab: NavTab = {
+  title: "Mi Cobro",
+  url: "/mi-cobranza",
+  icon: HandCoins,
+  roles: ["admin", "supervisor", "cobrador"],
+  highlight: true,
 };
 
 const allMenuItems: { section: string; items: NavTab[] }[] = [
   {
     section: "Operaciones",
     items: [
-      { title: "Mi Cobranza", url: "/mi-cobranza", icon: HandCoins, roles: ["cobrador"] },
+      { title: "Mi Cobranza", url: "/mi-cobranza", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },
       { title: "Cobranza Diaria", url: "/cobranza", icon: ClipboardCheck, roles: ["admin", "supervisor", "cobrador"] },
       { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin", "supervisor", "cobrador"] },
       { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },
@@ -103,8 +116,17 @@ export function MobileBottomNav() {
   const navigate = useNavigate();
   const { role } = useCurrentUserRole();
   const [open, setOpen] = useState(false);
+  const canMiCobranza = useCan("mi_cobranza", "ver");
 
-  const tabs = mainTabs[role] || mainTabs.cobrador;
+  const baseTabs = mainTabs[role] || mainTabs.cobrador;
+
+  // Inject Mi Cobranza in the center if permitted
+  const tabs = canMiCobranza
+    ? (() => {
+        const center = Math.ceil(baseTabs.length / 2);
+        return [...baseTabs.slice(0, center), miCobranzaTab, ...baseTabs.slice(center)];
+      })()
+    : baseTabs;
 
   const isActive = (path: string) =>
     location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
@@ -119,21 +141,47 @@ export function MobileBottomNav() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border safe-area-bottom">
       <div className="flex items-center justify-around h-14">
-        {tabs.map((tab) => (
-          <button
-            key={tab.url}
-            onClick={() => navigate(tab.url)}
-            className={cn(
-              "flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors",
-              isActive(tab.url)
-                ? "text-primary"
-                : "text-muted-foreground"
-            )}
-          >
-            <tab.icon className={cn("h-5 w-5", isActive(tab.url) && "stroke-[2.5]")} />
-            <span className="text-[10px] font-medium leading-none">{tab.title}</span>
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const active = isActive(tab.url);
+          const isHighlight = tab.highlight;
+
+          if (isHighlight) {
+            return (
+              <button
+                key={tab.url}
+                onClick={() => navigate(tab.url)}
+                className="flex flex-col items-center justify-center flex-1 h-full -mt-3"
+              >
+                <div className={cn(
+                  "flex items-center justify-center h-12 w-12 rounded-full shadow-lg transition-all",
+                  active
+                    ? "bg-primary text-primary-foreground scale-110"
+                    : "bg-primary/90 text-primary-foreground"
+                )}>
+                  <tab.icon className="h-5 w-5" />
+                </div>
+                <span className={cn(
+                  "text-[9px] font-semibold leading-none mt-0.5",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}>{tab.title}</span>
+              </button>
+            );
+          }
+
+          return (
+            <button
+              key={tab.url}
+              onClick={() => navigate(tab.url)}
+              className={cn(
+                "flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors",
+                active ? "text-primary" : "text-muted-foreground"
+              )}
+            >
+              <tab.icon className={cn("h-5 w-5", active && "stroke-[2.5]")} />
+              <span className="text-[10px] font-medium leading-none">{tab.title}</span>
+            </button>
+          );
+        })}
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
