@@ -674,28 +674,23 @@ export default function CobradorViewPage() {
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-10">
-          <TabsTrigger value="cobranza" className="text-xs sm:text-sm gap-1">
-            <HandCoins className="h-3.5 w-3.5 hidden sm:inline" />
+        <TabsList className="w-full grid grid-cols-5 h-10 p-1">
+          <TabsTrigger value="cobranza" className="text-[11px] sm:text-sm px-1 gap-0.5">
             Cobrar
             {kpis.pendientes > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 min-w-5 text-[10px] px-1">{kpis.pendientes}</Badge>
+              <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{kpis.pendientes}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="cartera" className="text-xs sm:text-sm gap-1">
-            <Briefcase className="h-3.5 w-3.5 hidden sm:inline" />
+          <TabsTrigger value="cartera" className="text-[11px] sm:text-sm px-1">
             Cartera
           </TabsTrigger>
-          <TabsTrigger value="historial" className="text-xs sm:text-sm gap-1">
-            <History className="h-3.5 w-3.5 hidden sm:inline" />
+          <TabsTrigger value="historial" className="text-[11px] sm:text-sm px-1">
             Historial
           </TabsTrigger>
-          <TabsTrigger value="pagos" className="text-xs sm:text-sm gap-1">
-            <Receipt className="h-3.5 w-3.5 hidden sm:inline" />
+          <TabsTrigger value="pagos" className="text-[11px] sm:text-sm px-1">
             Pagos
           </TabsTrigger>
-          <TabsTrigger value="perfil" className="text-xs sm:text-sm gap-1">
-            <User className="h-3.5 w-3.5 hidden sm:inline" />
+          <TabsTrigger value="perfil" className="text-[11px] sm:text-sm px-1">
             Perfil
           </TabsTrigger>
         </TabsList>
