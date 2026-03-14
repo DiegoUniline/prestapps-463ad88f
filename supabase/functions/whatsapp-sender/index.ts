@@ -107,41 +107,34 @@ Deno.serve(async (req) => {
       let caption = template?.mensaje || "✅ Recibo de pago {folio} por ${monto_recibido}. Gracias por su pago.";
       caption = replaceVariables(caption, { ...pago_data, ...cliente_data, ...empresa_data, ...prestamo_data });
 
-      // Build receipt HTML and upload to storage
+      // Build receipt HTML, screenshot to PNG, upload to storage
       const receiptHtml = buildReceiptHtml(pago_data, empresa_data, cliente_data, prestamo_data);
-      const { fileUrl, cleanupPath } = await generateReceiptUrl(supabase, receiptHtml, empresa_id);
-      const cleanupPaths = cleanupPath ? [cleanupPath] : [];
+      const { imageUrl, cleanupPaths } = await generateReceiptImage(supabase, receiptHtml, empresa_id);
 
       let result;
       let mensajeLog = caption;
 
-      if (fileUrl) {
-        // First send the caption text
-        await sendWhatsApp(config.api_url, config.api_token, {
-          action: "send-text",
-          phone,
-          message: caption,
-        });
-
-        // Then send the receipt as a file
+      if (imageUrl) {
+        // Send image with caption
         result = await sendWhatsApp(config.api_url, config.api_token, {
-          action: "send-file",
+          action: "send-image",
           phone,
-          url: fileUrl,
-          fileName: `Recibo-${pago_data?.folio || "pago"}.html`,
+          url: imageUrl,
+          caption,
         });
-
-        // Wait a moment for WhatsApp to download, then cleanup
-        setTimeout(() => cleanupStorage(supabase, cleanupPaths), 15000);
+        // Cleanup after WhatsApp downloads the image
+        setTimeout(() => cleanupStorage(supabase, cleanupPaths), 30000);
       } else {
         // Fallback to formatted text
-        const fallbackText = `${caption}\n\n📋 Desglose:\n• Mora: $${(pago_data?.aplicado_mora || 0).toFixed(2)}\n• Interés: $${(pago_data?.aplicado_interes || 0).toFixed(2)}\n• Capital: $${(pago_data?.aplicado_capital || 0).toFixed(2)}\n• Total: $${(pago_data?.monto_recibido || 0).toFixed(2)}\n• Saldo: $${(pago_data?.saldo_restante || 0).toFixed(2)}`;
+        const fallbackText = `${caption}\n\n📋 Desglose:\n• Mora: $${(pago_data?.aplicado_mora || 0).toFixed(2)}\n• Interés: $${(pago_data?.aplicado_interes || 0).toFixed(2)}\n• Capital: $${(pago_data?.aplicado_capital || 0).toFixed(2)}\n• Total pagado: $${(pago_data?.monto_recibido || 0).toFixed(2)}\n• Saldo restante: $${(pago_data?.saldo_restante || 0).toFixed(2)}`;
         result = await sendWhatsApp(config.api_url, config.api_token, {
           action: "send-text",
           phone,
           message: fallbackText,
         });
         mensajeLog = fallbackText;
+        // Cleanup any partial uploads
+        await cleanupStorage(supabase, cleanupPaths);
       }
 
       await supabase.from("whatsapp_log").insert({
@@ -154,7 +147,7 @@ Deno.serve(async (req) => {
         referencia_id: pago_data.pago_id || null,
       });
 
-      return new Response(JSON.stringify({ ...result, file_sent: !!fileUrl }), {
+      return new Response(JSON.stringify({ ...result, image_sent: !!imageUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
