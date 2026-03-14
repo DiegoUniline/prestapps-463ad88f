@@ -197,6 +197,16 @@ function DatosGeneralesTab() {
               <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.direccion || "—"}</p>
             )}
           </div>
+          <div className="space-y-2">
+            <Label>Días de gracia para mora</Label>
+            <p className="text-xs text-muted-foreground">Número de días después del vencimiento antes de marcar como "Vencido"</p>
+            {editing ? (
+              <Input type="number" min={0} max={90} value={form.dias_gracia} onChange={(e) => setForm({ ...form, dias_gracia: parseInt(e.target.value) || 0 })} />
+            ) : (
+              <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.dias_gracia} día{form.dias_gracia !== 1 ? "s" : ""}</p>
+            )}
+          </div>
+          </div>
           {editing && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleCancel} className="flex-1">
