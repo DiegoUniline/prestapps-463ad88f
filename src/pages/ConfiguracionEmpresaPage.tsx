@@ -577,17 +577,135 @@ function ContratoTab() {
   );
 }
 
+// ── Tab: Corte Semanal ──
+const DIAS_SEMANA = [
+  { value: "0", label: "Domingo" },
+  { value: "1", label: "Lunes" },
+  { value: "2", label: "Martes" },
+  { value: "3", label: "Miércoles" },
+  { value: "4", label: "Jueves" },
+  { value: "5", label: "Viernes" },
+  { value: "6", label: "Sábado" },
+];
+
+function CorteSemanalTab() {
+  const { empresaId } = useEmpresa();
+  const qc = useQueryClient();
+
+  const { data: empresa, isLoading } = useQuery({
+    queryKey: ["empresa-corte-config", empresaId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from as any)("empresas")
+        .select("corte_dia_semana, corte_color_cobrado")
+        .eq("id", empresaId)
+        .single();
+      if (error) throw error;
+      return data as { corte_dia_semana: number; corte_color_cobrado: string };
+    },
+  });
+
+  const [dia, setDia] = useState("1");
+  const [color, setColor] = useState("#22c55e");
+
+  useEffect(() => {
+    if (empresa) {
+      setDia(String(empresa.corte_dia_semana ?? 1));
+      setColor(empresa.corte_color_cobrado || "#22c55e");
+    }
+  }, [empresa]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase.from as any)("empresas")
+        .update({ corte_dia_semana: parseInt(dia), corte_color_cobrado: color })
+        .eq("id", empresaId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["empresa-corte"] });
+      qc.invalidateQueries({ queryKey: ["empresa-corte-config"] });
+      toast.success("Configuración de corte guardada");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" /></div>;
+  }
+
+  return (
+    <div className="max-w-lg space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarCheck className="h-5 w-5 text-primary" /> Corte Semanal de Cobranza
+          </CardTitle>
+          <CardDescription>
+            Configura el día en que se reinicia la semana de cobranza y el color del indicador 
+            que marca si un cliente ya fue atendido (pago o visita) en la semana actual.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label>Día de inicio de semana</Label>
+            <Select value={dia} onValueChange={setDia}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DIAS_SEMANA.map((d) => (
+                  <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              El indicador de "atendido" se reinicia automáticamente cada {DIAS_SEMANA.find((d) => d.value === dia)?.label || "Lunes"}.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Color del indicador</Label>
+            <div className="flex items-center gap-4">
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="h-10 w-14 rounded-md border border-border cursor-pointer"
+              />
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">Vista previa:</span>
+                <span className="inline-block h-4 w-4 rounded-full border border-border/40" style={{ backgroundColor: color }} />
+                <span className="text-xs font-medium">Atendido</span>
+                <span className="inline-block h-4 w-4 rounded-full border border-border/40" style={{ backgroundColor: "transparent" }} />
+                <span className="text-xs text-muted-foreground">Sin atender</span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Este círculo aparece junto a cada cliente en la vista de Cobranza Diaria.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full">
+        <Save className="h-4 w-4 mr-1" />
+        {saveMutation.isPending ? "Guardando..." : "Guardar Configuración de Corte"}
+      </Button>
+    </div>
+  );
+}
+
 // ── Página Principal ──
 export default function ConfiguracionEmpresaPage() {
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Configuración de la Empresa</h1>
-        <p className="text-muted-foreground text-sm mt-1">Logo, datos, tickets, contratos y pagos con tarjeta</p>
+        <p className="text-muted-foreground text-sm mt-1">Logo, datos, tickets, contratos, corte semanal y pagos con tarjeta</p>
       </div>
 
       <Tabs defaultValue="datos" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="datos" className="gap-1.5">
             <Building2 className="h-4 w-4" /> Datos Generales
           </TabsTrigger>
@@ -596,6 +714,9 @@ export default function ConfiguracionEmpresaPage() {
           </TabsTrigger>
           <TabsTrigger value="contrato" className="gap-1.5">
             <FileText className="h-4 w-4" /> Contrato
+          </TabsTrigger>
+          <TabsTrigger value="corte" className="gap-1.5">
+            <CalendarCheck className="h-4 w-4" /> Corte Semanal
           </TabsTrigger>
           <TabsTrigger value="stripe" className="gap-1.5">
             <CreditCard className="h-4 w-4" /> Stripe
@@ -610,6 +731,9 @@ export default function ConfiguracionEmpresaPage() {
         </TabsContent>
         <TabsContent value="contrato">
           <ContratoTab />
+        </TabsContent>
+        <TabsContent value="corte">
+          <CorteSemanalTab />
         </TabsContent>
         <TabsContent value="stripe">
           <StripeConnectTab />
