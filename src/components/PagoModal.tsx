@@ -243,7 +243,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           metodo_pago: metodo as any,
           caja_id: cajaId,
           ruta_id: rutaId || null,
-          cobrador_id: (isNonCobrador ? selectedCobradorId : cobradorId) || null,
+          cobrador_id: selectedCobradorId || cobradorId || null,
           gps_lat: geo.lat,
           gps_lng: geo.lng,
           empresa_id: empresaId,
