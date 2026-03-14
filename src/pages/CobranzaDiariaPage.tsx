@@ -820,6 +820,12 @@ export default function CobranzaDiariaPage() {
                   ) : (
                     <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
+                  <Avatar className="h-10 w-10 shrink-0 rounded-lg">
+                    {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
+                    <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary rounded-lg">
+                      {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0">
                     <p className="font-medium text-[13px] truncate">{cli.clienteNombre}</p>
                     <p className="text-[11px] text-muted-foreground">
