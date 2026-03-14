@@ -25,8 +25,16 @@ Deno.serve(async (req) => {
       .eq("empresa_id", empresa_id)
       .single();
 
-    if (!config || !config.activo) {
-      return new Response(JSON.stringify({ error: "WhatsApp no configurado o inactivo para esta empresa" }), {
+    const isTest = body.test === true;
+
+    if (!config) {
+      return new Response(JSON.stringify({ error: "WhatsApp no configurado para esta empresa" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!config.activo && !isTest) {
+      return new Response(JSON.stringify({ error: "WhatsApp está inactivo para esta empresa. Actívalo en configuración." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
