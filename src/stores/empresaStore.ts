@@ -28,10 +28,10 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
 
   setEmpresaId: async (id: string) => {
     localStorage.setItem("empresa_id", id);
-    // Update profile first so get_user_empresa_id() returns the new empresa (RLS)
+    // Use SECURITY DEFINER function to bypass RLS when switching empresa
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      await supabase.from("profiles").update({ empresa_id: id }).eq("id", session.user.id);
+      await (supabase.rpc as any)("switch_empresa", { p_empresa_id: id });
     }
     // Now update state — queries will refetch with correct RLS context
     set({ empresaId: id, empresaNombre: get().empresas.find((e) => e.id === id)?.nombre || "Empresa" });
