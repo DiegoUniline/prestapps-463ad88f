@@ -6,12 +6,13 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { isSuperAdmin } from "@/components/SuperAdminGuard";
-import { Moon, Sun, Bell, Building2, LogOut } from "lucide-react";
+import { Moon, Sun, Building2, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { MobileMenuSheet } from "@/components/MobileMenuSheet";
 
 export function TopBar() {
   const { theme, toggleTheme } = useTheme();
@@ -28,6 +29,7 @@ export function TopBar() {
       <div className="flex items-center gap-2">
         <SidebarTrigger className="hidden md:flex" />
         <div className="flex md:hidden items-center gap-2">
+          <MobileMenuSheet role={role} />
           <img src={logoIcon} alt="PrestApp" className="h-7 w-7 rounded-lg object-contain" />
           <span className="font-bold text-sm">PrestApp</span>
         </div>
