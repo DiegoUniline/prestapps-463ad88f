@@ -65,13 +65,14 @@ export default function AuditoriaPage() {
   const { data: promesas, isLoading: lpr } = useQuery({
     queryKey: ["audit-promesas", empresaId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("promesas_pago")
-        .select("id, monto_prometido, fecha_prometida, status, created_at, prestamo_id")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      return data || [];
+      const data = await fetchAllRows<any>(
+        supabase
+          .from("promesas_pago")
+          .select("id, monto_prometido, fecha_prometida, status, created_at, prestamo_id")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false })
+      );
+      return data;
     },
   });
 
