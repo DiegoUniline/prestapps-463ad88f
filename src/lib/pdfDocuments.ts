@@ -293,20 +293,22 @@ export async function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[
   y += 6;
 
   const clientFields = [
-    ["Nombre", prestamo.clienteNombre],
-    ["Documento", prestamo.clienteDni || "—"],
-    ["Dirección", prestamo.clienteDireccion || "—"],
-    ["Teléfono", prestamo.clienteTelefono || "—"],
+    [["Nombre", prestamo.clienteNombre], ["Documento", prestamo.clienteDni || "—"]],
+    [["Dirección", prestamo.clienteDireccion || "—"], ["Teléfono", prestamo.clienteTelefono || "—"]],
   ];
 
   doc.setFontSize(8);
-  clientFields.forEach(([label, value]) => {
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...GRAY);
-    doc.text(label, 14, y);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...DARK);
-    doc.text(value, 55, y);
+  clientFields.forEach((row) => {
+    row.forEach(([label, value], col) => {
+      const x = col === 0 ? 14 : 110;
+      const xVal = col === 0 ? 45 : 145;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text(label, x, y);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...DARK);
+      doc.text(value, xVal, y);
+    });
     y += 5;
   });
 
@@ -318,30 +320,28 @@ export async function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[
   doc.text("Condiciones del Crédito", 14, y);
   y += 6;
 
-  const terms = [
-    ["Monto Solicitado", $$(prestamo.montoSolicitado)],
-    ["Total a Pagar", $$(prestamo.montoTotalPagar)],
-    ["Modalidad", modalidadText],
-    ["Número de Cuotas", `${prestamo.numCuotas}`],
-    ["Frecuencia de Pago", prestamo.frecuencia],
-    ["Tasa de Interés", `${prestamo.tasaInteres}%`],
-    ["Valor de Cuota", cuotaVal],
-    ["Gastos Legales", $$(prestamo.gastosLegales)],
-    ["Tipo de Mora", `${prestamo.tipoMora} — ${prestamo.valorMora}${prestamo.tipoMora === "porcentaje" ? "%" : ""}`],
-    ["Fecha de Registro", prestamo.fechaRegistro],
-    ["Fecha Primer Pago", prestamo.fechaPrimerPago],
-    ["Ruta", prestamo.ruta || "—"],
-    ["Caja", prestamo.caja || "—"],
+  const terms: [string, string][][] = [
+    [["Monto Solicitado", $$(prestamo.montoSolicitado)], ["Total a Pagar", $$(prestamo.montoTotalPagar)]],
+    [["Modalidad", modalidadText], ["Tasa de Interés", `${prestamo.tasaInteres}%`]],
+    [["Número de Cuotas", `${prestamo.numCuotas}`], ["Frecuencia", prestamo.frecuencia], ["Valor de Cuota", cuotaVal]],
+    [["Gastos Legales", $$(prestamo.gastosLegales)], ["Tipo de Mora", `${prestamo.tipoMora} — ${prestamo.valorMora}${prestamo.tipoMora === "porcentaje" ? "%" : ""}`]],
+    [["Fecha Registro", prestamo.fechaRegistro], ["Primer Pago", prestamo.fechaPrimerPago]],
+    [["Ruta", prestamo.ruta || "—"], ["Caja", prestamo.caja || "—"]],
   ];
 
   doc.setFontSize(8);
-  terms.forEach(([label, value]) => {
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...GRAY);
-    doc.text(label, 14, y);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...DARK);
-    doc.text(value, 65, y);
+  terms.forEach((row) => {
+    const colWidth = 196 / row.length;
+    row.forEach(([label, value], col) => {
+      const x = 14 + col * colWidth;
+      const xVal = x + Math.min(colWidth * 0.45, 35);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text(label, x, y);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...DARK);
+      doc.text(value, xVal, y);
+    });
     y += 5;
   });
 
