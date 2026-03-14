@@ -356,30 +356,64 @@ function buildReceiptHtml(pago: any, empresa: any, cliente: any, prestamo: any):
 </body></html>`;
 }
 
-async function htmlToImage(html: string): Promise<string | null> {
+async function generateReceiptImage(
+  supabase: any,
+  html: string,
+  empresaId: string
+): Promise<{ imageUrl: string | null; cleanupPaths: string[] }> {
+  const cleanupPaths: string[] = [];
   try {
-    // Use hcti.io free API for HTML to image conversion
-    const res = await fetch("https://hcti.io/v1/image", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Basic " + btoa("none:none"),
-      },
-      body: JSON.stringify({
-        html,
-        css: "",
-        google_fonts: "Courier Prime",
-      }),
-    });
+    const uid = crypto.randomUUID();
+    const htmlPath = `temp-receipts/${empresaId}/${uid}.html`;
 
-    if (res.ok) {
-      const data = await res.json();
-      return data.url || null;
-    }
+    // 1. Upload HTML to storage
+    const encoder = new TextEncoder();
+    const htmlBytes = encoder.encode(html);
+    const { error: htmlErr } = await supabase.storage
+      .from("empresa-assets")
+      .upload(htmlPath, htmlBytes, { contentType: "text/html", upsert: true });
+    if (htmlErr) throw htmlErr;
+    cleanupPaths.push(htmlPath);
 
-    // Fallback: use a simple data URL approach - send as text instead
-    return null;
-  } catch {
-    return null;
+    // 2. Get public URL of the HTML
+    const { data: htmlUrlData } = supabase.storage
+      .from("empresa-assets")
+      .getPublicUrl(htmlPath);
+    const htmlPublicUrl = htmlUrlData.publicUrl;
+
+    // 3. Use thum.io to screenshot the HTML page and get image bytes
+    const screenshotUrl = `https://image.thum.io/get/width/400/crop/900/png/${htmlPublicUrl}`;
+    const imgRes = await fetch(screenshotUrl);
+    if (!imgRes.ok) throw new Error(`Screenshot service returned ${imgRes.status}`);
+
+    const imgBytes = new Uint8Array(await imgRes.arrayBuffer());
+    if (imgBytes.length < 1000) throw new Error("Image too small, likely failed");
+
+    // 4. Upload the image to storage
+    const imgPath = `temp-receipts/${empresaId}/${uid}.png`;
+    const { error: imgErr } = await supabase.storage
+      .from("empresa-assets")
+      .upload(imgPath, imgBytes, { contentType: "image/png", upsert: true });
+    if (imgErr) throw imgErr;
+    cleanupPaths.push(imgPath);
+
+    // 5. Get public URL of the image
+    const { data: imgUrlData } = supabase.storage
+      .from("empresa-assets")
+      .getPublicUrl(imgPath);
+
+    return { imageUrl: imgUrlData.publicUrl, cleanupPaths };
+  } catch (e) {
+    console.error("generateReceiptImage error:", e);
+    return { imageUrl: null, cleanupPaths };
+  }
+}
+
+async function cleanupStorage(supabase: any, paths: string[]) {
+  if (paths.length === 0) return;
+  try {
+    await supabase.storage.from("empresa-assets").remove(paths);
+  } catch (e) {
+    console.error("Storage cleanup error:", e);
   }
 }
