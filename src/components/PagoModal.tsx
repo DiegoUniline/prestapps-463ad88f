@@ -423,6 +423,23 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
               </Select>
               <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
             </div>
+            {/* Cobrador selector for admin/supervisor */}
+            {isNonCobrador && (
+              <div className="col-span-2">
+                <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Cobrador (comisión)</Label>
+                <Select value={selectedCobradorId} onValueChange={setSelectedCobradorId}>
+                  <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                  <SelectContent>
+                    {cobradores.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  La comisión de este pago se asignará al cobrador seleccionado.
+                </p>
+              </div>
+            )}
             <div className="col-span-2">
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Fecha de Pago</Label>
               <Popover>
