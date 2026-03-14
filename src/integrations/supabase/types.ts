@@ -729,6 +729,8 @@ export type Database = {
       empresas: {
         Row: {
           activa: boolean
+          corte_color_cobrado: string
+          corte_dia_semana: number
           created_at: string | null
           direccion: string | null
           id: string
@@ -741,6 +743,8 @@ export type Database = {
         }
         Insert: {
           activa?: boolean
+          corte_color_cobrado?: string
+          corte_dia_semana?: number
           created_at?: string | null
           direccion?: string | null
           id?: string
@@ -753,6 +757,8 @@ export type Database = {
         }
         Update: {
           activa?: boolean
+          corte_color_cobrado?: string
+          corte_dia_semana?: number
           created_at?: string | null
           direccion?: string | null
           id?: string
