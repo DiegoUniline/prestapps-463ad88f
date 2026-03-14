@@ -255,7 +255,7 @@ export default function WhatsAppConfigPage() {
                         type={showToken ? "text" : "password"}
                         placeholder="Ingresa tu API Token de WhatsAPI"
                         value={form.api_token}
-                        onChange={(e) => setForm({ ...form, api_token: e.target.value })}
+                        onChange={(e) => handleTokenChange(e.target.value)}
                         autoFocus
                       />
                       <Button variant="ghost" size="icon" className="shrink-0" onClick={() => setShowToken(!showToken)}>
