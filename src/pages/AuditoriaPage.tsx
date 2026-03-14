@@ -50,13 +50,14 @@ export default function AuditoriaPage() {
   const { data: gestiones, isLoading: lg } = useQuery({
     queryKey: ["audit-gestiones", empresaId],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("crm_gestiones")
-        .select("id, tipo_gestion, resultado, notas, created_at, registrado_por, prestamo_id, clientes!inner(nombre_completo)")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(200);
-      return data || [];
+      const data = await fetchAllRows<any>(
+        supabase
+          .from("crm_gestiones")
+          .select("id, tipo_gestion, resultado, notas, created_at, registrado_por, prestamo_id, clientes!inner(nombre_completo)")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false })
+      );
+      return data;
     },
   });
 
