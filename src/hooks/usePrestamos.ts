@@ -146,6 +146,18 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   return prestamos.map((p) => {
     const amort = amortByPrestamo[p.id] || { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
 
+    // Compute visual estado: override DB estado if real-time data says otherwise
+    let estado = p.estado || "Activo";
+    if (estado !== "Cancelado" && estado !== "Liquidado" && estado !== "Juridico") {
+      if (amort.pagadas >= Number(p.num_cuotas || 0) && Number(p.num_cuotas || 0) > 0) {
+        estado = "Liquidado";
+      } else if (amort.diasAtraso > diasGracia) {
+        estado = "Vencido";
+      } else {
+        estado = "Activo";
+      }
+    }
+
     return {
       id: p.id,
       idPrestamo: p.id_prestamo || p.id.slice(0, 8),
@@ -165,7 +177,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       cobradorId: p.cobrador_id,
       saldo: amort.saldo,
       mora: amort.mora,
-      estado: p.estado || "Activo",
+      estado,
       fechaRegistro: p.fecha_registro || "",
       fechaPrimerPago: p.fecha_primer_pago || "",
       tieneAtraso: amort.tieneAtraso,
