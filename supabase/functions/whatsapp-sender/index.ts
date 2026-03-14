@@ -356,56 +356,30 @@ function buildReceiptHtml(pago: any, empresa: any, cliente: any, prestamo: any):
 </body></html>`;
 }
 
-async function generateReceiptImage(
+async function generateReceiptUrl(
   supabase: any,
   html: string,
   empresaId: string
-): Promise<{ imageUrl: string | null; cleanupPaths: string[] }> {
-  const cleanupPaths: string[] = [];
+): Promise<{ fileUrl: string | null; cleanupPath: string | null }> {
   try {
     const uid = crypto.randomUUID();
-    const htmlPath = `temp-receipts/${empresaId}/${uid}.html`;
+    const filePath = `temp-receipts/${empresaId}/${uid}.html`;
 
-    // 1. Upload HTML to storage
     const encoder = new TextEncoder();
     const htmlBytes = encoder.encode(html);
-    const { error: htmlErr } = await supabase.storage
+    const { error } = await supabase.storage
       .from("empresa-assets")
-      .upload(htmlPath, htmlBytes, { contentType: "text/html", upsert: true });
-    if (htmlErr) throw htmlErr;
-    cleanupPaths.push(htmlPath);
+      .upload(filePath, htmlBytes, { contentType: "text/html", upsert: true });
+    if (error) throw error;
 
-    // 2. Get public URL of the HTML
-    const { data: htmlUrlData } = supabase.storage
+    const { data } = supabase.storage
       .from("empresa-assets")
-      .getPublicUrl(htmlPath);
-    const htmlPublicUrl = htmlUrlData.publicUrl;
+      .getPublicUrl(filePath);
 
-    // 3. Use thum.io to screenshot the HTML page and get image bytes
-    const screenshotUrl = `https://image.thum.io/get/width/400/crop/900/png/${htmlPublicUrl}`;
-    const imgRes = await fetch(screenshotUrl);
-    if (!imgRes.ok) throw new Error(`Screenshot service returned ${imgRes.status}`);
-
-    const imgBytes = new Uint8Array(await imgRes.arrayBuffer());
-    if (imgBytes.length < 1000) throw new Error("Image too small, likely failed");
-
-    // 4. Upload the image to storage
-    const imgPath = `temp-receipts/${empresaId}/${uid}.png`;
-    const { error: imgErr } = await supabase.storage
-      .from("empresa-assets")
-      .upload(imgPath, imgBytes, { contentType: "image/png", upsert: true });
-    if (imgErr) throw imgErr;
-    cleanupPaths.push(imgPath);
-
-    // 5. Get public URL of the image
-    const { data: imgUrlData } = supabase.storage
-      .from("empresa-assets")
-      .getPublicUrl(imgPath);
-
-    return { imageUrl: imgUrlData.publicUrl, cleanupPaths };
+    return { fileUrl: data.publicUrl, cleanupPath: filePath };
   } catch (e) {
-    console.error("generateReceiptImage error:", e);
-    return { imageUrl: null, cleanupPaths };
+    console.error("generateReceiptUrl error:", e);
+    return { fileUrl: null, cleanupPath: null };
   }
 }
 
