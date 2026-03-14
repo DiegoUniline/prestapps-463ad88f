@@ -218,7 +218,26 @@ export default function PagosPage() {
     return data;
   }, [pagos, search, selMetodo, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
 
-  // KPIs
+  // Grouped data computation
+  const groupedData = useMemo(() => {
+    if (!groupBy) return null;
+    const groups: Record<string, typeof filtered> = {};
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    for (const p of filtered) {
+      let key: string;
+      if (groupBy === "anulado") key = p.anulado ? "Anulado" : "Válido";
+      else if (groupBy === "shortId") key = `${p.shortId} — ${p.cliente}`;
+      else if (groupBy === "metodo") key = p.metodo;
+      else if (groupBy === "mesPago") {
+        const d = p.fecha ? new Date(p.fecha) : null;
+        key = d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : "Sin fecha";
+      } else key = "—";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtered, groupBy]);
+
   const totalPagos = pagos.length;
   const totalRecaudado = pagos.reduce((s, p) => s + p.montoRecibido, 0);
   const totalMora = pagos.reduce((s, p) => s + p.aplicadoMora, 0);
