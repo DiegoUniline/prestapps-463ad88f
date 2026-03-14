@@ -219,6 +219,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           gps_lat: geo.lat,
           gps_lng: geo.lng,
           empresa_id: empresaId,
+          fecha_pago: format(fechaPago, "yyyy-MM-dd"),
+          registrado_por: user?.id || null,
         } as any);
         if (pagoErr) throw pagoErr;
 
