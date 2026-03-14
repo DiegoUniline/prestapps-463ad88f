@@ -440,6 +440,25 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                 </p>
               </div>
             )}
+            {/* Read-only: Registrado por & Fecha/hora */}
+            <div>
+              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Registrado por</Label>
+              <Input
+                value={user?.email || "—"}
+                readOnly
+                disabled
+                className="mt-1 h-9 text-[13px] bg-muted"
+              />
+            </div>
+            <div>
+              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Fecha/hora registro</Label>
+              <Input
+                value={format(new Date(), "dd/MM/yyyy HH:mm")}
+                readOnly
+                disabled
+                className="mt-1 h-9 text-[13px] bg-muted"
+              />
+            </div>
             <div className="col-span-2">
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Fecha de Pago</Label>
               <Popover>
