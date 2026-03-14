@@ -155,6 +155,23 @@ export default function PagosPage() {
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
 
+  // Grouping
+  const [groupBy, setGroupBy] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const groupByOptions = [
+    { key: "anulado", label: "Estado del pago" },
+    { key: "shortId", label: "Préstamo" },
+    { key: "metodo", label: "Método de pago" },
+    { key: "mesPago", label: "Mes de pago" },
+  ];
+  const toggleGroup = (g: string) => {
+    setExpandedGroups((prev) => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
+  };
+  const handleGroupByChange = (key: string | null) => {
+    setGroupBy(key);
+    setExpandedGroups(new Set());
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       if (sortDir === "asc") setSortDir("desc");
