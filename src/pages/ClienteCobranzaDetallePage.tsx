@@ -17,7 +17,7 @@ import { es } from "date-fns/locale";
 import {
   ArrowLeft, User, Phone, MapPin, Mail, CreditCard, ShieldCheck, Package, Wrench,
   HandCoins, AlertTriangle, CheckCircle2, Clock, FileText, CalendarCheck, Eye,
-  DollarSign, TrendingDown, Filter,
+  DollarSign, TrendingDown, Filter, Banknote, Calculator, Receipt, Zap, Target,
 } from "lucide-react";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
