@@ -31,8 +31,9 @@ function buildReceiptElement(data: ReceiptData): HTMLDivElement {
 
   const el = document.createElement("div");
   el.style.cssText = `
-    position: fixed; left: -9999px; top: 0; z-index: -1;
+    position: absolute; left: 0; top: 0; z-index: 99999; opacity: 0; pointer-events: none;
     font-family: 'Courier New', monospace; background: #fff; width: 380px; padding: 20px;
+    color: #000;
   `;
   el.innerHTML = `
     <div style="text-align:center;border-bottom:2px dashed #333;padding-bottom:12px;margin-bottom:12px">
@@ -101,14 +102,18 @@ export async function sendReceiptAsImage(
   let el: HTMLDivElement | null = null;
 
   try {
-    // 1. Render offscreen and convert to PNG
+    // 1. Render element and wait for layout
     el = buildReceiptElement(data);
     document.body.appendChild(el);
+
+    // Wait for browser to layout the element
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const dataUrl = await toPng(el, {
       cacheBust: true,
       pixelRatio: 3,
       backgroundColor: "#ffffff",
+      style: { opacity: "1" },
     });
 
     document.body.removeChild(el);
