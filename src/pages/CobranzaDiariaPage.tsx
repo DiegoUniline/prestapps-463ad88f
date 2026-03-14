@@ -12,8 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, $$ } from "@/lib/utils";
-import { format, isToday, parseISO } from "date-fns";
+import { format, isToday, parseISO, startOfDay, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
@@ -24,6 +25,83 @@ import { useNavigate } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { VisitaModal } from "@/components/VisitaModal";
+
+// ── Weekly cut helpers ────────────────────────────────────────────
+/** Get the start date of the current "week" based on the empresa's configured start day (0=Sun..6=Sat) */
+function getWeekStart(today: Date, startDay: number): Date {
+  const d = startOfDay(today);
+  const currentDay = d.getDay(); // 0=Sun
+  let diff = currentDay - startDay;
+  if (diff < 0) diff += 7;
+  return addDays(d, -diff);
+}
+
+function getWeekEnd(weekStart: Date): Date {
+  return addDays(weekStart, 6);
+}
+
+// Hook to fetch empresa corte config
+function useEmpresaCorteConfig(empresaId: string) {
+  return useQuery({
+    queryKey: ["empresa-corte", empresaId],
+    queryFn: async () => {
+      const { data } = await (supabase.from as any)("empresas")
+        .select("corte_dia_semana, corte_color_cobrado")
+        .eq("id", empresaId)
+        .single();
+      return {
+        corteDiaSemana: (data?.corte_dia_semana ?? 1) as number,
+        corteColor: (data?.corte_color_cobrado || "#22c55e") as string,
+      };
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+// Hook to check which clients have been "attended" (pago or visita) in the current week
+function useClientesAtendidosSemana(empresaId: string, weekStartStr: string, weekEndStr: string) {
+  return useQuery({
+    queryKey: ["clientes-atendidos-semana", empresaId, weekStartStr, weekEndStr],
+    queryFn: async () => {
+      // Get payments in this week
+      const { data: pagos } = await supabase
+        .from("pagos")
+        .select("prestamo_id")
+        .eq("empresa_id", empresaId)
+        .eq("anulado", false)
+        .gte("created_at", weekStartStr + "T00:00:00")
+        .lte("created_at", weekEndStr + "T23:59:59");
+
+      // Get visits (gestiones) in this week
+      const { data: gestiones } = await supabase
+        .from("crm_gestiones")
+        .select("cliente_id")
+        .eq("empresa_id", empresaId)
+        .gte("created_at", weekStartStr + "T00:00:00")
+        .lte("created_at", weekEndStr + "T23:59:59");
+
+      // Get cliente_ids from pagos via prestamos
+      const prestamoIds = [...new Set((pagos || []).map((p: any) => p.prestamo_id))];
+      const clienteIdsFromGestiones = new Set((gestiones || []).map((g: any) => g.cliente_id));
+
+      let clienteIdsFromPagos = new Set<string>();
+      if (prestamoIds.length > 0) {
+        const { data: prestamos } = await supabase
+          .from("prestamos")
+          .select("cliente_id")
+          .in("id", prestamoIds);
+        for (const p of prestamos || []) {
+          clienteIdsFromPagos.add(p.cliente_id);
+        }
+      }
+
+      // Merge both sets
+      const atendidos = new Set([...clienteIdsFromPagos, ...clienteIdsFromGestiones]);
+      return atendidos;
+    },
+    staleTime: 30 * 1000, // refresh every 30s
+  });
+}
 
 // ── Data Hook ────────────────────────────────────────────────────
 interface CuotaDiaria {
