@@ -25,6 +25,7 @@ export interface PrestamoListItem {
   fechaRegistro: string;
   fechaPrimerPago: string;
   tieneAtraso: boolean;
+  diasAtraso: number;
 }
 
 interface FetchFilters {
