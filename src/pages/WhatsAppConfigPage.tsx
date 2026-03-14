@@ -316,10 +316,7 @@ export default function WhatsAppConfigPage() {
                   <Switch checked={form.activo} onCheckedChange={(v) => setForm({ ...form, activo: v })} />
                   <Badge variant={form.activo ? "default" : "secondary"}>{form.activo ? "Activo" : "Inactivo"}</Badge>
                 </div>
-                <Button onClick={() => savingConfig.mutate()} disabled={savingConfig.isPending}>
-                  {savingConfig.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  Guardar Configuración
-                </Button>
+                <p className="text-xs text-muted-foreground">Los cambios se guardan automáticamente</p>
               </div>
             </CardContent>
           </Card>
