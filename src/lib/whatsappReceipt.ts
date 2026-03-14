@@ -103,9 +103,24 @@ export async function sendReceiptAsImage(
   let el: HTMLDivElement | null = null;
 
   try {
-    // 1. Render element and wait for layout
+    // 1. Render element and wait for layout + images
     el = buildReceiptElement(data);
     document.body.appendChild(el);
+
+    // Wait for images (logo) to load
+    const images = el.querySelectorAll("img");
+    if (images.length > 0) {
+      await Promise.all(
+        Array.from(images).map(
+          (img) =>
+            new Promise<void>((resolve) => {
+              if (img.complete) return resolve();
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            })
+        )
+      );
+    }
 
     // Wait for browser to layout the element
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
