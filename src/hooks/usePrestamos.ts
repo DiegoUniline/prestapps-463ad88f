@@ -7,6 +7,7 @@ export interface PrestamoListItem {
   codigoInterno: string;
   tipoCuenta: string;
   cliente: string;
+  clienteFoto: string | null;
   clienteId: string;
   montoSolicitado: number;
   montoPagar: number;

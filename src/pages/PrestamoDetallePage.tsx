@@ -380,6 +380,12 @@ export default function PrestamoDetallePage() {
               <span className="text-foreground">{folioId}</span>
             </div>
             <div className="flex items-center gap-3 mt-0.5">
+              <Avatar className="h-10 w-10 shrink-0">
+                {cliente?.foto_cliente ? <AvatarImage src={cliente.foto_cliente} alt={cliente.nombre_completo} /> : null}
+                <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
+                  {(cliente?.nombre_completo || "C").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <h1 className="text-xl font-bold tracking-tight">
                 {cliente ? (
                   <Link to={`/clientes/${cliente.id}`} className="hover:text-primary transition-colors">{cliente.nombre_completo}</Link>

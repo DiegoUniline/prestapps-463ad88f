@@ -412,7 +412,17 @@ export default function PrestamosPage() {
                     </span>
                   )}
                 </TableCell>
-                <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">{p.cliente}</TableCell>
+                <TableCell className="font-medium whitespace-nowrap text-[13px] px-3">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6 shrink-0">
+                      {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
+                      <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                        {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {p.cliente}
+                  </div>
+                </TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaRegistro)}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3">{fmtDate(p.fechaPrimerPago)}</TableCell>
                 <TableCell className="text-right text-[13px] px-3">{$$(p.montoSolicitado)}</TableCell>
