@@ -1063,7 +1063,7 @@ function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }
             >
               {item.clienteNombre}
             </button>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-1 mt-0.5 flex-wrap">
               <span className="text-[11px] text-muted-foreground">
                 Cuota <span className="font-medium">#{item.numCuota}</span>/{item.totalCuotas}
               </span>
