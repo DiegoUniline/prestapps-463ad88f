@@ -107,9 +107,9 @@ Deno.serve(async (req) => {
       let caption = template?.mensaje || "✅ Recibo de pago {folio} por ${monto_recibido}. Gracias por su pago.";
       caption = replaceVariables(caption, { ...pago_data, ...cliente_data, ...empresa_data, ...prestamo_data });
 
-      // Build the receipt HTML ticket
+      // Build receipt HTML and generate image via storage
       const receiptHtml = buildReceiptHtml(pago_data, empresa_data, cliente_data, prestamo_data);
-      const imageUrl = await htmlToImage(receiptHtml);
+      const { imageUrl, cleanupPaths } = await generateReceiptImage(supabase, receiptHtml, empresa_id);
 
       let result;
       let mensajeLog = caption;
@@ -122,7 +122,8 @@ Deno.serve(async (req) => {
           caption,
         });
       } else {
-        const fallbackText = `${caption}\n\n⚠️ No se pudo adjuntar imagen del recibo en esta prueba.`;
+        // Fallback to text
+        const fallbackText = `${caption}\n\n📋 Desglose:\n• Mora: $${(pago_data?.aplicado_mora || 0).toFixed(2)}\n• Interés: $${(pago_data?.aplicado_interes || 0).toFixed(2)}\n• Capital: $${(pago_data?.aplicado_capital || 0).toFixed(2)}\n• Total: $${(pago_data?.monto_recibido || 0).toFixed(2)}\n• Saldo restante: $${(pago_data?.saldo_restante || 0).toFixed(2)}`;
         result = await sendWhatsApp(config.api_url, config.api_token, {
           action: "send-text",
           phone,
@@ -131,18 +132,21 @@ Deno.serve(async (req) => {
         mensajeLog = fallbackText;
       }
 
+      // Cleanup temp files from storage immediately
+      await cleanupStorage(supabase, cleanupPaths);
+
       await supabase.from("whatsapp_log").insert({
         empresa_id,
         telefono: phone,
         tipo: "recibo",
         mensaje: mensajeLog,
-        imagen_url: imageUrl,
+        imagen_url: imageUrl ? "(temporal - eliminada)" : null,
         status: result.success ? "enviado" : "error",
-        error_detalle: result.error || (!imageUrl ? "Fallo la generación de imagen, se usó fallback de texto" : null),
+        error_detalle: result.error || (!imageUrl ? "Imagen no generada, se usó fallback de texto" : null),
         referencia_id: pago_data.pago_id || null,
       });
 
-      return new Response(JSON.stringify({ ...result, fallback_used: !imageUrl }), {
+      return new Response(JSON.stringify({ ...result, image_sent: !!imageUrl }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
