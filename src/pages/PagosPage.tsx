@@ -418,13 +418,69 @@ export default function PagosPage() {
               <TableRow><TableCell colSpan={10} className="text-center py-8 text-destructive text-[13px]">Error al cargar pagos</TableCell></TableRow>
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron pagos</TableCell></TableRow>
+            ) : groupedData ? (
+              <>
+                {groupedData.map(([groupName, items]) => {
+                  const isExpanded = expandedGroups.has(groupName);
+                  const sumRecibido = items.reduce((s, p) => s + p.montoRecibido, 0);
+                  const sumMora = items.reduce((s, p) => s + p.aplicadoMora, 0);
+                  const sumInteres = items.reduce((s, p) => s + p.aplicadoInteres, 0);
+                  const sumCapital = items.reduce((s, p) => s + p.aplicadoCapital, 0);
+                  return (
+                    <React.Fragment key={groupName}>
+                      <TableRow
+                        className="bg-muted/60 hover:bg-muted/80 cursor-pointer border-b border-border"
+                        onClick={() => toggleGroup(groupName)}
+                      >
+                        <TableCell className="px-3 py-2">
+                          {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
+                        </TableCell>
+                        <TableCell colSpan={2} className="px-3 py-2">
+                          <span className="font-bold text-[13px]">{groupName}</span>
+                          <span className="ml-2 text-[11px] text-muted-foreground font-medium">({items.length})</span>
+                        </TableCell>
+                        <TableCell className="text-right px-3 py-2"><span className="font-semibold text-[12px]">{$$(sumRecibido)}</span></TableCell>
+                        <TableCell className="text-right px-3 py-2"><span className={cn("font-semibold text-[12px]", sumMora > 0 && "text-destructive")}>{$$(sumMora)}</span></TableCell>
+                        <TableCell className="text-right px-3 py-2"><span className="font-semibold text-[12px]">{$$(sumInteres)}</span></TableCell>
+                        <TableCell className="text-right px-3 py-2"><span className="font-semibold text-[12px]">{$$(sumCapital)}</span></TableCell>
+                        <TableCell colSpan={3} />
+                      </TableRow>
+                      {isExpanded && items.map((p) => (
+                        <TableRow
+                          key={p.id}
+                          className={cn("border-b border-border/50 transition-colors hover:bg-table-hover", p.anulado && "opacity-50")}
+                        >
+                          <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
+                          <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
+                          <TableCell className="text-[12px] text-muted-foreground px-3">{p.shortId}</TableCell>
+                          <TableCell className={cn("text-right font-medium text-[13px] px-3", p.anulado && "line-through")}>{$$(p.montoRecibido)}</TableCell>
+                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoMora > 0 ? "text-destructive font-medium" : "text-muted-foreground/50")}>{$$(p.aplicadoMora)}</TableCell>
+                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoInteres === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoInteres)}</TableCell>
+                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoCapital === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoCapital)}</TableCell>
+                          <TableCell className="px-3"><MetodoDot metodo={p.metodo} /></TableCell>
+                          <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
+                          <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">
+                            {p.anulado ? <span className="text-destructive font-medium">Anulado</span> : p.ruta}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+                {/* Totals row */}
+                <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                  <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={3}>Totales</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.montoRecibido, 0))}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoMora, 0))}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoInteres, 0))}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoCapital, 0))}</TableCell>
+                  <TableCell colSpan={3} />
+                </TableRow>
+              </>
             ) : filtered.map((p) => (
               <TableRow
                 key={p.id}
-                className={cn(
-                  "border-b border-border/50 transition-colors hover:bg-table-hover",
-                  p.anulado && "opacity-50"
-                )}
+                className={cn("border-b border-border/50 transition-colors hover:bg-table-hover", p.anulado && "opacity-50")}
               >
                 <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
                 <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
