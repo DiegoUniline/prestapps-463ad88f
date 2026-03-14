@@ -52,7 +52,7 @@ const modules: NavModule[] = [
   {
     label: "Operaciones",
     items: [
-      { title: "Mi Cobranza", url: "/mi-cobranza", icon: HandCoins, roles: ["cobrador"] },
+      { title: "Mi Cobranza", url: "/mi-cobranza", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },
       { title: "Cobranza Diaria", url: "/cobranza", icon: ClipboardCheck, roles: ["admin", "supervisor", "cobrador"] },
       { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin", "supervisor", "cobrador"] },
       { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },

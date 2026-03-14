@@ -97,7 +97,7 @@ MODULE_DEFINITIONS.forEach((m) => {
   });
 });
 // Supervisor defaults
-["dashboard", "cobranza", "prestamos", "pagos", "promesas", "solicitudes", "clientes", "crm", "scoring", "mapa_gps", "reportes"].forEach((mod) => {
+["dashboard", "cobranza", "mi_cobranza", "prestamos", "pagos", "promesas", "solicitudes", "clientes", "crm", "scoring", "mapa_gps", "reportes"].forEach((mod) => {
   ["ver", "agregar", "editar"].forEach((act) => {
     DEFAULTS[`supervisor:${mod}:${act}`] = true;
   });
