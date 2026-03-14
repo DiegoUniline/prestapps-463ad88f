@@ -53,6 +53,7 @@ const AlertasPage = lazy(() => import("@/pages/AlertasPage"));
 const RenovacionPage = lazy(() => import("@/pages/RenovacionPage"));
 const RentabilidadPage = lazy(() => import("@/pages/RentabilidadPage"));
 const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
+const ProductividadPage = lazy(() => import("@/pages/ProductividadPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
