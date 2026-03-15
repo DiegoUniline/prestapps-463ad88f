@@ -517,7 +517,7 @@ export default function PrestamoDetallePage() {
                   {ruta?.nombre || "—"}
                   {!isCancelado && <button onClick={() => setReasignarOpen(true)} className="text-primary hover:text-primary/80 transition-colors" title="Reasignar">
                     <Route className="h-3 w-3" />
-                  </button>
+                  </button>}
                 </span>
               } />
               <SidebarField label="CAJA" value={caja?.nombre || "—"} />
