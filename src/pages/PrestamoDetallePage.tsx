@@ -256,6 +256,7 @@ export default function PrestamoDetallePage() {
   const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
 
   const estado = (prestamo.estado || "Activo") as string;
+  const isCancelado = estado === "Cancelado" || estado === "Reestructurado";
   const folioId = (prestamo as any).id_prestamo || `PRE-${(prestamo.id?.slice(0, 8) || id)}`;
   const shortId = folioId;
 
