@@ -819,7 +819,7 @@ export default function PrestamoDetallePage() {
             {/* ── TAB: Promesas ───────────────────────────────── */}
             <TabsContent value="promesas" className="m-0">
               <div className="flex justify-end px-5 py-2.5 border-b border-border">
-                <Button variant="outline" size="sm" className="h-7 text-[12px]"><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
+                <Button variant="outline" size="sm" className="h-7 text-[12px]" disabled={isCancelado}><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
               </div>
               <div className="overflow-x-auto">
                 <Table>
