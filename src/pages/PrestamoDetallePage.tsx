@@ -256,6 +256,7 @@ export default function PrestamoDetallePage() {
   const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
 
   const estado = (prestamo.estado || "Activo") as string;
+  const isCancelado = estado === "Cancelado" || estado === "Reestructurado";
   const folioId = (prestamo as any).id_prestamo || `PRE-${(prestamo.id?.slice(0, 8) || id)}`;
   const shortId = folioId;
 
@@ -433,10 +434,10 @@ export default function PrestamoDetallePage() {
               </Button>
             </div>
             {/* Action buttons */}
-            <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }}>
+            <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }} disabled={isCancelado}>
               <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
             </Button>
-            <StripeChargeButton
+            {!isCancelado && <StripeChargeButton
               prestamoId={prestamo.id}
               clienteId={cliente?.id}
               clienteNombre={cliente?.nombre_completo || ""}
@@ -450,8 +451,8 @@ export default function PrestamoDetallePage() {
                 queryClient.invalidateQueries({ queryKey: ["pagos", id] });
                 queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] });
               }}
-            />
-            <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => setEditarOpen(true)}>
+            />}
+            <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => setEditarOpen(true)} disabled={isCancelado}>
               <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
             </Button>
             <DropdownMenu>
@@ -461,15 +462,15 @@ export default function PrestamoDetallePage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setReasignarOpen(true)}>
+                <DropdownMenuItem onClick={() => setReasignarOpen(true)} disabled={isCancelado}>
                   <Route className="h-3.5 w-3.5 mr-2" />Reasignar Ruta / Cobrador
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setReestructurarOpen(true)} disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}>
                   <RefreshCw className="h-3.5 w-3.5 mr-2" />Reestructurar Préstamo
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Imprimir tabla</DropdownMenuItem>
-                <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
+                <DropdownMenuItem disabled={isCancelado}>Imprimir tabla</DropdownMenuItem>
+                <DropdownMenuItem disabled={isCancelado}>Exportar PDF</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive"
@@ -514,9 +515,9 @@ export default function PrestamoDetallePage() {
               <SidebarField label="RUTA" value={
                 <span className="flex items-center gap-1.5">
                   {ruta?.nombre || "—"}
-                  <button onClick={() => setReasignarOpen(true)} className="text-primary hover:text-primary/80 transition-colors" title="Reasignar">
+                  {!isCancelado && <button onClick={() => setReasignarOpen(true)} className="text-primary hover:text-primary/80 transition-colors" title="Reasignar">
                     <Route className="h-3 w-3" />
-                  </button>
+                  </button>}
                 </span>
               } />
               <SidebarField label="CAJA" value={caja?.nombre || "—"} />
@@ -689,7 +690,7 @@ export default function PrestamoDetallePage() {
                           )}
 
                           <TableCell className="px-3 w-[90px]">
-                            {status !== "Pagada" && (
+                            {status !== "Pagada" && !isCancelado && (
                               <div className="flex items-center gap-1">
                                 <button
                                   title="Pagar"
@@ -773,7 +774,7 @@ export default function PrestamoDetallePage() {
                                 )}
                               </TableCell>
                               <TableCell className="px-3">
-                                {!isAnulado && (
+                              {!isAnulado && !isCancelado && (
                                   <button
                                     title="Anular pago"
                                     onClick={() => {
@@ -818,7 +819,7 @@ export default function PrestamoDetallePage() {
             {/* ── TAB: Promesas ───────────────────────────────── */}
             <TabsContent value="promesas" className="m-0">
               <div className="flex justify-end px-5 py-2.5 border-b border-border">
-                <Button variant="outline" size="sm" className="h-7 text-[12px]"><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
+                <Button variant="outline" size="sm" className="h-7 text-[12px]" disabled={isCancelado}><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
               </div>
               <div className="overflow-x-auto">
                 <Table>
