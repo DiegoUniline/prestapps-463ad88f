@@ -515,7 +515,7 @@ export default function PrestamoDetallePage() {
               <SidebarField label="RUTA" value={
                 <span className="flex items-center gap-1.5">
                   {ruta?.nombre || "—"}
-                  <button onClick={() => setReasignarOpen(true)} className="text-primary hover:text-primary/80 transition-colors" title="Reasignar">
+                  {!isCancelado && <button onClick={() => setReasignarOpen(true)} className="text-primary hover:text-primary/80 transition-colors" title="Reasignar">
                     <Route className="h-3 w-3" />
                   </button>
                 </span>
