@@ -469,8 +469,8 @@ export default function PrestamoDetallePage() {
                   <RefreshCw className="h-3.5 w-3.5 mr-2" />Reestructurar Préstamo
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Imprimir tabla</DropdownMenuItem>
-                <DropdownMenuItem>Exportar PDF</DropdownMenuItem>
+                <DropdownMenuItem disabled={isCancelado}>Imprimir tabla</DropdownMenuItem>
+                <DropdownMenuItem disabled={isCancelado}>Exportar PDF</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive"
