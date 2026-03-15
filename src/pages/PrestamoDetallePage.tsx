@@ -774,7 +774,7 @@ export default function PrestamoDetallePage() {
                                 )}
                               </TableCell>
                               <TableCell className="px-3">
-                                {!isAnulado && (
+                              {!isAnulado && !isCancelado && (
                                   <button
                                     title="Anular pago"
                                     onClick={() => {
