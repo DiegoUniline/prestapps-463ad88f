@@ -451,8 +451,8 @@ export default function PrestamoDetallePage() {
                 queryClient.invalidateQueries({ queryKey: ["pagos", id] });
                 queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] });
               }}
-            />
-            <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => setEditarOpen(true)}>
+            />}
+            <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => setEditarOpen(true)} disabled={isCancelado}>
               <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
             </Button>
             <DropdownMenu>
