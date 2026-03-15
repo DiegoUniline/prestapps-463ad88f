@@ -690,7 +690,7 @@ export default function PrestamoDetallePage() {
                           )}
 
                           <TableCell className="px-3 w-[90px]">
-                            {status !== "Pagada" && (
+                            {status !== "Pagada" && !isCancelado && (
                               <div className="flex items-center gap-1">
                                 <button
                                   title="Pagar"
