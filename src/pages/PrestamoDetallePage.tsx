@@ -434,10 +434,10 @@ export default function PrestamoDetallePage() {
               </Button>
             </div>
             {/* Action buttons */}
-            <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }}>
+            <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }} disabled={isCancelado}>
               <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
             </Button>
-            <StripeChargeButton
+            {!isCancelado && <StripeChargeButton
               prestamoId={prestamo.id}
               clienteId={cliente?.id}
               clienteNombre={cliente?.nombre_completo || ""}
