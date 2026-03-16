@@ -281,13 +281,21 @@ export default function PrestamoDetallePage() {
   const totalPagosCapital = validPagos.reduce((s, pg) => s + Number(pg.aplicado_capital || 0), 0);
 
   // Activity timeline
+  const findUserName = (userId: string | null | undefined) => {
+    if (!userId) return "—";
+    const profile = cobradoresAll.find((c: any) => c.id === userId);
+    return profile?.nombre_completo || profile?.nombre || userId.slice(0, 8);
+  };
+
   const actividad = [
-    { tipo: "registro", desc: "Préstamo registrado", usuario: "—", fecha: prestamo.created_at || prestamo.fecha_registro || "" },
+    { tipo: "registro", desc: "Préstamo registrado", usuario: findUserName(prestamo.generado_por), fecha: prestamo.created_at || prestamo.fecha_registro || "" },
     ...pagosRaw.map((pg) => ({
-      tipo: "pago",
-      desc: `Pago recibido — ${$$(Number(pg.monto_recibido))}`,
-      usuario: "—",
-      fecha: pg.created_at || "",
+      tipo: pg.anulado ? "anulacion" : "pago",
+      desc: pg.anulado
+        ? `Pago anulado — ${$$(Number(pg.monto_recibido))}${pg.motivo_anulacion ? ` (${pg.motivo_anulacion})` : ""}`
+        : `Pago recibido — ${$$(Number(pg.monto_recibido))} (${pg.metodo_pago || "Efectivo"})`,
+      usuario: pg.anulado ? findUserName(pg.anulado_por) : findUserName(pg.registrado_por),
+      fecha: pg.anulado ? (pg.anulado_en || pg.created_at || "") : (pg.created_at || ""),
     })),
     ...promesasRaw.map((pr) => ({
       tipo: pr.status === "Incumplida" ? "promesa_incumplida" : "promesa",
