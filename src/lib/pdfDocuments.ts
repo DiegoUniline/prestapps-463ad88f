@@ -175,31 +175,33 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
 
   y += 16;
 
-  // Loan details
+  // Loan details - multi-column grid
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(...DARK);
   doc.text("Información del Préstamo", 14, y);
   y += 6;
 
-  const details = [
-    ["Estado", prestamo.estado],
-    ["Modalidad", prestamo.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"],
-    ["Cuotas", `${prestamo.numCuotas} — ${prestamo.frecuencia}`],
-    ["Tasa de Interés", `${prestamo.tasaInteres}%`],
-    ["Cuota", $$(prestamo.cuotaRedondeada || prestamo.cuotaCalculada)],
-    ["F. Registro", prestamo.fechaRegistro],
-    ["F. Primer Pago", prestamo.fechaPrimerPago],
+  const detailRows: [string, string][][] = [
+    [["Estado", prestamo.estado], ["Modalidad", prestamo.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"], ["Tasa de Interés", `${prestamo.tasaInteres}%`]],
+    [["Cuotas", `${prestamo.numCuotas} — ${prestamo.frecuencia}`], ["Cuota", $$(prestamo.cuotaRedondeada || prestamo.cuotaCalculada)], ["F. Registro", prestamo.fechaRegistro]],
+    [["F. Primer Pago", prestamo.fechaPrimerPago], ["", ""], ["", ""]],
   ];
 
   doc.setFontSize(8);
-  details.forEach(([label, value]) => {
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(...GRAY);
-    doc.text(label, 14, y);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...DARK);
-    doc.text(value || "—", 65, y);
+  detailRows.forEach((row) => {
+    const colWidth = 196 / row.length;
+    row.forEach(([label, value], col) => {
+      if (!label) return;
+      const x = 14 + col * colWidth;
+      const xVal = x + Math.min(colWidth * 0.45, 35);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text(label, x, y);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...DARK);
+      doc.text(value || "—", xVal, y);
+    });
     y += 5;
   });
 
