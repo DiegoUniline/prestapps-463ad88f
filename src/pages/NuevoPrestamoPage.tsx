@@ -146,28 +146,30 @@ export default function NuevoPrestamoPage() {
     const baseDate = fechaPrimerPago || new Date();
 
     if (modalidad === "fijo") {
-      // Las primeras n-1 cuotas son cuotaFinal, la última es el remanente
+      // Capital e interés se calculan sobre el total REAL, no el redondeado
       const totalInteres = montoTotalPagar - monto;
+      const capitalPorCuota = monto / cuotas;
       const interesPorCuota = totalInteres / cuotas;
-      const capitalPorCuotaNormal = cuotaFinal - interesPorCuota;
 
       let saldo = monto;
       const rows: CuotaPreview[] = [];
 
       for (let i = 0; i < cuotas; i++) {
         const isLast = i === cuotas - 1;
-        const capital = isLast ? saldo : Math.min(capitalPorCuotaNormal, saldo);
-        const interes = isLast ? (saldo * totalInteres / monto) : interesPorCuota;
-        const cuotaVal = isLast ? capital + interes : cuotaFinal;
-        saldo = Math.max(0, saldo - capital);
+        const capital = isLast ? saldo : Math.round(capitalPorCuota * 100) / 100;
+        const interes = isLast
+          ? Math.round((totalInteres - Math.round(interesPorCuota * 100) / 100 * (cuotas - 1)) * 100) / 100
+          : Math.round(interesPorCuota * 100) / 100;
+        const cuotaVal = capital + interes;
+        saldo = Math.max(0, Math.round((saldo - capital) * 100) / 100);
 
         rows.push({
           num: i + 1,
           fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
-          capital: Math.round(capital * 100) / 100,
-          interes: Math.round(interes * 100) / 100,
+          capital,
+          interes,
           cuota: Math.round(cuotaVal * 100) / 100,
-          saldo: Math.round(saldo * 100) / 100,
+          saldo,
         });
       }
       return rows;
