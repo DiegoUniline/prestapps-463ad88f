@@ -754,7 +754,8 @@ export default function PrestamoDetallePage() {
                           </TableCell>
                         </TableRow>
                       );
-                    })}
+                    });
+                    })()}
                   </TableBody>
                 </Table>
               </div>
