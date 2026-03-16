@@ -135,10 +135,12 @@ interface PagoData {
 }
 
 const cleanTableStyles = {
-  styles: { fontSize: 7, cellPadding: 2, textColor: DARK },
-  headStyles: { fillColor: TABLE_HEAD_BG, fontSize: 7, fontStyle: "bold" as const, textColor: [255, 255, 255] as [number, number, number] },
-  alternateRowStyles: {},
+  styles: { fontSize: 7, cellPadding: 2, textColor: DARK, lineColor: [200, 200, 200] as [number, number, number], lineWidth: 0.2 },
+  headStyles: { fillColor: WHITE, fontSize: 7, fontStyle: "bold" as const, textColor: BLACK, lineColor: [150, 150, 150] as [number, number, number], lineWidth: 0.3 },
+  alternateRowStyles: { fillColor: WHITE },
   margin: { left: 14, right: 14 },
+  tableLineColor: [200, 200, 200] as [number, number, number],
+  tableLineWidth: 0.2,
 };
 
 // ── 1. ESTADO DE CUENTA ──────────────────────────────────────────
