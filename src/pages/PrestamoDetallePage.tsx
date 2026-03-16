@@ -8,6 +8,7 @@ import { StripeChargeButton } from "@/components/StripeChargeButton";
 import { PromesaModal } from "@/components/PromesaModal";
 import { ReasignarModal } from "@/components/ReasignarModal";
 import { AnularPagoModal } from "@/components/AnularPagoModal";
+import { EditPagoModal } from "@/components/EditPagoModal";
 import { CancelarPrestamoModal } from "@/components/CancelarPrestamoModal";
 import { ReestructurarModal } from "@/components/ReestructurarModal";
 import { EditPrestamoModal } from "@/components/EditPrestamoModal";
