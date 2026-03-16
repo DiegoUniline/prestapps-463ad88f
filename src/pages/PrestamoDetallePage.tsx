@@ -1016,6 +1016,14 @@ export default function PrestamoDetallePage() {
         pago={selectedPago}
       />
 
+      {/* Editar Pago Modal */}
+      <EditPagoModal
+        open={editPagoOpen}
+        onOpenChange={setEditPagoOpen}
+        pago={editPagoData}
+        cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
+      />
+
       {/* Cancelar Préstamo Modal */}
       <CancelarPrestamoModal
         open={cancelarOpen}
