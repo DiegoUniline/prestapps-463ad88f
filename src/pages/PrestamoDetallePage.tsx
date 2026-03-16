@@ -184,6 +184,7 @@ export default function PrestamoDetallePage() {
   const [promesaOpen, setPromesaOpen] = useState(false);
   const [selectedCuota, setSelectedCuota] = useState<any>(null);
   const [showOptional, setShowOptional] = useState(false);
+  const [amortFilter, setAmortFilter] = useState<"todas" | "Pagada" | "Pendiente" | "Vencida">("todas");
   const [reasignarOpen, setReasignarOpen] = useState(false);
   const [anularPagoOpen, setAnularPagoOpen] = useState(false);
   const [selectedPago, setSelectedPago] = useState<any>(null);
