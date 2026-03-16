@@ -231,28 +231,32 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      // 1) Insert one pago row per cuota touched
-      for (const d of distribution) {
-        const { error: pagoErr } = await supabase.from("pagos").insert({
-          prestamo_id: prestamoId,
-          cuota_id: d.cuotaId,
-          monto_recibido: d.total,
-          aplicado_mora: d.mora,
-          aplicado_interes: d.interes,
-          aplicado_capital: d.capital,
-          metodo_pago: metodo as any,
-          caja_id: cajaId,
-          ruta_id: rutaId || null,
-          cobrador_id: selectedCobradorId || cobradorId || null,
-          gps_lat: geo.lat,
-          gps_lng: geo.lng,
-          empresa_id: empresaId,
-          fecha_pago: format(fechaPago, "yyyy-MM-dd"),
-          registrado_por: user?.id || null,
-        } as any);
-        if (pagoErr) throw pagoErr;
+      // 1) Insert ONE pago row with aggregated totals
+      const totalMora = distribution.reduce((s, d) => s + d.mora, 0);
+      const totalInteres = distribution.reduce((s, d) => s + d.interes, 0);
+      const totalCapital = distribution.reduce((s, d) => s + d.capital, 0);
 
-        // 2) Update amortizacion saldos for this cuota
+      const { error: pagoErr } = await supabase.from("pagos").insert({
+        prestamo_id: prestamoId,
+        cuota_id: distribution[0]?.cuotaId || null,
+        monto_recibido: montoNum,
+        aplicado_mora: totalMora,
+        aplicado_interes: totalInteres,
+        aplicado_capital: totalCapital,
+        metodo_pago: metodo as any,
+        caja_id: cajaId,
+        ruta_id: rutaId || null,
+        cobrador_id: selectedCobradorId || cobradorId || null,
+        gps_lat: geo.lat,
+        gps_lng: geo.lng,
+        empresa_id: empresaId,
+        fecha_pago: format(fechaPago, "yyyy-MM-dd"),
+        registrado_por: user?.id || null,
+      } as any);
+      if (pagoErr) throw pagoErr;
+
+      // 2) Update amortizacion saldos for each cuota touched
+      for (const d of distribution) {
         const cuota = cuotasPendientes.find((c) => c.id === d.cuotaId)!;
         const newSaldoMora = Math.max(0, cuota.saldo_mora - d.mora);
         const newSaldoInteres = Math.max(0, cuota.saldo_interes - d.interes);
