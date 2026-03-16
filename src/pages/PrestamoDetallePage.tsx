@@ -777,27 +777,107 @@ export default function PrestamoDetallePage() {
                                 )}
                               </TableCell>
                               <TableCell className="px-3">
-                              {!isAnulado && !isCancelado && (
-                                  <button
-                                    title="Anular pago"
-                                    onClick={() => {
-                                      setSelectedPago({
-                                        id: pg.id,
-                                        prestamo_id: pg.prestamo_id,
-                                        cuota_id: pg.cuota_id,
-                                        monto_recibido: Number(pg.monto_recibido),
-                                        aplicado_mora: Number(pg.aplicado_mora || 0),
-                                        aplicado_interes: Number(pg.aplicado_interes || 0),
-                                        aplicado_capital: Number(pg.aplicado_capital || 0),
-                                        caja_id: pg.caja_id,
-                                        cobrador_id: (pg as any).cobrador_id,
-                                      });
-                                      setAnularPagoOpen(true);
-                                    }}
-                                    className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                  >
-                                    <Ban className="h-3.5 w-3.5" />
-                                  </button>
+                                {!isAnulado && (
+                                  <div className="flex items-center gap-0.5">
+                                    {!isCancelado && (
+                                      <button
+                                        title="Editar pago"
+                                        onClick={() => {
+                                          setEditPagoData({
+                                            id: pg.id,
+                                            prestamo_id: pg.prestamo_id,
+                                            cuota_id: pg.cuota_id,
+                                            monto_recibido: Number(pg.monto_recibido),
+                                            aplicado_mora: Number(pg.aplicado_mora || 0),
+                                            aplicado_interes: Number(pg.aplicado_interes || 0),
+                                            aplicado_capital: Number(pg.aplicado_capital || 0),
+                                            metodo_pago: pg.metodo_pago || "Efectivo",
+                                            caja_id: pg.caja_id,
+                                            cobrador_id: (pg as any).cobrador_id,
+                                            fecha_pago: (pg as any).fecha_pago,
+                                          });
+                                          setEditPagoOpen(true);
+                                        }}
+                                        className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                    <button
+                                      title="Ver comprobante"
+                                      onClick={() => {
+                                        setDocPreview({ open: true, type: "pagos" });
+                                      }}
+                                      className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      title="Enviar comprobante por WhatsApp"
+                                      onClick={async () => {
+                                        try {
+                                          const pdfBlob = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
+                                          const telefono = cliente?.telefono;
+                                          if (!telefono) { toast.error("Cliente sin teléfono"); return; }
+                                          const fileName = `recibo-pago-${i + 1}-${Date.now()}.pdf`;
+                                          const { error: upErr } = await supabase.storage.from("empresa-assets").upload(`temp/${fileName}`, pdfBlob, { contentType: "application/pdf" });
+                                          if (upErr) throw upErr;
+                                          const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(`temp/${fileName}`);
+                                          await supabase.functions.invoke("whatsapp-sender", {
+                                            body: { action: "send-file", phone: telefono, url: urlData.publicUrl, message: `📄 Comprobante de pago #${i + 1} por ${$$(Number(pg.monto_recibido))}`, empresa_id: empresaId },
+                                          });
+                                          toast.success("Comprobante enviado por WhatsApp");
+                                          setTimeout(() => supabase.storage.from("empresa-assets").remove([`temp/${fileName}`]), 30000);
+                                        } catch (err: any) {
+                                          toast.error("Error al enviar: " + (err.message || err));
+                                        }
+                                      }}
+                                      className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-[hsl(142,72%,37%)] hover:bg-[hsl(142,72%,37%)]/10 transition-colors"
+                                    >
+                                      <Send className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      title="Descargar comprobante"
+                                      onClick={async () => {
+                                        try {
+                                          const pdfBlob = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
+                                          const url = URL.createObjectURL(pdfBlob);
+                                          const a = document.createElement("a");
+                                          a.href = url;
+                                          a.download = `recibo-pago-${i + 1}-${shortId}.pdf`;
+                                          a.click();
+                                          URL.revokeObjectURL(url);
+                                        } catch (err: any) {
+                                          toast.error("Error al descargar: " + (err.message || err));
+                                        }
+                                      }}
+                                      className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                    >
+                                      <Download className="h-3.5 w-3.5" />
+                                    </button>
+                                    {!isCancelado && (
+                                      <button
+                                        title="Anular pago"
+                                        onClick={() => {
+                                          setSelectedPago({
+                                            id: pg.id,
+                                            prestamo_id: pg.prestamo_id,
+                                            cuota_id: pg.cuota_id,
+                                            monto_recibido: Number(pg.monto_recibido),
+                                            aplicado_mora: Number(pg.aplicado_mora || 0),
+                                            aplicado_interes: Number(pg.aplicado_interes || 0),
+                                            aplicado_capital: Number(pg.aplicado_capital || 0),
+                                            caja_id: pg.caja_id,
+                                            cobrador_id: (pg as any).cobrador_id,
+                                          });
+                                          setAnularPagoOpen(true);
+                                        }}
+                                        className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                      >
+                                        <Ban className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
                                 )}
                               </TableCell>
                             </TableRow>
