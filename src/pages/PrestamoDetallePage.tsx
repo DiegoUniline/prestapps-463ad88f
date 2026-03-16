@@ -843,11 +843,6 @@ export default function PrestamoDetallePage() {
                                         try {
                                           const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
                                           doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`);
-                                          const a = document.createElement("a");
-                                          a.href = url;
-                                          a.download = `recibo-pago-${i + 1}-${shortId}.pdf`;
-                                          a.click();
-                                          URL.revokeObjectURL(url);
                                         } catch (err: any) {
                                           toast.error("Error al descargar: " + (err.message || err));
                                         }
