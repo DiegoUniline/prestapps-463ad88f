@@ -816,7 +816,8 @@ export default function PrestamoDetallePage() {
                                       title="Enviar comprobante por WhatsApp"
                                       onClick={async () => {
                                         try {
-                                          const pdfBlob = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
+                                          const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
+                                          const pdfBlob = doc.output("blob");
                                           const telefono = cliente?.telefono;
                                           if (!telefono) { toast.error("Cliente sin teléfono"); return; }
                                           const fileName = `recibo-pago-${i + 1}-${Date.now()}.pdf`;
