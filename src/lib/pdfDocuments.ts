@@ -2,10 +2,11 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
 import { $$ } from "@/lib/utils";
-const PRIMARY_COLOR: [number, number, number] = [234, 24, 77]; // #EA184D
+
 const GRAY: [number, number, number] = [107, 114, 128];
 const DARK: [number, number, number] = [17, 24, 39];
-const LIGHT_BG: [number, number, number] = [249, 250, 251];
+const BLACK: [number, number, number] = [0, 0, 0];
+const TABLE_HEAD_BG: [number, number, number] = [50, 50, 50];
 
 /** Load an image URL as base64 data URL for jsPDF */
 async function loadImageAsBase64(url: string): Promise<string | null> {
@@ -26,49 +27,45 @@ async function loadImageAsBase64(url: string): Promise<string | null> {
 function addHeader(doc: jsPDF, title: string, prestamoId: string, clienteNombre: string, logoBase64?: string | null, empresaNombre?: string) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  // Title bar
-  doc.setFillColor(...PRIMARY_COLOR);
-  doc.rect(0, 0, pageWidth, 28, "F");
-
   let logoEndX = 14;
-  // Logo in header
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, "JPEG", 14, 3, 22, 22);
-      logoEndX = 40;
-    } catch {
-      // Logo failed, continue without it
-    }
+      doc.addImage(logoBase64, "JPEG", 14, 10, 18, 18);
+      logoEndX = 36;
+    } catch { /* skip */ }
   }
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.setTextColor(255, 255, 255);
-  doc.text(title, logoEndX, 14);
+  doc.setFontSize(14);
+  doc.setTextColor(...BLACK);
+  doc.text(title, logoEndX, 18);
 
-  // Company name under title if available
   if (empresaNombre) {
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text(empresaNombre, logoEndX, 22);
+    doc.setTextColor(...GRAY);
+    doc.text(empresaNombre, logoEndX, 24);
   }
 
-  // Right side - date
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(255, 255, 255);
-  doc.text(`Generado: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth - 14, 18, { align: "right" });
-
-  // Prestamo info line
-  doc.setTextColor(...DARK);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text(`Préstamo: PRE-${prestamoId.slice(0, 8)}`, 14, 38);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...GRAY);
-  doc.text(`Cliente: ${clienteNombre}`, 14, 44);
+  doc.text(`Generado: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, pageWidth - 14, 18, { align: "right" });
 
-  return 52; // y position after header
+  // Thin separator line
+  doc.setDrawColor(200, 200, 200);
+  doc.setLineWidth(0.3);
+  doc.line(14, 30, pageWidth - 14, 30);
+
+  doc.setTextColor(...DARK);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Préstamo: PRE-${prestamoId.slice(0, 8)}`, 14, 37);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...GRAY);
+  doc.text(`Cliente: ${clienteNombre}`, 14, 42);
+
+  return 50;
 }
 
 function addFooter(doc: jsPDF) {
@@ -137,21 +134,24 @@ interface PagoData {
   cajaNombre: string;
 }
 
+const cleanTableStyles = {
+  styles: { fontSize: 7, cellPadding: 2, textColor: DARK },
+  headStyles: { fillColor: TABLE_HEAD_BG, fontSize: 7, fontStyle: "bold" as const, textColor: [255, 255, 255] as [number, number, number] },
+  alternateRowStyles: {},
+  margin: { left: 14, right: 14 },
+};
+
 // ── 1. ESTADO DE CUENTA ──────────────────────────────────────────
 export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaData[], pagos: PagoData[]) {
   const doc = new jsPDF();
   const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
   let y = addHeader(doc, "ESTADO DE CUENTA", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
-  // Summary section
   const totalPagado = cuotas.reduce((s, c) => s + (c.capital_pagado || 0) + (c.interes_pagado || 0) + (c.mora_pagada || 0), 0);
   const saldoPendiente = cuotas.reduce((s, c) => s + (c.saldo_total || 0), 0);
 
-  doc.setFillColor(...LIGHT_BG);
-  doc.roundedRect(14, y, 182, 28, 2, 2, "F");
-  doc.setFontSize(9);
-  doc.setTextColor(...GRAY);
-
+  // Summary as simple text grid - no background
+  doc.setFontSize(7);
   const summaryItems = [
     { label: "Monto Prestado", value: $$(prestamo.montoSolicitado) },
     { label: "Total a Pagar", value: $$(prestamo.montoTotalPagar) },
@@ -160,18 +160,18 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
   ];
 
   summaryItems.forEach((item, i) => {
-    const x = 20 + i * 45;
+    const x = 16 + i * 45;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
     doc.setTextColor(...GRAY);
-    doc.text(item.label.toUpperCase(), x, y + 9);
+    doc.text(item.label.toUpperCase(), x, y);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
     doc.setTextColor(...DARK);
-    doc.text(item.value, x, y + 18);
+    doc.text(item.value, x, y + 6);
+    doc.setFontSize(7);
   });
 
-  y += 36;
+  y += 16;
 
   // Loan details
   doc.setFont("helvetica", "bold");
@@ -224,15 +224,12 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
       $$(c.saldo_total),
       c.status,
     ]),
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: PRIMARY_COLOR, fontSize: 7, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [245, 247, 250] },
+    ...cleanTableStyles,
     columnStyles: {
       0: { halign: "center", cellWidth: 10 },
       5: { halign: "center" },
       8: { halign: "center" },
     },
-    margin: { left: 14, right: 14 },
   });
 
   y = (doc as any).lastAutoTable.finalY + 10;
@@ -263,11 +260,8 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
         ]),
       ],
       foot: [["", "TOTAL", $$(totalMonto), "", "", "", ""]],
-      styles: { fontSize: 7, cellPadding: 2 },
-      headStyles: { fillColor: PRIMARY_COLOR, fontSize: 7, fontStyle: "bold" },
-      footStyles: { fillColor: LIGHT_BG, textColor: DARK, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-      margin: { left: 14, right: 14 },
+      ...cleanTableStyles,
+      footStyles: { textColor: DARK, fontStyle: "bold" as const },
     });
   }
 
@@ -379,10 +373,7 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
       $$(c.interes),
       $$(c.capital_interes),
     ]),
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: PRIMARY_COLOR, fontSize: 7, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [245, 247, 250] },
-    margin: { left: 14, right: 14 },
+    ...cleanTableStyles,
   });
 
   y = (doc as any).lastAutoTable.finalY + 30;
@@ -393,7 +384,6 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
   doc.setDrawColor(...GRAY);
   doc.setLineWidth(0.3);
   
-  // Left signature
   doc.line(14, y + 20, 90, y + 20);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
@@ -401,7 +391,6 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
   doc.text("Firma del Cliente", 52, y + 26, { align: "center" });
   doc.text(prestamo.clienteNombre, 52, y + 31, { align: "center" });
 
-  // Right signature
   doc.line(120, y + 20, 196, y + 20);
   doc.text("Firma Autorizada", 158, y + 26, { align: "center" });
   doc.text(prestamo.empresaNombre || "Empresa", 158, y + 31, { align: "center" });
@@ -411,80 +400,177 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
 }
 
 
-// ── 3. RECIBO DE PAGOS ──────────────────────────────────────────
+// ── 3. RECIBO DE PAGOS (formato ticket 80mm) ─────────────────────
 export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData[]) {
-  const doc = new jsPDF();
+  const ticketW = 80; // mm
+  const margin = 5;
+  const contentW = ticketW - margin * 2;
+  
+  // We'll build content first to calculate height, start with an estimate
   const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
-  let y = addHeader(doc, "RECIBO DE PAGOS", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
+  
+  // Calculate approximate height needed
+  let estHeight = 40; // header
+  if (logoBase64) estHeight += 20;
+  estHeight += 30; // loan info
+  estHeight += pagos.length * 28; // each payment block
+  estHeight += 30; // totals + footer
+  estHeight = Math.max(estHeight, 100);
+
+  const doc = new jsPDF({ orientation: "p", unit: "mm", format: [ticketW, estHeight] });
+
+  let y = margin;
+
+  // Logo
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, "JPEG", ticketW / 2 - 10, y, 20, 20);
+      y += 22;
+    } catch { /* skip */ }
+  }
+
+  // Company name
+  if (prestamo.empresaNombre) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...BLACK);
+    doc.text(prestamo.empresaNombre.toUpperCase(), ticketW / 2, y, { align: "center" });
+    y += 4;
+  }
+
+  // Title
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(...BLACK);
+  doc.text("RECIBO DE PAGO", ticketW / 2, y, { align: "center" });
+  y += 5;
+
+  // Dashed line
+  doc.setDrawColor(150, 150, 150);
+  doc.setLineDashPattern([1, 1], 0);
+  doc.line(margin, y, ticketW - margin, y);
+  doc.setLineDashPattern([], 0);
+  y += 4;
+
+  // Date
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...GRAY);
+  doc.text(`Fecha: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, margin, y);
+  y += 4;
+
+  // Loan & client info
+  const infoLines = [
+    [`Préstamo: PRE-${prestamo.id.slice(0, 8)}`],
+    [`Cliente: ${prestamo.clienteNombre}`],
+  ];
+  doc.setFontSize(7);
+  doc.setTextColor(...DARK);
+  infoLines.forEach(([line]) => {
+    doc.text(line, margin, y);
+    y += 3.5;
+  });
+
+  y += 2;
+  doc.setLineDashPattern([1, 1], 0);
+  doc.line(margin, y, ticketW - margin, y);
+  doc.setLineDashPattern([], 0);
+  y += 4;
 
   if (pagos.length === 0) {
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(7);
     doc.setTextColor(...GRAY);
-    doc.text("No se han registrado pagos para este préstamo.", 14, y);
-    addFooter(doc);
+    doc.text("Sin pagos registrados.", margin, y);
     return doc;
   }
 
-  // Summary
-  const totalMonto = pagos.reduce((s, p) => s + p.monto_recibido, 0);
-  const totalMora = pagos.reduce((s, p) => s + p.aplicado_mora, 0);
-  const totalInteres = pagos.reduce((s, p) => s + p.aplicado_interes, 0);
-  const totalCapital = pagos.reduce((s, p) => s + p.aplicado_capital, 0);
+  // Each payment
+  let totalMonto = 0, totalMora = 0, totalInteres = 0, totalCapital = 0;
 
-  doc.setFillColor(...LIGHT_BG);
-  doc.roundedRect(14, y, 182, 20, 2, 2, "F");
+  pagos.forEach((p, i) => {
+    totalMonto += p.monto_recibido;
+    totalMora += p.aplicado_mora;
+    totalInteres += p.aplicado_interes;
+    totalCapital += p.aplicado_capital;
 
-  const sumItems = [
-    { label: "Total Pagado", value: $$(totalMonto) },
-    { label: "A Mora", value: $$(totalMora) },
-    { label: "A Interés", value: $$(totalInteres) },
-    { label: "A Capital", value: $$(totalCapital) },
-  ];
-
-  sumItems.forEach((item, i) => {
-    const x = 20 + i * 45;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(...GRAY);
-    doc.text(item.label.toUpperCase(), x, y + 8);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(...DARK);
-    doc.text(item.value, x, y + 15);
+    doc.setFontSize(7);
+    doc.setTextColor(...BLACK);
+    doc.text(`Pago #${i + 1}`, margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...GRAY);
+    doc.text(p.created_at ? format(new Date(p.created_at), "dd/MM/yy HH:mm") : "—", ticketW - margin, y, { align: "right" });
+    y += 3.5;
+
+    const rows = [
+      ["Monto:", $$(p.monto_recibido)],
+      ["→ Mora:", $$(p.aplicado_mora)],
+      ["→ Interés:", $$(p.aplicado_interes)],
+      ["→ Capital:", $$(p.aplicado_capital)],
+      ["Método:", p.metodo_pago || "Efectivo"],
+    ];
+
+    doc.setFontSize(7);
+    rows.forEach(([label, val]) => {
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...GRAY);
+      doc.text(label, margin + 2, y);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...DARK);
+      doc.text(val, ticketW - margin, y, { align: "right" });
+      y += 3.2;
+    });
+
+    y += 2;
   });
 
-  y += 28;
-
-  // Payments table
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(...DARK);
-  doc.text("Detalle de Pagos", 14, y);
+  // Totals separator
+  doc.setLineDashPattern([1, 1], 0);
+  doc.line(margin, y, ticketW - margin, y);
+  doc.setLineDashPattern([], 0);
   y += 4;
 
-  autoTable(doc, {
-    startY: y,
-    head: [["#", "Fecha", "Monto Recibido", "→ Mora", "→ Interés", "→ Capital", "Método", "Caja"]],
-    body: pagos.map((p, i) => [
-      i + 1,
-      p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy HH:mm") : "—",
-      $$(p.monto_recibido),
-      p.aplicado_mora > 0 ? $$(p.aplicado_mora) : "—",
-      p.aplicado_interes > 0 ? $$(p.aplicado_interes) : "—",
-      p.aplicado_capital > 0 ? $$(p.aplicado_capital) : "—",
-      p.metodo_pago || "Efectivo",
-      p.cajaNombre || "—",
-    ]),
-    foot: [["", "TOTALES", $$(totalMonto), $$(totalMora), $$(totalInteres), $$(totalCapital), "", ""]],
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: PRIMARY_COLOR, fontSize: 7, fontStyle: "bold" },
-    footStyles: { fillColor: LIGHT_BG, textColor: DARK, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [245, 247, 250] },
-    margin: { left: 14, right: 14 },
+  // Totals
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(...BLACK);
+  doc.text("TOTAL PAGADO", margin, y);
+  doc.text($$(totalMonto), ticketW - margin, y, { align: "right" });
+  y += 4;
+
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...GRAY);
+  const totRows = [
+    ["Total Mora:", $$(totalMora)],
+    ["Total Interés:", $$(totalInteres)],
+    ["Total Capital:", $$(totalCapital)],
+  ];
+  totRows.forEach(([l, v]) => {
+    doc.text(l, margin + 2, y);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...DARK);
+    doc.text(v, ticketW - margin, y, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...GRAY);
+    y += 3.2;
   });
 
-  addFooter(doc);
+  y += 3;
+
+  // Footer
+  doc.setLineDashPattern([1, 1], 0);
+  doc.line(margin, y, ticketW - margin, y);
+  doc.setLineDashPattern([], 0);
+  y += 4;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...GRAY);
+  doc.text("Gracias por su pago", ticketW / 2, y, { align: "center" });
+  y += 3;
+  doc.text(`${prestamo.empresaNombre || ""} © ${new Date().getFullYear()}`, ticketW / 2, y, { align: "center" });
+
   return doc;
 }
-
