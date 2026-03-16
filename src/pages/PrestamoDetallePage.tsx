@@ -184,6 +184,7 @@ export default function PrestamoDetallePage() {
   const [promesaOpen, setPromesaOpen] = useState(false);
   const [selectedCuota, setSelectedCuota] = useState<any>(null);
   const [showOptional, setShowOptional] = useState(false);
+  const [amortFilter, setAmortFilter] = useState<"todas" | "Pagada" | "Pendiente" | "Vencida">("todas");
   const [reasignarOpen, setReasignarOpen] = useState(false);
   const [anularPagoOpen, setAnularPagoOpen] = useState(false);
   const [selectedPago, setSelectedPago] = useState<any>(null);
@@ -624,8 +625,29 @@ export default function PrestamoDetallePage() {
 
             {/* ── TAB: Amortización ──────────────────────────── */}
             <TabsContent value="amortizacion" className="m-0">
-              {/* Toggle optional columns */}
-              <div className="flex justify-end px-4 py-2">
+              {/* Filter tabs + toggle */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-[hsl(220,14%,96%)]">
+                <div className="flex gap-1">
+                  {([
+                    { key: "todas", label: "Todas", count: amort.length },
+                    { key: "Pagada", label: "Pagadas", count: amort.filter(c => c.status === "Pagada").length },
+                    { key: "Pendiente", label: "Pendientes", count: amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida").length },
+                    { key: "Vencida", label: "Vencidas", count: amort.filter(c => c.status === "Vencida").length },
+                  ] as const).map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setAmortFilter(f.key)}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-[11px] font-medium transition-colors",
+                        amortFilter === f.key
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                </div>
                 <button
                   onClick={() => setShowOptional(!showOptional)}
                   className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
@@ -647,9 +669,14 @@ export default function PrestamoDetallePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {amort.length === 0 ? (
-                      <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas</TableCell></TableRow>
-                    ) : amort.map((c) => {
+                    {(() => {
+                      const filtered = amortFilter === "todas" ? amort
+                        : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
+                        : amort.filter(c => c.status === amortFilter);
+                      if (filtered.length === 0) return (
+                        <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</TableCell></TableRow>
+                      );
+                      return filtered.map((c) => {
                       const status = c.status || "Pendiente";
                       const isNext = proximaCuota?.num_cuota === c.num_cuota;
                       return (
@@ -727,7 +754,8 @@ export default function PrestamoDetallePage() {
                           </TableCell>
                         </TableRow>
                       );
-                    })}
+                    });
+                    })()}
                   </TableBody>
                 </Table>
               </div>
