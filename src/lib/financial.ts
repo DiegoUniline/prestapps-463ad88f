@@ -110,9 +110,9 @@ export function calcularMora(
 ): number {
   if (diasAtraso <= 0 || valorMora <= 0) return 0;
   if (tipoMora === "porcentaje") {
-    return new Decimal(saldoCapitalInteres).times(valorMora).div(100).toDecimalPlaces(2).toNumber();
+    return new Decimal(saldoCapitalInteres).times(valorMora).div(100).times(diasAtraso).toDecimalPlaces(2).toNumber();
   }
-  return new Decimal(valorMora).toDecimalPlaces(2).toNumber();
+  return new Decimal(valorMora).times(diasAtraso).toDecimalPlaces(2).toNumber();
 }
 
 /**
