@@ -669,9 +669,14 @@ export default function PrestamoDetallePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {amort.length === 0 ? (
-                      <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas</TableCell></TableRow>
-                    ) : amort.map((c) => {
+                    {(() => {
+                      const filtered = amortFilter === "todas" ? amort
+                        : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
+                        : amort.filter(c => c.status === amortFilter);
+                      if (filtered.length === 0) return (
+                        <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</TableCell></TableRow>
+                      );
+                      return filtered.map((c) => {
                       const status = c.status || "Pendiente";
                       const isNext = proximaCuota?.num_cuota === c.num_cuota;
                       return (
