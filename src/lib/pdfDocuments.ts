@@ -6,7 +6,7 @@ import { $$ } from "@/lib/utils";
 const GRAY: [number, number, number] = [107, 114, 128];
 const DARK: [number, number, number] = [17, 24, 39];
 const BLACK: [number, number, number] = [0, 0, 0];
-const TABLE_HEAD_BG: [number, number, number] = [50, 50, 50];
+const WHITE: [number, number, number] = [255, 255, 255];
 
 /** Load an image URL as base64 data URL for jsPDF */
 async function loadImageAsBase64(url: string): Promise<string | null> {
@@ -135,10 +135,12 @@ interface PagoData {
 }
 
 const cleanTableStyles = {
-  styles: { fontSize: 7, cellPadding: 2, textColor: DARK },
-  headStyles: { fillColor: TABLE_HEAD_BG, fontSize: 7, fontStyle: "bold" as const, textColor: [255, 255, 255] as [number, number, number] },
-  alternateRowStyles: {},
+  styles: { fontSize: 7, cellPadding: 2, textColor: DARK, lineColor: [200, 200, 200] as [number, number, number], lineWidth: 0.2 },
+  headStyles: { fillColor: WHITE, fontSize: 7, fontStyle: "bold" as const, textColor: BLACK, lineColor: [150, 150, 150] as [number, number, number], lineWidth: 0.3 },
+  alternateRowStyles: { fillColor: WHITE },
   margin: { left: 14, right: 14 },
+  tableLineColor: [200, 200, 200] as [number, number, number],
+  tableLineWidth: 0.2,
 };
 
 // ── 1. ESTADO DE CUENTA ──────────────────────────────────────────
