@@ -841,8 +841,8 @@ export default function PrestamoDetallePage() {
                                       title="Descargar comprobante"
                                       onClick={async () => {
                                         try {
-                                          const pdfBlob = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
-                                          const url = URL.createObjectURL(pdfBlob);
+                                          const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
+                                          doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`);
                                           const a = document.createElement("a");
                                           a.href = url;
                                           a.download = `recibo-pago-${i + 1}-${shortId}.pdf`;
