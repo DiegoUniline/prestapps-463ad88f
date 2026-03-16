@@ -284,7 +284,7 @@ export default function PrestamoDetallePage() {
   const findUserName = (userId: string | null | undefined) => {
     if (!userId) return "—";
     const profile = cobradoresAll.find((c: any) => c.id === userId);
-    return profile?.nombre_completo || profile?.nombre || userId.slice(0, 8);
+    return profile?.nombre || userId.slice(0, 8);
   };
 
   const actividad = [
