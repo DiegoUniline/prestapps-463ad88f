@@ -625,8 +625,29 @@ export default function PrestamoDetallePage() {
 
             {/* ── TAB: Amortización ──────────────────────────── */}
             <TabsContent value="amortizacion" className="m-0">
-              {/* Toggle optional columns */}
-              <div className="flex justify-end px-4 py-2">
+              {/* Filter tabs + toggle */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-[hsl(220,14%,96%)]">
+                <div className="flex gap-1">
+                  {([
+                    { key: "todas", label: "Todas", count: amort.length },
+                    { key: "Pagada", label: "Pagadas", count: amort.filter(c => c.status === "Pagada").length },
+                    { key: "Pendiente", label: "Pendientes", count: amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida").length },
+                    { key: "Vencida", label: "Vencidas", count: amort.filter(c => c.status === "Vencida").length },
+                  ] as const).map((f) => (
+                    <button
+                      key={f.key}
+                      onClick={() => setAmortFilter(f.key)}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-[11px] font-medium transition-colors",
+                        amortFilter === f.key
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {f.label} ({f.count})
+                    </button>
+                  ))}
+                </div>
                 <button
                   onClick={() => setShowOptional(!showOptional)}
                   className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
