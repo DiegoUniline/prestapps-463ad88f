@@ -6,7 +6,7 @@ import { $$ } from "@/lib/utils";
 const GRAY: [number, number, number] = [107, 114, 128];
 const DARK: [number, number, number] = [17, 24, 39];
 const BLACK: [number, number, number] = [0, 0, 0];
-const TABLE_HEAD_BG: [number, number, number] = [50, 50, 50];
+const WHITE: [number, number, number] = [255, 255, 255];
 
 /** Load an image URL as base64 data URL for jsPDF */
 async function loadImageAsBase64(url: string): Promise<string | null> {
