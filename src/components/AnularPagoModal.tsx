@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Decimal from "decimal.js";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, Loader2 } from "lucide-react";
+import { $$ } from "@/lib/utils";
 
 interface AnularPagoModalProps {
   open: boolean;
@@ -25,7 +27,60 @@ interface AnularPagoModalProps {
     cobrador_id: string | null;
   } | null;
 }
-import { $$ } from "@/lib/utils";
+
+type CuotaRebuild = {
+  id: string;
+  num_cuota: number;
+  fecha_vencimiento: string;
+  original_status: string | null;
+  capital_pagado: Decimal;
+  interes_pagado: Decimal;
+  mora_pagada: Decimal;
+  saldo_capital: Decimal;
+  saldo_interes: Decimal;
+  saldo_mora: Decimal;
+  saldo_total: Decimal;
+};
+
+const toMoney = (value: Decimal.Value) => new Decimal(value || 0).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+
+const applyWaterfall = (cuotas: CuotaRebuild[], monto: number) => {
+  let restante = toMoney(monto);
+
+  for (const cuota of cuotas) {
+    if (restante.lte(0)) break;
+    if (cuota.saldo_total.lte(0)) continue;
+
+    const aplicadoMora = Decimal.min(restante, cuota.saldo_mora);
+    cuota.mora_pagada = cuota.mora_pagada.plus(aplicadoMora);
+    cuota.saldo_mora = cuota.saldo_mora.minus(aplicadoMora);
+    restante = restante.minus(aplicadoMora);
+
+    const aplicadoInteres = Decimal.min(restante, cuota.saldo_interes);
+    cuota.interes_pagado = cuota.interes_pagado.plus(aplicadoInteres);
+    cuota.saldo_interes = cuota.saldo_interes.minus(aplicadoInteres);
+    restante = restante.minus(aplicadoInteres);
+
+    const aplicadoCapital = Decimal.min(restante, cuota.saldo_capital);
+    cuota.capital_pagado = cuota.capital_pagado.plus(aplicadoCapital);
+    cuota.saldo_capital = cuota.saldo_capital.minus(aplicadoCapital);
+    restante = restante.minus(aplicadoCapital);
+
+    cuota.saldo_total = cuota.saldo_capital.plus(cuota.saldo_interes).plus(cuota.saldo_mora);
+  }
+};
+
+const resolveStatus = (cuota: CuotaRebuild) => {
+  if (cuota.saldo_total.lte(0.009)) return "Pagada";
+
+  const totalPagado = cuota.capital_pagado.plus(cuota.interes_pagado).plus(cuota.mora_pagada);
+  if (totalPagado.gt(0)) return "Parcial";
+
+  if (cuota.original_status === "Prometida") return "Prometida";
+
+  return new Date(cuota.fecha_vencimiento) < new Date() ? "Vencida" : "Pendiente";
+};
+
 export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalProps) {
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
@@ -39,11 +94,11 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
       toast.error("Debe indicar un motivo de anulación");
       return;
     }
+
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 1) Mark pago as anulado
       const { error: pagoErr } = await supabase
         .from("pagos")
         .update({
@@ -55,53 +110,68 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
         .eq("id", pago.id);
       if (pagoErr) throw pagoErr;
 
-      // 2) Reverse cuota saldos if cuota_id exists
-      if (pago.cuota_id) {
-        const { data: cuota } = await supabase
+      await (supabase.rpc as any)("recalcular_mora", { p_prestamo_id: pago.prestamo_id });
+
+      const [cuotasRes, pagosRes] = await Promise.all([
+        supabase
           .from("amortizacion")
-          .select("id, capital, interes, capital_pagado, interes_pagado, mora_pagada, saldo_capital, saldo_interes, saldo_mora, saldo_total, status, fecha_vencimiento")
-          .eq("id", pago.cuota_id)
-          .single();
+          .select("id, num_cuota, fecha_vencimiento, status, capital, interes, mora")
+          .eq("prestamo_id", pago.prestamo_id)
+          .order("num_cuota", { ascending: true }),
+        supabase
+          .from("pagos")
+          .select("monto_recibido, created_at")
+          .eq("prestamo_id", pago.prestamo_id)
+          .eq("anulado", false)
+          .order("created_at", { ascending: true }),
+      ]);
 
-        if (cuota) {
-          const originalCapital = Number(cuota.capital || 0);
-          const originalInteres = Number(cuota.interes || 0);
+      if (cuotasRes.error) throw cuotasRes.error;
+      if (pagosRes.error) throw pagosRes.error;
 
-          const newCapitalPagado = Math.max(0, Number(cuota.capital_pagado || 0) - pago.aplicado_capital);
-          const newInteresPagado = Math.max(0, Number(cuota.interes_pagado || 0) - pago.aplicado_interes);
-          const newMoraPagada = Math.max(0, Number(cuota.mora_pagada || 0) - pago.aplicado_mora);
-          // Cap saldos at original cuota values to prevent inflation
-          const newSaldoCapital = Math.min(originalCapital, Number(cuota.saldo_capital || 0) + pago.aplicado_capital);
-          const newSaldoInteres = Math.min(originalInteres, Number(cuota.saldo_interes || 0) + pago.aplicado_interes);
-          const newSaldoMora = Number(cuota.saldo_mora || 0) + pago.aplicado_mora;
-          const newSaldoTotal = newSaldoCapital + newSaldoInteres + newSaldoMora;
+      const cuotas = (cuotasRes.data || []).map((c) => {
+        const saldoCapital = toMoney(c.capital || 0);
+        const saldoInteres = toMoney(c.interes || 0);
+        const saldoMora = toMoney(c.mora || 0);
+        return {
+          id: c.id,
+          num_cuota: c.num_cuota,
+          fecha_vencimiento: c.fecha_vencimiento,
+          original_status: c.status,
+          capital_pagado: toMoney(0),
+          interes_pagado: toMoney(0),
+          mora_pagada: toMoney(0),
+          saldo_capital: saldoCapital,
+          saldo_interes: saldoInteres,
+          saldo_mora: saldoMora,
+          saldo_total: saldoCapital.plus(saldoInteres).plus(saldoMora),
+        } as CuotaRebuild;
+      });
 
-          // Determine new status
-          let newStatus: string = "Pendiente";
-          if (newCapitalPagado > 0 || newInteresPagado > 0 || newMoraPagada > 0) {
-            newStatus = "Parcial";
-          }
-          // Check if overdue
-          const venc = new Date(cuota.fecha_vencimiento);
-          if (venc < new Date() && newStatus === "Pendiente") {
-            newStatus = "Vencida";
-          }
-
-          await supabase.from("amortizacion").update({
-            capital_pagado: newCapitalPagado,
-            interes_pagado: newInteresPagado,
-            mora_pagada: newMoraPagada,
-            saldo_capital: newSaldoCapital,
-            saldo_interes: newSaldoInteres,
-            saldo_mora: newSaldoMora,
-            saldo_total: newSaldoTotal,
-            status: newStatus as any,
-            fecha_pagada: null,
-          }).eq("id", pago.cuota_id);
-        }
+      for (const pagoVigente of pagosRes.data || []) {
+        applyWaterfall(cuotas, Number(pagoVigente.monto_recibido || 0));
       }
 
-      // 3) Reverse caja balance
+      await Promise.all(
+        cuotas.map((cuota) => {
+          const status = resolveStatus(cuota);
+          return supabase
+            .from("amortizacion")
+            .update({
+              capital_pagado: cuota.capital_pagado.toNumber(),
+              interes_pagado: cuota.interes_pagado.toNumber(),
+              mora_pagada: cuota.mora_pagada.toNumber(),
+              saldo_capital: cuota.saldo_capital.toNumber(),
+              saldo_interes: cuota.saldo_interes.toNumber(),
+              saldo_mora: cuota.saldo_mora.toNumber(),
+              saldo_total: cuota.saldo_total.toNumber(),
+              status: status as any,
+              fecha_pagada: status === "Pagada" ? new Date().toISOString().slice(0, 10) : null,
+            })
+            .eq("id", cuota.id);
+        })
+      );
+
       if (pago.caja_id) {
         const { data: cajaData } = await supabase
           .from("cajas")
@@ -109,58 +179,59 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
           .eq("id", pago.caja_id)
           .single();
 
-        if (cajaData) {
-          await supabase.from("cajas").update({
-            saldo_actual: Math.max(0, Number(cajaData.saldo_actual || 0) - pago.monto_recibido),
-          }).eq("id", pago.caja_id);
-        }
-
-        // Insert reverse movimiento
-        await supabase.from("movimientos_caja").insert({
-          caja_id: pago.caja_id,
-          tipo: "salida",
-          monto: pago.monto_recibido,
-          prestamo_id: pago.prestamo_id,
-          concepto: `Anulación de pago — ${motivo.trim()}`,
-          empresa_id: empresaId,
-        });
+        await Promise.all([
+          cajaData
+            ? supabase
+                .from("cajas")
+                .update({
+                  saldo_actual: Math.max(0, Number(cajaData.saldo_actual || 0) - pago.monto_recibido),
+                })
+                .eq("id", pago.caja_id)
+            : Promise.resolve({ error: null }),
+          supabase.from("movimientos_caja").insert({
+            caja_id: pago.caja_id,
+            tipo: "salida",
+            monto: pago.monto_recibido,
+            prestamo_id: pago.prestamo_id,
+            concepto: `Anulación de pago — ${motivo.trim()}`,
+            empresa_id: empresaId,
+          }),
+        ]);
       }
 
-      // 4) Reverse cobrador efectivo in profiles
       if (pago.cobrador_id) {
-        const { data: cobData } = await supabase.from("profiles")
+        const { data: cobData } = await supabase
+          .from("profiles")
           .select("efectivo_en_mano")
           .eq("id", pago.cobrador_id)
           .single();
+
         if (cobData) {
-          await supabase.from("profiles").update({
-            efectivo_en_mano: Math.max(0, Number(cobData.efectivo_en_mano || 0) - pago.monto_recibido),
-          }).eq("id", pago.cobrador_id);
+          await supabase
+            .from("profiles")
+            .update({
+              efectivo_en_mano: Math.max(0, Number(cobData.efectivo_en_mano || 0) - pago.monto_recibido),
+            })
+            .eq("id", pago.cobrador_id);
         }
       }
 
-      // 5) Check if prestamo needs state change back from Liquidado
-      const { data: remaining } = await supabase
-        .from("amortizacion")
-        .select("id")
-        .eq("prestamo_id", pago.prestamo_id)
-        .not("status", "eq", "Pagada");
-
-      if (remaining && remaining.length > 0) {
-        // Check current estado
+      const cuotasPendientes = cuotas.filter((c) => c.saldo_total.gt(0.009)).length;
+      if (cuotasPendientes === 0) {
+        await supabase.from("prestamos").update({ estado: "Liquidado" as any }).eq("id", pago.prestamo_id);
+      } else {
         const { data: prest } = await supabase
           .from("prestamos")
           .select("estado")
           .eq("id", pago.prestamo_id)
           .single();
+
         if (prest?.estado === "Liquidado") {
           await supabase.from("prestamos").update({ estado: "Activo" as any }).eq("id", pago.prestamo_id);
         }
       }
 
-      // Invalidate all finance-related queries
       invalidateFinanceQueries(queryClient, { prestamoId: pago.prestamo_id });
-
       toast.success("Pago anulado correctamente");
       onOpenChange(false);
       setMotivo("");
