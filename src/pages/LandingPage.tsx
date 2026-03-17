@@ -474,7 +474,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-8">
-            * IVA no incluido. Precio por usuario adicional: $99 MXN/mes (Básico), $149 MXN/mes (Pro), incluido (Enterprise).
+            * IVA no incluido. Precio por usuario adicional: $150 MXN/mes (Básico), $130 MXN/mes (Profesional), $100 MXN/mes (Enterprise).
           </p>
         </div>
       </section>
