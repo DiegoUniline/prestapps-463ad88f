@@ -517,7 +517,7 @@ export default function PrestamoDetallePage() {
       <div className="flex flex-col lg:flex-row min-h-[600px]">
 
         {/* LEFT SIDEBAR (28%) */}
-        <div className="lg:w-[28%] bg-[hsl(210,20%,98%)] border-r border-[hsl(220,14%,91%)] p-5 space-y-5">
+        <div className="w-full lg:w-[28%] bg-[hsl(210,20%,98%)] dark:bg-card lg:border-r border-b lg:border-b-0 border-[hsl(220,14%,91%)] p-4 md:p-5 space-y-4 md:space-y-5">
 
           {/* Datos del Préstamo */}
           <div>
