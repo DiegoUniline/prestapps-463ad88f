@@ -616,30 +616,32 @@ export default function PrestamoDetallePage() {
         {/* RIGHT CONTENT (72%) */}
         <div className="lg:w-[72%] bg-card">
           <Tabs value={tab} onValueChange={setTab}>
-            <div className="border-b border-border px-5">
-              <TabsList className="bg-transparent h-auto p-0 gap-0">
-                {[
-                  { value: "amortizacion", label: "Amortización" },
-                  { value: "pagos", label: "Pagos" },
-                  { value: "promesas", label: "Promesas" },
-                  { value: "actividad", label: "Actividad" },
-                ].map((t) => (
-                  <TabsTrigger
-                    key={t.value}
-                    value={t.value}
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-[13px] font-medium text-muted-foreground data-[state=active]:text-foreground"
-                  >
-                    {t.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+            <div className="border-b border-border px-4 md:px-5">
+              <div className="overflow-x-auto">
+                <TabsList className="bg-transparent h-auto p-0 gap-0 inline-flex min-w-max">
+                  {[
+                    { value: "amortizacion", label: "Amortización" },
+                    { value: "pagos", label: "Pagos" },
+                    { value: "promesas", label: "Promesas" },
+                    { value: "actividad", label: "Actividad" },
+                  ].map((t) => (
+                    <TabsTrigger
+                      key={t.value}
+                      value={t.value}
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 md:px-4 py-2.5 text-[12px] md:text-[13px] font-medium text-muted-foreground data-[state=active]:text-foreground whitespace-nowrap"
+                    >
+                      {t.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
             </div>
 
             {/* ── TAB: Amortización ──────────────────────────── */}
             <TabsContent value="amortizacion" className="m-0">
               {/* Filter tabs + toggle */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-[hsl(220,14%,96%)]">
-                <div className="flex gap-1">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2 border-b border-[hsl(220,14%,96%)]">
+                <div className="flex gap-1 overflow-x-auto">
                   {([
                     { key: "todas", label: "Todas", count: amort.length },
                     { key: "Pagada", label: "Pagadas", count: amort.filter(c => c.status === "Pagada").length },
@@ -650,7 +652,7 @@ export default function PrestamoDetallePage() {
                       key={f.key}
                       onClick={() => setAmortFilter(f.key)}
                       className={cn(
-                        "px-3 py-1 rounded-full text-[11px] font-medium transition-colors",
+                        "px-3 py-1 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap shrink-0",
                         amortFilter === f.key
                           ? "bg-primary text-primary-foreground"
                           : "bg-secondary text-muted-foreground hover:text-foreground"
@@ -662,7 +664,7 @@ export default function PrestamoDetallePage() {
                 </div>
                 <button
                   onClick={() => setShowOptional(!showOptional)}
-                  className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                  className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors self-end sm:self-auto shrink-0"
                 >
                   {showOptional ? "Menos columnas" : "Más columnas"} <ChevronDown className={cn("h-3 w-3 transition-transform", showOptional && "rotate-180")} />
                 </button>
