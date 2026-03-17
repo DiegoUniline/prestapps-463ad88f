@@ -94,6 +94,31 @@ export default function EmpresasPage() {
     },
   });
 
+  // Real subscription data from suscripciones table
+  const { data: subsMap = {} } = useQuery({
+    queryKey: ["empresas-suscripciones"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("suscripciones")
+        .select("empresa_id, estado, num_usuarios, plan_id, planes(nombre, precio_base_mes)")
+        .neq("estado", "cancelada")
+        .order("creado_en", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, { estado: string; num_usuarios: number; plan_nombre: string; precio: number }> = {};
+      for (const s of data || []) {
+        if (!map[s.empresa_id]) {
+          map[s.empresa_id] = {
+            estado: s.estado,
+            num_usuarios: s.num_usuarios,
+            plan_nombre: (s.planes as any)?.nombre || "Manual",
+            precio: (s.planes as any)?.precio_base_mes || 0,
+          };
+        }
+      }
+      return map;
+    },
+  });
+
   const { data: userCountMap = {} } = useQuery({
     queryKey: ["empresas-user-counts"],
     queryFn: async () => {
@@ -249,9 +274,13 @@ export default function EmpresasPage() {
               ) : (
                 empresas.map((e) => {
                   const admins = adminMap[e.id] || [];
-                  const planInfo = PLAN_CONFIG[e.plan] || PLAN_CONFIG.basico;
-                  const userCount = userCountMap[e.id] || 0;
-                  const atLimit = userCount >= e.max_usuarios && e.max_usuarios < 999;
+                    const planInfo = PLAN_CONFIG[e.plan] || PLAN_CONFIG.basico;
+                    const userCount = userCountMap[e.id] || 0;
+                    const sub = subsMap[e.id];
+                    const subPlanName = sub?.plan_nombre || null;
+                    const subEstado = sub?.estado || null;
+                    const subUsuarios = sub?.num_usuarios || 0;
+                    const atLimit = userCount >= (subUsuarios || e.max_usuarios) && (subUsuarios || e.max_usuarios) < 999;
 
                   return (
                     <TableRow key={e.id} className={`${!e.activa ? "opacity-50" : ""} cursor-pointer hover:bg-muted/50`} onClick={() => setDetailEmpresa(e)}>
@@ -262,14 +291,22 @@ export default function EmpresasPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="gap-1">
-                          {planInfo.icon} {planInfo.label}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground ml-1">{planInfo.price}</span>
+                        {sub ? (
+                          <div className="space-y-0.5">
+                            <Badge variant="outline" className="gap-1">
+                              {planInfo.icon} {subPlanName}
+                            </Badge>
+                            <Badge variant={subEstado === "activa" ? "default" : subEstado === "trial" ? "outline" : "destructive"} className="text-[10px] ml-1">
+                              {subEstado}
+                            </Badge>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Sin suscripción</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <span className={atLimit ? "text-destructive font-semibold" : ""}>
-                          {userCount} / {e.max_usuarios >= 999 ? "∞" : e.max_usuarios}
+                          {userCount} / {sub ? subUsuarios : (e.max_usuarios >= 999 ? "∞" : e.max_usuarios)}
                         </span>
                       </TableCell>
                       <TableCell>{e.ruc || "—"}</TableCell>
@@ -413,10 +450,19 @@ export default function EmpresasPage() {
             <TabsContent value="info" className="space-y-4 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm pt-2">
                 <div>
-                  <span className="text-muted-foreground block text-xs">Plan</span>
-                  <Badge variant="outline" className="gap-1 mt-0.5">
-                    {PLAN_CONFIG[detailEmpresa?.plan || "basico"]?.icon} {PLAN_CONFIG[detailEmpresa?.plan || "basico"]?.label}
-                  </Badge>
+                  <span className="text-muted-foreground block text-xs">Suscripción</span>
+                  {detailEmpresa && subsMap[detailEmpresa.id] ? (
+                    <div className="mt-0.5 space-y-0.5">
+                      <Badge variant="outline" className="gap-1">
+                        {subsMap[detailEmpresa.id].plan_nombre}
+                      </Badge>
+                      <Badge variant={subsMap[detailEmpresa.id].estado === "activa" ? "default" : "destructive"} className="text-[10px] ml-1">
+                        {subsMap[detailEmpresa.id].estado}
+                      </Badge>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic mt-0.5 block">Sin suscripción</span>
+                  )}
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-xs">RUC / NIT</span>
