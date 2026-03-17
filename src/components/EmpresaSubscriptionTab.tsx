@@ -270,7 +270,10 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             <div className="space-y-2">
               <Label>Plan</Label>
-              <Select value={form.plan_id} onValueChange={(v) => setForm({ ...form, plan_id: v })}>
+              <Select value={form.plan_id} onValueChange={(v) => {
+                const p = planes.find((pl) => pl.id === v);
+                setForm({ ...form, plan_id: v, num_usuarios: Math.max(form.num_usuarios, p?.usuarios_incluidos || 1) });
+              }}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar plan" /></SelectTrigger>
                 <SelectContent>
                   {planes.map((p) => (
