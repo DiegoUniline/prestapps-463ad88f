@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccesoApp } from "@/hooks/useAccesoApp";
 import { useAuthStore } from "@/stores/authStore";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { calcularCostoMensual } from "@/lib/subscription";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
