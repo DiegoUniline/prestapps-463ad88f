@@ -113,6 +113,7 @@ const plans = [
       { text: "CRM de cobranza", included: true },
       { text: "Lead Scoring", included: true },
       { text: "Comisiones automáticas", included: true },
+      { text: "Capacitación (1 hr + videos)", included: true },
       { text: "Cobro con Stripe", included: false },
       { text: "Auditoría completa", included: false },
     ],
