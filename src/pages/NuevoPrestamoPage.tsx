@@ -168,7 +168,11 @@ export default function NuevoPrestamoPage() {
           cuotaVal = Math.round((capital + interes) * 100) / 100;
         } else {
           cuotaVal = cuotaFinal;
-          capital = Math.round((cuotaVal - interes) * 100) / 100;
+          capital = Math.min(
+            Math.round((cuotaVal - interes) * 100) / 100,
+            Math.round(saldoCapital * 100) / 100
+          );
+          cuotaVal = Math.round((capital + interes) * 100) / 100;
         }
 
         saldoCapital = Math.max(0, Math.round((saldoCapital - capital) * 100) / 100);
