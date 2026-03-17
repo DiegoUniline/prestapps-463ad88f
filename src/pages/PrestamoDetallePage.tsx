@@ -256,7 +256,7 @@ export default function PrestamoDetallePage() {
   const cuotasVencidas = amort.filter((c) => c.status === "Vencida").length;
   const cuotasPagadas = amort.filter((c) => c.status === "Pagada").length;
   const saldoMoroso = amort.reduce((s, c) => s + Number(c.saldo_mora || 0), 0);
-  const proximaCuota = amort.find((c) => c.status === "Vencida") || amort.find((c) => c.status === "Pendiente" || c.status === "Prometida");
+  const proximaCuota = amort.find((c) => c.status === "Parcial") || amort.find((c) => c.status === "Vencida") || amort.find((c) => c.status === "Pendiente" || c.status === "Prometida");
   const ultimoPago = pagosRaw.length > 0 ? pagosRaw[pagosRaw.length - 1] : null;
   const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
   const cobroHoy = proximaCuota ? Number(proximaCuota.saldo_total || 0) : 0;
@@ -706,12 +706,14 @@ export default function PrestamoDetallePage() {
                           return filtered.map((c) => {
                           const status = c.status || "Pendiente";
                           const isNext = proximaCuota?.num_cuota === c.num_cuota;
+                          const isParcial = status === "Parcial";
                           return (
                             <TableRow
                               key={c.num_cuota}
                               className={cn(
                                 "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)] transition-colors",
-                                isNext && "border-l-[3px] border-l-primary",
+                                isNext && "border-l-[3px] border-l-primary bg-primary/5",
+                                isParcial && !isNext && "bg-[hsl(217,91%,60%,0.06)]",
                               )}
                               onMouseEnter={() => setHoveredRow(c.num_cuota)}
                               onMouseLeave={() => setHoveredRow(null)}
