@@ -450,10 +450,19 @@ export default function EmpresasPage() {
             <TabsContent value="info" className="space-y-4 max-h-[60vh] overflow-y-auto">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm pt-2">
                 <div>
-                  <span className="text-muted-foreground block text-xs">Plan</span>
-                  <Badge variant="outline" className="gap-1 mt-0.5">
-                    {PLAN_CONFIG[detailEmpresa?.plan || "basico"]?.icon} {PLAN_CONFIG[detailEmpresa?.plan || "basico"]?.label}
-                  </Badge>
+                  <span className="text-muted-foreground block text-xs">Suscripción</span>
+                  {detailEmpresa && subsMap[detailEmpresa.id] ? (
+                    <div className="mt-0.5 space-y-0.5">
+                      <Badge variant="outline" className="gap-1">
+                        {subsMap[detailEmpresa.id].plan_nombre}
+                      </Badge>
+                      <Badge variant={subsMap[detailEmpresa.id].estado === "activa" ? "default" : "destructive"} className="text-[10px] ml-1">
+                        {subsMap[detailEmpresa.id].estado}
+                      </Badge>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic mt-0.5 block">Sin suscripción</span>
+                  )}
                 </div>
                 <div>
                   <span className="text-muted-foreground block text-xs">RUC / NIT</span>
