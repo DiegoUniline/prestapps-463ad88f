@@ -353,6 +353,7 @@ export default function LeadScoringPage() {
   const { data: scores, isLoading } = useLeadScoring(empresaId);
   const [search, setSearch] = useState("");
   const [filtroNivel, setFiltroNivel] = useState("todos");
+  const [selectedCliente, setSelectedCliente] = useState<ClienteScore | null>(null);
 
   const filtered = useMemo(() => {
     if (!scores) return [];
