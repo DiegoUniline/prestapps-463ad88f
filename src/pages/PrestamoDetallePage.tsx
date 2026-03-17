@@ -517,20 +517,6 @@ export default function PrestamoDetallePage() {
       </div>
 
       {/* ── BODY ── */}
-      <Tabs value={tab} onValueChange={setTab}>
-        {/* Mobile tab bar with Resumen */}
-        <div className="lg:hidden border-b border-border px-3 bg-card">
-          <div className="overflow-x-auto">
-            <TabsList className="bg-transparent h-auto p-0 gap-0 inline-flex min-w-max">
-              {[{ value: "amortizacion", label: "Cuotas" }, { value: "pagos", label: "Pagos" }, { value: "resumen", label: "Resumen" }, { value: "promesas", label: "Promesas" }, { value: "actividad", label: "Actividad" }].map((t) => (
-                <TabsTrigger key={t.value} value={t.value} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2.5 text-[12px] font-medium text-muted-foreground data-[state=active]:text-foreground whitespace-nowrap">{t.label}</TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-        </div>
-        <div className="flex flex-col lg:flex-row min-h-[400px] lg:min-h-[600px]">
-        {/* Desktop sidebar */}
-        <div className="hidden lg:block lg:w-[28%] bg-[hsl(210,20%,98%)] dark:bg-card border-r border-[hsl(220,14%,91%)] p-5 space-y-5">
       {(() => {
         const sidebarContent = (
           <div className="space-y-4 md:space-y-5">
@@ -629,353 +615,165 @@ export default function PrestamoDetallePage() {
           </div>
         );
 
-        const tabItems = [
-          { value: "amortizacion", label: "Amortización" },
-          { value: "pagos", label: "Pagos" },
-          { value: "promesas", label: "Promesas" },
-          { value: "actividad", label: "Actividad" },
-        ];
-
-        const mobileTabItems = [
-          { value: "amortizacion", label: "Cuotas" },
-          { value: "pagos", label: "Pagos" },
-          { value: "resumen", label: "Resumen" },
-          { value: "promesas", label: "Promesas" },
-          { value: "actividad", label: "Actividad" },
-        ];
-
         return (
-          <>
-            {/* ── MOBILE: single tabbed view ── */}
-            <div className="lg:hidden bg-card">
-              <Tabs value={tab} onValueChange={setTab}>
-                <div className="border-b border-border px-3">
-                  <div className="overflow-x-auto -mx-1">
-                    <TabsList className="bg-transparent h-auto p-0 gap-0 inline-flex min-w-max">
-                      {mobileTabItems.map((t) => (
-                        <TabsTrigger
-                          key={t.value}
-                          value={t.value}
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2.5 text-[12px] font-medium text-muted-foreground data-[state=active]:text-foreground whitespace-nowrap"
-                        >
-                          {t.label}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </div>
-                </div>
-                <TabsContent value="resumen" className="m-0 p-4 bg-[hsl(210,20%,98%)] dark:bg-card">
-                  {sidebarContent}
-                </TabsContent>
-              </Tabs>
+          <Tabs value={tab} onValueChange={setTab}>
+            {/* Mobile tab bar */}
+            <div className="lg:hidden border-b border-border px-3 bg-card">
+              <div className="overflow-x-auto -mx-1">
+                <TabsList className="bg-transparent h-auto p-0 gap-0 inline-flex min-w-max">
+                  {[{ value: "amortizacion", label: "Cuotas" }, { value: "pagos", label: "Pagos" }, { value: "resumen", label: "Resumen" }, { value: "promesas", label: "Promesas" }, { value: "actividad", label: "Actividad" }].map((t) => (
+                    <TabsTrigger key={t.value} value={t.value} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2.5 text-[12px] font-medium text-muted-foreground data-[state=active]:text-foreground whitespace-nowrap">{t.label}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
             </div>
 
-            {/* ── DESKTOP: 2-column layout ── */}
-            <div className="hidden lg:flex flex-row min-h-[600px]">
-              {/* LEFT SIDEBAR (28%) */}
-              <div className="w-[28%] bg-[hsl(210,20%,98%)] dark:bg-card border-r border-[hsl(220,14%,91%)] p-5">
+            <div className="flex flex-col lg:flex-row min-h-[400px] lg:min-h-[600px]">
+              {/* Desktop sidebar */}
+              <div className="hidden lg:block lg:w-[28%] bg-[hsl(210,20%,98%)] dark:bg-card border-r border-[hsl(220,14%,91%)] p-5">
                 {sidebarContent}
               </div>
 
-              {/* RIGHT CONTENT (72%) */}
-              <div className="w-[72%] bg-card">
-                <Tabs value={tab === "resumen" ? "amortizacion" : tab} onValueChange={setTab}>
-                  <div className="border-b border-border px-5">
-                    <TabsList className="bg-transparent h-auto p-0 gap-0 inline-flex">
-                      {tabItems.map((t) => (
-                        <TabsTrigger
-                          key={t.value}
-                          value={t.value}
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-[13px] font-medium text-muted-foreground data-[state=active]:text-foreground whitespace-nowrap"
-                        >
-                          {t.label}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </div>
-                </Tabs>
-              </div>
-            </div>
-          </>
-        );
-      })()}
-
-            {/* ── TAB: Amortización ──────────────────────────── */}
-            <TabsContent value="amortizacion" className="m-0">
-              {/* Filter tabs + toggle */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2 border-b border-[hsl(220,14%,96%)]">
-                <div className="flex gap-1 overflow-x-auto">
-                  {([
-                    { key: "todas", label: "Todas", count: amort.length },
-                    { key: "Pagada", label: "Pagadas", count: amort.filter(c => c.status === "Pagada").length },
-                    { key: "Pendiente", label: "Pendientes", count: amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida").length },
-                    { key: "Vencida", label: "Vencidas", count: amort.filter(c => c.status === "Vencida").length },
-                  ] as const).map((f) => (
-                    <button
-                      key={f.key}
-                      onClick={() => setAmortFilter(f.key)}
-                      className={cn(
-                        "px-3 py-1 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap shrink-0",
-                        amortFilter === f.key
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {f.label} ({f.count})
-                    </button>
-                  ))}
+              {/* Content area */}
+              <div className="w-full lg:w-[72%] bg-card">
+                {/* Desktop tab bar */}
+                <div className="hidden lg:block border-b border-border px-5">
+                  <TabsList className="bg-transparent h-auto p-0 gap-0 inline-flex">
+                    {[{ value: "amortizacion", label: "Amortización" }, { value: "pagos", label: "Pagos" }, { value: "promesas", label: "Promesas" }, { value: "actividad", label: "Actividad" }].map((t) => (
+                      <TabsTrigger key={t.value} value={t.value} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-[13px] font-medium text-muted-foreground data-[state=active]:text-foreground whitespace-nowrap">{t.label}</TabsTrigger>
+                    ))}
+                  </TabsList>
                 </div>
-                <button
-                  onClick={() => setShowOptional(!showOptional)}
-                  className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors self-end sm:self-auto shrink-0"
-                >
-                  {showOptional ? "Menos columnas" : "Más columnas"} <ChevronDown className={cn("h-3 w-3 transition-transform", showOptional && "rotate-180")} />
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
-                      {defaultCols.map((h) => (
-                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
-                      ))}
-                      {showOptional && optionalCols.map((h) => (
-                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
-                      ))}
-                      <TableHead className="border-b border-[hsl(220,14%,91%)] px-3 py-2 w-[120px] text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)]">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(() => {
-                      const filtered = amortFilter === "todas" ? amort
-                        : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
-                        : amort.filter(c => c.status === amortFilter);
-                      if (filtered.length === 0) return (
-                        <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</TableCell></TableRow>
-                      );
-                      return filtered.map((c) => {
-                      const status = c.status || "Pendiente";
-                      const isNext = proximaCuota?.num_cuota === c.num_cuota;
-                      return (
-                        <TableRow
-                          key={c.num_cuota}
+
+                {/* Mobile: Resumen tab */}
+                <TabsContent value="resumen" className="lg:hidden m-0 p-4 bg-[hsl(210,20%,98%)] dark:bg-card">
+                  {sidebarContent}
+                </TabsContent>
+
+                {/* ── TAB: Amortización ──────────────────────────── */}
+                <TabsContent value="amortizacion" className="m-0">
+                  {/* Filter tabs + toggle */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2 border-b border-[hsl(220,14%,96%)]">
+                    <div className="flex gap-1 overflow-x-auto">
+                      {([
+                        { key: "todas", label: "Todas", count: amort.length },
+                        { key: "Pagada", label: "Pagadas", count: amort.filter(c => c.status === "Pagada").length },
+                        { key: "Pendiente", label: "Pendientes", count: amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida").length },
+                        { key: "Vencida", label: "Vencidas", count: amort.filter(c => c.status === "Vencida").length },
+                      ] as const).map((f) => (
+                        <button
+                          key={f.key}
+                          onClick={() => setAmortFilter(f.key)}
                           className={cn(
-                            "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)] transition-colors",
-                            isNext && "border-l-[3px] border-l-primary",
+                            "px-3 py-1 rounded-full text-[11px] font-medium transition-colors whitespace-nowrap shrink-0",
+                            amortFilter === f.key
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-secondary text-muted-foreground hover:text-foreground"
                           )}
-                          onMouseEnter={() => setHoveredRow(c.num_cuota)}
-                          onMouseLeave={() => setHoveredRow(null)}
                         >
-                          <TableCell className="px-3 text-[13px] font-medium">{c.num_cuota}</TableCell>
-                          <TableCell className="px-3 text-[12px]">{dash(c.capital) || $$(c.capital)}</TableCell>
-                          <TableCell className="px-3 text-[12px]">{dash(c.interes) || $$(c.interes)}</TableCell>
-                          <TableCell className="px-3 text-[13px] font-medium">{$$(c.capital_interes)}</TableCell>
-                          <TableCell className="px-3 text-[12px] whitespace-nowrap">{fmtDate(c.fecha_vencimiento)}</TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", (c.dias_atraso || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
-                            {(c.dias_atraso || 0) > 0 ? c.dias_atraso : "—"}
-                          </TableCell>
-                          <TableCell className={cn("px-3 text-[12px]", (c.mora || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
-                            {(c.mora || 0) > 0 ? $$(c.mora) : "—"}
-                          </TableCell>
-                          <TableCell className="px-3 text-[13px] font-medium">{dash(c.saldo_total) || $$(c.saldo_total)}</TableCell>
-                          <TableCell className="px-3"><CuotaStatusBadge status={status} /></TableCell>
-                          <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
-                            {c.fecha_pagada ? fmtDate(c.fecha_pagada) : <span className="text-[hsl(220,14%,83%)]">—</span>}
-                          </TableCell>
-
-                          {showOptional && (
-                            <>
-                              <TableCell className="px-3 text-[12px]">{dash(c.capital_pagado) || $$(c.capital_pagado)}</TableCell>
-                              <TableCell className="px-3 text-[12px]">{dash(c.interes_pagado) || $$(c.interes_pagado)}</TableCell>
-                              <TableCell className="px-3 text-[12px]">{dash(c.mora_pagada) || $$(c.mora_pagada)}</TableCell>
-                              <TableCell className="px-3 text-[12px]">{dash(c.saldo_capital) || $$(c.saldo_capital)}</TableCell>
-                              <TableCell className="px-3 text-[12px]">{dash(c.saldo_interes) || $$(c.saldo_interes)}</TableCell>
-                              <TableCell className={cn("px-3 text-[12px]", (c.saldo_mora || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>{dash(c.saldo_mora) || $$(c.saldo_mora)}</TableCell>
-                              <TableCell className="px-3 text-[12px]">{dash(c.descuento_mora) || $$(c.descuento_mora)}</TableCell>
-                              <TableCell className="px-3 text-[12px] text-muted-foreground">{c.avisado ? "Sí" : "No"}</TableCell>
-                            </>
-                          )}
-
-                          <TableCell className="px-3 w-[90px]">
-                            {status !== "Pagada" && !isCancelado && (
-                              <div className="flex items-center gap-1">
-                                <button
-                                  title="Pagar"
-                                  onClick={() => { setSelectedCuota(c); setPagoOpen(true); }}
-                                  className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                >
-                                  <HandCoins className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  title="Promesa"
-                                  onClick={() => { setSelectedCuota(c); setPromesaOpen(true); }}
-                                  className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                >
-                                  <CalendarCheck className="h-3.5 w-3.5" />
-                                </button>
-                                {!c.avisado && (
-                                  <button
-                                    title="Avisar"
-                                    onClick={async () => {
-                                      await supabase.from("amortizacion").update({ avisado: true }).eq("id", c.id);
-                                      queryClient.invalidateQueries({ queryKey: ["amortizacion"] });
-                                      toast.success(`Cuota #${c.num_cuota} marcada como avisada`);
-                                    }}
-                                    className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                  >
-                                    <Bell className="h-3.5 w-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    });
-                    })()}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-
-            {/* ── TAB: Pagos ─────────────────────────────────── */}
-            <TabsContent value="pagos" className="m-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
-                      {["Fecha", "Recibo", "Monto", "→ Mora", "→ Interés", "→ Capital", "Caja", "Método", "Estado", ""].map((h) => (
-                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
+                          {f.label} ({f.count})
+                        </button>
                       ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pagosRaw.length === 0 ? (
-                      <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-[13px]">Sin pagos registrados</TableCell></TableRow>
-                    ) : (
-                      <>
-                        {pagosRaw.map((pg, i) => {
-                          const cajaName = (pg.cajas as any)?.nombre || "—";
-                          const isAnulado = (pg as any).anulado === true;
+                    </div>
+                    <button
+                      onClick={() => setShowOptional(!showOptional)}
+                      className="text-[11px] text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors self-end sm:self-auto shrink-0"
+                    >
+                      {showOptional ? "Menos columnas" : "Más columnas"} <ChevronDown className={cn("h-3 w-3 transition-transform", showOptional && "rotate-180")} />
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
+                          {defaultCols.map((h) => (
+                            <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
+                          ))}
+                          {showOptional && optionalCols.map((h) => (
+                            <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
+                          ))}
+                          <TableHead className="border-b border-[hsl(220,14%,91%)] px-3 py-2 w-[120px] text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)]">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(() => {
+                          const filtered = amortFilter === "todas" ? amort
+                            : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
+                            : amort.filter(c => c.status === amortFilter);
+                          if (filtered.length === 0) return (
+                            <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</TableCell></TableRow>
+                          );
+                          return filtered.map((c) => {
+                          const status = c.status || "Pendiente";
+                          const isNext = proximaCuota?.num_cuota === c.num_cuota;
                           return (
-                            <TableRow key={pg.id} className={cn(
-                              "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]",
-                              isAnulado && "opacity-50 line-through"
-                            )}>
-                              <TableCell className="px-3 text-[12px]">{fmtDate(pg.created_at)}</TableCell>
-                              <TableCell className="px-3 text-[12px] text-muted-foreground">#{i + 1}</TableCell>
-                              <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pg.monto_recibido))}</TableCell>
-                              <TableCell className={cn("px-3 text-[12px]", (pg.aplicado_mora || 0) > 0 ? "text-destructive" : "text-[hsl(220,14%,83%)]")}>{(pg.aplicado_mora || 0) > 0 ? $$(pg.aplicado_mora) : "—"}</TableCell>
-                              <TableCell className="px-3 text-[12px]">{dash(pg.aplicado_interes) || $$(pg.aplicado_interes)}</TableCell>
-                              <TableCell className="px-3 text-[12px]">{dash(pg.aplicado_capital) || $$(pg.aplicado_capital)}</TableCell>
-                              <TableCell className="px-3 text-[12px] text-muted-foreground">{cajaName}</TableCell>
-                              <TableCell className="px-3"><MetodoDot metodo={pg.metodo_pago || "Efectivo"} /></TableCell>
-                              <TableCell className="px-3">
-                                {isAnulado ? (
-                                  <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border border-destructive text-destructive" title={(pg as any).motivo_anulacion || ""}>
-                                    <XCircle className="h-3 w-3 mr-0.5" />Anulado
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border border-[hsl(142,72%,37%)] text-[hsl(142,72%,37%)]">
-                                    <Check className="h-3 w-3 mr-0.5" />Válido
-                                  </span>
-                                )}
+                            <TableRow
+                              key={c.num_cuota}
+                              className={cn(
+                                "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)] transition-colors",
+                                isNext && "border-l-[3px] border-l-primary",
+                              )}
+                              onMouseEnter={() => setHoveredRow(c.num_cuota)}
+                              onMouseLeave={() => setHoveredRow(null)}
+                            >
+                              <TableCell className="px-3 text-[13px] font-medium">{c.num_cuota}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(c.capital) || $$(c.capital)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{dash(c.interes) || $$(c.interes)}</TableCell>
+                              <TableCell className="px-3 text-[13px] font-medium">{$$(c.capital_interes)}</TableCell>
+                              <TableCell className="px-3 text-[12px] whitespace-nowrap">{fmtDate(c.fecha_vencimiento)}</TableCell>
+                              <TableCell className={cn("px-3 text-[12px]", (c.dias_atraso || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
+                                {(c.dias_atraso || 0) > 0 ? c.dias_atraso : "—"}
                               </TableCell>
-                              <TableCell className="px-3">
-                                {!isAnulado && (
-                                  <div className="flex items-center gap-0.5">
-                                    {!isCancelado && (
+                              <TableCell className={cn("px-3 text-[12px]", (c.mora || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
+                                {(c.mora || 0) > 0 ? $$(c.mora) : "—"}
+                              </TableCell>
+                              <TableCell className="px-3 text-[13px] font-medium">{dash(c.saldo_total) || $$(c.saldo_total)}</TableCell>
+                              <TableCell className="px-3"><CuotaStatusBadge status={status} /></TableCell>
+                              <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
+                                {c.fecha_pagada ? fmtDate(c.fecha_pagada) : <span className="text-[hsl(220,14%,83%)]">—</span>}
+                              </TableCell>
+
+                              {showOptional && (
+                                <>
+                                  <TableCell className="px-3 text-[12px]">{dash(c.capital_pagado) || $$(c.capital_pagado)}</TableCell>
+                                  <TableCell className="px-3 text-[12px]">{dash(c.interes_pagado) || $$(c.interes_pagado)}</TableCell>
+                                  <TableCell className="px-3 text-[12px]">{dash(c.mora_pagada) || $$(c.mora_pagada)}</TableCell>
+                                  <TableCell className="px-3 text-[12px]">{dash(c.saldo_capital) || $$(c.saldo_capital)}</TableCell>
+                                  <TableCell className="px-3 text-[12px]">{dash(c.saldo_interes) || $$(c.saldo_interes)}</TableCell>
+                                  <TableCell className={cn("px-3 text-[12px]", (c.saldo_mora || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>{dash(c.saldo_mora) || $$(c.saldo_mora)}</TableCell>
+                                  <TableCell className="px-3 text-[12px]">{dash(c.descuento_mora) || $$(c.descuento_mora)}</TableCell>
+                                  <TableCell className="px-3 text-[12px] text-muted-foreground">{c.avisado ? "Sí" : "No"}</TableCell>
+                                </>
+                              )}
+
+                              <TableCell className="px-3 w-[90px]">
+                                {status !== "Pagada" && !isCancelado && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      title="Pagar"
+                                      onClick={() => { setSelectedCuota(c); setPagoOpen(true); }}
+                                      className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                    >
+                                      <HandCoins className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      title="Promesa"
+                                      onClick={() => { setSelectedCuota(c); setPromesaOpen(true); }}
+                                      className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                    >
+                                      <CalendarCheck className="h-3.5 w-3.5" />
+                                    </button>
+                                    {!c.avisado && (
                                       <button
-                                        title="Editar pago"
-                                        onClick={() => {
-                                          setEditPagoData({
-                                            id: pg.id,
-                                            prestamo_id: pg.prestamo_id,
-                                            cuota_id: pg.cuota_id,
-                                            monto_recibido: Number(pg.monto_recibido),
-                                            aplicado_mora: Number(pg.aplicado_mora || 0),
-                                            aplicado_interes: Number(pg.aplicado_interes || 0),
-                                            aplicado_capital: Number(pg.aplicado_capital || 0),
-                                            metodo_pago: pg.metodo_pago || "Efectivo",
-                                            caja_id: pg.caja_id,
-                                            cobrador_id: (pg as any).cobrador_id,
-                                            fecha_pago: (pg as any).fecha_pago,
-                                          });
-                                          setEditPagoOpen(true);
+                                        title="Avisar"
+                                        onClick={async () => {
+                                          await supabase.from("amortizacion").update({ avisado: true }).eq("id", c.id);
+                                          queryClient.invalidateQueries({ queryKey: ["amortizacion"] });
+                                          toast.success(`Cuota #${c.num_cuota} marcada como avisada`);
                                         }}
                                         className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                                       >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                      </button>
-                                    )}
-                                    <button
-                                      title="Ver comprobante"
-                                      onClick={() => {
-                                        setDocPreview({ open: true, type: "pagos" });
-                                      }}
-                                      className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                    >
-                                      <Eye className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                      title="Enviar comprobante por WhatsApp"
-                                      onClick={async () => {
-                                        try {
-                                          const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
-                                          const pdfBlob = doc.output("blob");
-                                          const telefono = cliente?.telefono;
-                                          if (!telefono) { toast.error("Cliente sin teléfono"); return; }
-                                          const fileName = `recibo-pago-${i + 1}-${Date.now()}.pdf`;
-                                          const { error: upErr } = await supabase.storage.from("empresa-assets").upload(`temp/${fileName}`, pdfBlob, { contentType: "application/pdf" });
-                                          if (upErr) throw upErr;
-                                          const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(`temp/${fileName}`);
-                                          await supabase.functions.invoke("whatsapp-sender", {
-                                            body: { action: "send-file", phone: telefono, url: urlData.publicUrl, message: `📄 Comprobante de pago #${i + 1} por ${$$(Number(pg.monto_recibido))}`, empresa_id: empresaId },
-                                          });
-                                          toast.success("Comprobante enviado por WhatsApp");
-                                          setTimeout(() => supabase.storage.from("empresa-assets").remove([`temp/${fileName}`]), 30000);
-                                        } catch (err: any) {
-                                          toast.error("Error al enviar: " + (err.message || err));
-                                        }
-                                      }}
-                                      className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-[hsl(142,72%,37%)] hover:bg-[hsl(142,72%,37%)]/10 transition-colors"
-                                    >
-                                      <Send className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                      title="Descargar comprobante"
-                                      onClick={async () => {
-                                        try {
-                                          const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
-                                          doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`);
-                                        } catch (err: any) {
-                                          toast.error("Error al descargar: " + (err.message || err));
-                                        }
-                                      }}
-                                      className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                    >
-                                      <Download className="h-3.5 w-3.5" />
-                                    </button>
-                                    {!isCancelado && (
-                                      <button
-                                        title="Anular pago"
-                                        onClick={() => {
-                                          setSelectedPago({
-                                            id: pg.id,
-                                            prestamo_id: pg.prestamo_id,
-                                            cuota_id: pg.cuota_id,
-                                            monto_recibido: Number(pg.monto_recibido),
-                                            aplicado_mora: Number(pg.aplicado_mora || 0),
-                                            aplicado_interes: Number(pg.aplicado_interes || 0),
-                                            aplicado_capital: Number(pg.aplicado_capital || 0),
-                                            caja_id: pg.caja_id,
-                                            cobrador_id: (pg as any).cobrador_id,
-                                          });
-                                          setAnularPagoOpen(true);
-                                        }}
-                                        className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                      >
-                                        <Ban className="h-3.5 w-3.5" />
+                                        <Bell className="h-3.5 w-3.5" />
                                       </button>
                                     )}
                                   </div>
@@ -983,89 +781,243 @@ export default function PrestamoDetallePage() {
                               </TableCell>
                             </TableRow>
                           );
-                        })}
-                        <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)] font-semibold border-t border-[hsl(220,14%,91%)]">
-                          <TableCell className="px-3 text-[12px]">Totales</TableCell>
-                          <TableCell className="px-3" />
-                          <TableCell className="px-3 text-[13px]">{$$(totalPagosMonto)}</TableCell>
-                          <TableCell className="px-3 text-[12px]">{$$(totalPagosMora)}</TableCell>
-                          <TableCell className="px-3 text-[12px]">{$$(totalPagosInteres)}</TableCell>
-                          <TableCell className="px-3 text-[12px]">{$$(totalPagosCapital)}</TableCell>
-                          <TableCell colSpan={4} />
+                        });
+                        })()}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+
+                {/* ── TAB: Pagos ─────────────────────────────────── */}
+                <TabsContent value="pagos" className="m-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
+                          {["Fecha", "Recibo", "Monto", "→ Mora", "→ Interés", "→ Capital", "Caja", "Método", "Estado", ""].map((h) => (
+                            <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
+                          ))}
                         </TableRow>
-                      </>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
+                      </TableHeader>
+                      <TableBody>
+                        {pagosRaw.length === 0 ? (
+                          <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-[13px]">Sin pagos registrados</TableCell></TableRow>
+                        ) : (
+                          <>
+                            {pagosRaw.map((pg, i) => {
+                              const cajaName = (pg.cajas as any)?.nombre || "—";
+                              const isAnulado = (pg as any).anulado === true;
+                              return (
+                                <TableRow key={pg.id} className={cn(
+                                  "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]",
+                                  isAnulado && "opacity-50 line-through"
+                                )}>
+                                  <TableCell className="px-3 text-[12px]">{fmtDate(pg.created_at)}</TableCell>
+                                  <TableCell className="px-3 text-[12px] text-muted-foreground">#{i + 1}</TableCell>
+                                  <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pg.monto_recibido))}</TableCell>
+                                  <TableCell className={cn("px-3 text-[12px]", (pg.aplicado_mora || 0) > 0 ? "text-destructive" : "text-[hsl(220,14%,83%)]")}>{(pg.aplicado_mora || 0) > 0 ? $$(pg.aplicado_mora) : "—"}</TableCell>
+                                  <TableCell className="px-3 text-[12px]">{dash(pg.aplicado_interes) || $$(pg.aplicado_interes)}</TableCell>
+                                  <TableCell className="px-3 text-[12px]">{dash(pg.aplicado_capital) || $$(pg.aplicado_capital)}</TableCell>
+                                  <TableCell className="px-3 text-[12px] text-muted-foreground">{cajaName}</TableCell>
+                                  <TableCell className="px-3"><MetodoDot metodo={pg.metodo_pago || "Efectivo"} /></TableCell>
+                                  <TableCell className="px-3">
+                                    {isAnulado ? (
+                                      <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border border-destructive text-destructive" title={(pg as any).motivo_anulacion || ""}>
+                                        <XCircle className="h-3 w-3 mr-0.5" />Anulado
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border border-[hsl(142,72%,37%)] text-[hsl(142,72%,37%)]">
+                                        <Check className="h-3 w-3 mr-0.5" />Válido
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="px-3">
+                                    {!isAnulado && (
+                                      <div className="flex items-center gap-0.5">
+                                        {!isCancelado && (
+                                          <button
+                                            title="Editar pago"
+                                            onClick={() => {
+                                              setEditPagoData({
+                                                id: pg.id,
+                                                prestamo_id: pg.prestamo_id,
+                                                cuota_id: pg.cuota_id,
+                                                monto_recibido: Number(pg.monto_recibido),
+                                                aplicado_mora: Number(pg.aplicado_mora || 0),
+                                                aplicado_interes: Number(pg.aplicado_interes || 0),
+                                                aplicado_capital: Number(pg.aplicado_capital || 0),
+                                                metodo_pago: pg.metodo_pago || "Efectivo",
+                                                caja_id: pg.caja_id,
+                                                cobrador_id: (pg as any).cobrador_id,
+                                                fecha_pago: (pg as any).fecha_pago,
+                                              });
+                                              setEditPagoOpen(true);
+                                            }}
+                                            className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                          >
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </button>
+                                        )}
+                                        <button
+                                          title="Ver comprobante"
+                                          onClick={() => {
+                                            setDocPreview({ open: true, type: "pagos" });
+                                          }}
+                                          className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                        >
+                                          <Eye className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          title="Enviar comprobante por WhatsApp"
+                                          onClick={async () => {
+                                            try {
+                                              const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
+                                              const pdfBlob = doc.output("blob");
+                                              const telefono = cliente?.telefono;
+                                              if (!telefono) { toast.error("Cliente sin teléfono"); return; }
+                                              const fileName = `recibo-pago-${i + 1}-${Date.now()}.pdf`;
+                                              const { error: upErr } = await supabase.storage.from("empresa-assets").upload(`temp/${fileName}`, pdfBlob, { contentType: "application/pdf" });
+                                              if (upErr) throw upErr;
+                                              const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(`temp/${fileName}`);
+                                              await supabase.functions.invoke("whatsapp-sender", {
+                                                body: { action: "send-file", phone: telefono, url: urlData.publicUrl, message: `📄 Comprobante de pago #${i + 1} por ${$$(Number(pg.monto_recibido))}`, empresa_id: empresaId },
+                                              });
+                                              toast.success("Comprobante enviado por WhatsApp");
+                                              setTimeout(() => supabase.storage.from("empresa-assets").remove([`temp/${fileName}`]), 30000);
+                                            } catch (err: any) {
+                                              toast.error("Error al enviar: " + (err.message || err));
+                                            }
+                                          }}
+                                          className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-[hsl(142,72%,37%)] hover:bg-[hsl(142,72%,37%)]/10 transition-colors"
+                                        >
+                                          <Send className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          title="Descargar comprobante"
+                                          onClick={async () => {
+                                            try {
+                                              const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
+                                              doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`);
+                                            } catch (err: any) {
+                                              toast.error("Error al descargar: " + (err.message || err));
+                                            }
+                                          }}
+                                          className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                        >
+                                          <Download className="h-3.5 w-3.5" />
+                                        </button>
+                                        {!isCancelado && (
+                                          <button
+                                            title="Anular pago"
+                                            onClick={() => {
+                                              setSelectedPago({
+                                                id: pg.id,
+                                                prestamo_id: pg.prestamo_id,
+                                                cuota_id: pg.cuota_id,
+                                                monto_recibido: Number(pg.monto_recibido),
+                                                aplicado_mora: Number(pg.aplicado_mora || 0),
+                                                aplicado_interes: Number(pg.aplicado_interes || 0),
+                                                aplicado_capital: Number(pg.aplicado_capital || 0),
+                                                caja_id: pg.caja_id,
+                                                cobrador_id: (pg as any).cobrador_id,
+                                              });
+                                              setAnularPagoOpen(true);
+                                            }}
+                                            className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                          >
+                                            <Ban className="h-3.5 w-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                            <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)] font-semibold border-t border-[hsl(220,14%,91%)]">
+                              <TableCell className="px-3 text-[12px]">Totales</TableCell>
+                              <TableCell className="px-3" />
+                              <TableCell className="px-3 text-[13px]">{$$(totalPagosMonto)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{$$(totalPagosMora)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{$$(totalPagosInteres)}</TableCell>
+                              <TableCell className="px-3 text-[12px]">{$$(totalPagosCapital)}</TableCell>
+                              <TableCell colSpan={4} />
+                            </TableRow>
+                          </>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
 
-            {/* ── TAB: Promesas ───────────────────────────────── */}
-            <TabsContent value="promesas" className="m-0">
-              <div className="flex justify-end px-5 py-2.5 border-b border-border">
-                <Button variant="outline" size="sm" className="h-7 text-[12px]" disabled={isCancelado}><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
-              </div>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
-                      {["Cuota #", "F. Prometida", "Monto", "Notas", "Status", "Creado", "Acción"].map((h) => (
-                        <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {promesasRaw.length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">Sin promesas</TableCell></TableRow>
-                    ) : promesasRaw.map((pr) => (
-                      <TableRow key={pr.id} className="border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]">
-                        <TableCell className="px-3 text-[12px]">{pr.cuota_id ? "—" : "—"}</TableCell>
-                        <TableCell className="px-3 text-[12px]">{fmtDate(pr.fecha_prometida)}</TableCell>
-                        <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pr.monto_prometido))}</TableCell>
-                        <TableCell className="px-3 text-[12px] text-muted-foreground max-w-[200px] truncate">{pr.notas || "—"}</TableCell>
-                        <TableCell className="px-3">
-                          <span className={cn("inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border", promesaStatusStyle[pr.status || "Pendiente"] || promesaStatusStyle.Pendiente)}>
-                            {pr.status || "Pendiente"}
-                          </span>
-                        </TableCell>
-                        <TableCell className="px-3 text-[12px] text-muted-foreground">{fmtDate(pr.created_at)}</TableCell>
-                        <TableCell className="px-3">
-                          <button className="text-[11px] text-muted-foreground hover:text-primary transition-colors">Editar</button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
+                {/* ── TAB: Promesas ───────────────────────────────── */}
+                <TabsContent value="promesas" className="m-0">
+                  <div className="flex justify-end px-5 py-2.5 border-b border-border">
+                    <Button variant="outline" size="sm" className="h-7 text-[12px]" disabled={isCancelado}><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
+                          {["Cuota #", "F. Prometida", "Monto", "Notas", "Status", "Creado", "Acción"].map((h) => (
+                            <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(220,9%,42%)] px-3 py-2 whitespace-nowrap border-b border-[hsl(220,14%,91%)]">{h}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {promesasRaw.length === 0 ? (
+                          <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-[13px]">Sin promesas</TableCell></TableRow>
+                        ) : promesasRaw.map((pr) => (
+                          <TableRow key={pr.id} className="border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]">
+                            <TableCell className="px-3 text-[12px]">{pr.cuota_id ? "—" : "—"}</TableCell>
+                            <TableCell className="px-3 text-[12px]">{fmtDate(pr.fecha_prometida)}</TableCell>
+                            <TableCell className="px-3 text-[13px] font-medium">{$$(Number(pr.monto_prometido))}</TableCell>
+                            <TableCell className="px-3 text-[12px] text-muted-foreground max-w-[200px] truncate">{pr.notas || "—"}</TableCell>
+                            <TableCell className="px-3">
+                              <span className={cn("inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border", promesaStatusStyle[pr.status || "Pendiente"] || promesaStatusStyle.Pendiente)}>
+                                {pr.status || "Pendiente"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="px-3 text-[12px] text-muted-foreground">{fmtDate(pr.created_at)}</TableCell>
+                            <TableCell className="px-3">
+                              <button className="text-[11px] text-muted-foreground hover:text-primary transition-colors">Editar</button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
 
-            {/* ── TAB: Actividad ──────────────────────────────── */}
-            <TabsContent value="actividad" className="m-0 p-5">
-              <div className="relative">
-                <div className="absolute left-[11px] top-3 bottom-3 w-px bg-border" />
-                <div className="space-y-5">
-                  {actividad.length === 0 ? (
-                    <p className="text-[13px] text-muted-foreground pl-10">Sin actividad registrada</p>
-                  ) : actividad.slice().reverse().map((a, i) => {
-                    const dotColor = activityColors[a.tipo] || "bg-muted-foreground";
-                    return (
-                      <div key={i} className="relative pl-8">
-                        <div className={cn("absolute left-[7px] top-1.5 h-2.5 w-2.5 rounded-full", dotColor)} />
-                        <div>
-                          <p className="text-[13px]">{a.desc}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {a.usuario} · {fmtDateTime(a.fecha)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {/* ── TAB: Actividad ──────────────────────────────── */}
+                <TabsContent value="actividad" className="m-0 p-5">
+                  <div className="relative">
+                    <div className="absolute left-[11px] top-3 bottom-3 w-px bg-border" />
+                    <div className="space-y-5">
+                      {actividad.length === 0 ? (
+                        <p className="text-[13px] text-muted-foreground pl-10">Sin actividad registrada</p>
+                      ) : actividad.slice().reverse().map((a, i) => {
+                        const dotColor = activityColors[a.tipo] || "bg-muted-foreground";
+                        return (
+                          <div key={i} className="relative pl-8">
+                            <div className={cn("absolute left-[7px] top-1.5 h-2.5 w-2.5 rounded-full", dotColor)} />
+                            <div>
+                              <p className="text-[13px]">{a.desc}</p>
+                              <p className="text-[11px] text-muted-foreground mt-0.5">
+                                {a.usuario} · {fmtDateTime(a.fecha)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </TabsContent>
               </div>
-            </TabsContent>
+            </div>
           </Tabs>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Payment Modal */}
       <PagoModal
