@@ -217,13 +217,17 @@ function useLeadScoring(empresaId: string) {
         let cuotasConAtraso = 0;
         let maxDiasAtraso = 0;
 
+        const hoy = new Date();
         for (const p of cliPrestamos) {
           const pCuotas = cuotasByPrestamo[p.id] || [];
           for (const c of pCuotas) {
-            cuotasTotales++;
+            const venc = new Date(c.fecha_vencimiento);
+            const diffDays = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
+            const isFuture = diffDays < 0; // cuota hasn't reached due date yet
             const dias = Number(c.dias_atraso || 0);
 
             if (c.status === "Pagada") {
+              cuotasTotales++;
               // Paid on time (within grace period)
               if (dias <= diasGracia) {
                 cuotasATiempo++;
@@ -232,26 +236,25 @@ function useLeadScoring(empresaId: string) {
                 cuotasPagadasTarde++;
               }
             } else if (c.status === "Vencida") {
+              cuotasTotales++;
               cuotasVencidas++;
               saldoActual += Number(c.saldo_total || 0);
-              totalDiasAtraso += dias;
+              const realDias = dias > 0 ? dias : Math.max(0, diffDays);
+              totalDiasAtraso += realDias;
               cuotasConAtraso++;
-              maxDiasAtraso = Math.max(maxDiasAtraso, dias);
-            } else {
-              // Pendiente / Parcial
+              maxDiasAtraso = Math.max(maxDiasAtraso, realDias);
+            } else if (!isFuture) {
+              // Pendiente/Parcial but due date has passed — count it
+              cuotasTotales++;
               saldoActual += Number(c.saldo_total || 0);
-              // Check if it's actually overdue by comparing dates
-              const venc = new Date(c.fecha_vencimiento);
-              const hoy = new Date();
-              const diffDays = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
               if (diffDays > diasGracia) {
-                // Past grace period but not yet marked as Vencida
                 cuotasVencidas++;
                 totalDiasAtraso += diffDays;
                 cuotasConAtraso++;
                 maxDiasAtraso = Math.max(maxDiasAtraso, diffDays);
               }
             }
+            // Future cuotas (Pendiente and not yet due) are NOT counted at all
           }
         }
 

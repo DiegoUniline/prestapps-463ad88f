@@ -136,19 +136,31 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
 
   if (!s) return null;
 
+  // Safe defaults for any potentially undefined/NaN values
+  const cuotasTotales = s.cuotasTotales || 0;
+  const cuotasATiempo = s.cuotasATiempo || 0;
+  const cuotasPagadasTarde = s.cuotasPagadasTarde || 0;
+  const cuotasVencidas = s.cuotasVencidas || 0;
+  const totalPrestamos = s.totalPrestamos || 0;
+  const prestamosLiquidados = s.prestamosLiquidados || 0;
+  const maxDiasAtraso = s.maxDiasAtraso || 0;
+  const diasGracia = s.diasGracia || 0;
+  const diasAtrasoPromedio = s.diasAtrasoPromedio || 0;
+  const montoHistorico = s.montoHistorico || 0;
+
   // Recalculate factor points for display
-  const puntualidad = s.cuotasTotales > 0 ? Math.round((s.cuotasATiempo / s.cuotasTotales) * 40) : 0;
-  const pagadasTardePoints = s.cuotasTotales > 0 ? Math.round((s.cuotasPagadasTarde / s.cuotasTotales) * 15) : 0;
-  const liquidadosPoints = s.totalPrestamos > 0 ? Math.round((s.prestamosLiquidados / s.totalPrestamos) * 20) : 0;
+  const puntualidad = cuotasTotales > 0 ? Math.round((cuotasATiempo / cuotasTotales) * 40) : 0;
+  const pagadasTardePoints = cuotasTotales > 0 ? Math.round((cuotasPagadasTarde / cuotasTotales) * 15) : 0;
+  const liquidadosPoints = totalPrestamos > 0 ? Math.round((prestamosLiquidados / totalPrestamos) * 20) : 0;
 
   let trackRecord = 0;
-  if (s.totalPrestamos >= 2) trackRecord += 3;
-  if (s.totalPrestamos >= 4) trackRecord += 3;
-  if (s.montoHistorico >= 5000) trackRecord += 2;
-  if (s.montoHistorico >= 15000) trackRecord += 2;
+  if (totalPrestamos >= 2) trackRecord += 3;
+  if (totalPrestamos >= 4) trackRecord += 3;
+  if (montoHistorico >= 5000) trackRecord += 2;
+  if (montoHistorico >= 15000) trackRecord += 2;
 
-  const penCuotas = -Math.min(30, s.cuotasVencidas * 4);
-  const diasReales = Math.max(0, s.maxDiasAtraso - s.diasGracia);
+  const penCuotas = -Math.min(30, cuotasVencidas * 4);
+  const diasReales = Math.max(0, maxDiasAtraso - diasGracia);
   let penAntigüedad = 0;
   if (diasReales > 0) {
     if (diasReales <= 7) penAntigüedad = -(diasReales * 0.5);
@@ -158,14 +170,14 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
   }
   penAntigüedad = Math.round(penAntigüedad);
 
-  const avgReal = Math.max(0, s.diasAtrasoPromedio - s.diasGracia);
+  const avgReal = Math.max(0, diasAtrasoPromedio - diasGracia);
   const penAtraso = -Math.round(Math.min(15, avgReal * 0.4));
 
   const totalPositivo = puntualidad + pagadasTardePoints + liquidadosPoints + trackRecord;
   const totalNegativo = penCuotas + penAntigüedad + penAtraso;
 
-  const ratioATiempo = s.cuotasTotales > 0 ? Math.round((s.cuotasATiempo / s.cuotasTotales) * 100) : 0;
-  const ratioPagadasTarde = s.cuotasTotales > 0 ? Math.round((s.cuotasPagadasTarde / s.cuotasTotales) * 100) : 0;
+  const ratioATiempo = cuotasTotales > 0 ? Math.round((cuotasATiempo / cuotasTotales) * 100) : 0;
+  const ratioPagadasTarde = cuotasTotales > 0 ? Math.round((cuotasPagadasTarde / cuotasTotales) * 100) : 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -224,8 +236,8 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
             maxPoints={40}
             earned={puntualidad}
             description={
-              s.cuotasTotales > 0
-                ? `${s.cuotasATiempo} de ${s.cuotasTotales} cuotas pagadas dentro del plazo${s.diasGracia > 0 ? ` (+${s.diasGracia} días de gracia)` : ""}. Este es el factor más importante.`
+              cuotasTotales > 0
+                ? `${cuotasATiempo} de ${cuotasTotales} cuotas pagadas dentro del plazo${diasGracia > 0 ? ` (+${diasGracia} días de gracia)` : ""}. Este es el factor más importante.`
                 : "Sin cuotas registradas aún."
             }
             sentiment={ratioATiempo >= 80 ? "positive" : ratioATiempo >= 50 ? "warning" : "negative"}
@@ -238,36 +250,36 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
             maxPoints={15}
             earned={pagadasTardePoints}
             description={
-              s.cuotasPagadasTarde > 0
-                ? `${s.cuotasPagadasTarde} cuotas se pagaron después de la fecha de vencimiento. Se otorga crédito parcial porque sí cumplió, aunque tarde.`
+              cuotasPagadasTarde > 0
+                ? `${cuotasPagadasTarde} cuotas se pagaron después de la fecha de vencimiento. Se otorga crédito parcial porque sí cumplió, aunque tarde.`
                 : "Ninguna cuota pagada con retraso — eso es bueno."
             }
-            sentiment={s.cuotasPagadasTarde === 0 ? "positive" : "warning"}
+            sentiment={cuotasPagadasTarde === 0 ? "positive" : "warning"}
           />
 
           <ScoreFactor
             icon={Shield}
             label="Préstamos liquidados"
-            value={`${s.prestamosLiquidados}/${s.totalPrestamos}`}
+            value={`${prestamosLiquidados}/${totalPrestamos}`}
             maxPoints={20}
             earned={liquidadosPoints}
             description={
-              s.prestamosLiquidados > 0
-                ? `Ha completado ${s.prestamosLiquidados} préstamo${s.prestamosLiquidados > 1 ? "s" : ""} exitosamente. Demuestra capacidad y voluntad de pago.`
+              prestamosLiquidados > 0
+                ? `Ha completado ${prestamosLiquidados} préstamo${prestamosLiquidados > 1 ? "s" : ""} exitosamente. Demuestra capacidad y voluntad de pago.`
                 : "Aún no ha liquidado ningún préstamo. Completar uno mejora significativamente el score."
             }
-            sentiment={s.prestamosLiquidados > 0 ? "positive" : "neutral"}
+            sentiment={prestamosLiquidados > 0 ? "positive" : "neutral"}
           />
 
           <ScoreFactor
             icon={BarChart3}
             label="Historial crediticio"
-            value={$$(s.montoHistorico)}
+            value={$$(montoHistorico)}
             maxPoints={10}
             earned={trackRecord}
             description={
-              s.totalPrestamos >= 2
-                ? `${s.totalPrestamos} préstamos totales por ${$$(s.montoHistorico)}. Un historial más largo da mayor confiabilidad al score.`
+              totalPrestamos >= 2
+                ? `${totalPrestamos} préstamos totales por ${$$(montoHistorico)}. Un historial más largo da mayor confiabilidad al score.`
                 : "Historial corto. Con más préstamos completados, el score será más confiable."
             }
             sentiment={trackRecord >= 6 ? "positive" : trackRecord >= 3 ? "warning" : "neutral"}
@@ -279,15 +291,15 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
           <ScoreFactor
             icon={XCircle}
             label="Cuotas vencidas actuales"
-            value={`${s.cuotasVencidas}`}
+            value={`${cuotasVencidas}`}
             maxPoints={-30}
             earned={penCuotas}
             description={
-              s.cuotasVencidas === 0
+              cuotasVencidas === 0
                 ? "Sin cuotas vencidas actualmente. ¡Excelente!"
-                : `Tiene ${s.cuotasVencidas} cuota${s.cuotasVencidas > 1 ? "s" : ""} sin pagar pasada${s.cuotasVencidas > 1 ? "s" : ""} de fecha. Cada cuota vencida resta 4 puntos.`
+                : `Tiene ${cuotasVencidas} cuota${cuotasVencidas > 1 ? "s" : ""} sin pagar pasada${cuotasVencidas > 1 ? "s" : ""} de fecha. Cada cuota vencida resta 4 puntos.`
             }
-            sentiment={s.cuotasVencidas === 0 ? "positive" : s.cuotasVencidas <= 2 ? "warning" : "negative"}
+            sentiment={cuotasVencidas === 0 ? "positive" : cuotasVencidas <= 2 ? "warning" : "negative"}
           />
 
           <ScoreFactor
@@ -298,7 +310,7 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
             earned={penAntigüedad}
             description={
               diasReales === 0
-                ? `Sin deuda vencida más allá del período de gracia${s.diasGracia > 0 ? ` (${s.diasGracia} días)` : ""}.`
+                ? `Sin deuda vencida más allá del período de gracia${diasGracia > 0 ? ` (${diasGracia} días)` : ""}.`
                 : diasReales <= 7
                   ? `Atraso leve de ${diasReales} días. Penalización mínima. Aún está a tiempo de regularizarse.`
                   : diasReales <= 30
@@ -313,13 +325,13 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
           <ScoreFactor
             icon={Timer}
             label="Atraso promedio"
-            value={avgReal > 0 ? `${s.diasAtrasoPromedio} días` : "0 días"}
+            value={avgReal > 0 ? `${diasAtrasoPromedio} días` : "0 días"}
             maxPoints={-15}
             earned={penAtraso}
             description={
               avgReal === 0
                 ? "El promedio de atraso está dentro del período de gracia o no hay atrasos."
-                : `En promedio, las cuotas vencidas tienen ${s.diasAtrasoPromedio} días de atraso. Indica un patrón ${avgReal > 15 ? "crónico" : "ocasional"} de impago.`
+                : `En promedio, las cuotas vencidas tienen ${diasAtrasoPromedio} días de atraso. Indica un patrón ${avgReal > 15 ? "crónico" : "ocasional"} de impago.`
             }
             sentiment={avgReal === 0 ? "positive" : avgReal <= 7 ? "warning" : "negative"}
           />
@@ -337,7 +349,7 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
           <div className="rounded-lg border border-border p-2.5 text-center">
             <CircleDot className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
             <p className="text-[11px] text-muted-foreground">Días de gracia</p>
-            <p className="text-[15px] font-bold">{s.diasGracia}</p>
+            <p className="text-[15px] font-bold">{diasGracia}</p>
           </div>
         </div>
 
