@@ -73,11 +73,11 @@ export function calcularAmortizacion(
       let cap: Decimal;
 
       if (isLast) {
-        cap = saldoCapital;
+        cap = Decimal.max(0, saldoCapital);
         cuotaVal = cap.plus(int);
       } else if (cuotaRedDec) {
-        cuotaVal = cuotaRedDec;
-        cap = cuotaVal.minus(int);
+        cap = Decimal.min(cuotaRedDec.minus(int), saldoCapital).toDecimalPlaces(2);
+        cuotaVal = cap.plus(int);
       } else {
         cap = saldoCapital.div(cuotas - i + 1).toDecimalPlaces(2);
         cuotaVal = cap.plus(int);
