@@ -100,6 +100,7 @@ const modules: NavModule[] = [
       { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
       { title: "Permisos", url: "/permisos", icon: ShieldCheck, roles: ["admin"] },
       { title: "Auditoría", url: "/auditoria", icon: ScrollText, roles: ["admin"] },
+      { title: "Mi Suscripción", url: "/mi-suscripcion", icon: CreditCard, roles: ["admin"] },
     ],
   },
 ];
