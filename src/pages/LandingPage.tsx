@@ -88,6 +88,7 @@ const plans = [
       { text: "Cobranza diaria", included: true },
       { text: "Tickets y contratos PDF", included: true },
       { text: "Modo offline + sincronización", included: true },
+      { text: "Capacitación (videos)", included: true },
       { text: "WhatsApp automatizado", included: false },
       { text: "Cobro con Stripe", included: false },
       { text: "Mapa GPS", included: false },
@@ -112,6 +113,7 @@ const plans = [
       { text: "CRM de cobranza", included: true },
       { text: "Lead Scoring", included: true },
       { text: "Comisiones automáticas", included: true },
+      { text: "Capacitación (1 hr + videos)", included: true },
       { text: "Cobro con Stripe", included: false },
       { text: "Auditoría completa", included: false },
     ],
@@ -121,20 +123,17 @@ const plans = [
     price: "$1,999",
     period: "/mes",
     desc: "Para financieras grandes y grupos",
-    users: "Usuarios ilimitados",
+    users: "Hasta 20 usuarios",
     highlight: false,
     features: [
       { text: "Empresas ilimitadas", included: true },
-      { text: "Usuarios ilimitados", included: true },
+      { text: "Hasta 20 usuarios", included: true },
       { text: "Todo lo del plan Profesional", included: true },
       { text: "Cobro automático con Stripe", included: true },
       { text: "Auditoría completa", included: true },
       { text: "Permisos granulares por módulo", included: true },
       { text: "Soporte prioritario", included: true },
-      { text: "API de integración", included: true },
-      { text: "Configuración personalizada", included: true },
-      { text: "Capacitación incluida", included: true },
-      { text: "SLA garantizado 99.9%", included: true },
+      { text: "Capacitación incluida (3 hrs)", included: true },
     ],
   },
 ];
@@ -475,7 +474,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-8">
-            * IVA no incluido. Precio por usuario adicional: $99 MXN/mes (Básico), $149 MXN/mes (Pro), incluido (Enterprise).
+            * IVA no incluido. Precio por usuario adicional: $150 MXN/mes (Básico), $130 MXN/mes (Profesional), $100 MXN/mes (Enterprise).
           </p>
         </div>
       </section>
