@@ -59,18 +59,22 @@ function calcularScore(data: {
 
   let score = 0; // Start from 0, must EARN points
 
+  const cuotasPagadas = data.cuotasATiempo + data.cuotasPagadasTarde;
+
   // ═══ POSITIVE FACTORS (earn up to 100) ═══
 
-  // 1. Payment punctuality (0-40 pts) — the most important factor
+  // 1. CUMPLIMIENTO: Did they pay? (0-35 pts) — most important
+  //    Someone who pays 92% of cuotas (even if late) earns ~32 pts here
   if (data.cuotasTotales > 0) {
-    const ratioATiempo = data.cuotasATiempo / data.cuotasTotales;
-    score += ratioATiempo * 40;
+    const ratioPagadas = cuotasPagadas / data.cuotasTotales;
+    score += ratioPagadas * 35;
   }
 
-  // 2. Paid late but DID pay (0-15 pts) — better than not paying at all
-  if (data.cuotasTotales > 0) {
-    const ratioPagadasTarde = data.cuotasPagadasTarde / data.cuotasTotales;
-    score += ratioPagadasTarde * 15; // partial credit
+  // 2. PUNTUALIDAD: Bonus for paying on time (0-20 pts)
+  //    Of the paid cuotas, what % were on time?
+  if (cuotasPagadas > 0) {
+    const ratioATiempoDePagadas = data.cuotasATiempo / cuotasPagadas;
+    score += ratioATiempoDePagadas * 20;
   }
 
   // 3. Loans successfully completed (0-20 pts)
@@ -79,7 +83,7 @@ function calcularScore(data: {
     score += ratioLiquidados * 20;
   }
 
-  // 4. Track record bonus (0-10 pts) — longer history = more reliable score
+  // 4. Track record bonus (0-10 pts) — longer history = more reliable
   if (data.totalPrestamos >= 2) score += 3;
   if (data.totalPrestamos >= 4) score += 3;
   if (data.montoHistorico >= 5000) score += 2;
@@ -87,28 +91,26 @@ function calcularScore(data: {
 
   // ═══ NEGATIVE FACTORS (penalties) ═══
 
-  // 5. Current overdue cuotas — scaled by quantity (-4 pts each, max -30)
-  score -= Math.min(30, data.cuotasVencidas * 4);
+  // 5. Current overdue cuotas (-3 pts each, max -20)
+  score -= Math.min(20, data.cuotasVencidas * 3);
 
-  // 6. Severity of delay — how OLD is the worst debt (-25 max)
-  //    After dias_gracia, penalize progressively harder
+  // 6. Severity of delay — how OLD is the worst debt (-20 max)
   const diasReales = Math.max(0, data.maxDiasAtraso - data.diasGracia);
   if (diasReales > 0) {
-    // 1-7 days: mild, 8-30: moderate, 30-90: heavy, 90+: severe
     if (diasReales <= 7) {
-      score -= diasReales * 0.5; // max -3.5
+      score -= diasReales * 0.3;
     } else if (diasReales <= 30) {
-      score -= 3.5 + (diasReales - 7) * 0.5; // max -15
+      score -= 2 + (diasReales - 7) * 0.35;
     } else if (diasReales <= 90) {
-      score -= 15 + (diasReales - 30) * 0.3; // max -33
+      score -= 10 + (diasReales - 30) * 0.17;
     } else {
-      score -= Math.min(25, 15 + 18 + (diasReales - 90) * 0.1);
+      score -= Math.min(20, 20);
     }
   }
 
-  // 7. Average delay across all overdue — chronic lateness (-15 max)
+  // 7. Average delay — chronic lateness (-10 max)
   const avgReal = Math.max(0, data.diasAtrasoPromedio - data.diasGracia);
-  score -= Math.min(15, avgReal * 0.4);
+  score -= Math.min(10, avgReal * 0.3);
 
   // Clamp
   score = Math.max(0, Math.min(100, Math.round(score)));
