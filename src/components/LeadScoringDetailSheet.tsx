@@ -274,7 +274,7 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
             icon={Shield}
             label="Préstamos liquidados"
             value={`${prestamosLiquidados}/${totalPrestamos}`}
-            maxPoints={20}
+            maxPoints={15}
             earned={liquidadosPoints}
             description={
               prestamosLiquidados > 0
