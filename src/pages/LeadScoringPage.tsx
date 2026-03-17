@@ -24,10 +24,13 @@ interface ClienteScore {
   prestamosLiquidados: number;
   cuotasATiempo: number;
   cuotasTotales: number;
+  cuotasPagadasTarde: number;
   cuotasVencidas: number;
   saldoActual: number;
   diasAtrasoPromedio: number;
+  maxDiasAtraso: number;
   montoHistorico: number;
+  diasGracia: number;
 }
 
 function calcularScore(data: {
