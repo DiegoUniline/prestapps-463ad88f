@@ -18,8 +18,7 @@ import {
   RefreshCw, Receipt, ArrowRight, CalendarDays, AlertCircle,
   ShoppingCart, Minus, Plus, ChevronRight, Clock, FileText
 } from "lucide-react";
-import { $$ } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { $$, cn } from "@/lib/utils";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -31,6 +30,7 @@ const ESTADO_BADGE: Record<string, { label: string; variant: "default" | "second
   cancelada: { label: "Cancelada", variant: "destructive", color: "text-destructive" },
   sin_suscripcion: { label: "Sin plan", variant: "secondary", color: "text-muted-foreground" },
   pendiente_pago: { label: "Pendiente de pago", variant: "secondary", color: "text-amber-600" },
+  sin_empresa: { label: "Sin empresa", variant: "secondary", color: "text-muted-foreground" },
 };
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -72,8 +72,9 @@ type Plan = {
 };
 
 export default function MiSuscripcionPage() {
-  const { data: subData, loading, refetch } = useAccesoApp();
+  const { data: subData, loading, refetch, subscribed, estado } = useAccesoApp();
   const user = useAuthStore((s) => s.user);
+  const isSuperAdmin = user?.email === "diego.leon@uniline.mx";
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [changeOpen, setChangeOpen] = useState(false);
@@ -106,14 +107,16 @@ export default function MiSuscripcionPage() {
     },
   });
 
+  const empresaId = subData?.empresa_id;
+
   const { data: facturas = [] } = useQuery({
-    queryKey: ["mis-facturas"],
-    enabled: !!subData?.empresa_id,
+    queryKey: ["mis-facturas", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("facturas")
         .select("*")
-        .eq("empresa_id", subData!.empresa_id!)
+        .eq("empresa_id", empresaId!)
         .order("fecha_emision", { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -169,8 +172,9 @@ export default function MiSuscripcionPage() {
     }
   };
 
-  const estadoBadge = ESTADO_BADGE[subData?.estado || "sin_suscripcion"] || ESTADO_BADGE.sin_suscripcion;
-  const hasActiveSub = subData?.subscribed;
+  const estadoKey = subData?.estado || estado || "sin_suscripcion";
+  const estadoBadge = ESTADO_BADGE[estadoKey] || ESTADO_BADGE.sin_suscripcion;
+  const hasActiveSub = subscribed || (subData?.subscribed ?? false);
 
   const planIcons: Record<string, React.ReactNode> = {
     "Básico": <Shield className="h-5 w-5" />,
@@ -242,6 +246,9 @@ export default function MiSuscripcionPage() {
     );
   }
 
+  // Determine if we should show the "current plan" card
+  const showCurrentPlan = hasActiveSub && subData;
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -255,12 +262,29 @@ export default function MiSuscripcionPage() {
         </Button>
       </div>
 
-      {/* ── PLAN ACTUAL ─────────────────────────────────────── */}
-      {hasActiveSub && subData ? (
-        <Card className="border-primary/30 overflow-hidden">
-          {/* Colored top bar */}
-          <div className="h-1.5 bg-gradient-to-r from-primary to-primary/60" />
+      {/* ── SUPERADMIN CARD ───────────────────────────────── */}
+      {isSuperAdmin && !subData && (
+        <Card className="border-amber-400/50 overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-amber-400 to-amber-600" />
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-amber-100 dark:bg-amber-950 flex items-center justify-center text-amber-600">
+                <Crown className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Super Administrador</h2>
+                <p className="text-sm text-muted-foreground">Acceso total al sistema — sin restricciones de plan</p>
+              </div>
+              <Badge variant="default" className="ml-auto bg-amber-500 text-white">Ilimitado</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
+      {/* ── PLAN ACTUAL (con suscripción) ─────────────────── */}
+      {showCurrentPlan && (
+        <Card className="border-primary/30 overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-primary to-primary/60" />
           <CardContent className="p-5 space-y-5">
             {/* Row 1: Plan name + status badge */}
             <div className="flex items-start justify-between flex-wrap gap-3">
@@ -356,89 +380,124 @@ export default function MiSuscripcionPage() {
             </div>
           </CardContent>
         </Card>
-      ) : (
-        /* ── SIN SUSCRIPCIÓN — PLAN PICKER ─────────────────── */
-        <>
-          <div className="text-center py-6">
-            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-3">
-              <Zap className="h-7 w-7" />
-            </div>
-            <h2 className="text-xl font-bold">Elige tu plan</h2>
-            <p className="text-muted-foreground text-sm mt-1 max-w-md mx-auto">
-              Selecciona el plan que mejor se adapte a tu negocio. Todos incluyen prueba gratuita de 7 días.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            {planes.map((plan) => {
-              const isPro = plan.nombre === "Profesional";
-              const isEnt = plan.nombre === "Enterprise";
-              const features = PLAN_FEATURES[plan.nombre] || [];
-
-              return (
-                <Card
-                  key={plan.id}
-                  className={cn(
-                    "relative flex flex-col",
-                    planColorsCard[plan.nombre] || "border-border"
-                  )}
-                >
-                  {isPro && (
-                    <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                      Más popular
-                    </Badge>
-                  )}
-
-                  <CardHeader className="text-center pb-2">
-                    <div className={cn(
-                      "h-10 w-10 rounded-lg flex items-center justify-center mx-auto mb-1",
-                      planColorsBg[plan.nombre] || "bg-secondary"
-                    )}>
-                      {planIcons[plan.nombre] || <Zap className="h-5 w-5" />}
-                    </div>
-                    <CardTitle className="text-lg">{plan.nombre}</CardTitle>
-                    <CardDescription className="text-xs">{plan.descripcion}</CardDescription>
-                    <div className="pt-3">
-                      <span className="text-3xl font-extrabold">{$$(plan.precio_base_mes)}</span>
-                      <span className="text-muted-foreground text-sm">/mes</span>
-                    </div>
-                    <p className="text-xs text-primary font-semibold mt-1">
-                      Hasta {plan.usuarios_incluidos} usuarios incluidos
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      +{$$(plan.precio_usuario_extra)}/usuario extra
-                    </p>
-                  </CardHeader>
-
-                  <CardContent className="flex-1 flex flex-col pt-0 gap-4">
-                    <ul className="space-y-2 flex-1">
-                      {features.map((f, i) => (
-                        <li key={i} className="flex items-start gap-2 text-[13px]">
-                          <Check className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                          <span>{f}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    <Button
-                      className="w-full"
-                      variant={isPro ? "default" : "outline"}
-                      onClick={() => handleCheckout(plan.id, plan.usuarios_incluidos)}
-                      disabled={checkoutLoading === plan.id}
-                    >
-                      {checkoutLoading === plan.id ? "Procesando..." : "Contratar"}
-                      {checkoutLoading !== plan.id && <ArrowRight className="h-4 w-4 ml-1" />}
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          <p className="text-xs text-muted-foreground text-center">
-            * Precios en MXN + IVA. Facturación mensual anclada al día 1.
-          </p>
-        </>
       )}
+
+      {/* ── PLANES DISPONIBLES ─────────────────────────────── */}
+      <Separator />
+      <div className="text-center py-4">
+        <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-3">
+          <Zap className="h-7 w-7" />
+        </div>
+        <h2 className="text-xl font-bold">
+          {showCurrentPlan ? "Planes disponibles" : "Elige tu plan"}
+        </h2>
+        <p className="text-muted-foreground text-sm mt-1 max-w-md mx-auto">
+          Selecciona el plan que mejor se adapte a tu negocio. Todos incluyen prueba gratuita de 7 días.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-5">
+        {planes.map((plan) => {
+          const isPro = plan.nombre === "Profesional";
+          const isCurrent = showCurrentPlan && plan.id === subData?.plan_id;
+          const features = PLAN_FEATURES[plan.nombre] || [];
+
+          return (
+            <Card
+              key={plan.id}
+              className={cn(
+                "relative flex flex-col",
+                isCurrent
+                  ? "border-primary/50 bg-primary/[0.02] ring-2 ring-primary/20"
+                  : planColorsCard[plan.nombre] || "border-border"
+              )}
+            >
+              {isCurrent && (
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
+                  Tu plan actual
+                </Badge>
+              )}
+              {!isCurrent && isPro && (
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
+                  Más popular
+                </Badge>
+              )}
+
+              <CardHeader className="text-center pb-2">
+                <div className={cn(
+                  "h-10 w-10 rounded-lg flex items-center justify-center mx-auto mb-1",
+                  planColorsBg[plan.nombre] || "bg-secondary"
+                )}>
+                  {planIcons[plan.nombre] || <Zap className="h-5 w-5" />}
+                </div>
+                <CardTitle className="text-lg">{plan.nombre}</CardTitle>
+                <CardDescription className="text-xs">{plan.descripcion}</CardDescription>
+                <div className="pt-3">
+                  <span className="text-3xl font-extrabold">{$$(plan.precio_base_mes)}</span>
+                  <span className="text-muted-foreground text-sm">/mes</span>
+                </div>
+                <p className="text-xs text-primary font-semibold mt-1">
+                  Hasta {plan.usuarios_incluidos} usuarios incluidos
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  +{$$(plan.precio_usuario_extra)}/usuario extra
+                </p>
+              </CardHeader>
+
+              <CardContent className="flex-1 flex flex-col pt-0 gap-4">
+                <ul className="space-y-2 flex-1">
+                  {features.map((f, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[13px]">
+                      <Check className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {isCurrent ? (
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedPlanId(plan.id);
+                      setNumUsuarios(subData?.num_usuarios || 1);
+                      setChangeOpen(true);
+                    }}
+                  >
+                    <Users className="h-4 w-4 mr-1" />
+                    Agregar usuarios
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    variant={isPro ? "default" : "outline"}
+                    onClick={() => {
+                      if (showCurrentPlan) {
+                        setSelectedPlanId(plan.id);
+                        setNumUsuarios(subData?.num_usuarios || 1);
+                        setChangeOpen(true);
+                      } else {
+                        handleCheckout(plan.id, plan.usuarios_incluidos);
+                      }
+                    }}
+                    disabled={checkoutLoading === plan.id}
+                  >
+                    {checkoutLoading === plan.id ? "Procesando..." : (
+                      showCurrentPlan
+                        ? (plan.precio_base_mes > (subData?.precio_base || 0) ? "Upgrade" : "Cambiar")
+                        : "Contratar"
+                    )}
+                    {checkoutLoading !== plan.id && <ArrowRight className="h-4 w-4 ml-1" />}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+      <p className="text-xs text-muted-foreground text-center">
+        * Precios en MXN + IVA. Facturación mensual anclada al día 1.
+      </p>
 
       {/* ── HISTORIAL DE FACTURAS ──────────────────────────── */}
       <Separator />
@@ -522,74 +581,6 @@ export default function MiSuscripcionPage() {
           </Card>
         )}
       </div>
-
-      {/* ── PLANES DISPONIBLES (si ya tiene suscripción, comparativa) ─── */}
-      {hasActiveSub && planes.length > 0 && (
-        <>
-          <Separator />
-          <div>
-            <h2 className="text-lg font-semibold mb-3">Planes disponibles</h2>
-            <div className="grid md:grid-cols-3 gap-4">
-              {planes.map((plan) => {
-                const isCurrent = plan.id === subData?.plan_id;
-                const features = PLAN_FEATURES[plan.nombre] || [];
-                return (
-                  <Card key={plan.id} className={cn(
-                    "relative",
-                    isCurrent ? "border-primary/50 bg-primary/[0.02]" : "border-border"
-                  )}>
-                    {isCurrent && (
-                      <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px]">
-                        Tu plan
-                      </Badge>
-                    )}
-                    <CardContent className="pt-5 pb-4 px-4 space-y-3">
-                      <div className="text-center">
-                        <div className={cn(
-                          "h-8 w-8 rounded-lg flex items-center justify-center mx-auto mb-1",
-                          planColorsBg[plan.nombre] || "bg-secondary"
-                        )}>
-                          {planIcons[plan.nombre] || <Zap className="h-4 w-4" />}
-                        </div>
-                        <p className="font-bold">{plan.nombre}</p>
-                        <p className="text-xl font-extrabold">{$$(plan.precio_base_mes)}<span className="text-xs font-normal text-muted-foreground">/mes</span></p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {plan.usuarios_incluidos} usuarios · +{$$(plan.precio_usuario_extra)}/extra
-                        </p>
-                      </div>
-
-                      <ul className="space-y-1.5">
-                        {features.slice(0, 4).map((f, i) => (
-                          <li key={i} className="flex items-start gap-1.5 text-[12px]">
-                            <Check className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                            <span>{f}</span>
-                          </li>
-                        ))}
-                      </ul>
-
-                      {!isCurrent && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full text-xs"
-                          onClick={() => {
-                            setSelectedPlanId(plan.id);
-                            setNumUsuarios(subData?.num_usuarios || 1);
-                            setChangeOpen(true);
-                          }}
-                        >
-                          {plan.precio_base_mes > (subData?.precio_base || 0) ? "Upgrade" : "Cambiar"}
-                          <ArrowRight className="h-3 w-3 ml-1" />
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
 
       {/* ── DIALOG: CAMBIAR PLAN / USUARIOS ────────────────── */}
       <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
