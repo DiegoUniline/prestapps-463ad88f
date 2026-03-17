@@ -170,9 +170,7 @@ export default function LiquidarRutaPage() {
         periodo_hasta: new Date().toISOString(),
       });
 
-      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
-      queryClient.invalidateQueries({ queryKey: ["liquidaciones"] });
+      invalidateFinanceQueries(queryClient);
       toast.success(`Depósito de ${$$(montoNum)} registrado. Comisión: ${$$(comision)}`);
       resetModal();
     } catch (err: any) {
