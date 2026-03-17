@@ -238,7 +238,7 @@ export default function LiquidarRutaPage() {
         });
       }
 
-      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
+      invalidateFinanceQueries(queryClient);
       toast.success(`Préstamo entregado de ${$$(montoNum)} registrado`);
       resetModal();
     } catch (err: any) {

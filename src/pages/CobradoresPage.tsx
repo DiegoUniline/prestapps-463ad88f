@@ -127,13 +127,7 @@ export default function CobradoresPage() {
     setSelectedCobrador(null); setCorteCajaId(""); setCorteTotal(0); setCorteComision(0); setCorteDeposito(0);
   };
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["profiles-cobradores"] });
-    queryClient.invalidateQueries({ queryKey: ["cortes"] });
-    queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
-    queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
-    queryClient.invalidateQueries({ queryKey: ["movimientos-all"] });
-  };
+  const invalidate = () => invalidateFinanceQueries(queryClient);
 
   // ── Filtered & sorted ──────────────────────────────────────────
   const filtered = useMemo(() => {

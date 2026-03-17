@@ -210,13 +210,7 @@ export default function SolicitudesPage() {
       toast.success("Solicitud aprobada — préstamo creado");
       setEsCargaInicial(false);
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
-      queryClient.invalidateQueries({ queryKey: ["prestamos-list"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-options"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
-      queryClient.invalidateQueries({ queryKey: ["kardex-all"] });
-      queryClient.invalidateQueries({ queryKey: ["movimientos-all"] });
-      queryClient.invalidateQueries({ queryKey: ["prestamos-by-caja"] });
+      invalidateFinanceQueries(queryClient);
     },
     onError: (err: any) => toast.error(err.message || "Error al aprobar"),
   });

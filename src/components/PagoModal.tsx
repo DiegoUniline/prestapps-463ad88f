@@ -321,15 +321,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         }
       }
 
-      // Invalidate and force refetch queries to refresh UI
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["amortizacion", prestamoId], refetchType: "all" }),
-        queryClient.invalidateQueries({ queryKey: ["pagos", prestamoId], refetchType: "all" }),
-        queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", prestamoId], refetchType: "all" }),
-        queryClient.invalidateQueries({ queryKey: ["cajas-all"], refetchType: "all" }),
-        queryClient.invalidateQueries({ queryKey: ["cobradores"], refetchType: "all" }),
-        queryClient.invalidateQueries({ queryKey: ["prestamos-list"], refetchType: "all" }),
-      ]);
+      // Invalidate all finance-related queries
+      invalidateFinanceQueries(queryClient, { prestamoId });
 
       toast.success(`Pago de ${$$(montoNum)} registrado correctamente`);
 

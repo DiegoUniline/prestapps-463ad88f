@@ -307,10 +307,7 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ["amortizacion", pago.prestamo_id] });
-      queryClient.invalidateQueries({ queryKey: ["pagos", pago.prestamo_id] });
-      queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", pago.prestamo_id] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
+      invalidateFinanceQueries(queryClient, { prestamoId: pago.prestamo_id });
 
       toast.success("Pago actualizado correctamente");
       onOpenChange(false);

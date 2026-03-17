@@ -150,10 +150,7 @@ export default function GastosPage() {
       }
 
       toast.success(`Gasto de ${$$(montoNum)} registrado`);
-      queryClient.invalidateQueries({ queryKey: ["gastos"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
-      queryClient.invalidateQueries({ queryKey: ["kardex-all"] });
+      invalidateFinanceQueries(queryClient);
       resetForm();
     } catch (err: any) {
       toast.error("Error: " + err.message);
