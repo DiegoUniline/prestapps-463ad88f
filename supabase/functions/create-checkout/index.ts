@@ -75,9 +75,6 @@ serve(async (req) => {
       logStep("Created customer", { customerId });
     }
 
-    // Calculate quantity: base plan = 1, extra users are charged separately
-    // For simplicity: the checkout is for the base plan price
-    // Extra users above included will be handled via subscription update
     const extraUsers = Math.max(0, num_usuarios - plan.usuarios_incluidos);
 
     const lineItems: any[] = [
@@ -87,8 +84,6 @@ serve(async (req) => {
       },
     ];
 
-    // If extra users, add them as a separate line item at the extra user rate
-    // We need to create an ad-hoc price for extra users
     if (extraUsers > 0) {
       lineItems.push({
         price_data: {
@@ -103,6 +98,17 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://prestapps.lovable.app";
 
+    // Calculate billing_cycle_anchor: 1st of next month at 00:00 UTC
+    const now = new Date();
+    const firstOfNextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0));
+    const anchorTimestamp = Math.floor(firstOfNextMonth.getTime() / 1000);
+
+    logStep("Proration setup", {
+      today: now.toISOString(),
+      anchor: firstOfNextMonth.toISOString(),
+      anchorUnix: anchorTimestamp,
+    });
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: lineItems,
@@ -115,6 +121,8 @@ serve(async (req) => {
         num_usuarios: String(num_usuarios),
       },
       subscription_data: {
+        billing_cycle_anchor: anchorTimestamp,
+        proration_behavior: "create_prorations",
         metadata: {
           empresa_id: profile.empresa_id,
           plan_id: plan_id,
@@ -126,6 +134,8 @@ serve(async (req) => {
     logStep("Checkout session created", { sessionId: session.id });
 
     // Save preliminary subscription record
+    const fechaProximoCobro = firstOfNextMonth.toISOString().split("T")[0];
+
     await supabaseClient.from("suscripciones").upsert({
       empresa_id: profile.empresa_id,
       plan_id: plan_id,
@@ -136,7 +146,7 @@ serve(async (req) => {
       periodicidad: "mensual",
       estado: "pendiente_pago",
       fecha_inicio: new Date().toISOString().split("T")[0],
-      fecha_proximo_cobro: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString().split("T")[0],
+      fecha_proximo_cobro: fechaProximoCobro,
       es_manual: false,
       actualizado_en: new Date().toISOString(),
     }, { onConflict: "empresa_id" }).select();
