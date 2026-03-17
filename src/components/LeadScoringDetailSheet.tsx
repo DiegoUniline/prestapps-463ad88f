@@ -136,19 +136,31 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
 
   if (!s) return null;
 
+  // Safe defaults for any potentially undefined/NaN values
+  const cuotasTotales = s.cuotasTotales || 0;
+  const cuotasATiempo = s.cuotasATiempo || 0;
+  const cuotasPagadasTarde = s.cuotasPagadasTarde || 0;
+  const cuotasVencidas = s.cuotasVencidas || 0;
+  const totalPrestamos = s.totalPrestamos || 0;
+  const prestamosLiquidados = s.prestamosLiquidados || 0;
+  const maxDiasAtraso = s.maxDiasAtraso || 0;
+  const diasGracia = s.diasGracia || 0;
+  const diasAtrasoPromedio = s.diasAtrasoPromedio || 0;
+  const montoHistorico = s.montoHistorico || 0;
+
   // Recalculate factor points for display
-  const puntualidad = s.cuotasTotales > 0 ? Math.round((s.cuotasATiempo / s.cuotasTotales) * 40) : 0;
-  const pagadasTardePoints = s.cuotasTotales > 0 ? Math.round((s.cuotasPagadasTarde / s.cuotasTotales) * 15) : 0;
-  const liquidadosPoints = s.totalPrestamos > 0 ? Math.round((s.prestamosLiquidados / s.totalPrestamos) * 20) : 0;
+  const puntualidad = cuotasTotales > 0 ? Math.round((cuotasATiempo / cuotasTotales) * 40) : 0;
+  const pagadasTardePoints = cuotasTotales > 0 ? Math.round((cuotasPagadasTarde / cuotasTotales) * 15) : 0;
+  const liquidadosPoints = totalPrestamos > 0 ? Math.round((prestamosLiquidados / totalPrestamos) * 20) : 0;
 
   let trackRecord = 0;
-  if (s.totalPrestamos >= 2) trackRecord += 3;
-  if (s.totalPrestamos >= 4) trackRecord += 3;
-  if (s.montoHistorico >= 5000) trackRecord += 2;
-  if (s.montoHistorico >= 15000) trackRecord += 2;
+  if (totalPrestamos >= 2) trackRecord += 3;
+  if (totalPrestamos >= 4) trackRecord += 3;
+  if (montoHistorico >= 5000) trackRecord += 2;
+  if (montoHistorico >= 15000) trackRecord += 2;
 
-  const penCuotas = -Math.min(30, s.cuotasVencidas * 4);
-  const diasReales = Math.max(0, s.maxDiasAtraso - s.diasGracia);
+  const penCuotas = -Math.min(30, cuotasVencidas * 4);
+  const diasReales = Math.max(0, maxDiasAtraso - diasGracia);
   let penAntigüedad = 0;
   if (diasReales > 0) {
     if (diasReales <= 7) penAntigüedad = -(diasReales * 0.5);
@@ -158,14 +170,14 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
   }
   penAntigüedad = Math.round(penAntigüedad);
 
-  const avgReal = Math.max(0, s.diasAtrasoPromedio - s.diasGracia);
+  const avgReal = Math.max(0, diasAtrasoPromedio - diasGracia);
   const penAtraso = -Math.round(Math.min(15, avgReal * 0.4));
 
   const totalPositivo = puntualidad + pagadasTardePoints + liquidadosPoints + trackRecord;
   const totalNegativo = penCuotas + penAntigüedad + penAtraso;
 
-  const ratioATiempo = s.cuotasTotales > 0 ? Math.round((s.cuotasATiempo / s.cuotasTotales) * 100) : 0;
-  const ratioPagadasTarde = s.cuotasTotales > 0 ? Math.round((s.cuotasPagadasTarde / s.cuotasTotales) * 100) : 0;
+  const ratioATiempo = cuotasTotales > 0 ? Math.round((cuotasATiempo / cuotasTotales) * 100) : 0;
+  const ratioPagadasTarde = cuotasTotales > 0 ? Math.round((cuotasPagadasTarde / cuotasTotales) * 100) : 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
