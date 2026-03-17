@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
@@ -330,7 +331,7 @@ export default function NuevoPrestamoPage() {
     },
     onSuccess: (data) => {
       toast.success(tipoCuenta === "prestamo" ? "Préstamo creado exitosamente" : "Venta creada exitosamente");
-      queryClient.invalidateQueries({ queryKey: ["prestamos-list"] });
+      invalidateFinanceQueries(queryClient);
       navigate(`/prestamos/${data.id}`);
     },
     onError: (err: any) => {

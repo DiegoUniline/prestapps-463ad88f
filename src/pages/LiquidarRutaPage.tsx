@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -170,9 +171,7 @@ export default function LiquidarRutaPage() {
         periodo_hasta: new Date().toISOString(),
       });
 
-      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
-      queryClient.invalidateQueries({ queryKey: ["liquidaciones"] });
+      invalidateFinanceQueries(queryClient);
       toast.success(`Depósito de ${$$(montoNum)} registrado. Comisión: ${$$(comision)}`);
       resetModal();
     } catch (err: any) {
@@ -207,7 +206,7 @@ export default function LiquidarRutaPage() {
         });
       }
 
-      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
+      invalidateFinanceQueries(queryClient);
       toast.success(`Gasto de ${$$(montoNum)} registrado para ${selectedCobrador.nombre}`);
       resetModal();
     } catch (err: any) {
@@ -240,7 +239,7 @@ export default function LiquidarRutaPage() {
         });
       }
 
-      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
+      invalidateFinanceQueries(queryClient);
       toast.success(`Préstamo entregado de ${$$(montoNum)} registrado`);
       resetModal();
     } catch (err: any) {

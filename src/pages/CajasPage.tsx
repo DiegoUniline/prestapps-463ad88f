@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -252,12 +253,7 @@ export default function CajasPage() {
     setNombreCaja(""); setDescCaja("");
   };
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
-    queryClient.invalidateQueries({ queryKey: ["kardex-all"] });
-    queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
-    queryClient.invalidateQueries({ queryKey: ["prestamos-by-caja"] });
-  };
+  const invalidate = () => invalidateFinanceQueries(queryClient);
 
   // ── Create caja ─────────────────────────────────────────────────
   const handleCrearCaja = async () => {

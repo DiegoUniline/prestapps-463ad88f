@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -315,10 +316,7 @@ export default function ComisionesPage() {
       }
 
       toast.success(`Comisión de ${$$(comisionCalculada)} pagada a ${nombre}`);
-      queryClient.invalidateQueries({ queryKey: ["comisiones-pagadas"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
-      queryClient.invalidateQueries({ queryKey: ["kardex-all"] });
+      invalidateFinanceQueries(queryClient);
       resetModal();
     } catch (err: any) {
       toast.error("Error: " + err.message);

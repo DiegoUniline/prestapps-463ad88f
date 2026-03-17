@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -157,13 +158,8 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
         }
       }
 
-      // Invalidate all related queries
-      queryClient.invalidateQueries({ queryKey: ["amortizacion", pago.prestamo_id] });
-      queryClient.invalidateQueries({ queryKey: ["pagos", pago.prestamo_id] });
-      queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", pago.prestamo_id] });
-      queryClient.invalidateQueries({ queryKey: ["pagos-all"] });
-      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
-      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
+      // Invalidate all finance-related queries
+      invalidateFinanceQueries(queryClient, { prestamoId: pago.prestamo_id });
 
       toast.success("Pago anulado correctamente");
       onOpenChange(false);
