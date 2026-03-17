@@ -349,7 +349,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 gap-0">
+      <DialogContent className="sm:max-w-[600px] p-0 gap-0 max-h-[90vh] flex flex-col">
         <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle className="flex items-center gap-2 text-base">
             <HandCoins className="h-4 w-4 text-primary" />
