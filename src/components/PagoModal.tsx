@@ -349,7 +349,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 gap-0">
+      <DialogContent className="sm:max-w-[600px] p-0 gap-0 max-h-[90vh] flex flex-col">
         <DialogHeader className="px-5 pt-5 pb-3">
           <DialogTitle className="flex items-center gap-2 text-base">
             <HandCoins className="h-4 w-4 text-primary" />
@@ -357,7 +357,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 space-y-4 pb-4">
+        <div className="px-5 space-y-4 pb-4 overflow-y-auto flex-1 min-h-0">
           {/* Summary bar */}
           <div className="bg-secondary rounded-lg px-4 py-3 flex items-center justify-between">
             <div>
@@ -519,7 +519,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Monto Pagado</p>
-                    <p className={cn("text-[15px] font-bold", isDeMenos && "text-destructive", isExacto && "text-green-600", isDeMas && "text-blue-600")}>{$$(montoNum)}</p>
+                    <p className={cn("text-[15px] font-bold truncate", isDeMenos && "text-destructive", isExacto && "text-green-600", isDeMas && "text-blue-600")}>{$$(montoNum)}</p>
                     <p className={cn("text-[10px] font-medium", isDeMenos && "text-destructive", isExacto && "text-green-600", isDeMas && "text-blue-600")}>
                       {isDeMenos && `▼ ${$$( Math.abs(diferencia))} de menos`}
                       {isExacto && "✓ Exacto"}
@@ -528,7 +528,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Monto a Aplicar</p>
-                    <p className="text-[15px] font-bold text-primary">{$$(montoEfectivo)}</p>
+                    <p className="text-[15px] font-bold text-primary truncate">{$$(montoEfectivo)}</p>
                     {descuentoNum > 0 && (
                       <p className="text-[10px] text-muted-foreground">({$$(montoNum)} + {$$(descuentoNum)} desc.)</p>
                     )}
