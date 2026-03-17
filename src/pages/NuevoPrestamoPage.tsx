@@ -146,30 +146,45 @@ export default function NuevoPrestamoPage() {
     const baseDate = fechaPrimerPago || new Date();
 
     if (modalidad === "fijo") {
-      // Capital e interés se calculan sobre el total REAL, no el redondeado
       const totalInteres = montoTotalPagar - monto;
-      const capitalPorCuota = monto / cuotas;
       const interesPorCuota = totalInteres / cuotas;
 
-      let saldo = monto;
+      let saldoCapital = monto;
+      let saldoInteres = totalInteres;
       const rows: CuotaPreview[] = [];
 
       for (let i = 0; i < cuotas; i++) {
         const isLast = i === cuotas - 1;
-        const capital = isLast ? saldo : Math.round(capitalPorCuota * 100) / 100;
+
         const interes = isLast
-          ? Math.round((totalInteres - Math.round(interesPorCuota * 100) / 100 * (cuotas - 1)) * 100) / 100
+          ? Math.round(saldoInteres * 100) / 100
           : Math.round(interesPorCuota * 100) / 100;
-        const cuotaVal = capital + interes;
-        saldo = Math.max(0, Math.round((saldo - capital) * 100) / 100);
+
+        let cuotaVal: number;
+        let capital: number;
+
+        if (isLast) {
+          capital = Math.round(saldoCapital * 100) / 100;
+          cuotaVal = Math.round((capital + interes) * 100) / 100;
+        } else {
+          cuotaVal = cuotaFinal;
+          capital = Math.min(
+            Math.round((cuotaVal - interes) * 100) / 100,
+            Math.round(saldoCapital * 100) / 100
+          );
+          cuotaVal = Math.round((capital + interes) * 100) / 100;
+        }
+
+        saldoCapital = Math.max(0, Math.round((saldoCapital - capital) * 100) / 100);
+        saldoInteres = Math.max(0, Math.round((saldoInteres - interes) * 100) / 100);
 
         rows.push({
           num: i + 1,
           fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
           capital,
           interes,
-          cuota: Math.round(cuotaVal * 100) / 100,
-          saldo,
+          cuota: cuotaVal,
+          saldo: saldoCapital,
         });
       }
       return rows;
@@ -192,7 +207,7 @@ export default function NuevoPrestamoPage() {
         };
       });
     }
-  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago]);
+  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago, montoTotalPagar]);
 
   const createMutation = useMutation({
     mutationFn: async () => {

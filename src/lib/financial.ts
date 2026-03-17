@@ -44,7 +44,8 @@ export function calcularCuotaFija(monto: number, cuotas: number, tasaPorcentaje:
  */
 export function calcularAmortizacion(
   monto: number, cuotas: number, tasa: number,
-  modalidad: Modalidad, fechaPrimerPago: string, frecuencia: Frecuencia
+  modalidad: Modalidad, fechaPrimerPago: string, frecuencia: Frecuencia,
+  cuotaRedondeada?: number
 ): AmortizacionRow[] {
   const rows: AmortizacionRow[] = [];
   const base = new Date(fechaPrimerPago);
@@ -53,26 +54,45 @@ export function calcularAmortizacion(
     const m = new Decimal(monto);
     const interesTotal = m.times(tasa).div(100);
     const totalPagar = m.plus(interesTotal);
-    const cuotaExacta = totalPagar.div(cuotas);
-    const capitalPorCuota = m.div(cuotas);
     const interesPorCuota = interesTotal.div(cuotas);
 
-    let saldo = m;
+    const usarRedondeo = cuotaRedondeada && cuotaRedondeada > 0;
+    const cuotaRedDec = usarRedondeo ? new Decimal(cuotaRedondeada) : null;
+
+    let saldoCapital = m;
+    let saldoInteres = interesTotal;
+
     for (let i = 1; i <= cuotas; i++) {
-      const cap = i === cuotas ? saldo : capitalPorCuota.toDecimalPlaces(2);
-      const int = i === cuotas
-        ? interesTotal.minus(interesPorCuota.toDecimalPlaces(2).times(cuotas - 1))
+      const isLast = i === cuotas;
+
+      const int = isLast
+        ? saldoInteres
         : interesPorCuota.toDecimalPlaces(2);
 
-      saldo = saldo.minus(cap);
+      let cuotaVal: Decimal;
+      let cap: Decimal;
+
+      if (isLast) {
+        cap = Decimal.max(0, saldoCapital);
+        cuotaVal = cap.plus(int);
+      } else if (cuotaRedDec) {
+        cap = Decimal.min(cuotaRedDec.minus(int), saldoCapital).toDecimalPlaces(2);
+        cuotaVal = cap.plus(int);
+      } else {
+        cap = saldoCapital.div(cuotas - i + 1).toDecimalPlaces(2);
+        cuotaVal = cap.plus(int);
+      }
+
+      saldoCapital = saldoCapital.minus(cap);
+      saldoInteres = saldoInteres.minus(int);
 
       rows.push({
         numCuota: i,
         fechaVencimiento: calcNextDate(base, frecuencia, i - 1).toISOString().slice(0, 10),
         capital: cap.toDecimalPlaces(2).toNumber(),
         interes: int.toDecimalPlaces(2).toNumber(),
-        capitalInteres: cap.plus(int).toDecimalPlaces(2).toNumber(),
-        saldoCapital: Decimal.max(0, saldo).toDecimalPlaces(2).toNumber(),
+        capitalInteres: cuotaVal.toDecimalPlaces(2).toNumber(),
+        saldoCapital: Decimal.max(0, saldoCapital).toDecimalPlaces(2).toNumber(),
       });
     }
   } else {
