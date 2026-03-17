@@ -355,24 +355,31 @@ export default function EmpresasPage() {
               <Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Nombre de la empresa" />
             </div>
 
-            {/* Plan selector */}
-            <div className="space-y-2">
-              <Label>Plan</Label>
-              <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PLAN_CONFIG).map(([key, cfg]) => (
-                    <SelectItem key={key} value={key}>
-                      <span className="flex items-center gap-2">
-                        {cfg.icon} {cfg.label} — {cfg.price} (hasta {cfg.maxUsers >= 999 ? "∞" : cfg.maxUsers} usuarios)
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Plan selector - only for new empresas */}
+            {!editId && (
+              <div className="space-y-2">
+                <Label>Plan inicial</Label>
+                <Select value={form.plan} onValueChange={(v) => setForm({ ...form, plan: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PLAN_CONFIG).map(([key, cfg]) => (
+                      <SelectItem key={key} value={key}>
+                        <span className="flex items-center gap-2">
+                          {cfg.icon} {cfg.label} — {cfg.price} (hasta {cfg.maxUsers >= 999 ? "∞" : cfg.maxUsers} usuarios)
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {editId && (
+              <div className="text-xs text-muted-foreground bg-secondary rounded-lg p-3">
+                💡 El plan y usuarios se gestionan desde la pestaña <strong>Suscripción</strong> en el detalle de la empresa.
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
