@@ -519,7 +519,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Monto Pagado</p>
-                    <p className={cn("text-[15px] font-bold", isDeMenos && "text-destructive", isExacto && "text-green-600", isDeMas && "text-blue-600")}>{$$(montoNum)}</p>
+                    <p className={cn("text-[15px] font-bold truncate", isDeMenos && "text-destructive", isExacto && "text-green-600", isDeMas && "text-blue-600")}>{$$(montoNum)}</p>
                     <p className={cn("text-[10px] font-medium", isDeMenos && "text-destructive", isExacto && "text-green-600", isDeMas && "text-blue-600")}>
                       {isDeMenos && `▼ ${$$( Math.abs(diferencia))} de menos`}
                       {isExacto && "✓ Exacto"}
