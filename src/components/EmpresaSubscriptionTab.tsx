@@ -98,7 +98,7 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
     } else {
       setForm({
         plan_id: planes[0]?.id || "",
-        num_usuarios: 1,
+        num_usuarios: planes[0]?.usuarios_incluidos || 1,
         periodicidad: "mensual",
         estado: "activa",
         fecha_vencimiento: "",
