@@ -167,8 +167,6 @@ export default function EmpresasPage() {
           telefono: form.telefono || null,
           direccion: form.direccion || null,
           activa: form.activa,
-          plan: form.plan,
-          max_usuarios: planInfo.maxUsers,
         }).eq("id", editId);
         if (error) throw error;
       } else {
