@@ -212,6 +212,11 @@ export default function SolicitudesPage() {
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
       queryClient.invalidateQueries({ queryKey: ["prestamos-list"] });
       queryClient.invalidateQueries({ queryKey: ["cajas-options"] });
+      queryClient.invalidateQueries({ queryKey: ["cajas-all"] });
+      queryClient.invalidateQueries({ queryKey: ["cajas-page"] });
+      queryClient.invalidateQueries({ queryKey: ["kardex-all"] });
+      queryClient.invalidateQueries({ queryKey: ["movimientos-all"] });
+      queryClient.invalidateQueries({ queryKey: ["prestamos-by-caja"] });
     },
     onError: (err: any) => toast.error(err.message || "Error al aprobar"),
   });
