@@ -516,7 +516,21 @@ export default function PrestamoDetallePage() {
         </div>
       </div>
 
-      {/* ── Sidebar content (reused in mobile tab + desktop sidebar) ── */}
+      {/* ── BODY ── */}
+      <Tabs value={tab} onValueChange={setTab}>
+        {/* Mobile tab bar with Resumen */}
+        <div className="lg:hidden border-b border-border px-3 bg-card">
+          <div className="overflow-x-auto">
+            <TabsList className="bg-transparent h-auto p-0 gap-0 inline-flex min-w-max">
+              {[{ value: "amortizacion", label: "Cuotas" }, { value: "pagos", label: "Pagos" }, { value: "resumen", label: "Resumen" }, { value: "promesas", label: "Promesas" }, { value: "actividad", label: "Actividad" }].map((t) => (
+                <TabsTrigger key={t.value} value={t.value} className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2.5 text-[12px] font-medium text-muted-foreground data-[state=active]:text-foreground whitespace-nowrap">{t.label}</TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+        </div>
+        <div className="flex flex-col lg:flex-row min-h-[400px] lg:min-h-[600px]">
+        {/* Desktop sidebar */}
+        <div className="hidden lg:block lg:w-[28%] bg-[hsl(210,20%,98%)] dark:bg-card border-r border-[hsl(220,14%,91%)] p-5 space-y-5">
       {(() => {
         const sidebarContent = (
           <div className="space-y-4 md:space-y-5">
