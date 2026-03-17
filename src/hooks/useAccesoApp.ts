@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
+import { useEmpresaStore } from "@/stores/empresaStore";
 
 export interface SubscriptionStatus {
   subscribed: boolean;
@@ -24,21 +25,26 @@ export interface SubscriptionStatus {
 export function useAccesoApp() {
   const user = useAuthStore((s) => s.user);
   const isSuperAdmin = user?.email === "diego.leon@uniline.mx";
+  const empresaId = useEmpresaStore((s) => s.empresaId);
+
+  // SuperAdmin viewing their own context (no empresa selected or default)
+  // still needs to query if they switched to another empresa
+  const isViewingOtherEmpresa = isSuperAdmin && !!empresaId;
 
   const { data, isLoading, refetch } = useQuery<SubscriptionStatus>({
-    queryKey: ["subscription-status", user?.id],
-    enabled: !!user && !isSuperAdmin,
+    queryKey: ["subscription-status", user?.id, empresaId],
+    enabled: !!user && (!isSuperAdmin || isViewingOtherEmpresa),
     queryFn: async () => {
       const { data: result, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
       return result as SubscriptionStatus;
     },
-    refetchInterval: 60_000, // every minute
+    refetchInterval: 60_000,
     staleTime: 30_000,
   });
 
-  // SuperAdmin always has full access
-  if (isSuperAdmin) {
+  // SuperAdmin without empresa context — full access, no subscription needed
+  if (isSuperAdmin && !isViewingOtherEmpresa) {
     return {
       subscribed: true,
       estado: "activa" as const,
@@ -47,6 +53,20 @@ export function useAccesoApp() {
       refetch,
       showBanner: false,
       blocked: false,
+    };
+  }
+
+  // SuperAdmin viewing another empresa — show their real subscription but never block
+  if (isSuperAdmin && isViewingOtherEmpresa) {
+    const estado = data?.estado || "sin_suscripcion";
+    return {
+      subscribed: data?.subscribed || false,
+      estado,
+      loading: isLoading,
+      data: data || null,
+      refetch,
+      showBanner: false,
+      blocked: false, // never block superadmin
     };
   }
 
