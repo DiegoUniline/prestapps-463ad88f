@@ -88,6 +88,7 @@ const plans = [
       { text: "Cobranza diaria", included: true },
       { text: "Tickets y contratos PDF", included: true },
       { text: "Modo offline + sincronización", included: true },
+      { text: "Capacitación (videos)", included: true },
       { text: "WhatsApp automatizado", included: false },
       { text: "Cobro con Stripe", included: false },
       { text: "Mapa GPS", included: false },
