@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAccesoApp } from "@/hooks/useAccesoApp";
 import { useAuthStore } from "@/stores/authStore";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { calcularCostoMensual } from "@/lib/subscription";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ type Plan = {
 export default function MiSuscripcionPage() {
   const { data: subData, loading, refetch, subscribed, estado } = useAccesoApp();
   const user = useAuthStore((s) => s.user);
+  const { empresaId: storeEmpresaId, empresaNombre } = useEmpresa();
   const isSuperAdmin = user?.email === "diego.leon@uniline.mx";
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -107,7 +109,22 @@ export default function MiSuscripcionPage() {
     },
   });
 
-  const empresaId = subData?.empresa_id;
+  const empresaId = subData?.empresa_id || storeEmpresaId;
+
+  // Count active users for this empresa
+  const { data: activeUsersCount = 0 } = useQuery({
+    queryKey: ["empresa-users-count", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("empresa_id", empresaId!)
+        .eq("activo", true);
+      if (error) throw error;
+      return count || 0;
+    },
+  });
 
   const { data: facturas = [] } = useQuery({
     queryKey: ["mis-facturas", empresaId],
@@ -281,6 +298,54 @@ export default function MiSuscripcionPage() {
         </Card>
       )}
 
+      {/* ── SIN SUSCRIPCIÓN — Estado actual ────────────────── */}
+      {!showCurrentPlan && (
+        <Card className="border-destructive/30 overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-destructive/60 to-destructive/30" />
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-start justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Sin suscripción activa</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {empresaNombre || "Tu empresa"} no tiene un plan contratado
+                  </p>
+                </div>
+              </div>
+              <Badge variant={estadoBadge.variant} className="text-sm px-3 py-1">
+                {estadoBadge.label}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <KpiCell
+                label="Usuarios activos"
+                value={String(activeUsersCount)}
+                icon={<Users className="h-3.5 w-3.5" />}
+              />
+              <KpiCell
+                label="Plan actual"
+                value="Ninguno"
+                icon={<CreditCard className="h-3.5 w-3.5" />}
+              />
+              <KpiCell
+                label="Estado"
+                value={estadoBadge.label}
+                icon={<AlertCircle className="h-3.5 w-3.5" />}
+              />
+            </div>
+
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground mb-1">👇 Contrata un plan para continuar</p>
+              <p>Selecciona uno de los planes de abajo. Asegúrate de elegir suficientes usuarios para tu equipo ({activeUsersCount} activos actualmente).</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── PLAN ACTUAL (con suscripción) ─────────────────── */}
       {showCurrentPlan && (
         <Card className="border-primary/30 overflow-hidden">
@@ -314,9 +379,11 @@ export default function MiSuscripcionPage() {
                 icon={<CreditCard className="h-3.5 w-3.5" />}
               />
               <KpiCell
-                label="Usuarios contratados"
-                value={String(subData.num_usuarios || 1)}
+                label="Usuarios"
+                value={`${activeUsersCount} / ${subData.num_usuarios || 1}`}
                 icon={<Users className="h-3.5 w-3.5" />}
+                sub={activeUsersCount > (subData.num_usuarios || 1) ? "⚠️ Excedido" : `${(subData.num_usuarios || 1) - activeUsersCount} disponibles`}
+                subColor={activeUsersCount > (subData.num_usuarios || 1) ? "text-destructive" : undefined}
               />
               <KpiCell
                 label="Próximo cobro"
