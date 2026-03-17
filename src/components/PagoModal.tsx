@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
