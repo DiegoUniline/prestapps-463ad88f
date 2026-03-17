@@ -774,6 +774,87 @@ export type Database = {
         }
         Relationships: []
       }
+      facturas: {
+        Row: {
+          creado_en: string | null
+          descuento_porcentaje: number | null
+          empresa_id: string | null
+          es_prorrateo: boolean | null
+          estado: string | null
+          fecha_emision: string | null
+          fecha_pago: string | null
+          fecha_vencimiento: string | null
+          id: string
+          num_usuarios: number
+          numero_factura: string | null
+          periodo_fin: string
+          periodo_inicio: string
+          precio_unitario: number
+          stripe_invoice_id: string | null
+          stripe_payment_intent_id: string | null
+          subtotal: number
+          suscripcion_id: string | null
+          total: number
+        }
+        Insert: {
+          creado_en?: string | null
+          descuento_porcentaje?: number | null
+          empresa_id?: string | null
+          es_prorrateo?: boolean | null
+          estado?: string | null
+          fecha_emision?: string | null
+          fecha_pago?: string | null
+          fecha_vencimiento?: string | null
+          id?: string
+          num_usuarios: number
+          numero_factura?: string | null
+          periodo_fin: string
+          periodo_inicio: string
+          precio_unitario: number
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          subtotal: number
+          suscripcion_id?: string | null
+          total: number
+        }
+        Update: {
+          creado_en?: string | null
+          descuento_porcentaje?: number | null
+          empresa_id?: string | null
+          es_prorrateo?: boolean | null
+          estado?: string | null
+          fecha_emision?: string | null
+          fecha_pago?: string | null
+          fecha_vencimiento?: string | null
+          id?: string
+          num_usuarios?: number
+          numero_factura?: string | null
+          periodo_fin?: string
+          periodo_inicio?: string
+          precio_unitario?: number
+          stripe_invoice_id?: string | null
+          stripe_payment_intent_id?: string | null
+          subtotal?: number
+          suscripcion_id?: string | null
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facturas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facturas_suscripcion_id_fkey"
+            columns: ["suscripcion_id"]
+            isOneToOne: false
+            referencedRelation: "suscripciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folios: {
         Row: {
           empresa_id: string
@@ -802,6 +883,44 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      intentos_cobro: {
+        Row: {
+          creado_en: string | null
+          error_mensaje: string | null
+          estado: string | null
+          factura_id: string | null
+          id: string
+          monto: number
+          stripe_charge_id: string | null
+        }
+        Insert: {
+          creado_en?: string | null
+          error_mensaje?: string | null
+          estado?: string | null
+          factura_id?: string | null
+          id?: string
+          monto: number
+          stripe_charge_id?: string | null
+        }
+        Update: {
+          creado_en?: string | null
+          error_mensaje?: string | null
+          estado?: string | null
+          factura_id?: string | null
+          id?: string
+          monto?: number
+          stripe_charge_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intentos_cobro_factura_id_fkey"
+            columns: ["factura_id"]
+            isOneToOne: false
+            referencedRelation: "facturas"
             referencedColumns: ["id"]
           },
         ]
@@ -971,6 +1090,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      planes: {
+        Row: {
+          activo: boolean | null
+          creado_en: string | null
+          descripcion: string | null
+          id: string
+          nombre: string
+          precio_base_mes: number
+          precio_usuario_extra: number
+          stripe_price_id: string | null
+          stripe_product_id: string | null
+          usuarios_incluidos: number
+        }
+        Insert: {
+          activo?: boolean | null
+          creado_en?: string | null
+          descripcion?: string | null
+          id?: string
+          nombre: string
+          precio_base_mes: number
+          precio_usuario_extra?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          usuarios_incluidos?: number
+        }
+        Update: {
+          activo?: boolean | null
+          creado_en?: string | null
+          descripcion?: string | null
+          id?: string
+          nombre?: string
+          precio_base_mes?: number
+          precio_usuario_extra?: number
+          stripe_price_id?: string | null
+          stripe_product_id?: string | null
+          usuarios_incluidos?: number
+        }
+        Relationships: []
       }
       prestamos: {
         Row: {
@@ -1637,6 +1795,93 @@ export type Database = {
             columns: ["supervisor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suscripciones: {
+        Row: {
+          actualizado_en: string | null
+          card_brand: string | null
+          card_last4: string | null
+          creado_en: string | null
+          descuento_porcentaje: number | null
+          empresa_id: string
+          es_manual: boolean | null
+          estado: string | null
+          fecha_inicio: string
+          fecha_proximo_cobro: string
+          fecha_vencimiento: string | null
+          id: string
+          notas_admin: string | null
+          num_usuarios: number
+          periodicidad: string | null
+          plan_id: string | null
+          precio_base: number
+          precio_usuario_extra: number
+          stripe_customer_id: string | null
+          stripe_payment_method_id: string | null
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          actualizado_en?: string | null
+          card_brand?: string | null
+          card_last4?: string | null
+          creado_en?: string | null
+          descuento_porcentaje?: number | null
+          empresa_id: string
+          es_manual?: boolean | null
+          estado?: string | null
+          fecha_inicio?: string
+          fecha_proximo_cobro?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          notas_admin?: string | null
+          num_usuarios?: number
+          periodicidad?: string | null
+          plan_id?: string | null
+          precio_base: number
+          precio_usuario_extra?: number
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          actualizado_en?: string | null
+          card_brand?: string | null
+          card_last4?: string | null
+          creado_en?: string | null
+          descuento_porcentaje?: number | null
+          empresa_id?: string
+          es_manual?: boolean | null
+          estado?: string | null
+          fecha_inicio?: string
+          fecha_proximo_cobro?: string
+          fecha_vencimiento?: string | null
+          id?: string
+          notas_admin?: string | null
+          num_usuarios?: number
+          periodicidad?: string | null
+          plan_id?: string | null
+          precio_base?: number
+          precio_usuario_extra?: number
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suscripciones_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "suscripciones_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "planes"
             referencedColumns: ["id"]
           },
         ]
