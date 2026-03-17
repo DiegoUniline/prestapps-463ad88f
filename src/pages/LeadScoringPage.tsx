@@ -35,12 +35,15 @@ function calcularScore(data: {
   prestamosLiquidados: number;
   cuotasATiempo: number;
   cuotasTotales: number;
-  cuotasVencidas: number;
+  cuotasPagadasTarde: number; // paid but after due date
+  cuotasVencidas: number; // currently unpaid & overdue
   diasAtrasoPromedio: number;
+  maxDiasAtraso: number; // worst single cuota
   saldoActual: number;
   montoHistorico: number;
+  diasGracia: number;
 }): { score: number; nivel: ClienteScore["nivel"]; recomendacion: string; icono: ClienteScore["icono"] } {
-  // Sin préstamos = cliente nuevo, no evaluable
+  // Sin préstamos = cliente nuevo
   if (data.totalPrestamos === 0) {
     return {
       score: -1,
@@ -50,33 +53,60 @@ function calcularScore(data: {
     };
   }
 
-  let score = 50; // Base
+  let score = 0; // Start from 0, must EARN points
 
-  // 1. Historial de pagos a tiempo (0-35 pts)
+  // ═══ POSITIVE FACTORS (earn up to 100) ═══
+
+  // 1. Payment punctuality (0-40 pts) — the most important factor
   if (data.cuotasTotales > 0) {
     const ratioATiempo = data.cuotasATiempo / data.cuotasTotales;
-    score += ratioATiempo * 35;
+    score += ratioATiempo * 40;
   }
 
-  // 2. Préstamos liquidados exitosamente (0-15 pts)
+  // 2. Paid late but DID pay (0-15 pts) — better than not paying at all
+  if (data.cuotasTotales > 0) {
+    const ratioPagadasTarde = data.cuotasPagadasTarde / data.cuotasTotales;
+    score += ratioPagadasTarde * 15; // partial credit
+  }
+
+  // 3. Loans successfully completed (0-20 pts)
   if (data.totalPrestamos > 0) {
     const ratioLiquidados = data.prestamosLiquidados / data.totalPrestamos;
-    score += ratioLiquidados * 15;
+    score += ratioLiquidados * 20;
   }
 
-  // 3. Penalización por cuotas vencidas activas (-20 pts max)
-  score -= Math.min(20, data.cuotasVencidas * 5);
+  // 4. Track record bonus (0-10 pts) — longer history = more reliable score
+  if (data.totalPrestamos >= 2) score += 3;
+  if (data.totalPrestamos >= 4) score += 3;
+  if (data.montoHistorico >= 5000) score += 2;
+  if (data.montoHistorico >= 15000) score += 2;
 
-  // 4. Penalización por días de atraso promedio (-15 pts max)
-  score -= Math.min(15, data.diasAtrasoPromedio * 0.5);
+  // ═══ NEGATIVE FACTORS (penalties) ═══
 
-  // 5. Bonus por historial largo (+5 pts)
-  if (data.totalPrestamos >= 3) score += 5;
+  // 5. Current overdue cuotas — scaled by quantity (-4 pts each, max -30)
+  score -= Math.min(30, data.cuotasVencidas * 4);
 
-  // 6. Bonus por monto histórico alto (+5 pts)
-  if (data.montoHistorico >= 5000) score += 3;
-  if (data.montoHistorico >= 10000) score += 2;
+  // 6. Severity of delay — how OLD is the worst debt (-25 max)
+  //    After dias_gracia, penalize progressively harder
+  const diasReales = Math.max(0, data.maxDiasAtraso - data.diasGracia);
+  if (diasReales > 0) {
+    // 1-7 days: mild, 8-30: moderate, 30-90: heavy, 90+: severe
+    if (diasReales <= 7) {
+      score -= diasReales * 0.5; // max -3.5
+    } else if (diasReales <= 30) {
+      score -= 3.5 + (diasReales - 7) * 0.5; // max -15
+    } else if (diasReales <= 90) {
+      score -= 15 + (diasReales - 30) * 0.3; // max -33
+    } else {
+      score -= Math.min(25, 15 + 18 + (diasReales - 90) * 0.1);
+    }
+  }
 
+  // 7. Average delay across all overdue — chronic lateness (-15 max)
+  const avgReal = Math.max(0, data.diasAtrasoPromedio - data.diasGracia);
+  score -= Math.min(15, avgReal * 0.4);
+
+  // Clamp
   score = Math.max(0, Math.min(100, Math.round(score)));
 
   let nivel: ClienteScore["nivel"];
@@ -85,7 +115,7 @@ function calcularScore(data: {
 
   if (score >= 85) {
     nivel = "Excelente";
-    recomendacion = "🟢 Excelente pagador. Aumentar línea de crédito o prestar más. Cliente confiable para montos mayores.";
+    recomendacion = "🟢 Excelente pagador. Aumentar línea de crédito. Cliente confiable para montos mayores.";
     icono = "aumentar";
   } else if (score >= 70) {
     nivel = "Bueno";
@@ -93,19 +123,19 @@ function calcularScore(data: {
     icono = "prestar";
   } else if (score >= 50) {
     nivel = "Regular";
-    recomendacion = "🟡 Historial mixto. Prestar con precaución, mismo monto o menor. Solicitar un aval adicional.";
+    recomendacion = "🟡 Historial mixto. Prestar con precaución, mismo monto o menor. Considerar aval.";
     icono = "avales";
   } else if (score >= 30) {
     nivel = "Riesgoso";
-    recomendacion = "🟠 Alto riesgo. No aumentar monto. Exigir avales sólidos y garantías. Monitorear de cerca.";
+    recomendacion = "🟠 Alto riesgo. No aumentar monto. Exigir avales sólidos y garantías.";
     icono = "avales";
   } else {
     nivel = "Crítico";
-    recomendacion = "🔴 No prestar. Cliente con historial muy negativo. Si tiene saldo pendiente, gestionar cobro prioritario.";
+    recomendacion = "🔴 No prestar. Historial muy negativo. Si tiene saldo pendiente, gestionar cobro prioritario.";
     icono = "no_prestar";
   }
 
-  // Override: si tiene préstamo próximo a vencer y buen score
+  // Renewal hint
   if (score >= 60 && data.saldoActual > 0 && data.cuotasVencidas === 0) {
     recomendacion += " 📅 Próximo a liquidar — preparar oferta de renovación.";
     icono = "vencimiento";
