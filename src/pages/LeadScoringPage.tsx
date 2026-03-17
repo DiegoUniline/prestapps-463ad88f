@@ -149,13 +149,22 @@ function useLeadScoring(empresaId: string) {
   return useQuery({
     queryKey: ["lead-scoring", empresaId],
     queryFn: async () => {
-      // 1. All active clients
-      const { data: clientes } = await supabase
-        .from("clientes")
-        .select("id, id_cliente, nombre_completo")
-        .eq("empresa_id", empresaId)
-        .eq("activo", true)
-        .order("nombre_completo");
+      // 1. All active clients + empresa dias_gracia
+      const [{ data: clientes }, { data: empresa }] = await Promise.all([
+        supabase
+          .from("clientes")
+          .select("id, id_cliente, nombre_completo")
+          .eq("empresa_id", empresaId)
+          .eq("activo", true)
+          .order("nombre_completo"),
+        supabase
+          .from("empresas")
+          .select("dias_gracia")
+          .eq("id", empresaId)
+          .single(),
+      ]);
+
+      const diasGracia = empresa?.dias_gracia ?? 0;
 
       if (!clientes?.length) return [];
 
@@ -196,29 +205,48 @@ function useLeadScoring(empresaId: string) {
         const montoHistorico = cliPrestamos.reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
 
         let cuotasATiempo = 0;
+        let cuotasPagadasTarde = 0;
         let cuotasTotales = 0;
         let cuotasVencidas = 0;
         let saldoActual = 0;
         let totalDiasAtraso = 0;
         let cuotasConAtraso = 0;
+        let maxDiasAtraso = 0;
 
         for (const p of cliPrestamos) {
           const pCuotas = cuotasByPrestamo[p.id] || [];
           for (const c of pCuotas) {
             cuotasTotales++;
+            const dias = Number(c.dias_atraso || 0);
+
             if (c.status === "Pagada") {
-              // Check if paid on time
-              if (!c.dias_atraso || c.dias_atraso <= 1) {
+              // Paid on time (within grace period)
+              if (dias <= diasGracia) {
                 cuotasATiempo++;
+              } else {
+                // Paid but late
+                cuotasPagadasTarde++;
               }
             } else if (c.status === "Vencida") {
               cuotasVencidas++;
               saldoActual += Number(c.saldo_total || 0);
-              totalDiasAtraso += Number(c.dias_atraso || 0);
+              totalDiasAtraso += dias;
               cuotasConAtraso++;
+              maxDiasAtraso = Math.max(maxDiasAtraso, dias);
             } else {
+              // Pendiente / Parcial
               saldoActual += Number(c.saldo_total || 0);
-              // Pending/Parcial that's not overdue = on time still
+              // Check if it's actually overdue by comparing dates
+              const venc = new Date(c.fecha_vencimiento);
+              const hoy = new Date();
+              const diffDays = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
+              if (diffDays > diasGracia) {
+                // Past grace period but not yet marked as Vencida
+                cuotasVencidas++;
+                totalDiasAtraso += diffDays;
+                cuotasConAtraso++;
+                maxDiasAtraso = Math.max(maxDiasAtraso, diffDays);
+              }
             }
           }
         }
@@ -230,10 +258,13 @@ function useLeadScoring(empresaId: string) {
           prestamosLiquidados,
           cuotasATiempo,
           cuotasTotales,
+          cuotasPagadasTarde,
           cuotasVencidas,
           diasAtrasoPromedio,
+          maxDiasAtraso,
           saldoActual,
           montoHistorico,
+          diasGracia,
         });
 
         return {
