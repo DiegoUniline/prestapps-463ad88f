@@ -61,26 +61,26 @@ function calcularScore(data: {
 
   const cuotasPagadas = data.cuotasATiempo + data.cuotasPagadasTarde;
 
-  // ═══ POSITIVE FACTORS (earn up to 100) ═══
+  // ═══ POSITIVE FACTORS (earn up to ~100) ═══
 
-  // 1. CUMPLIMIENTO: Did they pay? (0-35 pts) — most important
-  //    Someone who pays 92% of cuotas (even if late) earns ~32 pts here
+  // 1. CUMPLIMIENTO: Did they pay? (0-45 pts) — THE most important
+  //    Someone who pays 92% (even if late) earns ~41 pts here
   if (data.cuotasTotales > 0) {
     const ratioPagadas = cuotasPagadas / data.cuotasTotales;
-    score += ratioPagadas * 35;
+    score += ratioPagadas * 45;
   }
 
-  // 2. PUNTUALIDAD: Bonus for paying on time (0-20 pts)
+  // 2. PUNTUALIDAD: Bonus for paying on time (0-15 pts)
   //    Of the paid cuotas, what % were on time?
   if (cuotasPagadas > 0) {
     const ratioATiempoDePagadas = data.cuotasATiempo / cuotasPagadas;
-    score += ratioATiempoDePagadas * 20;
+    score += ratioATiempoDePagadas * 15;
   }
 
-  // 3. Loans successfully completed (0-20 pts)
+  // 3. Loans successfully completed (0-15 pts)
   if (data.totalPrestamos > 0) {
     const ratioLiquidados = data.prestamosLiquidados / data.totalPrestamos;
-    score += ratioLiquidados * 20;
+    score += ratioLiquidados * 15;
   }
 
   // 4. Track record bonus (0-10 pts) — longer history = more reliable
