@@ -75,6 +75,7 @@ type Plan = {
 export default function MiSuscripcionPage() {
   const { data: subData, loading, refetch, subscribed, estado } = useAccesoApp();
   const user = useAuthStore((s) => s.user);
+  const { empresaId: storeEmpresaId, empresaNombre } = useEmpresa();
   const isSuperAdmin = user?.email === "diego.leon@uniline.mx";
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -108,7 +109,22 @@ export default function MiSuscripcionPage() {
     },
   });
 
-  const empresaId = subData?.empresa_id;
+  const empresaId = subData?.empresa_id || storeEmpresaId;
+
+  // Count active users for this empresa
+  const { data: activeUsersCount = 0 } = useQuery({
+    queryKey: ["empresa-users-count", empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("empresa_id", empresaId!)
+        .eq("activo", true);
+      if (error) throw error;
+      return count || 0;
+    },
+  });
 
   const { data: facturas = [] } = useQuery({
     queryKey: ["mis-facturas", empresaId],
