@@ -706,12 +706,14 @@ export default function PrestamoDetallePage() {
                           return filtered.map((c) => {
                           const status = c.status || "Pendiente";
                           const isNext = proximaCuota?.num_cuota === c.num_cuota;
+                          const isParcial = status === "Parcial";
                           return (
                             <TableRow
                               key={c.num_cuota}
                               className={cn(
                                 "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)] transition-colors",
-                                isNext && "border-l-[3px] border-l-primary",
+                                isNext && "border-l-[3px] border-l-primary bg-primary/5",
+                                isParcial && !isNext && "bg-[hsl(217,91%,60%,0.06)]",
                               )}
                               onMouseEnter={() => setHoveredRow(c.num_cuota)}
                               onMouseLeave={() => setHoveredRow(null)}
