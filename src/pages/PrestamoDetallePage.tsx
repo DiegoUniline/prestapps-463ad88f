@@ -729,6 +729,9 @@ export default function PrestamoDetallePage() {
                               <TableCell className={cn("px-3 text-[12px]", (c.mora || 0) > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
                                 {(c.mora || 0) > 0 ? $$(c.mora) : "—"}
                               </TableCell>
+                              <TableCell className={cn("px-3 text-[13px] font-medium", (Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0)) > 0 ? "text-[hsl(142,72%,37%)]" : "text-[hsl(220,14%,83%)]")}>
+                                {(() => { const paid = Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0); return paid > 0 ? $$(paid) : "—"; })()}
+                              </TableCell>
                               <TableCell className="px-3 text-[13px] font-medium">{dash(c.saldo_total) || $$(c.saldo_total)}</TableCell>
                               <TableCell className="px-3"><CuotaStatusBadge status={status} /></TableCell>
                               <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
