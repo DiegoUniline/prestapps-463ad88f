@@ -14,8 +14,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Pencil, Building2, UserPlus, Crown, Shield, Users, Eye } from "lucide-react";
+import { Plus, Pencil, Building2, UserPlus, Crown, Shield, Users, Eye, CreditCard } from "lucide-react";
+import EmpresaSubscriptionTab from "@/components/EmpresaSubscriptionTab";
 
 const PLAN_CONFIG: Record<string, { label: string; maxUsers: number; price: string; icon: React.ReactNode }> = {
   basico: { label: "Básico", maxUsers: 3, price: "$499/mes", icon: <Shield className="h-3.5 w-3.5" /> },
