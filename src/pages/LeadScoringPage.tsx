@@ -282,10 +282,13 @@ function useLeadScoring(empresaId: string) {
           prestamosLiquidados,
           cuotasATiempo,
           cuotasTotales,
+          cuotasPagadasTarde,
           cuotasVencidas,
           saldoActual,
           diasAtrasoPromedio: Math.round(diasAtrasoPromedio),
+          maxDiasAtraso,
           montoHistorico,
+          diasGracia,
         };
       });
 
