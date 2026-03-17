@@ -303,9 +303,13 @@ export default function EmpresasPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <span className={atLimit ? "text-destructive font-semibold" : ""}>
-                          {userCount} / {sub ? subUsuarios : (e.max_usuarios >= 999 ? "∞" : e.max_usuarios)}
-                        </span>
+                        {sub ? (
+                          <span className={atLimit ? "text-destructive font-semibold" : ""}>
+                            {userCount} / {subUsuarios}
+                          </span>
+                        ) : (
+                          <span>{userCount} <span className="text-muted-foreground text-xs">(sin plan)</span></span>
+                        )}
                       </TableCell>
                       <TableCell>{e.ruc || "—"}</TableCell>
                       <TableCell>
