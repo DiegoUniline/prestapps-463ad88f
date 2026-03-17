@@ -58,16 +58,20 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
       if (pago.cuota_id) {
         const { data: cuota } = await supabase
           .from("amortizacion")
-          .select("id, capital_pagado, interes_pagado, mora_pagada, saldo_capital, saldo_interes, saldo_mora, saldo_total, status, fecha_vencimiento")
+          .select("id, capital, interes, capital_pagado, interes_pagado, mora_pagada, saldo_capital, saldo_interes, saldo_mora, saldo_total, status, fecha_vencimiento")
           .eq("id", pago.cuota_id)
           .single();
 
         if (cuota) {
+          const originalCapital = Number(cuota.capital || 0);
+          const originalInteres = Number(cuota.interes || 0);
+
           const newCapitalPagado = Math.max(0, Number(cuota.capital_pagado || 0) - pago.aplicado_capital);
           const newInteresPagado = Math.max(0, Number(cuota.interes_pagado || 0) - pago.aplicado_interes);
           const newMoraPagada = Math.max(0, Number(cuota.mora_pagada || 0) - pago.aplicado_mora);
-          const newSaldoCapital = Number(cuota.saldo_capital || 0) + pago.aplicado_capital;
-          const newSaldoInteres = Number(cuota.saldo_interes || 0) + pago.aplicado_interes;
+          // Cap saldos at original cuota values to prevent inflation
+          const newSaldoCapital = Math.min(originalCapital, Number(cuota.saldo_capital || 0) + pago.aplicado_capital);
+          const newSaldoInteres = Math.min(originalInteres, Number(cuota.saldo_interes || 0) + pago.aplicado_interes);
           const newSaldoMora = Number(cuota.saldo_mora || 0) + pago.aplicado_mora;
           const newSaldoTotal = newSaldoCapital + newSaldoInteres + newSaldoMora;
 
