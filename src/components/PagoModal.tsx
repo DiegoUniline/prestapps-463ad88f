@@ -528,7 +528,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Monto a Aplicar</p>
-                    <p className="text-[15px] font-bold text-primary">{$$(montoEfectivo)}</p>
+                    <p className="text-[15px] font-bold text-primary truncate">{$$(montoEfectivo)}</p>
                     {descuentoNum > 0 && (
                       <p className="text-[10px] text-muted-foreground">({$$(montoNum)} + {$$(descuentoNum)} desc.)</p>
                     )}
