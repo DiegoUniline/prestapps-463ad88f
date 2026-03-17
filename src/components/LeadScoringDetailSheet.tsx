@@ -242,30 +242,32 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
 
           <ScoreFactor
             icon={CheckCircle2}
-            label="Puntualidad de pagos"
-            value={`${ratioATiempo}%`}
-            maxPoints={40}
-            earned={puntualidad}
+            label="Cumplimiento de pago"
+            value={`${cumplimientoPct}%`}
+            maxPoints={35}
+            earned={cumplimientoPoints}
             description={
               cuotasTotales > 0
-                ? `${cuotasATiempo} de ${cuotasTotales} cuotas pagadas dentro del plazo${diasGracia > 0 ? ` (+${diasGracia} días de gracia)` : ""}. Este es el factor más importante.`
-                : "Sin cuotas registradas aún."
+                ? `${cuotasPagadas} de ${cuotasTotales} cuotas pagadas (a tiempo o tarde). Lo más importante es que sí paga.`
+                : "Sin cuotas vencidas registradas aún."
             }
-            sentiment={ratioATiempo >= 80 ? "positive" : ratioATiempo >= 50 ? "warning" : "negative"}
+            sentiment={cumplimientoPct >= 80 ? "positive" : cumplimientoPct >= 50 ? "warning" : "negative"}
           />
 
           <ScoreFactor
             icon={Clock}
-            label="Pagó tarde pero pagó"
-            value={`${ratioPagadasTarde}%`}
-            maxPoints={15}
-            earned={pagadasTardePoints}
+            label="Puntualidad"
+            value={`${puntualidadPct}%`}
+            maxPoints={20}
+            earned={puntualidadPoints}
             description={
-              cuotasPagadasTarde > 0
-                ? `${cuotasPagadasTarde} cuotas se pagaron después de la fecha de vencimiento. Se otorga crédito parcial porque sí cumplió, aunque tarde.`
-                : "Ninguna cuota pagada con retraso — eso es bueno."
+              cuotasPagadas > 0
+                ? cuotasATiempo > 0
+                  ? `${cuotasATiempo} de ${cuotasPagadas} pagos fueron a tiempo${diasGracia > 0 ? ` (con ${diasGracia} días de gracia)` : ""}. Bonus por puntualidad.`
+                  : `Todas las ${cuotasPagadas} cuotas se pagaron tarde. Cumple, pero sin puntualidad — no recibe bonus.`
+                : "Sin pagos registrados aún."
             }
-            sentiment={cuotasPagadasTarde === 0 ? "positive" : "warning"}
+            sentiment={puntualidadPct >= 70 ? "positive" : puntualidadPct >= 30 ? "warning" : "negative"}
           />
 
           <ScoreFactor
