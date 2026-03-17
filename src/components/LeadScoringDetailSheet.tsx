@@ -148,36 +148,47 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
   const diasAtrasoPromedio = s.diasAtrasoPromedio || 0;
   const montoHistorico = s.montoHistorico || 0;
 
-  // Recalculate factor points for display
-  const puntualidad = cuotasTotales > 0 ? Math.round((cuotasATiempo / cuotasTotales) * 40) : 0;
-  const pagadasTardePoints = cuotasTotales > 0 ? Math.round((cuotasPagadasTarde / cuotasTotales) * 15) : 0;
+  // Recalculate factor points for display (must match algorithm in LeadScoringPage)
+  const cuotasPagadas = cuotasATiempo + cuotasPagadasTarde;
+
+  // 1. Cumplimiento (0-35)
+  const cumplimientoPoints = cuotasTotales > 0 ? Math.round((cuotasPagadas / cuotasTotales) * 35) : 0;
+  const cumplimientoPct = cuotasTotales > 0 ? Math.round((cuotasPagadas / cuotasTotales) * 100) : 0;
+
+  // 2. Puntualidad bonus (0-20) — of paid cuotas, how many on time?
+  const puntualidadPoints = cuotasPagadas > 0 ? Math.round((cuotasATiempo / cuotasPagadas) * 20) : 0;
+  const puntualidadPct = cuotasPagadas > 0 ? Math.round((cuotasATiempo / cuotasPagadas) * 100) : 0;
+
+  // 3. Liquidados (0-20)
   const liquidadosPoints = totalPrestamos > 0 ? Math.round((prestamosLiquidados / totalPrestamos) * 20) : 0;
 
+  // 4. Track record (0-10)
   let trackRecord = 0;
   if (totalPrestamos >= 2) trackRecord += 3;
   if (totalPrestamos >= 4) trackRecord += 3;
   if (montoHistorico >= 5000) trackRecord += 2;
   if (montoHistorico >= 15000) trackRecord += 2;
 
-  const penCuotas = -Math.min(30, cuotasVencidas * 4);
+  // 5. Pen cuotas vencidas (-3 each, max -20)
+  const penCuotas = -Math.min(20, cuotasVencidas * 3);
+
+  // 6. Pen antigüedad (-20 max)
   const diasReales = Math.max(0, maxDiasAtraso - diasGracia);
   let penAntigüedad = 0;
   if (diasReales > 0) {
-    if (diasReales <= 7) penAntigüedad = -(diasReales * 0.5);
-    else if (diasReales <= 30) penAntigüedad = -(3.5 + (diasReales - 7) * 0.5);
-    else if (diasReales <= 90) penAntigüedad = -(15 + (diasReales - 30) * 0.3);
-    else penAntigüedad = -Math.min(25, 15 + 18 + (diasReales - 90) * 0.1);
+    if (diasReales <= 7) penAntigüedad = -(diasReales * 0.3);
+    else if (diasReales <= 30) penAntigüedad = -(2 + (diasReales - 7) * 0.35);
+    else if (diasReales <= 90) penAntigüedad = -(10 + (diasReales - 30) * 0.17);
+    else penAntigüedad = -20;
   }
   penAntigüedad = Math.round(penAntigüedad);
 
+  // 7. Pen atraso promedio (-10 max)
   const avgReal = Math.max(0, diasAtrasoPromedio - diasGracia);
-  const penAtraso = -Math.round(Math.min(15, avgReal * 0.4));
+  const penAtraso = -Math.round(Math.min(10, avgReal * 0.3));
 
-  const totalPositivo = puntualidad + pagadasTardePoints + liquidadosPoints + trackRecord;
+  const totalPositivo = cumplimientoPoints + puntualidadPoints + liquidadosPoints + trackRecord;
   const totalNegativo = penCuotas + penAntigüedad + penAtraso;
-
-  const ratioATiempo = cuotasTotales > 0 ? Math.round((cuotasATiempo / cuotasTotales) * 100) : 0;
-  const ratioPagadasTarde = cuotasTotales > 0 ? Math.round((cuotasPagadasTarde / cuotasTotales) * 100) : 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
