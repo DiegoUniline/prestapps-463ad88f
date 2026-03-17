@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, TrendingUp, TrendingDown, AlertTriangle, ShieldCheck, Star, Ban, UserPlus, ArrowUpCircle } from "lucide-react";
 import { useState, useMemo } from "react";
+import LeadScoringDetailSheet from "@/components/LeadScoringDetailSheet";
 
 // ── Scoring algorithm ──────────────────────────────────────────
 interface ClienteScore {
@@ -24,10 +25,13 @@ interface ClienteScore {
   prestamosLiquidados: number;
   cuotasATiempo: number;
   cuotasTotales: number;
+  cuotasPagadasTarde: number;
   cuotasVencidas: number;
   saldoActual: number;
   diasAtrasoPromedio: number;
+  maxDiasAtraso: number;
   montoHistorico: number;
+  diasGracia: number;
 }
 
 function calcularScore(data: {
@@ -279,10 +283,13 @@ function useLeadScoring(empresaId: string) {
           prestamosLiquidados,
           cuotasATiempo,
           cuotasTotales,
+          cuotasPagadasTarde,
           cuotasVencidas,
           saldoActual,
           diasAtrasoPromedio: Math.round(diasAtrasoPromedio),
+          maxDiasAtraso,
           montoHistorico,
+          diasGracia,
         };
       });
 
@@ -346,6 +353,7 @@ export default function LeadScoringPage() {
   const { data: scores, isLoading } = useLeadScoring(empresaId);
   const [search, setSearch] = useState("");
   const [filtroNivel, setFiltroNivel] = useState("todos");
+  const [selectedCliente, setSelectedCliente] = useState<ClienteScore | null>(null);
 
   const filtered = useMemo(() => {
     if (!scores) return [];
@@ -490,7 +498,7 @@ export default function LeadScoringPage() {
                     <TableRow
                       key={s.cliente_id}
                       className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors"
-                      onClick={() => navigate(`/clientes/${s.cliente_id}`)}
+                      onClick={() => setSelectedCliente(s)}
                     >
                       <TableCell className="font-mono text-[12px] px-3">{s.id_cliente}</TableCell>
                       <TableCell className="font-medium text-[13px] px-3">{s.nombre_completo}</TableCell>
@@ -533,6 +541,12 @@ export default function LeadScoringPage() {
           </Table>
         </div>
       )}
+
+      <LeadScoringDetailSheet
+        cliente={selectedCliente}
+        open={!!selectedCliente}
+        onOpenChange={(open) => { if (!open) setSelectedCliente(null); }}
+      />
     </div>
   );
 }
