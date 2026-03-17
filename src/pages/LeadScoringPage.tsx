@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, TrendingUp, TrendingDown, AlertTriangle, ShieldCheck, Star, Ban, UserPlus, ArrowUpCircle } from "lucide-react";
 import { useState, useMemo } from "react";
+import LeadScoringDetailSheet from "@/components/LeadScoringDetailSheet";
 
 // ── Scoring algorithm ──────────────────────────────────────────
 interface ClienteScore {
