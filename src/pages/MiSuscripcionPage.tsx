@@ -379,9 +379,11 @@ export default function MiSuscripcionPage() {
                 icon={<CreditCard className="h-3.5 w-3.5" />}
               />
               <KpiCell
-                label="Usuarios contratados"
-                value={String(subData.num_usuarios || 1)}
+                label="Usuarios"
+                value={`${activeUsersCount} / ${subData.num_usuarios || 1}`}
                 icon={<Users className="h-3.5 w-3.5" />}
+                sub={activeUsersCount > (subData.num_usuarios || 1) ? "⚠️ Excedido" : `${(subData.num_usuarios || 1) - activeUsersCount} disponibles`}
+                subColor={activeUsersCount > (subData.num_usuarios || 1) ? "text-destructive" : undefined}
               />
               <KpiCell
                 label="Próximo cobro"
