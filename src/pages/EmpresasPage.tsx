@@ -274,9 +274,13 @@ export default function EmpresasPage() {
               ) : (
                 empresas.map((e) => {
                   const admins = adminMap[e.id] || [];
-                  const planInfo = PLAN_CONFIG[e.plan] || PLAN_CONFIG.basico;
-                  const userCount = userCountMap[e.id] || 0;
-                  const atLimit = userCount >= e.max_usuarios && e.max_usuarios < 999;
+                    const planInfo = PLAN_CONFIG[e.plan] || PLAN_CONFIG.basico;
+                    const userCount = userCountMap[e.id] || 0;
+                    const sub = subsMap[e.id];
+                    const subPlanName = sub?.plan_nombre || null;
+                    const subEstado = sub?.estado || null;
+                    const subUsuarios = sub?.num_usuarios || 0;
+                    const atLimit = userCount >= (subUsuarios || e.max_usuarios) && (subUsuarios || e.max_usuarios) < 999;
 
                   return (
                     <TableRow key={e.id} className={`${!e.activa ? "opacity-50" : ""} cursor-pointer hover:bg-muted/50`} onClick={() => setDetailEmpresa(e)}>
@@ -287,14 +291,22 @@ export default function EmpresasPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="gap-1">
-                          {planInfo.icon} {planInfo.label}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground ml-1">{planInfo.price}</span>
+                        {sub ? (
+                          <div className="space-y-0.5">
+                            <Badge variant="outline" className="gap-1">
+                              {planInfo.icon} {subPlanName}
+                            </Badge>
+                            <Badge variant={subEstado === "activa" ? "default" : subEstado === "trial" ? "outline" : "destructive"} className="text-[10px] ml-1">
+                              {subEstado}
+                            </Badge>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Sin suscripción</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <span className={atLimit ? "text-destructive font-semibold" : ""}>
-                          {userCount} / {e.max_usuarios >= 999 ? "∞" : e.max_usuarios}
+                          {userCount} / {sub ? subUsuarios : (e.max_usuarios >= 999 ? "∞" : e.max_usuarios)}
                         </span>
                       </TableCell>
                       <TableCell>{e.ruc || "—"}</TableCell>
