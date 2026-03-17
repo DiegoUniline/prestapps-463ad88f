@@ -541,6 +541,12 @@ export default function LeadScoringPage() {
           </Table>
         </div>
       )}
+
+      <LeadScoringDetailSheet
+        cliente={selectedCliente}
+        open={!!selectedCliente}
+        onOpenChange={(open) => { if (!open) setSelectedCliente(null); }}
+      />
     </div>
   );
 }
