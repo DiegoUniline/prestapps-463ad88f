@@ -357,7 +357,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 space-y-4 pb-4">
+        <div className="px-5 space-y-4 pb-4 overflow-y-auto flex-1 min-h-0">
           {/* Summary bar */}
           <div className="bg-secondary rounded-lg px-4 py-3 flex items-center justify-between">
             <div>
