@@ -256,7 +256,6 @@ function useLeadScoring(empresaId: string) {
             }
             // Future cuotas (Pendiente and not yet due) are NOT counted at all
           }
-          }
         }
 
         const diasAtrasoPromedio = cuotasConAtraso > 0 ? totalDiasAtraso / cuotasConAtraso : 0;
