@@ -258,7 +258,7 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
             icon={Clock}
             label="Puntualidad"
             value={`${puntualidadPct}%`}
-            maxPoints={20}
+            maxPoints={15}
             earned={puntualidadPoints}
             description={
               cuotasPagadas > 0
