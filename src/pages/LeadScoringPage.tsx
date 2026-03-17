@@ -498,7 +498,7 @@ export default function LeadScoringPage() {
                     <TableRow
                       key={s.cliente_id}
                       className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors"
-                      onClick={() => navigate(`/clientes/${s.cliente_id}`)}
+                      onClick={() => setSelectedCliente(s)}
                     >
                       <TableCell className="font-mono text-[12px] px-3">{s.id_cliente}</TableCell>
                       <TableCell className="font-medium text-[13px] px-3">{s.nombre_completo}</TableCell>
