@@ -244,7 +244,7 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
             icon={CheckCircle2}
             label="Cumplimiento de pago"
             value={`${cumplimientoPct}%`}
-            maxPoints={35}
+            maxPoints={45}
             earned={cumplimientoPoints}
             description={
               cuotasTotales > 0
