@@ -92,7 +92,7 @@ function MetodoDot({ metodo }: { metodo: string }) {
 }
 
 // ── Default & optional columns ────────────────────────────────────
-const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "Mora", "Saldo Total", "Status", "F.Pagada"];
+const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "Mora", "Pagado", "Saldo Total", "Status", "F.Pagada"];
 const optionalCols = ["Cap.Pag.", "Int.Pag.", "Mora Pag.", "S.Cap", "S.Int", "S.Mora", "Desc.Mora", "Avisado"];
 
 // ── Stripe Auto-Charge Toggle ─────────────────────────────────────
