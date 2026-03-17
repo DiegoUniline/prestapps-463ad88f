@@ -205,7 +205,7 @@ export default function LiquidarRutaPage() {
         });
       }
 
-      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
+      invalidateFinanceQueries(queryClient);
       toast.success(`Gasto de ${$$(montoNum)} registrado para ${selectedCobrador.nombre}`);
       resetModal();
     } catch (err: any) {
