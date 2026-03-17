@@ -388,122 +388,126 @@ export default function PrestamoDetallePage() {
   return (
     <div>
       {/* ── HEADER ────────────────────────────────────────────── */}
-      <div className="bg-card px-6 py-5 border-b border-border">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground mb-1">
-              <Link to="/prestamos" className="hover:text-foreground transition-colors">Préstamos</Link>
-              <span>/</span>
-              <span className="text-foreground">{folioId}</span>
-            </div>
-            <div className="flex items-center gap-3 mt-0.5">
-              <Avatar
-                className={cn("h-20 w-20 shrink-0 rounded-xl", cliente?.foto_cliente && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
-                onClick={() => cliente?.foto_cliente && setFotoLightbox(true)}
-              >
-                {cliente?.foto_cliente ? <AvatarImage src={cliente.foto_cliente} alt={cliente.nombre_completo} className="rounded-xl object-cover" /> : null}
-                <AvatarFallback className="text-2xl font-bold bg-primary/10 text-primary rounded-xl">
-                  {(cliente?.nombre_completo || "C").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              {cliente?.foto_cliente && (
-                <PhotoLightbox open={fotoLightbox} onOpenChange={setFotoLightbox} src={cliente.foto_cliente} alt={cliente.nombre_completo} />
-              )}
-              <h1 className="text-xl font-bold tracking-tight">
+      <div className="bg-card px-4 md:px-6 py-4 md:py-5 border-b border-border">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground mb-2">
+          <Link to="/prestamos" className="hover:text-foreground transition-colors">Préstamos</Link>
+          <span>/</span>
+          <span className="text-foreground">{folioId}</span>
+        </div>
+
+        {/* Client info row */}
+        <div className="flex items-start gap-3">
+          <Avatar
+            className={cn("h-14 w-14 md:h-20 md:w-20 shrink-0 rounded-xl", cliente?.foto_cliente && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+            onClick={() => cliente?.foto_cliente && setFotoLightbox(true)}
+          >
+            {cliente?.foto_cliente ? <AvatarImage src={cliente.foto_cliente} alt={cliente.nombre_completo} className="rounded-xl object-cover" /> : null}
+            <AvatarFallback className="text-xl md:text-2xl font-bold bg-primary/10 text-primary rounded-xl">
+              {(cliente?.nombre_completo || "C").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          {cliente?.foto_cliente && (
+            <PhotoLightbox open={fotoLightbox} onOpenChange={setFotoLightbox} src={cliente.foto_cliente} alt={cliente.nombre_completo} />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg md:text-xl font-bold tracking-tight truncate">
                 {cliente ? (
                   <Link to={`/clientes/${cliente.id}`} className="hover:text-primary transition-colors">{cliente.nombre_completo}</Link>
                 ) : "Cliente"}
               </h1>
-              <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-medium", estadoBadge[estado])}>
+              <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-medium shrink-0", estadoBadge[estado])}>
                 {estado}
               </span>
             </div>
-            <div className="flex items-center gap-3 mt-1 text-[13px] text-muted-foreground">
+            <div className="flex items-center gap-2 md:gap-3 mt-1 text-[12px] md:text-[13px] text-muted-foreground flex-wrap">
               {cliente?.direccion && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5" />{cliente.direccion}
+                <span className="flex items-center gap-1 truncate max-w-[180px] md:max-w-none">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{cliente.direccion}</span>
                 </span>
               )}
               {cliente?.telefono && (
-                <a href={`tel:${cliente.telefono}`} className="flex items-center gap-1 hover:text-primary transition-colors">
+                <a href={`tel:${cliente.telefono}`} className="flex items-center gap-1 hover:text-primary transition-colors shrink-0">
                   <Phone className="h-3.5 w-3.5" />{cliente.telefono}
                 </a>
               )}
-              <span className="text-[11px] text-muted-foreground/60">{folioId}</span>
+              <span className="text-[11px] text-muted-foreground/60 shrink-0">{folioId}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Document buttons */}
-            <div className="flex items-center gap-1 mr-1 border-r border-border pr-3">
-              <Button variant="secondary" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Estado de Cuenta" onClick={() => handlePdf("estado")}>
-                <FileText className="h-3.5 w-3.5 mr-1.5" />Estado de Cuenta
+        </div>
+
+        {/* Document & Action buttons */}
+        <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+          {/* Document buttons */}
+          <Button variant="secondary" size="sm" className="h-8 text-[11px] md:text-[12px] text-muted-foreground hover:text-primary" onClick={() => handlePdf("estado")}>
+            <FileText className="h-3.5 w-3.5 mr-1" />Estado de Cuenta
+          </Button>
+          <Button variant="secondary" size="sm" className="h-8 text-[11px] md:text-[12px] text-muted-foreground hover:text-primary" onClick={() => handlePdf("contrato")}>
+            <FileSignature className="h-3.5 w-3.5 mr-1" />Contrato
+          </Button>
+          <Button variant="secondary" size="sm" className="h-8 text-[11px] md:text-[12px] text-muted-foreground hover:text-primary" onClick={() => handlePdf("pagos")}>
+            <Receipt className="h-3.5 w-3.5 mr-1" />Pagos
+          </Button>
+          <div className="hidden md:block w-px h-5 bg-border mx-1" />
+          {/* Action buttons */}
+          <Button size="sm" className="h-8 text-[12px] md:text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }} disabled={isCancelado}>
+            <HandCoins className="h-3.5 w-3.5 mr-1" />Pago
+          </Button>
+          {!isCancelado && <StripeChargeButton
+            prestamoId={prestamo.id}
+            clienteId={cliente?.id}
+            clienteNombre={cliente?.nombre_completo || ""}
+            clienteTelefono={cliente?.telefono}
+            clienteEmail={cliente?.correo}
+            cuotaId={proximaCuota?.id}
+            monto={proximaCuota ? Number(proximaCuota.saldo_total || 0) : saldoPendiente}
+            cuotaNum={proximaCuota?.num_cuota}
+            onChargeSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ["amortizacion", id] });
+              queryClient.invalidateQueries({ queryKey: ["pagos", id] });
+              queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] });
+            }}
+          />}
+          <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => setEditarOpen(true)} disabled={isCancelado}>
+            <Pencil className="h-3.5 w-3.5 md:mr-1" /><span className="hidden md:inline">Editar</span>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
-              <Button variant="secondary" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Contrato" onClick={() => handlePdf("contrato")}>
-                <FileSignature className="h-3.5 w-3.5 mr-1.5" />Contrato
-              </Button>
-              <Button variant="secondary" size="sm" className="h-8 text-[12px] text-muted-foreground hover:text-primary" title="Recibo de Pagos" onClick={() => handlePdf("pagos")}>
-                <Receipt className="h-3.5 w-3.5 mr-1.5" />Pagos
-              </Button>
-            </div>
-            {/* Action buttons */}
-            <Button size="sm" className="h-8 text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }} disabled={isCancelado}>
-              <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar Pago
-            </Button>
-            {!isCancelado && <StripeChargeButton
-              prestamoId={prestamo.id}
-              clienteId={cliente?.id}
-              clienteNombre={cliente?.nombre_completo || ""}
-              clienteTelefono={cliente?.telefono}
-              clienteEmail={cliente?.correo}
-              cuotaId={proximaCuota?.id}
-              monto={proximaCuota ? Number(proximaCuota.saldo_total || 0) : saldoPendiente}
-              cuotaNum={proximaCuota?.num_cuota}
-              onChargeSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ["amortizacion", id] });
-                queryClient.invalidateQueries({ queryKey: ["pagos", id] });
-                queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] });
-              }}
-            />}
-            <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={() => setEditarOpen(true)} disabled={isCancelado}>
-              <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setReasignarOpen(true)} disabled={isCancelado}>
-                  <Route className="h-3.5 w-3.5 mr-2" />Reasignar Ruta / Cobrador
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setReestructurarOpen(true)} disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-2" />Reestructurar Préstamo
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled={isCancelado}>Imprimir tabla</DropdownMenuItem>
-                <DropdownMenuItem disabled={isCancelado}>Exportar PDF</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => setCancelarOpen(true)}
-                  disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
-                >
-                  <Ban className="h-3.5 w-3.5 mr-2" />Cancelar préstamo
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setReasignarOpen(true)} disabled={isCancelado}>
+                <Route className="h-3.5 w-3.5 mr-2" />Reasignar Ruta / Cobrador
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setReestructurarOpen(true)} disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}>
+                <RefreshCw className="h-3.5 w-3.5 mr-2" />Reestructurar Préstamo
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled={isCancelado}>Imprimir tabla</DropdownMenuItem>
+              <DropdownMenuItem disabled={isCancelado}>Exportar PDF</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setCancelarOpen(true)}
+                disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
+              >
+                <Ban className="h-3.5 w-3.5 mr-2" />Cancelar préstamo
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {/* ── KPI CARDS ─────────────────────────────────────────── */}
-      <div className="bg-card px-6 py-4 border-b border-border">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="bg-card px-4 md:px-6 py-3 md:py-4 border-b border-border">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
           {kpis.map((k) => (
-            <div key={k.label} className="border border-[hsl(220,14%,91%)] rounded-lg px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-[hsl(220,9%,60%)]">{k.label}</p>
-              <p className={cn("text-[22px] font-bold mt-0.5 leading-tight", k.color)}>{k.value}</p>
+            <div key={k.label} className="border border-[hsl(220,14%,91%)] rounded-lg px-3 md:px-4 py-2 md:py-3">
+              <p className="text-[10px] md:text-[11px] font-medium uppercase tracking-wider text-[hsl(220,9%,60%)]">{k.label}</p>
+              <p className={cn("text-[18px] md:text-[22px] font-bold mt-0.5 leading-tight", k.color)}>{k.value}</p>
             </div>
           ))}
         </div>
@@ -513,7 +517,7 @@ export default function PrestamoDetallePage() {
       <div className="flex flex-col lg:flex-row min-h-[600px]">
 
         {/* LEFT SIDEBAR (28%) */}
-        <div className="lg:w-[28%] bg-[hsl(210,20%,98%)] border-r border-[hsl(220,14%,91%)] p-5 space-y-5">
+        <div className="w-full lg:w-[28%] bg-[hsl(210,20%,98%)] dark:bg-card lg:border-r border-b lg:border-b-0 border-[hsl(220,14%,91%)] p-4 md:p-5 space-y-4 md:space-y-5">
 
           {/* Datos del Préstamo */}
           <div>
