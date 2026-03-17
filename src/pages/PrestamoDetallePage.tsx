@@ -254,10 +254,12 @@ export default function PrestamoDetallePage() {
   const totalPagado = amort.reduce((s, c) => s + Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0), 0);
   const saldoPendiente = amort.reduce((s, c) => s + Number(c.saldo_total || 0), 0);
   const cuotasVencidas = amort.filter((c) => c.status === "Vencida").length;
+  const cuotasPagadas = amort.filter((c) => c.status === "Pagada").length;
   const saldoMoroso = amort.reduce((s, c) => s + Number(c.saldo_mora || 0), 0);
-  const proximaCuota = amort.find((c) => c.status === "Pendiente" || c.status === "Prometida");
+  const proximaCuota = amort.find((c) => c.status === "Vencida") || amort.find((c) => c.status === "Pendiente" || c.status === "Prometida");
   const ultimoPago = pagosRaw.length > 0 ? pagosRaw[pagosRaw.length - 1] : null;
   const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
+  const cobroHoy = proximaCuota ? Number(proximaCuota.saldo_total || 0) : 0;
 
   const estado = (prestamo.estado || "Activo") as string;
   const isCancelado = estado === "Cancelado" || estado === "Reestructurado";
@@ -265,8 +267,8 @@ export default function PrestamoDetallePage() {
   const shortId = folioId;
 
   const kpis = [
-    { label: "Monto Prestado", value: $$(prestamo.monto_solicitado), color: "text-foreground" },
-    { label: "Total a Pagar", value: $$(prestamo.monto_total_pagar), color: "text-foreground" },
+    { label: "Cobro de Hoy", value: $$(cobroHoy), color: cobroHoy > 0 ? "text-primary" : "text-foreground", sub: proximaCuota ? `Cuota #${proximaCuota.num_cuota}` : "—" },
+    { label: "Avance", value: `${cuotasPagadas}/${prestamo.num_cuotas}`, color: "text-foreground", sub: "cuotas pagadas" },
     { label: "Total Pagado", value: $$(totalPagado), color: "text-[hsl(142,72%,37%)]" },
     { label: "Saldo Pendiente", value: $$(saldoPendiente), color: "text-[hsl(217,91%,60%)]" },
     { label: "Cuotas Vencidas", value: String(cuotasVencidas), color: cuotasVencidas > 0 ? "text-destructive" : "text-foreground" },
