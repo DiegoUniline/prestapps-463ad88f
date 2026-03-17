@@ -502,12 +502,12 @@ export default function PrestamoDetallePage() {
       </div>
 
       {/* ── KPI CARDS ─────────────────────────────────────────── */}
-      <div className="bg-card px-6 py-4 border-b border-border">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="bg-card px-4 md:px-6 py-3 md:py-4 border-b border-border">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
           {kpis.map((k) => (
-            <div key={k.label} className="border border-[hsl(220,14%,91%)] rounded-lg px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-[hsl(220,9%,60%)]">{k.label}</p>
-              <p className={cn("text-[22px] font-bold mt-0.5 leading-tight", k.color)}>{k.value}</p>
+            <div key={k.label} className="border border-[hsl(220,14%,91%)] rounded-lg px-3 md:px-4 py-2 md:py-3">
+              <p className="text-[10px] md:text-[11px] font-medium uppercase tracking-wider text-[hsl(220,9%,60%)]">{k.label}</p>
+              <p className={cn("text-[18px] md:text-[22px] font-bold mt-0.5 leading-tight", k.color)}>{k.value}</p>
             </div>
           ))}
         </div>
