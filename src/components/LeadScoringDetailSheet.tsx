@@ -151,16 +151,16 @@ export default function LeadScoringDetailSheet({ cliente: s, open, onOpenChange 
   // Recalculate factor points for display (must match algorithm in LeadScoringPage)
   const cuotasPagadas = cuotasATiempo + cuotasPagadasTarde;
 
-  // 1. Cumplimiento (0-35)
-  const cumplimientoPoints = cuotasTotales > 0 ? Math.round((cuotasPagadas / cuotasTotales) * 35) : 0;
+  // 1. Cumplimiento (0-45)
+  const cumplimientoPoints = cuotasTotales > 0 ? Math.round((cuotasPagadas / cuotasTotales) * 45) : 0;
   const cumplimientoPct = cuotasTotales > 0 ? Math.round((cuotasPagadas / cuotasTotales) * 100) : 0;
 
-  // 2. Puntualidad bonus (0-20) — of paid cuotas, how many on time?
-  const puntualidadPoints = cuotasPagadas > 0 ? Math.round((cuotasATiempo / cuotasPagadas) * 20) : 0;
+  // 2. Puntualidad bonus (0-15) — of paid cuotas, how many on time?
+  const puntualidadPoints = cuotasPagadas > 0 ? Math.round((cuotasATiempo / cuotasPagadas) * 15) : 0;
   const puntualidadPct = cuotasPagadas > 0 ? Math.round((cuotasATiempo / cuotasPagadas) * 100) : 0;
 
-  // 3. Liquidados (0-20)
-  const liquidadosPoints = totalPrestamos > 0 ? Math.round((prestamosLiquidados / totalPrestamos) * 20) : 0;
+  // 3. Liquidados (0-15)
+  const liquidadosPoints = totalPrestamos > 0 ? Math.round((prestamosLiquidados / totalPrestamos) * 15) : 0;
 
   // 4. Track record (0-10)
   let trackRecord = 0;
