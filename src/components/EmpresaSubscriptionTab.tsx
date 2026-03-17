@@ -283,8 +283,16 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nro. Usuarios</Label>
-                <Input type="number" min={1} value={form.num_usuarios} onChange={(e) => setForm({ ...form, num_usuarios: parseInt(e.target.value) || 1 })} />
+                <Label>Usuarios totales contratados</Label>
+                <Input type="number" min={selectedPlan?.usuarios_incluidos || 1} value={form.num_usuarios} onChange={(e) => setForm({ ...form, num_usuarios: parseInt(e.target.value) || 1 })} />
+                {selectedPlan && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {selectedPlan.usuarios_incluidos} incluidos en el plan
+                    {form.num_usuarios > selectedPlan.usuarios_incluidos
+                      ? ` · ${form.num_usuarios - selectedPlan.usuarios_incluidos} extra(s)`
+                      : ""}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Descuento %</Label>
