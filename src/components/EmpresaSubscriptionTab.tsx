@@ -98,7 +98,7 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
     } else {
       setForm({
         plan_id: planes[0]?.id || "",
-        num_usuarios: 1,
+        num_usuarios: planes[0]?.usuarios_incluidos || 1,
         periodicidad: "mensual",
         estado: "activa",
         fecha_vencimiento: "",
@@ -270,7 +270,10 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             <div className="space-y-2">
               <Label>Plan</Label>
-              <Select value={form.plan_id} onValueChange={(v) => setForm({ ...form, plan_id: v })}>
+              <Select value={form.plan_id} onValueChange={(v) => {
+                const p = planes.find((pl) => pl.id === v);
+                setForm({ ...form, plan_id: v, num_usuarios: Math.max(form.num_usuarios, p?.usuarios_incluidos || 1) });
+              }}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar plan" /></SelectTrigger>
                 <SelectContent>
                   {planes.map((p) => (
@@ -283,8 +286,16 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Nro. Usuarios</Label>
-                <Input type="number" min={1} value={form.num_usuarios} onChange={(e) => setForm({ ...form, num_usuarios: parseInt(e.target.value) || 1 })} />
+                <Label>Usuarios totales contratados</Label>
+                <Input type="number" min={selectedPlan?.usuarios_incluidos || 1} value={form.num_usuarios} onChange={(e) => setForm({ ...form, num_usuarios: parseInt(e.target.value) || 1 })} />
+                {selectedPlan && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {selectedPlan.usuarios_incluidos} incluidos en el plan
+                    {form.num_usuarios > selectedPlan.usuarios_incluidos
+                      ? ` · ${form.num_usuarios - selectedPlan.usuarios_incluidos} extra(s)`
+                      : ""}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Descuento %</Label>
