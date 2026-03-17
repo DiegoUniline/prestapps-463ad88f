@@ -284,19 +284,34 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Usuarios totales contratados</Label>
-                <Input type="number" min={selectedPlan?.usuarios_incluidos || 1} value={form.num_usuarios} onChange={(e) => setForm({ ...form, num_usuarios: parseInt(e.target.value) || 1 })} />
-                {selectedPlan && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {selectedPlan.usuarios_incluidos} incluidos en el plan
-                    {form.num_usuarios > selectedPlan.usuarios_incluidos
-                      ? ` · ${form.num_usuarios - selectedPlan.usuarios_incluidos} extra(s)`
-                      : ""}
-                  </p>
-                )}
+            {selectedPlan && (
+              <div className="grid grid-cols-3 gap-3 bg-secondary rounded-lg p-3 text-sm">
+                <div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Por plan</p>
+                  <p className="font-bold text-base">{selectedPlan.usuarios_incluidos}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Extra</p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" className="h-7 w-7" disabled={form.num_usuarios <= selectedPlan.usuarios_incluidos} onClick={() => setForm({ ...form, num_usuarios: Math.max(selectedPlan.usuarios_incluidos, form.num_usuarios - 1) })}>
+                      <span className="text-lg leading-none">−</span>
+                    </Button>
+                    <span className="font-bold text-base w-6 text-center">{Math.max(0, form.num_usuarios - selectedPlan.usuarios_incluidos)}</span>
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setForm({ ...form, num_usuarios: form.num_usuarios + 1 })}>
+                      <span className="text-lg leading-none">+</span>
+                    </Button>
+                  </div>
+                  {form.num_usuarios > selectedPlan.usuarios_incluidos && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">× {$$(selectedPlan.precio_usuario_extra)} c/u</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Total</p>
+                  <p className="font-bold text-base text-primary">{form.num_usuarios}</p>
+                </div>
               </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Descuento %</Label>
                 <Input type="number" min={0} max={100} value={form.descuento_porcentaje} onChange={(e) => setForm({ ...form, descuento_porcentaje: parseFloat(e.target.value) || 0 })} />
