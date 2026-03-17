@@ -298,6 +298,54 @@ export default function MiSuscripcionPage() {
         </Card>
       )}
 
+      {/* ── SIN SUSCRIPCIÓN — Estado actual ────────────────── */}
+      {!showCurrentPlan && (
+        <Card className="border-destructive/30 overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-destructive/60 to-destructive/30" />
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-start justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Sin suscripción activa</h2>
+                  <p className="text-sm text-muted-foreground">
+                    {empresaNombre || "Tu empresa"} no tiene un plan contratado
+                  </p>
+                </div>
+              </div>
+              <Badge variant={estadoBadge.variant} className="text-sm px-3 py-1">
+                {estadoBadge.label}
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <KpiCell
+                label="Usuarios activos"
+                value={String(activeUsersCount)}
+                icon={<Users className="h-3.5 w-3.5" />}
+              />
+              <KpiCell
+                label="Plan actual"
+                value="Ninguno"
+                icon={<CreditCard className="h-3.5 w-3.5" />}
+              />
+              <KpiCell
+                label="Estado"
+                value={estadoBadge.label}
+                icon={<AlertCircle className="h-3.5 w-3.5" />}
+              />
+            </div>
+
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground mb-1">👇 Contrata un plan para continuar</p>
+              <p>Selecciona uno de los planes de abajo. Asegúrate de elegir suficientes usuarios para tu equipo ({activeUsersCount} activos actualmente).</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── PLAN ACTUAL (con suscripción) ─────────────────── */}
       {showCurrentPlan && (
         <Card className="border-primary/30 overflow-hidden">
