@@ -111,16 +111,16 @@ const App = () => (
             <Route path="/registro" element={<RegisterPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/cobranza" element={<CobranzaDiariaPage />} />
-              <Route path="/cobranza/cliente/:id" element={<ClienteCobranzaDetallePage />} />
-              <Route path="/mi-cobranza" element={<CobradorViewPage />} />
-              <Route path="/prestamos" element={<PrestamosPage />} />
-              <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
-              <Route path="/pagos" element={<PagosPage />} />
-              <Route path="/promesas" element={<PromesasPage />} />
-              <Route path="/solicitudes" element={<SolicitudesPage />} />
-              <Route path="/solicitudes/nueva" element={<SolicitudPrestamoPage />} />
+              <Route path="/dashboard" element={<PermissionGuard module="dashboard"><DashboardPage /></PermissionGuard>} />
+              <Route path="/cobranza" element={<PermissionGuard module="cobranza"><CobranzaDiariaPage /></PermissionGuard>} />
+              <Route path="/cobranza/cliente/:id" element={<PermissionGuard module="cobranza"><ClienteCobranzaDetallePage /></PermissionGuard>} />
+              <Route path="/mi-cobranza" element={<PermissionGuard module="mi_cobranza"><CobradorViewPage /></PermissionGuard>} />
+              <Route path="/prestamos" element={<PermissionGuard module="prestamos"><PrestamosPage /></PermissionGuard>} />
+              <Route path="/prestamos/:id" element={<PermissionGuard module="prestamos"><PrestamoDetallePage /></PermissionGuard>} />
+              <Route path="/pagos" element={<PermissionGuard module="pagos"><PagosPage /></PermissionGuard>} />
+              <Route path="/promesas" element={<PermissionGuard module="promesas"><PromesasPage /></PermissionGuard>} />
+              <Route path="/solicitudes" element={<PermissionGuard module="solicitudes"><SolicitudesPage /></PermissionGuard>} />
+              <Route path="/solicitudes/nueva" element={<PermissionGuard module="solicitudes"><SolicitudPrestamoPage /></PermissionGuard>} />
               <Route path="/gastos" element={<RoleGuard allowed={["admin"]}><GastosPage /></RoleGuard>} />
 
               <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]}><ClientesPage /></RoleGuard>} />
