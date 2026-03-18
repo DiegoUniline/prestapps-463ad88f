@@ -322,6 +322,7 @@ export default function CobranzaDiariaPage() {
   const [filtroCobrador, setFiltroCobrador] = useState("todos");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [showVencidas, setShowVencidas] = useState(true);
+  const [showKpis, setShowKpis] = useState(false);
 
   // Payment modal state
   const [pagoOpen, setPagoOpen] = useState(false);
@@ -563,8 +564,43 @@ export default function CobranzaDiariaPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
+      {/* Mobile KPI Strip — compact summary, tap to expand */}
+      <div className="md:hidden">
+        <button
+          onClick={() => setShowKpis((v) => !v)}
+          className="w-full flex items-center justify-between bg-card border rounded-lg px-3 py-2"
+        >
+          <div className="flex items-center gap-3 text-[12px]">
+            <span className="font-semibold">{kpis.cobradas}/{kpis.total}</span>
+            <span className="text-muted-foreground">cobradas</span>
+            <span className="text-success font-semibold">{$$(kpis.cobrado)}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-destructive font-semibold">{$$(kpis.porCobrar)}</span>
+            <span className="text-muted-foreground">pte</span>
+          </div>
+          <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", showKpis && "rotate-90")} />
+        </button>
+        {showKpis && (
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {[
+              { label: "Cobrado", value: $$(kpis.cobrado), color: "text-success" },
+              { label: "Por Cobrar", value: $$(kpis.porCobrar), color: "text-destructive" },
+              { label: "Eficiencia", value: `${kpis.porcentaje.toFixed(1)}%`, color: "text-primary" },
+              { label: "Pendientes", value: kpis.pendientes, color: "text-warning" },
+              { label: "Mora", value: $$(kpis.mora), color: "text-destructive" },
+              { label: "Cobradas", value: kpis.cobradas, color: "text-success" },
+            ].map((kpi) => (
+              <div key={kpi.label} className="bg-card border rounded-lg p-2 text-center">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">{kpi.label}</p>
+                <p className={cn("text-sm font-bold", kpi.color)}>{kpi.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop KPI Cards */}
+      <div className="hidden md:grid grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
         {[
           { label: "Total Cuotas", value: kpis.total, icon: Users, color: "text-foreground" },
           { label: "Cobradas", value: kpis.cobradas, icon: CheckCircle2, color: "text-success" },
@@ -577,10 +613,10 @@ export default function CobranzaDiariaPage() {
           <Card key={kpi.label} className="border-border/60">
             <CardContent className="p-2.5 md:p-3">
               <div className="flex items-center justify-between mb-0.5 md:mb-1">
-                <span className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{kpi.label}</span>
-                <kpi.icon className={cn("h-3 w-3 md:h-3.5 md:w-3.5", kpi.color)} />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{kpi.label}</span>
+                <kpi.icon className={cn("h-3.5 w-3.5", kpi.color)} />
               </div>
-              <p className={cn("text-base md:text-lg font-bold", kpi.color)}>{kpi.value}</p>
+              <p className={cn("text-lg font-bold", kpi.color)}>{kpi.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -649,7 +685,7 @@ export default function CobranzaDiariaPage() {
 
       {/* Summary by Route */}
       {byRuta.length > 1 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3">
           {byRuta.map((r) => {
             const pct = r.total > 0 ? (r.cobradas / r.total) * 100 : 0;
             return (
@@ -806,60 +842,74 @@ export default function CobranzaDiariaPage() {
             <div
               key={cli.clienteId}
               className={cn(
-                "bg-card border rounded-lg p-3 space-y-2 cursor-pointer active:scale-[0.99] transition-all",
+                "bg-card border rounded-lg overflow-hidden",
                 cli.todasCobradas && "border-success/30 bg-badge-activo/10",
                 cli.tieneVencidas && !cli.todasCobradas && "border-destructive/30 bg-badge-vencido/5",
               )}
-              onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
             >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className="inline-block h-3 w-3 rounded-full shrink-0 border border-border/40"
-                    style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
-                  />
-                  {cli.todasCobradas ? (
-                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                  ) : cli.tieneVencidas ? (
-                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-                  ) : (
-                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                  )}
-                  <Avatar
-                    className={cn("h-10 w-10 shrink-0 rounded-lg", cli.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
-                    onClick={() => cli.clienteFoto && setLightboxPhoto({ src: cli.clienteFoto, alt: cli.clienteNombre })}
-                  >
-                    {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
-                    <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary rounded-lg">
-                      {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="font-medium text-[13px] truncate">{cli.clienteNombre}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {cli.cuentasActivas} cuenta{cli.cuentasActivas !== 1 ? "s" : ""} · {cli.cuotasPendientes} cuota{cli.cuotasPendientes !== 1 ? "s" : ""} pte · {cli.ruta}
-                    </p>
-                  </div>
+              {/* Info row — tappable to go to estado de cuenta */}
+              <div
+                className="flex items-center gap-2.5 p-3 cursor-pointer active:bg-muted/40 transition-colors"
+                onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
+              >
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full shrink-0 border border-border/40"
+                  style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
+                />
+                {cli.tieneVencidas && !cli.todasCobradas && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                <Avatar
+                  className="h-9 w-9 shrink-0 rounded-lg"
+                  onClick={(e) => { e.stopPropagation(); cli.clienteFoto && setLightboxPhoto({ src: cli.clienteFoto, alt: cli.clienteNombre }); }}
+                >
+                  {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
+                  <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary rounded-lg">
+                    {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-[13px] truncate uppercase">{cli.clienteNombre}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {cli.cuentasActivas} cuenta{cli.cuentasActivas !== 1 ? "s" : ""} · {cli.cuotasPendientes} cuota{cli.cuotasPendientes !== 1 ? "s" : ""} pte · {cli.ruta}
+                  </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-bold text-[14px]">{$$(cli.totalSaldo)}</p>
-                  {cli.totalMora > 0 && <p className="text-[10px] text-destructive font-medium">+{$$(cli.totalMora)} mora</p>}
+                  <p className="font-bold text-[15px]">{$$(cli.totalSaldo)}</p>
+                  {cli.totalMora > 0 && <p className="text-[9px] text-destructive font-medium">+{$$(cli.totalMora)} mora</p>}
                 </div>
               </div>
+
+              {/* Action bar */}
               {!cli.todasCobradas ? (
-                <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-                  <Button size="sm" className="h-8 text-[12px] flex-1" onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}>
-                    <HandCoins className="h-3.5 w-3.5 mr-1.5" />Ver Estado de Cuenta
+                <div className="flex items-center gap-2 px-3 pb-3" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    className="h-9 text-[13px] flex-1 font-semibold gap-2"
+                    onClick={() => {
+                      const first = cli.cuotas.find((c) => !c.pagada);
+                      if (first) openPago(first);
+                    }}
+                  >
+                    <HandCoins className="h-4 w-4" />Cobrar
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => {
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 text-[11px] gap-1"
+                    onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
+                  >
+                    <Eye className="h-3.5 w-3.5" />Detalle
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => {
                     const first = cli.cuotas.find((c) => !c.pagada) || cli.cuotas[0];
                     setVisitaItem(first); setVisitaOpen(true);
                   }}>
-                    <MapPin className="h-3.5 w-3.5" />
+                    <MapPin className="h-4 w-4" />
                   </Button>
                 </div>
               ) : (
-                <p className="text-[12px] text-success font-medium pt-1">✓ Todas las cuotas cobradas</p>
+                <div className="px-3 pb-2.5">
+                  <p className="text-[11px] text-success font-medium">✓ Todas las cuotas cobradas</p>
+                </div>
               )}
             </div>
           ))}
