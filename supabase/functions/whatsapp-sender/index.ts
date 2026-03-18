@@ -25,6 +25,14 @@ Deno.serve(async (req) => {
       .eq("empresa_id", empresa_id)
       .single();
 
+    // Get empresa lada_pais for phone normalization
+    const { data: empresaData } = await supabase
+      .from("empresas")
+      .select("lada_pais")
+      .eq("id", empresa_id)
+      .single();
+    const ladaPais = empresaData?.lada_pais || "52";
+
     const isTest = body.test === true;
 
     if (!config) {
