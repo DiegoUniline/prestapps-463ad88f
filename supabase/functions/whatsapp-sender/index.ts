@@ -76,7 +76,8 @@ Deno.serve(async (req) => {
 
     // ── send-image ────────────────────────────────
     if (action === "send-image") {
-      const { phone, url, caption, tipo, referencia_id } = body;
+      const { url, caption, tipo, referencia_id } = body;
+      const phone = normalizePhone(body.phone || "", ladaPais);
 
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-image",
