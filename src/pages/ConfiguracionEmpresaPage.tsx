@@ -95,11 +95,16 @@ function DatosGeneralesTab() {
           direccion: form.direccion || null,
           dias_gracia: form.dias_gracia,
           lada_pais: form.lada_pais || "52",
+          moneda_simbolo: form.moneda_simbolo || "$",
+          moneda_codigo: form.moneda_codigo || "USD",
         })
         .eq("id", empresaId);
       if (error) throw error;
     },
     onSuccess: () => {
+      // Update global currency symbol immediately
+      setCurrencySymbol(form.moneda_simbolo);
+      useEmpresaStore.setState({ monedaSimbolo: form.moneda_simbolo, monedaCodigo: form.moneda_codigo });
       qc.invalidateQueries({ queryKey: ["empresa-datos"] });
       qc.invalidateQueries({ queryKey: ["empresas"] });
       toast.success("Datos actualizados");
@@ -117,6 +122,8 @@ function DatosGeneralesTab() {
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
         lada_pais: empresa.lada_pais || "52",
+        moneda_codigo: empresa.moneda_codigo || "USD",
+        moneda_simbolo: empresa.moneda_simbolo || "$",
       });
     }
     setEditing(false);
