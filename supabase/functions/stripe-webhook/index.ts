@@ -229,14 +229,28 @@ serve(async (req) => {
             .single();
 
           if (suscripcionData?.empresa_id) {
+            // Get empresa name for personalized message
+            const { data: empresaData } = await supabase
+              .from("empresas")
+              .select("nombre")
+              .eq("id", suscripcionData.empresa_id)
+              .single();
+            const empresaNombre = empresaData?.nombre || "tu empresa";
+
+            const friendlyError = getReadableError(failureCode, failureMessage);
+
             await sendWhatsAppAlert(supabase, suscripcionData.empresa_id, {
               tipo: "pago_fallido",
-              mensaje: `⚠️ *Pago fallido en Stripe*\n\n` +
-                `💳 Tarjeta: ${charge.payment_method_details?.card?.brand || "?"} ****${charge.payment_method_details?.card?.last4 || "????"}\n` +
-                `💰 Monto: $${amount} ${currency}\n` +
-                `❌ Error: ${failureMessage}\n` +
-                `📧 Cliente: ${customerEmail}\n\n` +
-                `Por favor intenta con otro método de pago o contacta a tu banco.`,
+              mensaje: `¡Hola! 👋\n\n` +
+                `Te escribimos de *PrestApps* porque no pudimos procesar tu pago de suscripción para *${empresaNombre}*.\n\n` +
+                `💰 *Monto:* $${amount} ${currency}\n` +
+                `❌ *Motivo:* ${friendlyError}\n\n` +
+                `🔄 *¿Qué puedes hacer?*\n` +
+                `1️⃣ Verifica que tu tarjeta tenga fondos suficientes\n` +
+                `2️⃣ Actualiza tu método de pago desde la app en *Mi Suscripción*\n` +
+                `3️⃣ Si el problema persiste, contacta a tu banco\n\n` +
+                `Tu acceso no se verá afectado de inmediato, pero te recomendamos regularizar tu pago lo antes posible para evitar interrupciones. 🙏\n\n` +
+                `¿Necesitas ayuda? Responde a este mensaje y con gusto te asistimos. 💬`,
             });
           }
         }
