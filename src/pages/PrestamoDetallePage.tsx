@@ -1013,26 +1013,8 @@ export default function PrestamoDetallePage() {
                                           <Eye className="h-3.5 w-3.5" />
                                         </button>
                                         <button
-                                          title="Enviar comprobante por WhatsApp"
-                                          onClick={async () => {
-                                            try {
-                                              const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
-                                              const pdfBlob = doc.output("blob");
-                                              const telefono = cliente?.telefono;
-                                              if (!telefono) { toast.error("Cliente sin teléfono"); return; }
-                                              const fileName = `recibo-pago-${i + 1}-${Date.now()}.pdf`;
-                                              const { error: upErr } = await supabase.storage.from("empresa-assets").upload(`temp/${fileName}`, pdfBlob, { contentType: "application/pdf" });
-                                              if (upErr) throw upErr;
-                                              const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(`temp/${fileName}`);
-                                              await supabase.functions.invoke("whatsapp-sender", {
-                                                body: { action: "send-file", phone: telefono, url: urlData.publicUrl, message: `📄 Comprobante de pago #${i + 1} por ${$$(Number(pg.monto_recibido))}`, empresa_id: empresaId },
-                                              });
-                                              toast.success("Comprobante enviado por WhatsApp");
-                                              setTimeout(() => supabase.storage.from("empresa-assets").remove([`temp/${fileName}`]), 30000);
-                                            } catch (err: any) {
-                                              toast.error("Error al enviar: " + (err.message || err));
-                                            }
-                                          }}
+                                          title="Enviar recibo por WhatsApp"
+                                          onClick={() => handleSendReceiptWA(pg, i)}
                                           className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-[hsl(142,72%,37%)] hover:bg-[hsl(142,72%,37%)]/10 transition-colors"
                                         >
                                           <Send className="h-3.5 w-3.5" />
