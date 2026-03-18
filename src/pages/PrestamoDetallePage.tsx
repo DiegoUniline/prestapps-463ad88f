@@ -197,6 +197,7 @@ export default function PrestamoDetallePage() {
   const [editPagoOpen, setEditPagoOpen] = useState(false);
   const [editPagoData, setEditPagoData] = useState<any>(null);
   const [fotoLightbox, setFotoLightbox] = useState(false);
+  const [waPreview, setWaPreview] = useState<{ open: boolean; pg: any; idx: number } | null>(null);
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
