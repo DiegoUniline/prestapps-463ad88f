@@ -479,13 +479,13 @@ function TicketTab() {
               <div className="px-5 py-3 space-y-1">
                 <p className="text-[9px] font-bold uppercase tracking-[1px] text-[#999] mb-1">Desglose del Pago</p>
                 {local.ticket_campos.aplicado_mora && (
-                  <div className="flex justify-between"><span className="text-[#666]">A Mora:</span><span className="font-bold">$5.00</span></div>
+                  <div className="flex justify-between"><span className="text-[#666]">A Mora:</span><span className="font-bold">{form.moneda_simbolo}5.00</span></div>
                 )}
                 {local.ticket_campos.aplicado_interes && (
-                  <div className="flex justify-between"><span className="text-[#666]">A Interés:</span><span className="font-bold">$15.00</span></div>
+                  <div className="flex justify-between"><span className="text-[#666]">A Interés:</span><span className="font-bold">{form.moneda_simbolo}15.00</span></div>
                 )}
                 {local.ticket_campos.aplicado_capital && (
-                  <div className="flex justify-between"><span className="text-[#666]">A Capital:</span><span className="font-bold">$30.00</span></div>
+                  <div className="flex justify-between"><span className="text-[#666]">A Capital:</span><span className="font-bold">{form.moneda_simbolo}30.00</span></div>
                 )}
               </div>
 
@@ -493,7 +493,7 @@ function TicketTab() {
               {local.ticket_campos.monto_recibido && (
                 <div className="mx-5 border-t-2 border-b-2 border-[#333] py-2 flex justify-between text-[14px] font-bold">
                   <span>TOTAL PAGADO</span>
-                  <span>$50.00</span>
+                  <span>{form.moneda_simbolo}50.00</span>
                 </div>
               )}
 
@@ -502,7 +502,7 @@ function TicketTab() {
                 <p className="text-[9px] font-bold uppercase tracking-[1px] text-[#999] mb-1">Saldo</p>
                 <div className="flex justify-between"><span className="text-[#666]">Cuota:</span><span className="font-bold">3 de 12</span></div>
                 {local.ticket_campos.saldo_pendiente && (
-                  <div className="flex justify-between"><span className="text-[#666]">Saldo Restante:</span><span className="font-bold">$450.00</span></div>
+                  <div className="flex justify-between"><span className="text-[#666]">Saldo Restante:</span><span className="font-bold">{form.moneda_simbolo}450.00</span></div>
                 )}
                 <div className="flex justify-between"><span className="text-[#666]">Próx. Venc.:</span><span className="font-bold">20/Mar/2026</span></div>
               </div>
