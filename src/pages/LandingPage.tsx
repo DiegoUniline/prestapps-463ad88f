@@ -467,7 +467,7 @@ export default function LandingPage() {
                       </div>
                     ))}
                   </div>
-                  <Link to="/login" className="block">
+                  <Link to={plan.name === "Enterprise" ? "#contacto" : "/registro"} className="block">
                     <Button
                       className="w-full font-semibold"
                       variant={plan.highlight ? "default" : "outline"}
