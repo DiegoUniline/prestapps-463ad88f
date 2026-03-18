@@ -1,11 +1,43 @@
+import { useState } from "react";
 import { useAccesoApp } from "@/hooks/useAccesoApp";
-import { Link } from "react-router-dom";
-import { AlertTriangle, Lock, CreditCard, Sparkles, Clock } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { AlertTriangle, Lock, CreditCard, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { $$, cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export function SubscriptionBanner() {
-  const { estado, showBanner, diasGraciaRestantes, diasTrialRestantes, facturaPendiente } = useAccesoApp();
+  const { estado, showBanner, data, diasGraciaRestantes, diasTrialRestantes, facturaPendiente } = useAccesoApp();
+  const navigate = useNavigate();
+  const [paying, setPaying] = useState(false);
+
+  const handlePayNow = async () => {
+    if (!data?.plan_id) {
+      navigate("/mi-suscripcion");
+      toast.info("Primero selecciona un plan para continuar.");
+      return;
+    }
+
+    setPaying(true);
+    try {
+      const { data: checkoutData, error } = await supabase.functions.invoke("create-checkout", {
+        body: {
+          plan_id: data.plan_id,
+          num_usuarios: data.num_usuarios || 1,
+        },
+      });
+
+      if (error) throw error;
+      if (!checkoutData?.url) throw new Error("No se pudo generar el enlace de pago");
+
+      window.open(checkoutData.url, "_blank");
+    } catch (err: any) {
+      toast.error(err?.message || "No se pudo abrir Stripe, intenta de nuevo.");
+    } finally {
+      setPaying(false);
+    }
+  };
 
   if (!showBanner) return null;
 
@@ -93,12 +125,10 @@ export function SubscriptionBanner() {
             </p>
           </div>
         </div>
-        <Link to="/mi-suscripcion">
-          <Button size="sm" className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
-            <CreditCard className="h-3.5 w-3.5" />
-            Pagar ahora
-          </Button>
-        </Link>
+        <Button size="sm" onClick={handlePayNow} disabled={paying} className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
+          <CreditCard className="h-3.5 w-3.5" />
+          {paying ? "Abriendo..." : "Pagar ahora"}
+        </Button>
       </div>
     );
   }
@@ -125,12 +155,10 @@ export function SubscriptionBanner() {
             </p>
           </div>
         </div>
-        <Link to="/mi-suscripcion">
-          <Button size="sm" className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
-            <CreditCard className="h-3.5 w-3.5" />
-            Pagar ahora
-          </Button>
-        </Link>
+        <Button size="sm" onClick={handlePayNow} disabled={paying} className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
+          <CreditCard className="h-3.5 w-3.5" />
+          {paying ? "Abriendo..." : "Pagar ahora"}
+        </Button>
       </div>
     );
   }
@@ -153,12 +181,10 @@ export function SubscriptionBanner() {
             </p>
           </div>
         </div>
-        <Link to="/mi-suscripcion">
-          <Button size="sm" variant="destructive" className="shrink-0 gap-1.5">
-            <CreditCard className="h-3.5 w-3.5" />
-            Ir a pagar
-          </Button>
-        </Link>
+        <Button size="sm" variant="destructive" onClick={handlePayNow} disabled={paying} className="shrink-0 gap-1.5">
+          <CreditCard className="h-3.5 w-3.5" />
+          {paying ? "Abriendo..." : "Ir a pagar"}
+        </Button>
       </div>
     );
   }
