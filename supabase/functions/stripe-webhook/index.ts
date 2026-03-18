@@ -327,30 +327,30 @@ function normalizePhone(phone: string): string {
   return String(phone || "").replace(/\D/g, "");
 }
 
-function getPhoneCandidates(phone: string): string[] {
+function getPhoneCandidates(phone: string, ladaPais: string = "52"): string[] {
   const raw = String(phone || "").trim();
   const digits = normalizePhone(raw);
+  const lada = normalizePhone(ladaPais);
   const candidates = new Set<string>();
 
   if (raw) candidates.add(raw);
   if (digits) candidates.add(digits);
 
-  // MX fallback formats (10-digit local -> 52 / 521)
-  if (digits.length === 10) {
-    candidates.add(`52${digits}`);
-    candidates.add(`521${digits}`);
-  }
-
-  // If already 52 + 10 digits, also try 521 variant
-  if (digits.length === 12 && digits.startsWith("52")) {
-    const local = digits.slice(2);
-    if (local.length === 10) {
-      candidates.add(`521${local}`);
+  // If phone looks like a local number (no country code), prepend lada
+  // Common local lengths: 10 (MX, CO), 9 (PE, CL), 8, 11 (BR)
+  if (digits.length >= 8 && digits.length <= 11 && !digits.startsWith(lada)) {
+    candidates.add(`${lada}${digits}`);
+    // MX special: also try with 1 after country code
+    if (lada === "52") {
+      candidates.add(`521${digits}`);
     }
   }
 
-  // If already 521 + 10 digits, also try 52 variant
-  if (digits.length === 13 && digits.startsWith("521")) {
+  // If already has lada + local, also try MX variant with 1
+  if (lada === "52" && digits.startsWith("52") && !digits.startsWith("521")) {
+    candidates.add(`521${digits.slice(2)}`);
+  }
+  if (lada === "52" && digits.startsWith("521")) {
     candidates.add(`52${digits.slice(3)}`);
   }
 
@@ -421,6 +421,14 @@ async function sendWhatsAppAlert(
       return;
     }
 
+    // Get empresa lada_pais
+    const { data: empresaData } = await supabase
+      .from("empresas")
+      .select("lada_pais")
+      .eq("id", empresaId)
+      .single();
+    const ladaPais = empresaData?.lada_pais || "52";
+
     // Get admin profiles for this empresa
     const { data: admins } = await supabase
       .from("user_roles")
@@ -443,7 +451,7 @@ async function sendWhatsAppAlert(
     for (const profile of (profiles || [])) {
       if (!profile.telefono) continue;
 
-      const phoneCandidates = getPhoneCandidates(profile.telefono);
+      const phoneCandidates = getPhoneCandidates(profile.telefono, ladaPais);
       if (!phoneCandidates.length) continue;
 
       const result = await sendWhatsAppWithFallback(
@@ -457,6 +465,7 @@ async function sendWhatsAppAlert(
         originalPhone: profile.telefono,
         phoneUsed: result.phoneUsed,
         success: result.success,
+        ladaPais,
       });
 
       await supabase.from("whatsapp_log").insert({

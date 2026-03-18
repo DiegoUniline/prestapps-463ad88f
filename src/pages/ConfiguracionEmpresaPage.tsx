@@ -35,15 +35,15 @@ function DatosGeneralesTab() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("empresas")
-        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, lada_pais")
         .eq("id", empresaId)
         .single();
       if (error) throw error;
-      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number };
+      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; lada_pais: string };
     },
   });
 
-  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0 });
+  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, lada_pais: "52" });
 
   useEffect(() => {
     if (empresa) {
@@ -53,6 +53,7 @@ function DatosGeneralesTab() {
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
+        lada_pais: empresa.lada_pais || "52",
       });
     }
   }, [empresa]);
@@ -68,6 +69,7 @@ function DatosGeneralesTab() {
           telefono: form.telefono || null,
           direccion: form.direccion || null,
           dias_gracia: form.dias_gracia,
+          lada_pais: form.lada_pais || "52",
         })
         .eq("id", empresaId);
       if (error) throw error;
@@ -89,6 +91,7 @@ function DatosGeneralesTab() {
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
+        lada_pais: empresa.lada_pais || "52",
       });
     }
     setEditing(false);
@@ -178,6 +181,18 @@ function DatosGeneralesTab() {
                 <Input value={form.ruc} onChange={(e) => setForm({ ...form, ruc: e.target.value })} />
               ) : (
                 <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.ruc || "—"}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Lada de país</Label>
+              {editing ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-sm">+</span>
+                  <Input value={form.lada_pais} onChange={(e) => setForm({ ...form, lada_pais: e.target.value.replace(/\D/g, "").slice(0, 4) })} placeholder="52" className="w-24" />
+                  <span className="text-xs text-muted-foreground">Ej: 52 (MX), 1 (US), 57 (CO), 51 (PE)</span>
+                </div>
+              ) : (
+                <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">+{form.lada_pais || "52"}</p>
               )}
             </div>
             <div className="space-y-2">
