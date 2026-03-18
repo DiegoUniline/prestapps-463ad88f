@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.billing-cycle]
 verify_jwt = false
+
+[functions.register-empresa]
+verify_jwt = false
