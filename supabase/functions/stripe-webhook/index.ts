@@ -12,6 +12,22 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${d}`);
 };
 
+function getReadableError(code: string, message: string): string {
+  const map: Record<string, string> = {
+    card_declined: "Tu tarjeta fue rechazada por el banco",
+    insufficient_funds: "Fondos insuficientes en la tarjeta",
+    expired_card: "Tu tarjeta está vencida",
+    incorrect_cvc: "El código de seguridad (CVC) es incorrecto",
+    processing_error: "Error temporal al procesar el pago",
+    lost_card: "La tarjeta fue reportada como perdida",
+    stolen_card: "La tarjeta fue reportada como robada",
+    generic_decline: "El banco rechazó la transacción",
+    authentication_required: "Se requiere autenticación adicional (3D Secure)",
+    payment_intent_payment_attempt_failed: "No se pudo completar el cobro",
+  };
+  return map[code] || message || "Error al procesar el pago";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -171,6 +187,30 @@ serve(async (req) => {
         });
 
         logStep("Invoice recorded", { empresaId: sub.empresa_id });
+
+        // Send WhatsApp success notification
+        const invoiceAmount = ((invoice.amount_paid || 0) / 100).toFixed(2);
+        const { data: empresaInfo } = await supabase
+          .from("empresas")
+          .select("nombre")
+          .eq("id", sub.empresa_id)
+          .single();
+        const empNombre = empresaInfo?.nombre || "tu empresa";
+        const proxCobro = fechaProximoCobro
+          ? new Date(fechaProximoCobro + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+          : "próximo mes";
+
+        await sendWhatsAppAlert(supabase, sub.empresa_id, {
+          tipo: "pago_exitoso",
+          mensaje: `¡Hola! 🎉\n\n` +
+            `Tu pago de suscripción de *${empNombre}* se procesó correctamente.\n\n` +
+            `✅ *Monto cobrado:* $${invoiceAmount} MXN\n` +
+            `📅 *Próximo cobro:* ${proxCobro}\n` +
+            `🧾 *Factura:* ${facNum}\n\n` +
+            `Gracias por confiar en *PrestApps*. ¡Sigue creciendo tu negocio! 🚀\n\n` +
+            `Si tienes dudas sobre tu factura, responde a este mensaje. 💬`,
+        });
+
         break;
       }
 
@@ -229,14 +269,28 @@ serve(async (req) => {
             .single();
 
           if (suscripcionData?.empresa_id) {
+            // Get empresa name for personalized message
+            const { data: empresaData } = await supabase
+              .from("empresas")
+              .select("nombre")
+              .eq("id", suscripcionData.empresa_id)
+              .single();
+            const empresaNombre = empresaData?.nombre || "tu empresa";
+
+            const friendlyError = getReadableError(failureCode, failureMessage);
+
             await sendWhatsAppAlert(supabase, suscripcionData.empresa_id, {
               tipo: "pago_fallido",
-              mensaje: `⚠️ *Pago fallido en Stripe*\n\n` +
-                `💳 Tarjeta: ${charge.payment_method_details?.card?.brand || "?"} ****${charge.payment_method_details?.card?.last4 || "????"}\n` +
-                `💰 Monto: $${amount} ${currency}\n` +
-                `❌ Error: ${failureMessage}\n` +
-                `📧 Cliente: ${customerEmail}\n\n` +
-                `Por favor intenta con otro método de pago o contacta a tu banco.`,
+              mensaje: `¡Hola! 👋\n\n` +
+                `Te escribimos de *PrestApps* porque no pudimos procesar tu pago de suscripción para *${empresaNombre}*.\n\n` +
+                `💰 *Monto:* $${amount} ${currency}\n` +
+                `❌ *Motivo:* ${friendlyError}\n\n` +
+                `🔄 *¿Qué puedes hacer?*\n` +
+                `1️⃣ Verifica que tu tarjeta tenga fondos suficientes\n` +
+                `2️⃣ Actualiza tu método de pago desde la app en *Mi Suscripción*\n` +
+                `3️⃣ Si el problema persiste, contacta a tu banco\n\n` +
+                `Tu acceso no se verá afectado de inmediato, pero te recomendamos regularizar tu pago lo antes posible para evitar interrupciones. 🙏\n\n` +
+                `¿Necesitas ayuda? Responde a este mensaje y con gusto te asistimos. 💬`,
             });
           }
         }
