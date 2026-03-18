@@ -318,7 +318,7 @@ const TICKET_FIELD_LABELS: Record<keyof TicketCampos, string> = {
 
 // ── Tab 2: Diseño del Ticket ──
 function TicketTab() {
-  const { empresaId } = useEmpresa();
+  const { empresaId, monedaSimbolo } = useEmpresa();
   const { data: config, isLoading } = useEmpresaConfig();
   const { data: empresa } = useQuery({
     queryKey: ["empresa-datos", empresaId],
