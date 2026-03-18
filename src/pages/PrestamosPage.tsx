@@ -604,8 +604,82 @@ export default function PrestamosPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+      {/* MOBILE Cards */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-lg border border-border p-4">
+              <Skeleton className="h-4 w-3/4 mb-2" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <p className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</p>
+        ) : filtered.map((p) => {
+          const d = p.diasAtraso ?? 0;
+          const diasColor = d > 30 ? "text-destructive" : d > 7 ? "text-warning" : d > 0 ? "text-orange-500" : "text-muted-foreground";
+          return (
+            <div
+              key={p.id}
+              className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)] overflow-hidden cursor-pointer active:bg-muted/50 transition-colors"
+              onClick={() => navigate(`/prestamos/${p.id}`)}
+            >
+              {/* Header */}
+              <div className="px-3 py-2.5 flex items-center justify-between border-b border-border/50">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Avatar className="h-7 w-7 shrink-0">
+                    {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
+                    <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                      {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[13px] truncate">{p.cliente}</p>
+                    <p className="text-[11px] text-muted-foreground">{p.idPrestamo} · {fmtDate(p.fechaRegistro)}</p>
+                  </div>
+                </div>
+                <span className={cn(
+                  "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border shrink-0 ml-2",
+                  estadoBadge[p.estado] || "bg-muted text-muted-foreground border-border"
+                )}>
+                  {p.estado}
+                </span>
+              </div>
+
+              {/* Body */}
+              <div className="px-3 py-2 grid grid-cols-3 gap-x-2 gap-y-1.5 text-[11px]">
+                <div>
+                  <span className="text-muted-foreground">Prestado</span>
+                  <p className="font-semibold text-[12px]">{$$(p.montoSolicitado)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Saldo</span>
+                  <p className="font-semibold text-[12px]">{$$(p.saldo)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Cuotas</span>
+                  <p className="font-semibold text-[12px]">{p.cuotasPagadas ?? 0}/{p.totalCuotas ?? 0}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Mora</span>
+                  <p className={cn("font-semibold text-[12px]", (p.mora ?? 0) > 0 ? "text-destructive" : "text-muted-foreground/50")}>{(p.mora ?? 0) > 0 ? $$(p.mora) : "$0.00"}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Días atraso</span>
+                  <p className={cn("font-bold text-[12px]", diasColor)}>{d > 0 ? `${d}d` : "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Ruta</span>
+                  <p className="font-medium text-[12px] truncate">{p.ruta}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* DESKTOP Table */}
+      <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
           <TableHeader>
             <TableRow className="bg-table-header hover:bg-table-header border-b">
