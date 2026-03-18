@@ -113,6 +113,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { role, loading } = useCurrentUserRole();
   const { isAllowed, isLoading: permLoading } = usePermisosRead();
+  const { empresaId } = useEmpresa();
   const queryClient = useQueryClient();
 
   // Prefetch main views on mount — keys MUST match actual hook keys
