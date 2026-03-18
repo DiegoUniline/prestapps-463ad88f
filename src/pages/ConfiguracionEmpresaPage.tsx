@@ -184,6 +184,18 @@ function DatosGeneralesTab() {
               )}
             </div>
             <div className="space-y-2">
+              <Label>Lada de país</Label>
+              {editing ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground text-sm">+</span>
+                  <Input value={form.lada_pais} onChange={(e) => setForm({ ...form, lada_pais: e.target.value.replace(/\D/g, "").slice(0, 4) })} placeholder="52" className="w-24" />
+                  <span className="text-xs text-muted-foreground">Ej: 52 (MX), 1 (US), 57 (CO), 51 (PE)</span>
+                </div>
+              ) : (
+                <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">+{form.lada_pais || "52"}</p>
+              )}
+            </div>
+            <div className="space-y-2">
               <Label>Teléfono</Label>
               {editing ? (
                 <Input value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} />
