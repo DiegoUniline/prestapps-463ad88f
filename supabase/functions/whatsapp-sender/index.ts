@@ -258,6 +258,32 @@ function replaceVariables(template: string, vars: Record<string, any>): string {
   });
 }
 
+/**
+ * Normalizes a phone number by stripping non-digits and prepending the country code if missing.
+ * Handles Mexican numbers with 521 prefix (converts to 52).
+ */
+function normalizePhone(raw: string, ladaPais: string): string {
+  // Strip everything except digits
+  let digits = raw.replace(/\D/g, "");
+  
+  // If it already starts with the lada, return as-is
+  if (digits.startsWith(ladaPais)) {
+    // Special case: Mexico 521 → 52 (remove extra 1 after 52 for 13-digit numbers)
+    if (ladaPais === "52" && digits.startsWith("521") && digits.length === 13) {
+      digits = "52" + digits.slice(3);
+    }
+    return digits;
+  }
+  
+  // If it starts with a + but different code, return digits as-is
+  if (raw.trim().startsWith("+")) {
+    return digits;
+  }
+  
+  // Prepend lada
+  return ladaPais + digits;
+}
+
 function buildReceiptHtml(pago: any, empresa: any, cliente: any, prestamo: any): string {
   const fecha = new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const $$ = (n: number) => `$${(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
