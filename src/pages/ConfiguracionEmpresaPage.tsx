@@ -35,7 +35,7 @@ function DatosGeneralesTab() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("empresas")
-        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, lada_pais")
         .eq("id", empresaId)
         .single();
       if (error) throw error;
