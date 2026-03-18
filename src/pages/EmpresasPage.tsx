@@ -162,7 +162,7 @@ export default function EmpresasPage() {
 
       if (editId) {
         const { error } = await supabase.from("empresas").update({
-          nombre: form.nombre.trim(),
+          nombre: (form.nombre ?? "").trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
