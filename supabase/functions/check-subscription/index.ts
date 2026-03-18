@@ -63,7 +63,7 @@ serve(async (req) => {
     const { data: profile } = await supabaseClient
       .from("profiles")
       .select("empresa_id")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
 
     if (!profile?.empresa_id) {
