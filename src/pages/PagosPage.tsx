@@ -670,14 +670,13 @@ export default function PagosPage() {
                 logoUrl: docPreview.pago!.empresaLogoUrl,
               },
               [{
-                id: docPreview.pago!.id,
-                fecha_pago: docPreview.pago!.fechaPago || docPreview.pago!.fecha,
+                created_at: docPreview.pago!.fechaPago || docPreview.pago!.fecha,
                 monto_recibido: docPreview.pago!.montoRecibido,
                 aplicado_mora: docPreview.pago!.aplicadoMora,
                 aplicado_interes: docPreview.pago!.aplicadoInteres,
                 aplicado_capital: docPreview.pago!.aplicadoCapital,
                 metodo_pago: docPreview.pago!.metodo,
-                anulado: docPreview.pago!.anulado,
+                cajaNombre: docPreview.pago!.caja,
               }]
             )
           }
