@@ -75,6 +75,34 @@ export function SubscriptionBanner() {
     );
   }
 
+  // ── Pendiente de pago — invoice generated, waiting for payment ──
+  if (estado === "pendiente_pago") {
+    return (
+      <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 text-amber-700 dark:text-amber-400 text-sm min-w-0">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <div className="min-w-0">
+            <p className="font-semibold">
+              💳 Factura pendiente de pago
+              {facturaPendiente ? ` — ${$$(facturaPendiente.total)}` : ""}
+            </p>
+            <p className="text-xs opacity-80">
+              {facturaPendiente
+                ? `Factura ${facturaPendiente.numero_factura}${facturaPendiente.es_prorrateo ? " (prorrateada)" : ""}. Realiza el pago para activar tu plan.`
+                : "Realiza el pago para activar tu plan."}
+            </p>
+          </div>
+        </div>
+        <Link to="/mi-suscripcion">
+          <Button size="sm" className="shrink-0 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
+            <CreditCard className="h-3.5 w-3.5" />
+            Pagar ahora
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
   // ── Grace period — payment pending ──
   if (estado === "gracia") {
     return (
