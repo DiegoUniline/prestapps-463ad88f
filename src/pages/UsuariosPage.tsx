@@ -191,7 +191,7 @@ function UsuarioDetallePage() {
   const isSupervisor = rol === "Supervisor";
 
   const handleSave = async () => {
-    if (!nombre.trim() || !email.trim()) { toast.error("Nombre y email son obligatorios"); return; }
+    if (!nombre?.trim() || !email?.trim()) { toast.error("Nombre y email son obligatorios"); return; }
     if (isNew && !password) { toast.error("La contraseña es obligatoria"); return; }
 
     setSaving(true);
