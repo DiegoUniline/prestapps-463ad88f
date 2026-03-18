@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import logoIcon from "@/assets/logo-icon.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole, type AppRole } from "@/hooks/useCurrentUserRole";
+import { usePermisosRead, type PermisoModule } from "@/hooks/usePermisos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuthStore } from "@/stores/authStore";
 import { isSuperAdmin } from "@/components/SuperAdminGuard";
@@ -35,6 +36,7 @@ interface NavItem {
   icon: LucideIcon;
   roles: AppRole[];
   superAdminOnly?: boolean;
+  permModule?: PermisoModule;
 }
 
 interface NavModule {
@@ -46,59 +48,59 @@ const modules: NavModule[] = [
   {
     label: "General",
     items: [
-      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["admin", "supervisor", "cobrador"] },
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, roles: ["admin", "supervisor", "cobrador"], permModule: "dashboard" },
     ],
   },
   {
     label: "Operaciones",
     items: [
-      { title: "Mi Cobranza", url: "/mi-cobranza", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },
-      { title: "Cobranza Diaria", url: "/cobranza", icon: ClipboardCheck, roles: ["admin", "supervisor", "cobrador"] },
-      { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin", "supervisor", "cobrador"] },
-      { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"] },
-      { title: "Promesas", url: "/promesas", icon: CalendarCheck, roles: ["admin", "supervisor", "cobrador"] },
-      { title: "Solicitudes", url: "/solicitudes", icon: FileInput, roles: ["admin", "supervisor", "cobrador"] },
+      { title: "Mi Cobranza", url: "/mi-cobranza", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"], permModule: "mi_cobranza" },
+      { title: "Cobranza Diaria", url: "/cobranza", icon: ClipboardCheck, roles: ["admin", "supervisor", "cobrador"], permModule: "cobranza" },
+      { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin", "supervisor", "cobrador"], permModule: "prestamos" },
+      { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"], permModule: "pagos" },
+      { title: "Promesas", url: "/promesas", icon: CalendarCheck, roles: ["admin", "supervisor", "cobrador"], permModule: "promesas" },
+      { title: "Solicitudes", url: "/solicitudes", icon: FileInput, roles: ["admin", "supervisor", "cobrador"], permModule: "solicitudes" },
     ],
   },
   {
     label: "Clientes y CRM",
     items: [
-      { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "supervisor"] },
-      { title: "CRM Cobranza", url: "/crm", icon: Users2, roles: ["admin", "supervisor"] },
-      { title: "Lead Scoring", url: "/scoring", icon: Star, roles: ["admin", "supervisor"] },
+      { title: "Clientes", url: "/clientes", icon: Users, roles: ["admin", "supervisor"], permModule: "clientes" },
+      { title: "CRM Cobranza", url: "/crm", icon: Users2, roles: ["admin", "supervisor"], permModule: "crm" },
+      { title: "Lead Scoring", url: "/scoring", icon: Star, roles: ["admin", "supervisor"], permModule: "scoring" },
       { title: "Alertas", url: "/alertas", icon: Bell, roles: ["admin", "supervisor"] },
-      { title: "Mapa GPS", url: "/mapa-gps", icon: MapPin, roles: ["admin", "supervisor"] },
+      { title: "Mapa GPS", url: "/mapa-gps", icon: MapPin, roles: ["admin", "supervisor"], permModule: "mapa_gps" },
     ],
   },
   {
     label: "Finanzas",
     items: [
-      { title: "Cajas", url: "/cajas", icon: Wallet, roles: ["admin"] },
-      { title: "Gastos", url: "/gastos", icon: Receipt, roles: ["admin"] },
-      { title: "Comisiones", url: "/comisiones", icon: Percent, roles: ["admin"] },
-      { title: "Liquidar Ruta", url: "/liquidar-ruta", icon: ClipboardList, roles: ["admin"] },
+      { title: "Cajas", url: "/cajas", icon: Wallet, roles: ["admin"], permModule: "cajas" },
+      { title: "Gastos", url: "/gastos", icon: Receipt, roles: ["admin"], permModule: "gastos" },
+      { title: "Comisiones", url: "/comisiones", icon: Percent, roles: ["admin"], permModule: "comisiones" },
+      { title: "Liquidar Ruta", url: "/liquidar-ruta", icon: ClipboardList, roles: ["admin"], permModule: "liquidar_ruta" },
       { title: "Rentabilidad", url: "/rentabilidad", icon: PieChart, roles: ["admin"] },
       { title: "Productividad", url: "/productividad", icon: BarChart3, roles: ["admin", "supervisor"] },
-      { title: "Reportes", url: "/reportes", icon: FileText, roles: ["admin", "supervisor"] },
+      { title: "Reportes", url: "/reportes", icon: FileText, roles: ["admin", "supervisor"], permModule: "reportes" },
       { title: "Renovación", url: "/renovacion", icon: RefreshCw, roles: ["admin"] },
     ],
   },
   {
     label: "Equipo",
     items: [
-      { title: "Cobradores", url: "/cobradores", icon: UserCheck, roles: ["admin"] },
-      { title: "Rutas", url: "/rutas", icon: Route, roles: ["admin"] },
-      { title: "Usuarios", url: "/usuarios", icon: Settings, roles: ["admin"] },
+      { title: "Cobradores", url: "/cobradores", icon: UserCheck, roles: ["admin"], permModule: "cobradores" },
+      { title: "Rutas", url: "/rutas", icon: Route, roles: ["admin"], permModule: "rutas" },
+      { title: "Usuarios", url: "/usuarios", icon: Settings, roles: ["admin"], permModule: "usuarios" },
     ],
   },
   {
     label: "Configuración",
     items: [
-      { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"], superAdminOnly: true },
-      { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"] },
-      { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"] },
-      { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
-      { title: "Permisos", url: "/permisos", icon: ShieldCheck, roles: ["admin"] },
+      { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"], superAdminOnly: true, permModule: "empresas" },
+      { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"], permModule: "configuracion" },
+      { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"], permModule: "catalogos" },
+      { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"], permModule: "whatsapp" },
+      { title: "Permisos", url: "/permisos", icon: ShieldCheck, roles: ["admin"], permModule: "permisos" },
       { title: "Auditoría", url: "/auditoria", icon: ScrollText, roles: ["admin"] },
       { title: "Mi Suscripción", url: "/mi-suscripcion", icon: CreditCard, roles: ["admin"] },
     ],
@@ -110,6 +112,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { role, loading } = useCurrentUserRole();
+  const { isAllowed, isLoading: permLoading } = usePermisosRead();
   const { empresaId } = useEmpresa();
   const queryClient = useQueryClient();
 
@@ -152,15 +155,22 @@ export function AppSidebar() {
   const userEmail = useAuthStore((s) => s.user?.email);
   const superAdmin = isSuperAdmin(userEmail);
 
-  const visibleModules = modules
+  const visibleModules = useMemo(() => modules
     .map((mod) => ({
       ...mod,
-      items: loading ? mod.items : mod.items.filter((item) => {
+      items: (loading || permLoading) ? [] : mod.items.filter((item) => {
         if (item.superAdminOnly && !superAdmin) return false;
-        return item.roles.includes(role);
+        if (!item.roles.includes(role)) return false;
+        // Check granular permission if permModule is defined
+        if (item.permModule) {
+          return isAllowed(role, item.permModule, "ver");
+        }
+        return true;
       }),
     }))
-    .filter((mod) => mod.items.length > 0);
+    .filter((mod) => mod.items.length > 0),
+    [loading, permLoading, role, superAdmin, isAllowed]
+  );
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
