@@ -58,15 +58,15 @@ function DatosGeneralesTab() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("empresas")
-        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, lada_pais")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, lada_pais, moneda_simbolo, moneda_codigo")
         .eq("id", empresaId)
         .single();
       if (error) throw error;
-      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; lada_pais: string };
+      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; lada_pais: string; moneda_simbolo: string; moneda_codigo: string };
     },
   });
 
-  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, lada_pais: "52" });
+  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, lada_pais: "52", moneda_codigo: "USD", moneda_simbolo: "$" });
 
   useEffect(() => {
     if (empresa) {
@@ -77,6 +77,8 @@ function DatosGeneralesTab() {
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
         lada_pais: empresa.lada_pais || "52",
+        moneda_codigo: empresa.moneda_codigo || "USD",
+        moneda_simbolo: empresa.moneda_simbolo || "$",
       });
     }
   }, [empresa]);
