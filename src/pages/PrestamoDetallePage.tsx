@@ -388,7 +388,45 @@ export default function PrestamoDetallePage() {
     return generarReciboPagos(pdfPrestamo, pdfPagos);
   };
 
-  return (
+  const handleSendReceiptWA = async (pg: any, i: number) => {
+    const telefono = cliente?.telefono;
+    if (!telefono) { toast.error("Cliente sin teléfono"); return; }
+    const cuotaMatch = amort.find(c => c.id === pg.cuota_id);
+    const result = await sendReceiptAsImage(
+      empresaId,
+      telefono,
+      {
+        pago: {
+          folio: `PAG-${pg.id.slice(0, 8)}`,
+          monto_recibido: Number(pg.monto_recibido),
+          aplicado_mora: Number(pg.aplicado_mora || 0),
+          aplicado_interes: Number(pg.aplicado_interes || 0),
+          aplicado_capital: Number(pg.aplicado_capital || 0),
+          metodo_pago: pg.metodo_pago || "Efectivo",
+          saldo_restante: saldoPendiente,
+          cuota_num: cuotaMatch?.num_cuota || (i + 1),
+          proxima_cuota: proximaCuota ? new Date(proximaCuota.fecha_vencimiento).toLocaleDateString("es-MX") : undefined,
+          monto_proxima: proximaCuota ? Number(proximaCuota.saldo_total || 0) : undefined,
+        },
+        empresa: {
+          nombre: empresaData?.nombre || "Empresa",
+          telefono: (empresaData as any)?.telefono || undefined,
+          direccion: (empresaData as any)?.direccion || undefined,
+          logo_url: empresaData?.logo_url || null,
+        },
+        cliente: { nombre: cliente.nombre_completo },
+        prestamo: { folio: folioId, num_cuotas: prestamo.num_cuotas },
+      },
+      `🧾 Recibo de pago #${i + 1} por ${$$(Number(pg.monto_recibido))} - ${folioId}`,
+    );
+    if (result.success) {
+      toast.success("Recibo enviado por WhatsApp");
+    } else {
+      toast.error("Error: " + (result.error || "desconocido"));
+    }
+  };
+
+
     <div>
       {/* ── HEADER ────────────────────────────────────────────── */}
       <div className="bg-card px-4 md:px-6 py-4 md:py-5 border-b border-border">
