@@ -682,7 +682,8 @@ export default function PrestamoDetallePage() {
                       {showOptional ? "Menos columnas" : "Más columnas"} <ChevronDown className={cn("h-3 w-3 transition-transform", showOptional && "rotate-180")} />
                     </button>
                   </div>
-                  <div className="overflow-x-auto">
+                  {/* Desktop: Table */}
+                  <div className="overflow-x-auto hidden md:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
@@ -790,6 +791,65 @@ export default function PrestamoDetallePage() {
                         })()}
                       </TableBody>
                     </Table>
+                  </div>
+
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-2 p-3">
+                    {(() => {
+                      const filtered = amortFilter === "todas" ? amort
+                        : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
+                        : amort.filter(c => c.status === amortFilter);
+                      if (filtered.length === 0) return <p className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</p>;
+                      return filtered.map((c) => {
+                        const status = c.status || "Pendiente";
+                        const isNext = proximaCuota?.num_cuota === c.num_cuota;
+                        const paid = Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0);
+                        return (
+                          <div
+                            key={c.num_cuota}
+                            className={cn(
+                              "border rounded-lg p-3 bg-card",
+                              isNext && "border-l-[3px] border-l-primary bg-primary/5",
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[13px] font-bold">#{c.num_cuota}</span>
+                                <CuotaStatusBadge status={status} />
+                              </div>
+                              <span className="text-[13px] font-bold">{$$(c.capital_interes)}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                              <div className="flex justify-between"><span className="text-muted-foreground">Capital</span><span>{$$(c.capital)}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">Interés</span><span>{dash(c.interes) || $$(c.interes)}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">Vence</span><span>{fmtDate(c.fecha_vencimiento)}</span></div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Días atraso</span>
+                                <span className={cn((c.dias_atraso || 0) > 0 ? "text-destructive font-bold" : "text-muted-foreground")}>{(c.dias_atraso || 0) > 0 ? c.dias_atraso : "—"}</span>
+                              </div>
+                              {(c.mora || 0) > 0 && (
+                                <div className="flex justify-between"><span className="text-muted-foreground">Mora</span><span className="text-destructive font-bold">{$$(c.mora)}</span></div>
+                              )}
+                              {paid > 0 && (
+                                <div className="flex justify-between"><span className="text-muted-foreground">Pagado</span><span className="text-[hsl(142,72%,37%)] font-medium">{$$(paid)}</span></div>
+                              )}
+                              <div className="flex justify-between"><span className="text-muted-foreground">Saldo</span><span className="font-medium">{$$(c.saldo_total)}</span></div>
+                              {c.fecha_pagada && <div className="flex justify-between"><span className="text-muted-foreground">F.Pagada</span><span>{fmtDate(c.fecha_pagada)}</span></div>}
+                            </div>
+                            {status !== "Pagada" && !isCancelado && (
+                              <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                                <button onClick={() => { setSelectedCuota(c); setPagoOpen(true); }} className="flex items-center gap-1 text-[11px] text-primary font-medium">
+                                  <HandCoins className="h-3 w-3" /> Pagar
+                                </button>
+                                <button onClick={() => { setSelectedCuota(c); setPromesaOpen(true); }} className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+                                  <CalendarCheck className="h-3 w-3" /> Promesa
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </TabsContent>
 
