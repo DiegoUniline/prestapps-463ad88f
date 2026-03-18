@@ -5,11 +5,9 @@ import "./index.css";
 
 // Register service worker only in production to avoid dev preview cache/runtime conflicts
 if (import.meta.env.PROD) {
-  const updateSW = registerSW({
+  registerSW({
     onNeedRefresh() {
-      if (confirm("Hay una nueva versión disponible. ¿Actualizar ahora?")) {
-        updateSW(true);
-      }
+      window.dispatchEvent(new Event("app:sw-update-available"));
     },
     onOfflineReady() {
       console.log("PrestApp lista para uso offline");

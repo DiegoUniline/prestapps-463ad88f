@@ -100,6 +100,7 @@ const App = () => (
     <ErrorBoundary>
       <TooltipProvider>
         <StoreInitializer />
+        <UpdateBanner />
         <OfflineBanner />
         <Toaster />
         <Sonner />
