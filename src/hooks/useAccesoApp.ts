@@ -20,6 +20,15 @@ export interface SubscriptionStatus {
   card_brand?: string | null;
   card_last4?: string | null;
   stripe_customer_id?: string;
+  dias_gracia_restantes?: number | null;
+  factura_pendiente?: {
+    id: string;
+    numero_factura: string;
+    total: number;
+    estado: string;
+    periodo_inicio: string;
+    periodo_fin: string;
+  } | null;
 }
 
 export function useAccesoApp() {
@@ -53,6 +62,8 @@ export function useAccesoApp() {
       refetch,
       showBanner: false,
       blocked: false,
+      diasGraciaRestantes: null as number | null,
+      facturaPendiente: null as SubscriptionStatus["factura_pendiente"],
     };
   }
 
@@ -67,6 +78,8 @@ export function useAccesoApp() {
       refetch,
       showBanner: false,
       blocked: false, // never block superadmin
+      diasGraciaRestantes: data?.dias_gracia_restantes ?? null,
+      facturaPendiente: data?.factura_pendiente ?? null,
     };
   }
 
@@ -83,5 +96,7 @@ export function useAccesoApp() {
     refetch,
     showBanner,
     blocked,
+    diasGraciaRestantes: data?.dias_gracia_restantes ?? null,
+    facturaPendiente: data?.factura_pendiente ?? null,
   };
 }

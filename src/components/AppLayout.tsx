@@ -4,9 +4,20 @@ import { TopBar } from "@/components/TopBar";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
-import { Outlet } from "react-router-dom";
+import { Outlet, Navigate, useLocation } from "react-router-dom";
+import { useAccesoApp } from "@/hooks/useAccesoApp";
 
 export default function AppLayout() {
+  const { blocked, loading } = useAccesoApp();
+  const location = useLocation();
+
+  // When blocked (suspendida/cancelada/sin_suscripcion), only allow /mi-suscripcion
+  const isAllowedRoute = location.pathname === "/mi-suscripcion";
+
+  if (!loading && blocked && !isAllowedRoute) {
+    return <Navigate to="/mi-suscripcion" replace />;
+  }
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
