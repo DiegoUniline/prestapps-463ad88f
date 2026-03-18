@@ -12,6 +12,8 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CHECK-SUB] ${step}${d}`);
 };
 
+const DIAS_GRACIA = 3;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -93,6 +95,8 @@ serve(async (req) => {
         empresa_id: empresaId,
         card_brand: null,
         card_last4: null,
+        dias_gracia_restantes: null,
+        factura_pendiente: null,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -112,9 +116,10 @@ serve(async (req) => {
           else if (stripeSub.status === "canceled" || stripeSub.status === "unpaid") dbEstado = "suspendida";
 
           if (dbEstado !== suscripcion.estado) {
+            const updateData: any = { estado: dbEstado, actualizado_en: new Date().toISOString() };
             await supabaseClient
               .from("suscripciones")
-              .update({ estado: dbEstado, actualizado_en: new Date().toISOString() })
+              .update(updateData)
               .eq("id", suscripcion.id);
           }
 
@@ -123,6 +128,32 @@ serve(async (req) => {
         }
       } catch (e) {
         logStep("Stripe verify failed, using DB state", { error: String(e) });
+      }
+    }
+
+    // ── Calculate grace period info ──
+    let diasGraciaRestantes: number | null = null;
+    if (suscripcion.estado === "gracia" && suscripcion.actualizado_en) {
+      const graciaStart = new Date(suscripcion.actualizado_en);
+      const now = new Date();
+      const daysSince = Math.floor((now.getTime() - graciaStart.getTime()) / (1000 * 60 * 60 * 24));
+      diasGraciaRestantes = Math.max(0, DIAS_GRACIA - daysSince);
+    }
+
+    // ── Check for pending invoice ──
+    let facturaPendiente: any = null;
+    if (suscripcion.estado === "gracia" || suscripcion.estado === "suspendida") {
+      const { data: factura } = await supabaseClient
+        .from("facturas")
+        .select("id, numero_factura, total, estado, periodo_inicio, periodo_fin")
+        .eq("empresa_id", empresaId)
+        .in("estado", ["pendiente", "procesando"])
+        .order("fecha_emision", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (factura) {
+        facturaPendiente = factura;
       }
     }
 
@@ -143,6 +174,8 @@ serve(async (req) => {
       card_brand: suscripcion.card_brand,
       card_last4: suscripcion.card_last4,
       stripe_customer_id: suscripcion.stripe_customer_id,
+      dias_gracia_restantes: diasGraciaRestantes,
+      factura_pendiente: facturaPendiente,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
