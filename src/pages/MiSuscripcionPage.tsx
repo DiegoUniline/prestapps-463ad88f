@@ -304,18 +304,22 @@ export default function MiSuscripcionPage() {
 
       {/* ── SIN SUSCRIPCIÓN — Estado actual ────────────────── */}
       {!showCurrentPlan && (
-        <Card className="border-destructive/30 overflow-hidden">
-          <div className="h-1.5 bg-gradient-to-r from-destructive/60 to-destructive/30" />
+        <Card className={cn("overflow-hidden", isPendientePago ? "border-amber-500/30" : "border-destructive/30")}>
+          <div className={cn("h-1.5 bg-gradient-to-r", isPendientePago ? "from-amber-500/60 to-amber-500/30" : "from-destructive/60 to-destructive/30")} />
           <CardContent className="p-5 space-y-4">
             <div className="flex items-start justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive">
-                  <AlertCircle className="h-5 w-5" />
+                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", isPendientePago ? "bg-amber-500/10 text-amber-600" : "bg-destructive/10 text-destructive")}>
+                  {isPendientePago ? <CreditCard className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold">Sin suscripción activa</h2>
+                  <h2 className="text-lg font-bold">
+                    {isPendientePago ? "Factura pendiente de pago" : "Sin suscripción activa"}
+                  </h2>
                   <p className="text-sm text-muted-foreground">
-                    {empresaNombre || "Tu empresa"} no tiene un plan contratado
+                    {isPendientePago
+                      ? `Plan ${subData?.plan_nombre || "seleccionado"} · ${subData?.num_usuarios || 1} usuario(s)`
+                      : `${empresaNombre || "Tu empresa"} no tiene un plan contratado`}
                   </p>
                 </div>
               </div>
@@ -331,8 +335,8 @@ export default function MiSuscripcionPage() {
                 icon={<Users className="h-3.5 w-3.5" />}
               />
               <KpiCell
-                label="Plan actual"
-                value="Ninguno"
+                label="Plan"
+                value={isPendientePago ? (subData?.plan_nombre || "—") : "Ninguno"}
                 icon={<CreditCard className="h-3.5 w-3.5" />}
               />
               <KpiCell
@@ -342,10 +346,32 @@ export default function MiSuscripcionPage() {
               />
             </div>
 
-            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm text-muted-foreground">
-              <p className="font-medium text-foreground mb-1">👇 Contrata un plan para continuar</p>
-              <p>Selecciona uno de los planes de abajo. Asegúrate de elegir suficientes usuarios para tu equipo ({activeUsersCount} activos actualmente).</p>
-            </div>
+            {isPendientePago && subData?.plan_id ? (
+              <div className="space-y-3">
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground mb-1">💳 Completa tu pago para activar el plan</p>
+                  <p>Tu factura fue generada. Haz clic en "Pagar ahora" para completar el pago con tarjeta.</p>
+                </div>
+                <Button
+                  onClick={() => handleCheckout(subData.plan_id!, subData.num_usuarios || 1)}
+                  disabled={checkoutLoading !== null}
+                  className="w-full sm:w-auto gap-2"
+                  size="lg"
+                >
+                  {checkoutLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                  ) : (
+                    <CreditCard className="h-4 w-4" />
+                  )}
+                  {checkoutLoading ? "Redirigiendo..." : "Pagar ahora"}
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">👇 Contrata un plan para continuar</p>
+                <p>Selecciona uno de los planes de abajo. Asegúrate de elegir suficientes usuarios para tu equipo ({activeUsersCount} activos actualmente).</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
