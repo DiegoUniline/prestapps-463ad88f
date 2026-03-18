@@ -31,26 +31,39 @@ serve(async (req) => {
     logStep("Function started");
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.replace("Bearer ", "").trim();
 
-    // Use anon client with the user's token to validate auth
+    // Validate claims with caller token to avoid intermittent "Auth session missing" failures
     const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
       auth: { persistSession: false },
     });
-    const { data: userData, error: userError } = await anonClient.auth.getUser(token);
-    if (userError) throw new Error(`Auth error: ${userError.message}`);
-    const user = userData.user;
-    if (!user) throw new Error("User not found");
-    logStep("User authenticated", { userId: user.id });
+
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    const userId = claimsData?.claims?.sub;
+
+    if (claimsError || typeof userId !== "string" || !userId) {
+      logStep("Unauthorized request", { error: claimsError?.message ?? "Missing sub claim" });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    logStep("User authenticated", { userId });
 
     // Get user's empresa_id from profiles
     const { data: profile } = await supabaseClient
       .from("profiles")
       .select("empresa_id")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
 
     if (!profile?.empresa_id) {
