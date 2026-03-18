@@ -195,6 +195,7 @@ export default function MiSuscripcionPage() {
   const estadoKey = subData?.estado || estado || "sin_suscripcion";
   const estadoBadge = ESTADO_BADGE[estadoKey] || ESTADO_BADGE.sin_suscripcion;
   const hasActiveSub = subscribed || (subData?.subscribed ?? false);
+  const isPendientePago = estadoKey === "pendiente_pago";
 
   const planIcons: Record<string, React.ReactNode> = {
     "Básico": <Shield className="h-5 w-5" />,
