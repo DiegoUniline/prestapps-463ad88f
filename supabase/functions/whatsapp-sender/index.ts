@@ -77,18 +77,19 @@ Deno.serve(async (req) => {
 
     // ── send-image ────────────────────────────────
     if (action === "send-image") {
-      const { phone, url, caption, tipo, referencia_id } = body;
+      const { phone, url, caption, tipo, referencia_id, cliente_lada } = body;
+      const normalizedPhone = normalizePhoneWithLada(phone, cliente_lada || ladaPais);
 
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-image",
-        phone,
+        phone: normalizedPhone,
         url,
         caption: caption || "",
       });
 
       await supabase.from("whatsapp_log").insert({
         empresa_id,
-        telefono: phone,
+        telefono: normalizedPhone,
         tipo: tipo || "recibo",
         mensaje: caption || "",
         imagen_url: url,
@@ -104,11 +105,12 @@ Deno.serve(async (req) => {
 
     // ── send-file ────────────────────────────────
     if (action === "send-file") {
-      const { phone, url, fileName, tipo, referencia_id } = body;
+      const { phone, url, fileName, tipo, referencia_id, cliente_lada } = body;
+      const normalizedPhone = normalizePhoneWithLada(phone, cliente_lada || ladaPais);
 
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-file",
-        phone,
+        phone: normalizedPhone,
         url,
         fileName: fileName || "documento.pdf",
       });
