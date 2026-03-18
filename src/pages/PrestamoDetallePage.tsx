@@ -1277,6 +1277,7 @@ export default function PrestamoDetallePage() {
           generateDoc={generateDocForPreview}
           empresaId={empresaId}
           clientePhone={cliente?.telefono || ""}
+          clienteName={cliente?.nombre_completo}
           onWhatsApp={docPreview.type === "pagos" ? async (phone: string) => {
             for (let i = 0; i < pagosRaw.length; i++) {
               const pg = pagosRaw[i];
