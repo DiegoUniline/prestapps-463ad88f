@@ -69,6 +69,7 @@ function DatosGeneralesTab() {
           telefono: form.telefono || null,
           direccion: form.direccion || null,
           dias_gracia: form.dias_gracia,
+          lada_pais: form.lada_pais || "52",
         })
         .eq("id", empresaId);
       if (error) throw error;
