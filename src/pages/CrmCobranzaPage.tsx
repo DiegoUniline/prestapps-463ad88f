@@ -148,8 +148,18 @@ export default function CrmCobranzaPage() {
 
   // ── Send WhatsApp from CRM ────────────────
   const [sendingWA, setSendingWA] = useState<string | null>(null);
+  const [waPreview, setWaPreview] = useState<{ open: boolean; prestamo: any | null }>({ open: false, prestamo: null });
 
-  const sendWhatsAppCobranza = async (prestamo: any) => {
+  const buildWhatsAppMessage = (prestamo: any) =>
+    `Hola ${prestamo.cliente.nombre_completo}, nos comunicamos respecto a su crédito. Tiene ${prestamo.cuotasVencidas} cuota(s) vencida(s) por un total de ${$$(prestamo.totalAdeudado)}. Por favor comuníquese con nosotros.`;
+
+  const handleWhatsAppPreview = (prestamo: any) => {
+    setWaPreview({ open: true, prestamo });
+  };
+
+  const sendWhatsAppCobranza = async (message: string) => {
+    const prestamo = waPreview.prestamo;
+    if (!prestamo) return;
     setSendingWA(prestamo.id);
     try {
       const { data, error } = await supabase.functions.invoke("whatsapp-sender", {
@@ -157,7 +167,7 @@ export default function CrmCobranzaPage() {
           action: "send-text",
           empresa_id: empresaId,
           phone: prestamo.cliente.telefono,
-          message: `Hola ${prestamo.cliente.nombre_completo}, nos comunicamos respecto a su crédito. Tiene ${prestamo.cuotasVencidas} cuota(s) vencida(s) por un total de ${$$(prestamo.totalAdeudado)}. Por favor comuníquese con nosotros.`,
+          message,
           tipo: "cobranza",
           referencia_id: prestamo.id,
         },
@@ -165,7 +175,6 @@ export default function CrmCobranzaPage() {
       if (error) throw error;
       if (data?.success) {
         toast.success("Mensaje enviado");
-        // Auto-register gestión
         await (supabase.from as any)("crm_gestiones").insert({
           empresa_id: empresaId,
           prestamo_id: prestamo.id,
