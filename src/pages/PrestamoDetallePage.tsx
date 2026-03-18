@@ -682,7 +682,8 @@ export default function PrestamoDetallePage() {
                       {showOptional ? "Menos columnas" : "Más columnas"} <ChevronDown className={cn("h-3 w-3 transition-transform", showOptional && "rotate-180")} />
                     </button>
                   </div>
-                  <div className="overflow-x-auto">
+                  {/* Desktop: Table */}
+                  <div className="overflow-x-auto hidden md:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
@@ -791,11 +792,136 @@ export default function PrestamoDetallePage() {
                       </TableBody>
                     </Table>
                   </div>
+
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-2 p-3">
+                    {(() => {
+                      const filtered = amortFilter === "todas" ? amort
+                        : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
+                        : amort.filter(c => c.status === amortFilter);
+                      if (filtered.length === 0) return <p className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</p>;
+                      return filtered.map((c) => {
+                        const status = c.status || "Pendiente";
+                        const isNext = proximaCuota?.num_cuota === c.num_cuota;
+                        const paid = Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0);
+                        return (
+                          <div
+                            key={c.num_cuota}
+                            className={cn(
+                              "border rounded-lg p-3 bg-card",
+                              isNext && "border-l-[3px] border-l-primary bg-primary/5",
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[13px] font-bold">#{c.num_cuota}</span>
+                                <CuotaStatusBadge status={status} />
+                              </div>
+                              <span className="text-[13px] font-bold">{$$(c.capital_interes)}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                              <div className="flex justify-between"><span className="text-muted-foreground">Capital</span><span>{$$(c.capital)}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">Interés</span><span>{dash(c.interes) || $$(c.interes)}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">Vence</span><span>{fmtDate(c.fecha_vencimiento)}</span></div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Días atraso</span>
+                                <span className={cn((c.dias_atraso || 0) > 0 ? "text-destructive font-bold" : "text-muted-foreground")}>{(c.dias_atraso || 0) > 0 ? c.dias_atraso : "—"}</span>
+                              </div>
+                              {(c.mora || 0) > 0 && (
+                                <div className="flex justify-between"><span className="text-muted-foreground">Mora</span><span className="text-destructive font-bold">{$$(c.mora)}</span></div>
+                              )}
+                              {paid > 0 && (
+                                <div className="flex justify-between"><span className="text-muted-foreground">Pagado</span><span className="text-[hsl(142,72%,37%)] font-medium">{$$(paid)}</span></div>
+                              )}
+                              <div className="flex justify-between"><span className="text-muted-foreground">Saldo</span><span className="font-medium">{$$(c.saldo_total)}</span></div>
+                              {c.fecha_pagada && <div className="flex justify-between"><span className="text-muted-foreground">F.Pagada</span><span>{fmtDate(c.fecha_pagada)}</span></div>}
+                            </div>
+                            {status !== "Pagada" && !isCancelado && (
+                              <div className="flex items-center gap-2 mt-2 pt-2 border-t">
+                                <button onClick={() => { setSelectedCuota(c); setPagoOpen(true); }} className="flex items-center gap-1 text-[11px] text-primary font-medium">
+                                  <HandCoins className="h-3 w-3" /> Pagar
+                                </button>
+                                <button onClick={() => { setSelectedCuota(c); setPromesaOpen(true); }} className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+                                  <CalendarCheck className="h-3 w-3" /> Promesa
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
                 </TabsContent>
 
                 {/* ── TAB: Pagos ─────────────────────────────────── */}
                 <TabsContent value="pagos" className="m-0">
-                  <div className="overflow-x-auto">
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-2 p-3">
+                    {pagosRaw.length === 0 ? (
+                      <p className="text-center py-8 text-muted-foreground text-[13px]">Sin pagos registrados</p>
+                    ) : (
+                      <>
+                        {pagosRaw.map((pg, i) => {
+                          const cajaName = (pg.cajas as any)?.nombre || "—";
+                          const isAnulado = (pg as any).anulado === true;
+                          return (
+                            <div key={pg.id} className={cn("border rounded-lg p-3 bg-card", isAnulado && "opacity-50")}>
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[12px] text-muted-foreground">#{i + 1}</span>
+                                  <span className="text-[12px] text-muted-foreground">{fmtDate(pg.created_at)}</span>
+                                </div>
+                                <span className="text-[14px] font-bold">{$$(Number(pg.monto_recibido))}</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                                <div className="flex justify-between"><span className="text-muted-foreground">Capital</span><span>{dash(pg.aplicado_capital) || $$(pg.aplicado_capital)}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Interés</span><span>{dash(pg.aplicado_interes) || $$(pg.aplicado_interes)}</span></div>
+                                {(pg.aplicado_mora || 0) > 0 && (
+                                  <div className="flex justify-between"><span className="text-muted-foreground">Mora</span><span className="text-destructive">{$$(pg.aplicado_mora)}</span></div>
+                                )}
+                                <div className="flex justify-between"><span className="text-muted-foreground">Método</span><span>{pg.metodo_pago || "Efectivo"}</span></div>
+                                <div className="flex justify-between"><span className="text-muted-foreground">Caja</span><span>{cajaName}</span></div>
+                              </div>
+                              <div className="flex items-center justify-between mt-2 pt-2 border-t">
+                                {isAnulado ? (
+                                  <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border border-destructive text-destructive">
+                                    <XCircle className="h-3 w-3 mr-0.5" />Anulado
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border border-[hsl(142,72%,37%)] text-[hsl(142,72%,37%)]">
+                                    <Check className="h-3 w-3 mr-0.5" />Válido
+                                  </span>
+                                )}
+                                {!isAnulado && (
+                                  <div className="flex items-center gap-1">
+                                    <button title="Ver" onClick={() => setDocPreview({ open: true, type: "pagos" })} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"><Eye className="h-3.5 w-3.5" /></button>
+                                    <button title="Descargar" onClick={async () => { try { const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]); doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`); } catch (err: any) { toast.error("Error: " + err.message); } }} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"><Download className="h-3.5 w-3.5" /></button>
+                                    {!isCancelado && (
+                                      <button title="Anular" onClick={() => { setSelectedPago({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id }); setAnularPagoOpen(true); }} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Ban className="h-3.5 w-3.5" /></button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="border rounded-lg p-3 bg-muted/30">
+                          <div className="flex justify-between text-[12px] font-semibold">
+                            <span>Totales</span>
+                            <span>{$$(totalPagosMonto)}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 mt-1 text-[11px] text-muted-foreground">
+                            <span>Cap: {$$(totalPagosCapital)}</span>
+                            <span>Int: {$$(totalPagosInteres)}</span>
+                            <span>Mora: {$$(totalPagosMora)}</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Desktop: Table */}
+                  <div className="overflow-x-auto hidden md:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
@@ -840,36 +966,11 @@ export default function PrestamoDetallePage() {
                                     {!isAnulado && (
                                       <div className="flex items-center gap-0.5">
                                         {!isCancelado && (
-                                          <button
-                                            title="Editar pago"
-                                            onClick={() => {
-                                              setEditPagoData({
-                                                id: pg.id,
-                                                prestamo_id: pg.prestamo_id,
-                                                cuota_id: pg.cuota_id,
-                                                monto_recibido: Number(pg.monto_recibido),
-                                                aplicado_mora: Number(pg.aplicado_mora || 0),
-                                                aplicado_interes: Number(pg.aplicado_interes || 0),
-                                                aplicado_capital: Number(pg.aplicado_capital || 0),
-                                                metodo_pago: pg.metodo_pago || "Efectivo",
-                                                caja_id: pg.caja_id,
-                                                cobrador_id: (pg as any).cobrador_id,
-                                                fecha_pago: (pg as any).fecha_pago,
-                                              });
-                                              setEditPagoOpen(true);
-                                            }}
-                                            className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                          >
+                                          <button title="Editar pago" onClick={() => { setEditPagoData({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), metodo_pago: pg.metodo_pago || "Efectivo", caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id, fecha_pago: (pg as any).fecha_pago }); setEditPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                                             <Pencil className="h-3.5 w-3.5" />
                                           </button>
                                         )}
-                                        <button
-                                          title="Ver comprobante"
-                                          onClick={() => {
-                                            setDocPreview({ open: true, type: "pagos" });
-                                          }}
-                                          className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                        >
+                                        <button title="Ver comprobante" onClick={() => setDocPreview({ open: true, type: "pagos" })} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                                           <Eye className="h-3.5 w-3.5" />
                                         </button>
                                         <button
@@ -897,39 +998,11 @@ export default function PrestamoDetallePage() {
                                         >
                                           <Send className="h-3.5 w-3.5" />
                                         </button>
-                                        <button
-                                          title="Descargar comprobante"
-                                          onClick={async () => {
-                                            try {
-                                              const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
-                                              doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`);
-                                            } catch (err: any) {
-                                              toast.error("Error al descargar: " + (err.message || err));
-                                            }
-                                          }}
-                                          className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                                        >
+                                        <button title="Descargar" onClick={async () => { try { const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]); doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`); } catch (err: any) { toast.error("Error: " + err.message); } }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                                           <Download className="h-3.5 w-3.5" />
                                         </button>
                                         {!isCancelado && (
-                                          <button
-                                            title="Anular pago"
-                                            onClick={() => {
-                                              setSelectedPago({
-                                                id: pg.id,
-                                                prestamo_id: pg.prestamo_id,
-                                                cuota_id: pg.cuota_id,
-                                                monto_recibido: Number(pg.monto_recibido),
-                                                aplicado_mora: Number(pg.aplicado_mora || 0),
-                                                aplicado_interes: Number(pg.aplicado_interes || 0),
-                                                aplicado_capital: Number(pg.aplicado_capital || 0),
-                                                caja_id: pg.caja_id,
-                                                cobrador_id: (pg as any).cobrador_id,
-                                              });
-                                              setAnularPagoOpen(true);
-                                            }}
-                                            className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                          >
+                                          <button title="Anular pago" onClick={() => { setSelectedPago({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id }); setAnularPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                                             <Ban className="h-3.5 w-3.5" />
                                           </button>
                                         )}
@@ -960,7 +1033,30 @@ export default function PrestamoDetallePage() {
                   <div className="flex justify-end px-5 py-2.5 border-b border-border">
                     <Button variant="outline" size="sm" className="h-7 text-[12px]" disabled={isCancelado}><Plus className="h-3 w-3 mr-1" />Nueva Promesa</Button>
                   </div>
-                  <div className="overflow-x-auto">
+
+                  {/* Mobile: Cards */}
+                  <div className="md:hidden space-y-2 p-3">
+                    {promesasRaw.length === 0 ? (
+                      <p className="text-center py-8 text-muted-foreground text-[13px]">Sin promesas</p>
+                    ) : promesasRaw.map((pr) => (
+                      <div key={pr.id} className="border rounded-lg p-3 bg-card">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={cn("inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border", promesaStatusStyle[pr.status || "Pendiente"] || promesaStatusStyle.Pendiente)}>
+                            {pr.status || "Pendiente"}
+                          </span>
+                          <span className="text-[14px] font-bold">{$$(Number(pr.monto_prometido))}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                          <div className="flex justify-between"><span className="text-muted-foreground">F. Prometida</span><span>{fmtDate(pr.fecha_prometida)}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Creado</span><span>{fmtDate(pr.created_at)}</span></div>
+                        </div>
+                        {pr.notas && <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{pr.notas}</p>}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop: Table */}
+                  <div className="overflow-x-auto hidden md:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-[hsl(210,20%,98%)] hover:bg-[hsl(210,20%,98%)]">
