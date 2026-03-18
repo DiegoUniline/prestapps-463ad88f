@@ -20,6 +20,7 @@ import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 import { AnularPagoModal } from "@/components/AnularPagoModal";
 import { EditPagoModal } from "@/components/EditPagoModal";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 import { generarReciboPagos } from "@/lib/pdfDocuments";
 import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
 import { toast } from "sonner";
@@ -202,6 +203,7 @@ export default function PagosPage() {
   const [anularPago, setAnularPago] = useState<any>(null);
   const [editPago, setEditPago] = useState<any>(null);
   const [docPreview, setDocPreview] = useState<{ open: boolean; pago: PagoListItem | null }>({ open: false, pago: null });
+  const [waPreview, setWaPreview] = useState<{ open: boolean; pago: PagoListItem | null }>({ open: false, pago: null });
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -282,13 +284,20 @@ export default function PagosPage() {
   ];
 
   // ── Action handlers ──────────────────────────────────────────────
-  const handleWhatsApp = async (p: PagoListItem) => {
+  const buildReceiptCaption = (p: PagoListItem) =>
+    `✅ *Comprobante de pago recibido*\n\n👤 *${p.cliente}*\n💰 Monto: *${$$(p.montoRecibido)}*\n📋 Préstamo: ${p.shortId}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`;
+
+  const handleWhatsApp = (p: PagoListItem) => {
     if (!p.clientePhone) { toast.error("Cliente sin teléfono registrado"); return; }
+    setWaPreview({ open: true, pago: p });
+  };
+
+  const sendWhatsAppReceipt = async (p: PagoListItem, caption: string) => {
     const t = toast.loading("Enviando recibo por WhatsApp…");
     try {
       const result = await sendReceiptAsImage(
         empresaId,
-        p.clientePhone,
+        p.clientePhone!,
         {
           pago: {
             folio: `PAG-${p.id.slice(0, 8)}`,
@@ -308,7 +317,7 @@ export default function PagosPage() {
           cliente: { nombre: p.cliente },
           prestamo: { folio: p.shortId, num_cuotas: p.numCuotas },
         },
-        `✅ *Comprobante de pago recibido*\n\n👤 *${p.cliente}*\n💰 Monto: *${$$(p.montoRecibido)}*\n📋 Préstamo: ${p.shortId}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`,
+        caption,
       );
       toast.dismiss(t);
       if (result.success) toast.success("Recibo enviado por WhatsApp");
@@ -787,6 +796,7 @@ export default function PagosPage() {
           clientePhone={docPreview.pago.clientePhone || undefined}
           onWhatsApp={async (phone: string) => {
             const p = docPreview.pago!;
+            const caption = buildReceiptCaption(p);
             const result = await sendReceiptAsImage(
               empresaId,
               phone,
@@ -809,11 +819,23 @@ export default function PagosPage() {
                 cliente: { nombre: p.cliente },
                 prestamo: { folio: p.shortId, num_cuotas: p.numCuotas },
               },
-              `✅ *Comprobante de pago recibido*\n\n👤 *${p.cliente}*\n💰 Monto: *${$$(p.montoRecibido)}*\n📋 Préstamo: ${p.shortId}\n\n🙏 ¡Gracias por tu pago!`,
+              caption,
             );
             if (result.success) toast.success("Recibo enviado por WhatsApp");
             else toast.error("Error: " + (result.error || "desconocido"));
           }}
+        />
+      )}
+
+      {/* WhatsApp Preview Modal */}
+      {waPreview.pago && (
+        <WhatsAppPreviewModal
+          open={waPreview.open}
+          onOpenChange={(open) => setWaPreview({ open, pago: open ? waPreview.pago : null })}
+          phone={waPreview.pago.clientePhone || ""}
+          message={buildReceiptCaption(waPreview.pago)}
+          onSend={async (msg) => { await sendWhatsAppReceipt(waPreview.pago!, msg); }}
+          clienteName={waPreview.pago.cliente}
         />
       )}
     </div>
