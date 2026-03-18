@@ -121,30 +121,30 @@ const App = () => (
               <Route path="/promesas" element={<PermissionGuard module="promesas"><PromesasPage /></PermissionGuard>} />
               <Route path="/solicitudes" element={<PermissionGuard module="solicitudes"><SolicitudesPage /></PermissionGuard>} />
               <Route path="/solicitudes/nueva" element={<PermissionGuard module="solicitudes"><SolicitudPrestamoPage /></PermissionGuard>} />
-              <Route path="/gastos" element={<RoleGuard allowed={["admin"]}><GastosPage /></RoleGuard>} />
+              <Route path="/gastos" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="gastos"><GastosPage /></PermissionGuard></RoleGuard>} />
 
-              <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]}><ClientesPage /></RoleGuard>} />
-              <Route path="/clientes/:id" element={<RoleGuard allowed={["admin", "supervisor"]}><ClienteDetallePage /></RoleGuard>} />
-              <Route path="/reportes" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><ReportesPage /></LazyPage></RoleGuard>} />
+              <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]}><PermissionGuard module="clientes"><ClientesPage /></PermissionGuard></RoleGuard>} />
+              <Route path="/clientes/:id" element={<RoleGuard allowed={["admin", "supervisor"]}><PermissionGuard module="clientes"><ClienteDetallePage /></PermissionGuard></RoleGuard>} />
+              <Route path="/reportes" element={<RoleGuard allowed={["admin", "supervisor"]}><PermissionGuard module="reportes"><LazyPage><ReportesPage /></LazyPage></PermissionGuard></RoleGuard>} />
 
-              <Route path="/prestamos/nuevo" element={<RoleGuard allowed={["admin"]}><NuevoPrestamoPage /></RoleGuard>} />
-              <Route path="/cajas" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
-              <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
-              <Route path="/rutas" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
-              <Route path="/rutas/:id" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
-              <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><CobradoresPage /></RoleGuard>} />
-              <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><LazyPage><UsuariosPage /></LazyPage></RoleGuard>} />
-              <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><LazyPage><UsuariosPage /></LazyPage></RoleGuard>} />
+              <Route path="/prestamos/nuevo" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="prestamos"><NuevoPrestamoPage /></PermissionGuard></RoleGuard>} />
+              <Route path="/cajas" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="cajas"><CajasPage /></PermissionGuard></RoleGuard>} />
+              <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="cajas"><CajasPage /></PermissionGuard></RoleGuard>} />
+              <Route path="/rutas" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="rutas"><RutasPage /></PermissionGuard></RoleGuard>} />
+              <Route path="/rutas/:id" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="rutas"><RutasPage /></PermissionGuard></RoleGuard>} />
+              <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="cobradores"><CobradoresPage /></PermissionGuard></RoleGuard>} />
+              <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="usuarios"><LazyPage><UsuariosPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="usuarios"><LazyPage><UsuariosPage /></LazyPage></PermissionGuard></RoleGuard>} />
               <Route path="/empresas" element={<SuperAdminGuard><LazyPage><EmpresasPage /></LazyPage></SuperAdminGuard>} />
-              <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]}><LazyPage><WhatsAppConfigPage /></LazyPage></RoleGuard>} />
-              <Route path="/crm" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><CrmCobranzaPage /></LazyPage></RoleGuard>} />
-              <Route path="/scoring" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><LeadScoringPage /></LazyPage></RoleGuard>} />
-              <Route path="/comisiones" element={<RoleGuard allowed={["admin"]}><LazyPage><ComisionesPage /></LazyPage></RoleGuard>} />
-              <Route path="/mapa-gps" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><MapaGPSPage /></LazyPage></RoleGuard>} />
-              <Route path="/liquidar-ruta" element={<RoleGuard allowed={["admin"]}><LazyPage><LiquidarRutaPage /></LazyPage></RoleGuard>} />
-              <Route path="/catalogos" element={<RoleGuard allowed={["admin"]}><LazyPage><CatalogosPage /></LazyPage></RoleGuard>} />
-              <Route path="/configuracion" element={<RoleGuard allowed={["admin"]}><LazyPage><ConfiguracionEmpresaPage /></LazyPage></RoleGuard>} />
-              <Route path="/permisos" element={<RoleGuard allowed={["admin"]}><LazyPage><PermisosPage /></LazyPage></RoleGuard>} />
+              <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="whatsapp"><LazyPage><WhatsAppConfigPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/crm" element={<RoleGuard allowed={["admin", "supervisor"]}><PermissionGuard module="crm"><LazyPage><CrmCobranzaPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/scoring" element={<RoleGuard allowed={["admin", "supervisor"]}><PermissionGuard module="scoring"><LazyPage><LeadScoringPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/comisiones" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="comisiones"><LazyPage><ComisionesPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/mapa-gps" element={<RoleGuard allowed={["admin", "supervisor"]}><PermissionGuard module="mapa_gps"><LazyPage><MapaGPSPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/liquidar-ruta" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="liquidar_ruta"><LazyPage><LiquidarRutaPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/catalogos" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="catalogos"><LazyPage><CatalogosPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/configuracion" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="configuracion"><LazyPage><ConfiguracionEmpresaPage /></LazyPage></PermissionGuard></RoleGuard>} />
+              <Route path="/permisos" element={<RoleGuard allowed={["admin"]}><PermissionGuard module="permisos"><LazyPage><PermisosPage /></LazyPage></PermissionGuard></RoleGuard>} />
               <Route path="/alertas" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><AlertasPage /></LazyPage></RoleGuard>} />
               <Route path="/renovacion" element={<RoleGuard allowed={["admin"]}><LazyPage><RenovacionPage /></LazyPage></RoleGuard>} />
               <Route path="/rentabilidad" element={<RoleGuard allowed={["admin"]}><LazyPage><RentabilidadPage /></LazyPage></RoleGuard>} />
