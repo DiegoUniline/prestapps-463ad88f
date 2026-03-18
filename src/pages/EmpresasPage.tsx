@@ -175,7 +175,7 @@ export default function EmpresasPage() {
         if (!(form.adminNombre ?? "").trim()) throw new Error("El nombre del administrador es requerido");
 
         const { data: newEmpresa, error: empError } = await supabase.from("empresas").insert({
-          nombre: form.nombre.trim(),
+          nombre: (form.nombre ?? "").trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
