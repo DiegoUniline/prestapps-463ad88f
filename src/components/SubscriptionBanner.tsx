@@ -31,21 +31,42 @@ export function SubscriptionBanner() {
     );
   }
 
-  // ── Trial expired — must choose plan ──
+  // ── Trial expired — grace period or blocked ──
   if (estado === "trial_expirado") {
+    const hasGrace = diasGraciaRestantes !== null && diasGraciaRestantes !== undefined && diasGraciaRestantes > 0;
+
     return (
-      <div className="bg-destructive/10 border-b border-destructive/30 px-4 py-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 text-destructive text-sm min-w-0">
-          <Clock className="h-5 w-5 shrink-0" />
+      <div className={cn(
+        "border-b px-4 py-3 flex items-center justify-between gap-3",
+        hasGrace
+          ? "bg-amber-500/10 border-amber-500/30"
+          : "bg-destructive/10 border-destructive/30"
+      )}>
+        <div className={cn(
+          "flex items-center gap-3 text-sm min-w-0",
+          hasGrace ? "text-amber-700 dark:text-amber-400" : "text-destructive"
+        )}>
+          {hasGrace ? <AlertTriangle className="h-5 w-5 shrink-0" /> : <Lock className="h-5 w-5 shrink-0" />}
           <div className="min-w-0">
-            <p className="font-semibold">Tu prueba gratuita ha terminado</p>
+            <p className="font-semibold">
+              {hasGrace
+                ? `⚠️ Tu prueba gratuita terminó — Te ${diasGraciaRestantes === 1 ? "queda" : "quedan"} ${diasGraciaRestantes} día${diasGraciaRestantes !== 1 ? "s" : ""} para elegir un plan`
+                : "🔒 Cuenta bloqueada — Tu periodo de gracia ha expirado"
+              }
+            </p>
             <p className="text-xs opacity-80">
-              Elige un plan para continuar usando el sistema. Tus datos están seguros.
+              {hasGrace
+                ? "Elige un plan para continuar usando el sistema. Tus datos están seguros."
+                : "Elige y paga un plan para reactivar tu cuenta. Tus datos están seguros."
+              }
             </p>
           </div>
         </div>
         <Link to="/mi-suscripcion">
-          <Button size="sm" variant="destructive" className="shrink-0 gap-1.5">
+          <Button size="sm" variant={hasGrace ? "default" : "destructive"} className={cn(
+            "shrink-0 gap-1.5",
+            hasGrace && "bg-amber-600 hover:bg-amber-700 text-white"
+          )}>
             <CreditCard className="h-3.5 w-3.5" />
             Elegir plan
           </Button>
