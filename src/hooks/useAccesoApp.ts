@@ -29,6 +29,7 @@ export interface SubscriptionStatus {
     estado: string;
     periodo_inicio: string;
     periodo_fin: string;
+    es_prorrateo?: boolean;
   } | null;
 }
 
