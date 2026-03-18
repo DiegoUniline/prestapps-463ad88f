@@ -33,6 +33,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get empresa lada_pais for phone normalization
+    const { data: empresaData } = await supabase
+      .from("empresas")
+      .select("lada_pais")
+      .eq("id", empresa_id)
+      .single();
+    const ladaPais = empresaData?.lada_pais || "52";
+
     if (!config.activo && !isTest) {
       return new Response(JSON.stringify({ error: "WhatsApp está inactivo para esta empresa. Actívalo en configuración." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -41,7 +49,8 @@ Deno.serve(async (req) => {
 
     // ── send-text ────────────────────────────────
     if (action === "send-text") {
-      const { phone, message, tipo, referencia_id } = body;
+      const { message, tipo, referencia_id } = body;
+      const phone = normalizePhone(body.phone || "", ladaPais);
       
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-text",
@@ -67,7 +76,8 @@ Deno.serve(async (req) => {
 
     // ── send-image ────────────────────────────────
     if (action === "send-image") {
-      const { phone, url, caption, tipo, referencia_id } = body;
+      const { url, caption, tipo, referencia_id } = body;
+      const phone = normalizePhone(body.phone || "", ladaPais);
 
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-image",
@@ -94,7 +104,8 @@ Deno.serve(async (req) => {
 
     // ── send-file ────────────────────────────────
     if (action === "send-file") {
-      const { phone, url, fileName, tipo, referencia_id } = body;
+      const { url, fileName, tipo, referencia_id } = body;
+      const phone = normalizePhone(body.phone || "", ladaPais);
 
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-file",
@@ -182,16 +193,17 @@ Deno.serve(async (req) => {
 
         const message = replaceVariables(template.mensaje, vars);
 
+        const normalizedPhone = normalizePhone(cliente.telefono, ladaPais);
         try {
           const result = await sendWhatsApp(config.api_url, config.api_token, {
             action: "send-text",
-            phone: cliente.telefono,
+            phone: normalizedPhone,
             message,
           });
 
           await supabase.from("whatsapp_log").insert({
             empresa_id,
-            telefono: cliente.telefono,
+            telefono: normalizedPhone,
             tipo: "aviso",
             mensaje: message,
             status: result.success ? "enviado" : "error",
@@ -248,6 +260,32 @@ function replaceVariables(template: string, vars: Record<string, any>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => {
     return vars[key] !== undefined ? String(vars[key]) : `{${key}}`;
   });
+}
+
+/**
+ * Normalizes a phone number by stripping non-digits and prepending the country code if missing.
+ * Handles Mexican numbers with 521 prefix (converts to 52).
+ */
+function normalizePhone(raw: string, ladaPais: string): string {
+  // Strip everything except digits
+  let digits = raw.replace(/\D/g, "");
+  
+  // If it already starts with the lada, return as-is
+  if (digits.startsWith(ladaPais)) {
+    // Special case: Mexico 521 → 52 (remove extra 1 after 52 for 13-digit numbers)
+    if (ladaPais === "52" && digits.startsWith("521") && digits.length === 13) {
+      digits = "52" + digits.slice(3);
+    }
+    return digits;
+  }
+  
+  // If it starts with a + but different code, return digits as-is
+  if (raw.trim().startsWith("+")) {
+    return digits;
+  }
+  
+  // Prepend lada
+  return ladaPais + digits;
 }
 
 function buildReceiptHtml(pago: any, empresa: any, cliente: any, prestamo: any): string {
