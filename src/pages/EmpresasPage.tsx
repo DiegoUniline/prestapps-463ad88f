@@ -156,7 +156,7 @@ export default function EmpresasPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!form.nombre.trim()) throw new Error("El nombre es requerido");
+      if (!(form.nombre ?? "").trim()) throw new Error("El nombre es requerido");
 
       const planInfo = PLAN_CONFIG[form.plan] || PLAN_CONFIG.basico;
 
