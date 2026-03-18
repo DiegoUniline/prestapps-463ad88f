@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, ArrowLeft, Pencil, Save, X, Trash2, Loader2, Search, Eye, EyeOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const rolColors: Record<string, string> = {
   admin: "bg-primary text-primary-foreground",
