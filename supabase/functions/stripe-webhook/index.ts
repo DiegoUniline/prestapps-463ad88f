@@ -171,6 +171,30 @@ serve(async (req) => {
         });
 
         logStep("Invoice recorded", { empresaId: sub.empresa_id });
+
+        // Send WhatsApp success notification
+        const invoiceAmount = ((invoice.amount_paid || 0) / 100).toFixed(2);
+        const { data: empresaInfo } = await supabase
+          .from("empresas")
+          .select("nombre")
+          .eq("id", sub.empresa_id)
+          .single();
+        const empNombre = empresaInfo?.nombre || "tu empresa";
+        const proxCobro = fechaProximoCobro
+          ? new Date(fechaProximoCobro + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+          : "próximo mes";
+
+        await sendWhatsAppAlert(supabase, sub.empresa_id, {
+          tipo: "pago_exitoso",
+          mensaje: `¡Hola! 🎉\n\n` +
+            `Tu pago de suscripción de *${empNombre}* se procesó correctamente.\n\n` +
+            `✅ *Monto cobrado:* $${invoiceAmount} MXN\n` +
+            `📅 *Próximo cobro:* ${proxCobro}\n` +
+            `🧾 *Factura:* ${facNum}\n\n` +
+            `Gracias por confiar en *PrestApps*. ¡Sigue creciendo tu negocio! 🚀\n\n` +
+            `Si tienes dudas sobre tu factura, responde a este mensaje. 💬`,
+        });
+
         break;
       }
 
