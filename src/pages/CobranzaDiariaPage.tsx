@@ -685,7 +685,7 @@ export default function CobranzaDiariaPage() {
 
       {/* Summary by Route */}
       {byRuta.length > 1 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3">
           {byRuta.map((r) => {
             const pct = r.total > 0 ? (r.cobradas / r.total) * 100 : 0;
             return (
