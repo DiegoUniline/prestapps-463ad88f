@@ -154,12 +154,18 @@ export function AppSidebar() {
   const userEmail = useAuthStore((s) => s.user?.email);
   const superAdmin = isSuperAdmin(userEmail);
 
+  const { isAllowed, isLoading: permLoading } = usePermisos();
+
   const visibleModules = modules
     .map((mod) => ({
       ...mod,
-      items: loading ? mod.items : mod.items.filter((item) => {
+      items: (loading || permLoading) ? mod.items : mod.items.filter((item) => {
         if (item.superAdminOnly && !superAdmin) return false;
-        return item.roles.includes(role);
+        if (!item.roles.includes(role)) return false;
+        // Check granular permission
+        const permModule = routeToModule[item.url];
+        if (permModule && !isAllowed(role, permModule, "ver")) return false;
+        return true;
       }),
     }))
     .filter((mod) => mod.items.length > 0);
