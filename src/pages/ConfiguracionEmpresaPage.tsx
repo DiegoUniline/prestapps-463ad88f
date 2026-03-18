@@ -53,6 +53,7 @@ function DatosGeneralesTab() {
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
+        lada_pais: empresa.lada_pais || "52",
       });
     }
   }, [empresa]);
