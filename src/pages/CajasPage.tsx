@@ -60,6 +60,7 @@ function useKardex() {
       const { data: pagos, error: pagErr } = await supabase
         .from("pagos")
         .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
+        .eq("anulado", false)
         .order("created_at", { ascending: false })
         .limit(500);
       if (pagErr) throw pagErr;
