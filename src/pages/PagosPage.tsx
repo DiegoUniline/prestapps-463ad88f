@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -11,16 +11,24 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight as ChevronRightIcon, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, HandCoins, TrendingUp, Hash } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight as ChevronRightIcon, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, HandCoins, TrendingUp, Hash, MoreHorizontal, MessageCircle, Download, Pencil, XCircle } from "lucide-react";
 import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
+import { AnularPagoModal } from "@/components/AnularPagoModal";
+import { EditPagoModal } from "@/components/EditPagoModal";
+import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { generarReciboPagos } from "@/lib/pdfDocuments";
+import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
+import { toast } from "sonner";
 
 // ── Types ─────────────────────────────────────────────────────────
 interface PagoListItem {
   id: string;
   cliente: string;
+  clientePhone: string | null;
   prestamoId: string;
   shortId: string;
   fecha: string;
@@ -30,8 +38,17 @@ interface PagoListItem {
   aplicadoCapital: number;
   metodo: string;
   caja: string;
+  cajaId: string | null;
   ruta: string;
   anulado: boolean;
+  cuotaId: string | null;
+  cobradorId: string | null;
+  fechaPago: string | null;
+  numCuotas: number;
+  empresaNombre: string;
+  empresaTelefono: string | null;
+  empresaDireccion: string | null;
+  empresaLogoUrl: string | null;
 }
 
 type SortKey = keyof PagoListItem;
@@ -46,9 +63,9 @@ function usePagosAll(empresaId: string) {
           .from("pagos")
           .select(`
             id, monto_recibido, aplicado_mora, aplicado_interes, aplicado_capital,
-            metodo_pago, created_at, prestamo_id, anulado,
+            metodo_pago, created_at, prestamo_id, anulado, cuota_id, caja_id, cobrador_id, fecha_pago,
             cajas ( nombre ),
-            prestamos!pagos_prestamo_id_fkey ( id, clientes ( nombre_completo ), rutas ( nombre ) )
+            prestamos!pagos_prestamo_id_fkey ( id, num_cuotas, clientes ( nombre_completo, telefono ), rutas ( nombre ), empresas ( nombre, telefono, direccion, logo_url ) )
           `)
           .eq("empresa_id", empresaId)
           .order("created_at", { ascending: false })
@@ -57,6 +74,7 @@ function usePagosAll(empresaId: string) {
       return (raw || []).map((p: any) => ({
         id: p.id,
         cliente: p.prestamos?.clientes?.nombre_completo || "—",
+        clientePhone: p.prestamos?.clientes?.telefono || null,
         prestamoId: p.prestamo_id,
         shortId: `PRE-${(p.prestamo_id || "").slice(0, 8)}`,
         fecha: p.created_at || "",
@@ -66,14 +84,23 @@ function usePagosAll(empresaId: string) {
         aplicadoCapital: Number(p.aplicado_capital || 0),
         metodo: p.metodo_pago || "Efectivo",
         caja: (p.cajas as any)?.nombre || "—",
+        cajaId: p.caja_id || null,
         ruta: p.prestamos?.rutas?.nombre || "—",
         anulado: p.anulado || false,
+        cuotaId: p.cuota_id || null,
+        cobradorId: p.cobrador_id || null,
+        fechaPago: p.fecha_pago || null,
+        numCuotas: p.prestamos?.num_cuotas || 0,
+        empresaNombre: p.prestamos?.empresas?.nombre || "Empresa",
+        empresaTelefono: p.prestamos?.empresas?.telefono || null,
+        empresaDireccion: p.prestamos?.empresas?.direccion || null,
+        empresaLogoUrl: p.prestamos?.empresas?.logo_url || null,
       })) as PagoListItem[];
     },
   });
 }
 
-// ── Multi-filter dropdown (same as PrestamosPage) ─────────────────
+// ── Multi-filter dropdown ─────────────────────────────────────────
 function MultiFilterDropdown({ label, options, selected, onChange }: {
   label: string; options: string[]; selected: Set<string>; onChange: (s: Set<string>) => void;
 }) {
@@ -122,8 +149,6 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
 
 const metodoOptions = ["Efectivo", "Transferencia", "Otro"];
 
-
-
 // ── Metodo dot ────────────────────────────────────────────────────
 function MetodoDot({ metodo }: { metodo: string }) {
   const color = metodo === "Efectivo" ? "bg-success" : metodo === "Transferencia" ? "bg-[hsl(217,91%,60%)]" : "bg-muted-foreground";
@@ -138,6 +163,7 @@ function MetodoDot({ metodo }: { metodo: string }) {
 // ── Component ─────────────────────────────────────────────────────
 export default function PagosPage() {
   const { empresaId } = useEmpresa();
+  const queryClient = useQueryClient();
   const { data: pagos = [], isLoading, isError } = usePagosAll(empresaId);
   const { data: cajasRaw = [] } = useCajasOptions(empresaId);
   const { data: rutasRaw = [] } = useRutasOptions(empresaId);
@@ -171,6 +197,11 @@ export default function PagosPage() {
     setGroupBy(key);
     setExpandedGroups(new Set());
   };
+
+  // Modals
+  const [anularPago, setAnularPago] = useState<any>(null);
+  const [editPago, setEditPago] = useState<any>(null);
+  const [docPreview, setDocPreview] = useState<{ open: boolean; pago: PagoListItem | null }>({ open: false, pago: null });
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -249,6 +280,132 @@ export default function PagosPage() {
     { label: "Aplicado a Capital", value: $$(totalCapital), icon: TrendingUp, accent: "text-[hsl(217,91%,60%)]" },
     { label: "Aplicado a Mora", value: $$(totalMora), icon: HandCoins, accent: "text-destructive" },
   ];
+
+  // ── Action handlers ──────────────────────────────────────────────
+  const handleWhatsApp = async (p: PagoListItem) => {
+    if (!p.clientePhone) { toast.error("Cliente sin teléfono registrado"); return; }
+    const t = toast.loading("Enviando recibo por WhatsApp…");
+    try {
+      const result = await sendReceiptAsImage(
+        empresaId,
+        p.clientePhone,
+        {
+          pago: {
+            folio: `PAG-${p.id.slice(0, 8)}`,
+            monto_recibido: p.montoRecibido,
+            aplicado_mora: p.aplicadoMora,
+            aplicado_interes: p.aplicadoInteres,
+            aplicado_capital: p.aplicadoCapital,
+            metodo_pago: p.metodo,
+            saldo_restante: 0,
+          },
+          empresa: {
+            nombre: p.empresaNombre,
+            telefono: p.empresaTelefono || undefined,
+            direccion: p.empresaDireccion || undefined,
+            logo_url: p.empresaLogoUrl,
+          },
+          cliente: { nombre: p.cliente },
+          prestamo: { folio: p.shortId, num_cuotas: p.numCuotas },
+        },
+        `✅ *Comprobante de pago recibido*\n\n👤 *${p.cliente}*\n💰 Monto: *${$$(p.montoRecibido)}*\n📋 Préstamo: ${p.shortId}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`,
+      );
+      toast.dismiss(t);
+      if (result.success) toast.success("Recibo enviado por WhatsApp");
+      else toast.error("Error: " + (result.error || "desconocido"));
+    } catch (e: any) {
+      toast.dismiss(t);
+      toast.error(e.message || "Error al enviar");
+    }
+  };
+
+  const handleDownloadTicket = (p: PagoListItem) => {
+    setDocPreview({ open: true, pago: p });
+  };
+
+  const handleEdit = (p: PagoListItem) => {
+    setEditPago({
+      id: p.id,
+      prestamo_id: p.prestamoId,
+      cuota_id: p.cuotaId,
+      monto_recibido: p.montoRecibido,
+      aplicado_mora: p.aplicadoMora,
+      aplicado_interes: p.aplicadoInteres,
+      aplicado_capital: p.aplicadoCapital,
+      metodo_pago: p.metodo,
+      caja_id: p.cajaId,
+      cobrador_id: p.cobradorId,
+      fecha_pago: p.fechaPago,
+    });
+  };
+
+  const handleAnular = (p: PagoListItem) => {
+    setAnularPago({
+      id: p.id,
+      prestamo_id: p.prestamoId,
+      cuota_id: p.cuotaId,
+      monto_recibido: p.montoRecibido,
+      aplicado_mora: p.aplicadoMora,
+      aplicado_interes: p.aplicadoInteres,
+      aplicado_capital: p.aplicadoCapital,
+      caja_id: p.cajaId,
+      cobrador_id: p.cobradorId,
+    });
+  };
+
+  // ── Row actions dropdown ─────────────────────────────────────────
+  const ActionsCell = ({ p }: { p: PagoListItem }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-7 w-7">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem onClick={() => handleWhatsApp(p)} disabled={p.anulado}>
+          <MessageCircle className="h-3.5 w-3.5 mr-2 text-[hsl(142,72%,37%)]" />
+          Enviar WhatsApp
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleDownloadTicket(p)}>
+          <Download className="h-3.5 w-3.5 mr-2" />
+          Descargar ticket
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => handleEdit(p)} disabled={p.anulado}>
+          <Pencil className="h-3.5 w-3.5 mr-2" />
+          Editar pago
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleAnular(p)} disabled={p.anulado} className="text-destructive focus:text-destructive">
+          <XCircle className="h-3.5 w-3.5 mr-2" />
+          Anular pago
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  // ── Row render helper ────────────────────────────────────────────
+  const renderRow = (p: PagoListItem) => (
+    <TableRow
+      key={p.id}
+      className={cn("border-b border-border/50 transition-colors hover:bg-table-hover", p.anulado && "opacity-50")}
+    >
+      <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
+      <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
+      <TableCell className="text-[12px] text-muted-foreground px-3">{p.shortId}</TableCell>
+      <TableCell className={cn("text-right font-medium text-[13px] px-3", p.anulado && "line-through")}>{$$(p.montoRecibido)}</TableCell>
+      <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoMora > 0 ? "text-destructive font-medium" : "text-muted-foreground/50")}>{$$(p.aplicadoMora)}</TableCell>
+      <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoInteres === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoInteres)}</TableCell>
+      <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoCapital === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoCapital)}</TableCell>
+      <TableCell className="px-3"><MetodoDot metodo={p.metodo} /></TableCell>
+      <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
+      <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">
+        {p.anulado ? <span className="text-destructive font-medium">Anulado</span> : p.ruta}
+      </TableCell>
+      <TableCell className="px-2">
+        <ActionsCell p={p} />
+      </TableCell>
+    </TableRow>
+  );
 
   return (
     <div className="space-y-5">
@@ -403,21 +560,22 @@ export default function PagosPage() {
                   <div className="flex items-center gap-1">{label}<SortIcon col={key} /></div>
                 </TableHead>
               ))}
+              <TableHead className="w-10 px-2" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={10} className="px-3 py-3">
+                  <TableCell colSpan={11} className="px-3 py-3">
                     <Skeleton className="h-4 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : isError ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-destructive text-[13px]">Error al cargar pagos</TableCell></TableRow>
+              <TableRow><TableCell colSpan={11} className="text-center py-8 text-destructive text-[13px]">Error al cargar pagos</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron pagos</TableCell></TableRow>
+              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron pagos</TableCell></TableRow>
             ) : groupedData ? (
               <>
                 {groupedData.map(([groupName, items]) => {
@@ -443,27 +601,9 @@ export default function PagosPage() {
                         <TableCell className="text-right px-3 py-2"><span className={cn("font-semibold text-[12px]", sumMora > 0 && "text-destructive")}>{$$(sumMora)}</span></TableCell>
                         <TableCell className="text-right px-3 py-2"><span className="font-semibold text-[12px]">{$$(sumInteres)}</span></TableCell>
                         <TableCell className="text-right px-3 py-2"><span className="font-semibold text-[12px]">{$$(sumCapital)}</span></TableCell>
-                        <TableCell colSpan={3} />
+                        <TableCell colSpan={4} />
                       </TableRow>
-                      {isExpanded && items.map((p) => (
-                        <TableRow
-                          key={p.id}
-                          className={cn("border-b border-border/50 transition-colors hover:bg-table-hover", p.anulado && "opacity-50")}
-                        >
-                          <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
-                          <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
-                          <TableCell className="text-[12px] text-muted-foreground px-3">{p.shortId}</TableCell>
-                          <TableCell className={cn("text-right font-medium text-[13px] px-3", p.anulado && "line-through")}>{$$(p.montoRecibido)}</TableCell>
-                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoMora > 0 ? "text-destructive font-medium" : "text-muted-foreground/50")}>{$$(p.aplicadoMora)}</TableCell>
-                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoInteres === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoInteres)}</TableCell>
-                          <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoCapital === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoCapital)}</TableCell>
-                          <TableCell className="px-3"><MetodoDot metodo={p.metodo} /></TableCell>
-                          <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
-                          <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">
-                            {p.anulado ? <span className="text-destructive font-medium">Anulado</span> : p.ruta}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {isExpanded && items.map(renderRow)}
                     </React.Fragment>
                   );
                 })}
@@ -474,31 +614,105 @@ export default function PagosPage() {
                   <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoMora, 0))}</TableCell>
                   <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoInteres, 0))}</TableCell>
                   <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoCapital, 0))}</TableCell>
-                  <TableCell colSpan={3} />
+                  <TableCell colSpan={4} />
                 </TableRow>
               </>
-            ) : filtered.map((p) => (
-              <TableRow
-                key={p.id}
-                className={cn("border-b border-border/50 transition-colors hover:bg-table-hover", p.anulado && "opacity-50")}
-              >
-                <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</TableCell>
-                <TableCell className={cn("font-medium whitespace-nowrap text-[13px] px-3", p.anulado && "line-through")}>{p.cliente}</TableCell>
-                <TableCell className="text-[12px] text-muted-foreground px-3">{p.shortId}</TableCell>
-                <TableCell className={cn("text-right font-medium text-[13px] px-3", p.anulado && "line-through")}>{$$(p.montoRecibido)}</TableCell>
-                <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoMora > 0 ? "text-destructive font-medium" : "text-muted-foreground/50")}>{$$(p.aplicadoMora)}</TableCell>
-                <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoInteres === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoInteres)}</TableCell>
-                <TableCell className={cn("text-right text-[12px] px-3", p.aplicadoCapital === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoCapital)}</TableCell>
-                <TableCell className="px-3"><MetodoDot metodo={p.metodo} /></TableCell>
-                <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">{p.caja}</TableCell>
-                <TableCell className="text-muted-foreground text-[12px] whitespace-nowrap px-3">
-                  {p.anulado ? <span className="text-destructive font-medium">Anulado</span> : p.ruta}
-                </TableCell>
-              </TableRow>
-            ))}
+            ) : filtered.map(renderRow)}
           </TableBody>
         </Table>
       </div>
+
+      {/* Modals */}
+      <AnularPagoModal
+        open={!!anularPago}
+        onOpenChange={(v) => !v && setAnularPago(null)}
+        pago={anularPago}
+      />
+      <EditPagoModal
+        open={!!editPago}
+        onOpenChange={(v) => !v && setEditPago(null)}
+        pago={editPago}
+        cajas={cajasRaw}
+      />
+      {docPreview.pago && (
+        <DocumentPreviewModal
+          open={docPreview.open}
+          onOpenChange={(v) => setDocPreview({ open: v, pago: v ? docPreview.pago : null })}
+          title="Ticket de Pago"
+          fileName={`ticket-PAG-${docPreview.pago.id.slice(0, 8)}.pdf`}
+          generateDoc={() =>
+            generarReciboPagos(
+              {
+                id: docPreview.pago!.prestamoId,
+                clienteNombre: docPreview.pago!.cliente,
+                clienteDni: "",
+                clienteDireccion: "",
+                clienteTelefono: docPreview.pago!.clientePhone || "",
+                empresa: docPreview.pago!.empresaNombre,
+                modalidad: "",
+                montoSolicitado: 0,
+                montoTotalPagar: 0,
+                numCuotas: docPreview.pago!.numCuotas,
+                frecuencia: "Diario",
+                tasaInteres: 0,
+                cuotaCalculada: 0,
+                cuotaRedondeada: 0,
+                gastosLegales: 0,
+                tipoMora: "",
+                valorMora: 0,
+                estado: "Activo",
+                fechaRegistro: "",
+                fechaPrimerPago: "",
+                caja: docPreview.pago!.caja,
+                ruta: docPreview.pago!.ruta,
+                notas: "",
+                empresaNombre: docPreview.pago!.empresaNombre,
+                logoUrl: docPreview.pago!.empresaLogoUrl,
+              },
+              [{
+                created_at: docPreview.pago!.fechaPago || docPreview.pago!.fecha,
+                monto_recibido: docPreview.pago!.montoRecibido,
+                aplicado_mora: docPreview.pago!.aplicadoMora,
+                aplicado_interes: docPreview.pago!.aplicadoInteres,
+                aplicado_capital: docPreview.pago!.aplicadoCapital,
+                metodo_pago: docPreview.pago!.metodo,
+                cajaNombre: docPreview.pago!.caja,
+              }]
+            )
+          }
+          empresaId={empresaId}
+          clientePhone={docPreview.pago.clientePhone || undefined}
+          onWhatsApp={async (phone: string) => {
+            const p = docPreview.pago!;
+            const result = await sendReceiptAsImage(
+              empresaId,
+              phone,
+              {
+                pago: {
+                  folio: `PAG-${p.id.slice(0, 8)}`,
+                  monto_recibido: p.montoRecibido,
+                  aplicado_mora: p.aplicadoMora,
+                  aplicado_interes: p.aplicadoInteres,
+                  aplicado_capital: p.aplicadoCapital,
+                  metodo_pago: p.metodo,
+                  saldo_restante: 0,
+                },
+                empresa: {
+                  nombre: p.empresaNombre,
+                  telefono: p.empresaTelefono || undefined,
+                  direccion: p.empresaDireccion || undefined,
+                  logo_url: p.empresaLogoUrl,
+                },
+                cliente: { nombre: p.cliente },
+                prestamo: { folio: p.shortId, num_cuotas: p.numCuotas },
+              },
+              `✅ *Comprobante de pago recibido*\n\n👤 *${p.cliente}*\n💰 Monto: *${$$(p.montoRecibido)}*\n📋 Préstamo: ${p.shortId}\n\n🙏 ¡Gracias por tu pago!`,
+            );
+            if (result.success) toast.success("Recibo enviado por WhatsApp");
+            else toast.error("Error: " + (result.error || "desconocido"));
+          }}
+        />
+      )}
     </div>
   );
 }
