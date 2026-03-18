@@ -309,6 +309,12 @@ serve(async (req) => {
         logStep("Unhandled event type", { type: event.type });
     }
 
+    // ── Handle Connect account events (tenant's customer charges) ──
+    const connectedAccountId = (event as any).account as string | undefined;
+    if (connectedAccountId) {
+      await handleConnectEvent(supabase, event, connectedAccountId);
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
