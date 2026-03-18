@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye, Pencil, CreditCard, CalendarCheck, Send, FileDown, Phone, MessageSquare,
+  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye, Pencil, CreditCard, CalendarCheck, Send, FileDown, Phone, MessageSquare, Coins,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StripeConnectTab } from "@/components/StripeConnectTab";
@@ -21,6 +21,29 @@ import {
   useEmpresaConfig, useSaveEmpresaConfig, useUploadLogo,
   type EmpresaConfig, type TicketCampos, type ContratoCampos,
 } from "@/hooks/useEmpresaConfig";
+import { setCurrencySymbol } from "@/lib/utils";
+import { useEmpresaStore } from "@/stores/empresaStore";
+
+const MONEDAS = [
+  { codigo: "USD", simbolo: "$", nombre: "Dólar estadounidense (USD)" },
+  { codigo: "MXN", simbolo: "$", nombre: "Peso mexicano (MXN)" },
+  { codigo: "COP", simbolo: "$", nombre: "Peso colombiano (COP)" },
+  { codigo: "ARS", simbolo: "$", nombre: "Peso argentino (ARS)" },
+  { codigo: "CLP", simbolo: "$", nombre: "Peso chileno (CLP)" },
+  { codigo: "PEN", simbolo: "S/", nombre: "Sol peruano (PEN)" },
+  { codigo: "GTQ", simbolo: "Q", nombre: "Quetzal guatemalteco (GTQ)" },
+  { codigo: "HNL", simbolo: "L", nombre: "Lempira hondureño (HNL)" },
+  { codigo: "NIO", simbolo: "C$", nombre: "Córdoba nicaragüense (NIO)" },
+  { codigo: "CRC", simbolo: "₡", nombre: "Colón costarricense (CRC)" },
+  { codigo: "PAB", simbolo: "B/.", nombre: "Balboa panameño (PAB)" },
+  { codigo: "DOP", simbolo: "RD$", nombre: "Peso dominicano (DOP)" },
+  { codigo: "BRL", simbolo: "R$", nombre: "Real brasileño (BRL)" },
+  { codigo: "UYU", simbolo: "$U", nombre: "Peso uruguayo (UYU)" },
+  { codigo: "BOB", simbolo: "Bs", nombre: "Boliviano (BOB)" },
+  { codigo: "PYG", simbolo: "₲", nombre: "Guaraní paraguayo (PYG)" },
+  { codigo: "VES", simbolo: "Bs.D", nombre: "Bolívar venezolano (VES)" },
+  { codigo: "EUR", simbolo: "€", nombre: "Euro (EUR)" },
+];
 
 // ── Tab 1: Datos Generales ──
 function DatosGeneralesTab() {
@@ -35,15 +58,15 @@ function DatosGeneralesTab() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("empresas")
-        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, lada_pais")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, lada_pais, moneda_simbolo, moneda_codigo")
         .eq("id", empresaId)
         .single();
       if (error) throw error;
-      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; lada_pais: string };
+      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; lada_pais: string; moneda_simbolo: string; moneda_codigo: string };
     },
   });
 
-  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, lada_pais: "52" });
+  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, lada_pais: "52", moneda_codigo: "USD", moneda_simbolo: "$" });
 
   useEffect(() => {
     if (empresa) {
@@ -54,6 +77,8 @@ function DatosGeneralesTab() {
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
         lada_pais: empresa.lada_pais || "52",
+        moneda_codigo: empresa.moneda_codigo || "USD",
+        moneda_simbolo: empresa.moneda_simbolo || "$",
       });
     }
   }, [empresa]);
@@ -70,11 +95,16 @@ function DatosGeneralesTab() {
           direccion: form.direccion || null,
           dias_gracia: form.dias_gracia,
           lada_pais: form.lada_pais || "52",
+          moneda_simbolo: form.moneda_simbolo || "$",
+          moneda_codigo: form.moneda_codigo || "USD",
         })
         .eq("id", empresaId);
       if (error) throw error;
     },
     onSuccess: () => {
+      // Update global currency symbol immediately
+      setCurrencySymbol(form.moneda_simbolo);
+      useEmpresaStore.setState({ monedaSimbolo: form.moneda_simbolo, monedaCodigo: form.moneda_codigo });
       qc.invalidateQueries({ queryKey: ["empresa-datos"] });
       qc.invalidateQueries({ queryKey: ["empresas"] });
       toast.success("Datos actualizados");
@@ -92,6 +122,8 @@ function DatosGeneralesTab() {
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
         lada_pais: empresa.lada_pais || "52",
+        moneda_codigo: empresa.moneda_codigo || "USD",
+        moneda_simbolo: empresa.moneda_simbolo || "$",
       });
     }
     setEditing(false);
@@ -213,6 +245,34 @@ function DatosGeneralesTab() {
             )}
           </div>
           <div className="space-y-2">
+            <Label className="flex items-center gap-1.5"><Coins className="h-4 w-4 text-primary" /> Moneda</Label>
+            <p className="text-xs text-muted-foreground">Se usará en todo el sistema: reportes, tickets, contratos y pantallas</p>
+            {editing ? (
+              <Select
+                value={form.moneda_codigo}
+                onValueChange={(val) => {
+                  const m = MONEDAS.find((m) => m.codigo === val);
+                  if (m) setForm({ ...form, moneda_codigo: m.codigo, moneda_simbolo: m.simbolo });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONEDAS.map((m) => (
+                    <SelectItem key={m.codigo} value={m.codigo}>
+                      <span className="font-semibold mr-1">{m.simbolo}</span> {m.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">
+                {form.moneda_simbolo} — {MONEDAS.find((m) => m.codigo === form.moneda_codigo)?.nombre || form.moneda_codigo}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
             <Label>Días de gracia para mora</Label>
             <p className="text-xs text-muted-foreground">Número de días después del vencimiento antes de marcar como "Vencido"</p>
             {editing ? (
@@ -258,7 +318,7 @@ const TICKET_FIELD_LABELS: Record<keyof TicketCampos, string> = {
 
 // ── Tab 2: Diseño del Ticket ──
 function TicketTab() {
-  const { empresaId } = useEmpresa();
+  const { empresaId, monedaSimbolo } = useEmpresa();
   const { data: config, isLoading } = useEmpresaConfig();
   const { data: empresa } = useQuery({
     queryKey: ["empresa-datos", empresaId],
@@ -419,13 +479,13 @@ function TicketTab() {
               <div className="px-5 py-3 space-y-1">
                 <p className="text-[9px] font-bold uppercase tracking-[1px] text-[#999] mb-1">Desglose del Pago</p>
                 {local.ticket_campos.aplicado_mora && (
-                  <div className="flex justify-between"><span className="text-[#666]">A Mora:</span><span className="font-bold">$5.00</span></div>
+                  <div className="flex justify-between"><span className="text-[#666]">A Mora:</span><span className="font-bold">{monedaSimbolo}5.00</span></div>
                 )}
                 {local.ticket_campos.aplicado_interes && (
-                  <div className="flex justify-between"><span className="text-[#666]">A Interés:</span><span className="font-bold">$15.00</span></div>
+                  <div className="flex justify-between"><span className="text-[#666]">A Interés:</span><span className="font-bold">{monedaSimbolo}15.00</span></div>
                 )}
                 {local.ticket_campos.aplicado_capital && (
-                  <div className="flex justify-between"><span className="text-[#666]">A Capital:</span><span className="font-bold">$30.00</span></div>
+                  <div className="flex justify-between"><span className="text-[#666]">A Capital:</span><span className="font-bold">{monedaSimbolo}30.00</span></div>
                 )}
               </div>
 
@@ -433,7 +493,7 @@ function TicketTab() {
               {local.ticket_campos.monto_recibido && (
                 <div className="mx-5 border-t-2 border-b-2 border-[#333] py-2 flex justify-between text-[14px] font-bold">
                   <span>TOTAL PAGADO</span>
-                  <span>$50.00</span>
+                  <span>{monedaSimbolo}50.00</span>
                 </div>
               )}
 
@@ -442,7 +502,7 @@ function TicketTab() {
                 <p className="text-[9px] font-bold uppercase tracking-[1px] text-[#999] mb-1">Saldo</p>
                 <div className="flex justify-between"><span className="text-[#666]">Cuota:</span><span className="font-bold">3 de 12</span></div>
                 {local.ticket_campos.saldo_pendiente && (
-                  <div className="flex justify-between"><span className="text-[#666]">Saldo Restante:</span><span className="font-bold">$450.00</span></div>
+                  <div className="flex justify-between"><span className="text-[#666]">Saldo Restante:</span><span className="font-bold">{monedaSimbolo}450.00</span></div>
                 )}
                 <div className="flex justify-between"><span className="text-[#666]">Próx. Venc.:</span><span className="font-bold">20/Mar/2026</span></div>
               </div>

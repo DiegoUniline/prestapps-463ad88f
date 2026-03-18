@@ -8,5 +8,7 @@ export function useEmpresa() {
   const empresas = useEmpresaStore((s) => s.empresas);
   const setEmpresaId = useEmpresaStore((s) => s.setEmpresaId);
   const loading = useEmpresaStore((s) => s.loading);
-  return { empresaId, empresaNombre, empresas, setEmpresaId, loading };
+  const monedaSimbolo = useEmpresaStore((s) => s.monedaSimbolo);
+  const monedaCodigo = useEmpresaStore((s) => s.monedaCodigo);
+  return { empresaId, empresaNombre, empresas, setEmpresaId, loading, monedaSimbolo, monedaCodigo };
 }

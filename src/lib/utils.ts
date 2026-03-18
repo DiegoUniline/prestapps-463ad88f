@@ -8,11 +8,25 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Global currency symbol — set once when empresa loads.
+ */
+let _currencySymbol = "$";
+
+export function setCurrencySymbol(symbol: string) {
+  _currencySymbol = symbol || "$";
+}
+
+export function getCurrencySymbol(): string {
+  return _currencySymbol;
+}
+
+/**
  * Format currency: comma as thousands separator, dot as decimal.
- * e.g. $1,234.56
+ * Uses the globally configured currency symbol.
+ * e.g. $1,234.56  or  Q1,234.56
  */
 export const $$ = (n: number | null | undefined): string =>
-  `$${(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `${_currencySymbol}${(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /**
  * Format a date as dd/MM/yyyy (or custom pattern) using es locale.

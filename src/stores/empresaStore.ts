@@ -1,14 +1,18 @@
 import { create } from "zustand";
 import { supabase } from "@/integrations/supabase/client";
+import { setCurrencySymbol } from "@/lib/utils";
 
 interface Empresa {
   id: string;
   nombre: string;
+  moneda_simbolo?: string;
 }
 
 interface EmpresaState {
   empresaId: string;
   empresaNombre: string;
+  monedaSimbolo: string;
+  monedaCodigo: string;
   empresas: Empresa[];
   loading: boolean;
   _profileLoadedFor: string | null;
@@ -22,19 +26,26 @@ const DEFAULT_EMPRESA = "00000000-0000-0000-0000-000000000001";
 export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   empresaId: localStorage.getItem("empresa_id") || DEFAULT_EMPRESA,
   empresaNombre: "Empresa",
+  monedaSimbolo: "$",
+  monedaCodigo: "USD",
   empresas: [],
   loading: true,
   _profileLoadedFor: null,
 
   setEmpresaId: async (id: string) => {
     localStorage.setItem("empresa_id", id);
-    // Use SECURITY DEFINER function to bypass RLS when switching empresa
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
       await (supabase.rpc as any)("switch_empresa", { p_empresa_id: id });
     }
-    // Now update state — queries will refetch with correct RLS context
-    set({ empresaId: id, empresaNombre: get().empresas.find((e) => e.id === id)?.nombre || "Empresa" });
+    const empresa = get().empresas.find((e) => e.id === id);
+    const simbolo = empresa?.moneda_simbolo || "$";
+    setCurrencySymbol(simbolo);
+    set({
+      empresaId: id,
+      empresaNombre: empresa?.nombre || "Empresa",
+      monedaSimbolo: simbolo,
+    });
   },
 
   initialize: () => {
@@ -45,6 +56,13 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
       if (empresasLoaded && profileLoaded) {
         set({ loading: false });
       }
+    };
+
+    const applyCurrency = (empresaId: string, empresas: Empresa[]) => {
+      const empresa = empresas.find((e) => e.id === empresaId);
+      const simbolo = empresa?.moneda_simbolo || "$";
+      setCurrencySymbol(simbolo);
+      set({ monedaSimbolo: simbolo });
     };
 
     const loadProfile = (userId: string) => {
@@ -62,9 +80,13 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
         .then(({ data: profile }) => {
           if (profile?.empresa_id) {
             const empresas = get().empresas;
+            const empresa = empresas.find((e) => e.id === profile.empresa_id);
+            const simbolo = empresa?.moneda_simbolo || "$";
+            setCurrencySymbol(simbolo);
             set({
               empresaId: profile.empresa_id,
-              empresaNombre: empresas.find((e) => e.id === profile.empresa_id)?.nombre || "Empresa",
+              empresaNombre: empresa?.nombre || "Empresa",
+              monedaSimbolo: simbolo,
             });
             localStorage.setItem("empresa_id", profile.empresa_id);
           }
@@ -83,18 +105,23 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
       }
     });
 
-    // Load empresas list
-    supabase
+    // Load empresas list including currency
+    (supabase as any)
       .from("empresas")
-      .select("id, nombre")
+      .select("id, nombre, moneda_simbolo, moneda_codigo")
       .eq("activa", true)
       .order("nombre")
-      .then(({ data }) => {
-        const empresas = data || [];
+      .then(({ data }: any) => {
+        const empresas: Empresa[] = data || [];
         const currentId = get().empresaId;
+        const empresa = empresas.find((e) => e.id === currentId);
+        const simbolo = empresa?.moneda_simbolo || "$";
+        setCurrencySymbol(simbolo);
         set({
           empresas,
-          empresaNombre: empresas.find((e) => e.id === currentId)?.nombre || "Empresa",
+          empresaNombre: empresa?.nombre || "Empresa",
+          monedaSimbolo: simbolo,
+          monedaCodigo: (empresa as any)?.moneda_codigo || "USD",
         });
         empresasLoaded = true;
         maybeFinishLoading();
