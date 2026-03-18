@@ -114,12 +114,28 @@ serve(async (req) => {
         diasGraciaRestantes = Math.max(0, DIAS_GRACIA - daysSince);
       }
 
+      // Check for pending invoice (trial_expirado or pendiente_pago)
+      let facturaPendiente: any = null;
+      if (estado === "trial_expirado" || estado === "pendiente_pago") {
+        const { data: factura } = await supabaseClient
+          .from("facturas")
+          .select("id, numero_factura, total, estado, periodo_inicio, periodo_fin, es_prorrateo")
+          .eq("empresa_id", empresaId)
+          .in("estado", ["pendiente", "procesando"])
+          .order("fecha_emision", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (factura) facturaPendiente = factura;
+      }
+
       return new Response(JSON.stringify({
         subscribed: estado === "activa" || estado === "trial",
         estado,
         suscripcion_id: suscripcion.id,
-        plan_nombre: suscripcion.planes?.nombre || (estado === "trial" || estado === "trial_expirado" ? "Prueba Gratuita" : "Manual"),
+        plan_nombre: suscripcion.planes?.nombre || (estado === "trial" || estado === "trial_expirado" ? "Prueba Gratuita" : suscripcion.plan_id ? "Plan seleccionado" : "Manual"),
+        plan_id: suscripcion.plan_id,
         num_usuarios: suscripcion.num_usuarios,
+        precio_base: suscripcion.precio_base,
         fecha_vencimiento: suscripcion.fecha_vencimiento,
         fecha_proximo_cobro: suscripcion.fecha_proximo_cobro,
         es_manual: suscripcion.es_manual,
@@ -128,7 +144,7 @@ serve(async (req) => {
         card_last4: null,
         dias_gracia_restantes: diasGraciaRestantes,
         dias_trial_restantes: diasTrialRestantes,
-        factura_pendiente: null,
+        factura_pendiente: facturaPendiente,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

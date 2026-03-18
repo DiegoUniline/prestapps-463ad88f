@@ -29,6 +29,7 @@ export interface SubscriptionStatus {
     estado: string;
     periodo_inicio: string;
     periodo_fin: string;
+    es_prorrateo?: boolean;
   } | null;
 }
 
@@ -87,12 +88,12 @@ export function useAccesoApp() {
   const estado = data?.estado || "sin_suscripcion";
   const subscribed = data?.subscribed || false;
 
-  // Show banner for: trial (countdown), gracia, suspendida, trial_expirado
-  const showBanner = estado === "trial" || estado === "gracia" || estado === "suspendida" || estado === "trial_expirado";
+  // Show banner for: trial (countdown), gracia, suspendida, trial_expirado, pendiente_pago
+  const showBanner = ["trial", "gracia", "suspendida", "trial_expirado", "pendiente_pago"].includes(estado);
 
   // Block access for: suspendida, cancelada, sin_suscripcion
-  // trial_expirado: only block if grace period is over (dias_gracia_restantes === 0)
-  const trialGraceOver = estado === "trial_expirado" && (data?.dias_gracia_restantes === 0 || data?.dias_gracia_restantes === null);
+  // trial_expirado: only block if grace period is over (dias_gracia_restantes === 0 or null)
+  const trialGraceOver = estado === "trial_expirado" && (data?.dias_gracia_restantes === 0 || data?.dias_gracia_restantes === null || data?.dias_gracia_restantes === undefined);
   const blocked = estado === "suspendida" || estado === "cancelada" || estado === "sin_suscripcion" || trialGraceOver;
 
   return {
