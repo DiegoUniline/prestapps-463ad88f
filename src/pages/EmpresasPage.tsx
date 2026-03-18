@@ -156,13 +156,13 @@ export default function EmpresasPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!(form.nombre ?? "").trim()) throw new Error("El nombre es requerido");
+      if (!form.nombre.trim()) throw new Error("El nombre es requerido");
 
       const planInfo = PLAN_CONFIG[form.plan] || PLAN_CONFIG.basico;
 
       if (editId) {
         const { error } = await supabase.from("empresas").update({
-          nombre: (form.nombre ?? "").trim(),
+          nombre: form.nombre.trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
@@ -170,12 +170,12 @@ export default function EmpresasPage() {
         }).eq("id", editId);
         if (error) throw error;
       } else {
-        if (!(form.adminEmail ?? "").trim()) throw new Error("El correo del administrador es requerido");
+        if (!form.adminEmail.trim()) throw new Error("El correo del administrador es requerido");
         if (!form.adminPassword || form.adminPassword.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
-        if (!(form.adminNombre ?? "").trim()) throw new Error("El nombre del administrador es requerido");
+        if (!form.adminNombre.trim()) throw new Error("El nombre del administrador es requerido");
 
         const { data: newEmpresa, error: empError } = await supabase.from("empresas").insert({
-          nombre: (form.nombre ?? "").trim(),
+          nombre: form.nombre.trim(),
           ruc: form.ruc || null,
           telefono: form.telefono || null,
           direccion: form.direccion || null,
@@ -188,9 +188,9 @@ export default function EmpresasPage() {
         const { data: result, error: fnError } = await supabase.functions.invoke("manage-users", {
           body: {
             action: "create",
-            email: (form.adminEmail ?? "").trim(),
+            email: form.adminEmail.trim(),
             password: form.adminPassword,
-            nombre_completo: (form.adminNombre ?? "").trim(),
+            nombre_completo: form.adminNombre.trim(),
             telefono: form.adminTelefono || null,
             rol: "Admin",
             activo: true,

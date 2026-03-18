@@ -39,11 +39,11 @@ export default function RegisterPage() {
       // Call register-empresa edge function
       const { data, error } = await supabase.functions.invoke("register-empresa", {
         body: {
-          email: (form.email ?? "").trim().toLowerCase(),
+          email: form.email.trim().toLowerCase(),
           password: form.password,
-          nombre_completo: (form.nombre_completo ?? "").trim(),
-          nombre_empresa: (form.nombre_empresa ?? "").trim(),
-          telefono: (form.telefono ?? "").trim() || null,
+          nombre_completo: form.nombre_completo.trim(),
+          nombre_empresa: form.nombre_empresa.trim(),
+          telefono: form.telefono.trim() || null,
         },
       });
 
@@ -54,7 +54,7 @@ export default function RegisterPage() {
 
       // Auto-login
       const { error: loginError } = await supabase.auth.signInWithPassword({
-        email: (form.email ?? "").trim().toLowerCase(),
+        email: form.email.trim().toLowerCase(),
         password: form.password,
       });
 

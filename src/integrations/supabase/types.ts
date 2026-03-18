@@ -386,7 +386,6 @@ export type Database = {
           id: string
           id_cliente: string
           ingresos: number | null
-          lada_pais: string | null
           nombre_completo: string
           notas: string | null
           ref1_nombre: string | null
@@ -433,7 +432,6 @@ export type Database = {
           id?: string
           id_cliente?: string
           ingresos?: number | null
-          lada_pais?: string | null
           nombre_completo: string
           notas?: string | null
           ref1_nombre?: string | null
@@ -480,7 +478,6 @@ export type Database = {
           id?: string
           id_cliente?: string
           ingresos?: number | null
-          lada_pais?: string | null
           nombre_completo?: string
           notas?: string | null
           ref1_nombre?: string | null
@@ -738,7 +735,6 @@ export type Database = {
           dias_gracia: number
           direccion: string | null
           id: string
-          lada_pais: string
           logo_url: string | null
           max_usuarios: number
           nombre: string
@@ -754,7 +750,6 @@ export type Database = {
           dias_gracia?: number
           direccion?: string | null
           id?: string
-          lada_pais?: string
           logo_url?: string | null
           max_usuarios?: number
           nombre: string
@@ -770,7 +765,6 @@ export type Database = {
           dias_gracia?: number
           direccion?: string | null
           id?: string
-          lada_pais?: string
           logo_url?: string | null
           max_usuarios?: number
           nombre?: string

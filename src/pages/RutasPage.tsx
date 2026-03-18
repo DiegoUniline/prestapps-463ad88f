@@ -170,13 +170,13 @@ function RutaDetallePage() {
   }
 
   const handleGuardar = async () => {
-    if (!(nombre ?? "").trim()) { toast.error("El nombre es requerido"); return; }
+    if (!nombre.trim()) { toast.error("El nombre es requerido"); return; }
     setSaving(true);
     try {
       if (isNew) {
         const { error } = await supabase.from("rutas").insert({
-          nombre: (nombre ?? "").trim(),
-          descripcion: (descripcion ?? "").trim() || null,
+          nombre: nombre.trim(),
+          descripcion: descripcion.trim() || null,
           cobrador_id: cobradorId === "__none__" ? null : (cobradorId || null),
           empresa_id: empresaId,
         });
@@ -184,8 +184,8 @@ function RutaDetallePage() {
         toast.success("Ruta creada");
       } else {
         const { error } = await supabase.from("rutas").update({
-          nombre: (nombre ?? "").trim(),
-          descripcion: (descripcion ?? "").trim() || null,
+          nombre: nombre.trim(),
+          descripcion: descripcion.trim() || null,
           cobrador_id: cobradorId === "__none__" ? null : (cobradorId || null),
         }).eq("id", id!);
         if (error) throw error;

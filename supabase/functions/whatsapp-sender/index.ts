@@ -25,14 +25,6 @@ Deno.serve(async (req) => {
       .eq("empresa_id", empresa_id)
       .single();
 
-    // Get empresa lada_pais for phone normalization
-    const { data: empresaData } = await supabase
-      .from("empresas")
-      .select("lada_pais")
-      .eq("id", empresa_id)
-      .single();
-    const ladaPais = empresaData?.lada_pais || "52";
-
     const isTest = body.test === true;
 
     if (!config) {
@@ -49,13 +41,11 @@ Deno.serve(async (req) => {
 
     // ── send-text ────────────────────────────────
     if (action === "send-text") {
-      const { phone, message, tipo, referencia_id, cliente_lada } = body;
-      const effectiveLada = cliente_lada || ladaPais;
-      const normalizedPhone = normalizePhoneWithLada(phone, effectiveLada);
+      const { phone, message, tipo, referencia_id } = body;
       
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-text",
-        phone: normalizedPhone,
+        phone,
         message,
       });
 
@@ -77,19 +67,18 @@ Deno.serve(async (req) => {
 
     // ── send-image ────────────────────────────────
     if (action === "send-image") {
-      const { phone, url, caption, tipo, referencia_id, cliente_lada } = body;
-      const normalizedPhone = normalizePhoneWithLada(phone, cliente_lada || ladaPais);
+      const { phone, url, caption, tipo, referencia_id } = body;
 
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-image",
-        phone: normalizedPhone,
+        phone,
         url,
         caption: caption || "",
       });
 
       await supabase.from("whatsapp_log").insert({
         empresa_id,
-        telefono: normalizedPhone,
+        telefono: phone,
         tipo: tipo || "recibo",
         mensaje: caption || "",
         imagen_url: url,
@@ -105,12 +94,11 @@ Deno.serve(async (req) => {
 
     // ── send-file ────────────────────────────────
     if (action === "send-file") {
-      const { phone, url, fileName, tipo, referencia_id, cliente_lada } = body;
-      const normalizedPhone = normalizePhoneWithLada(phone, cliente_lada || ladaPais);
+      const { phone, url, fileName, tipo, referencia_id } = body;
 
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-file",
-        phone: normalizedPhone,
+        phone,
         url,
         fileName: fileName || "documento.pdf",
       });
@@ -239,21 +227,6 @@ Deno.serve(async (req) => {
 });
 
 // ── Helpers ────────────────────────────────────────
-function normalizePhoneWithLada(phone: string, ladaPais: string = "52"): string {
-  const digits = String(phone || "").replace(/\D/g, "");
-  const lada = String(ladaPais || "52").replace(/\D/g, "");
-
-  // If it already starts with the lada, return as-is
-  if (digits.startsWith(lada)) return digits;
-
-  // If it looks like a local number (8-11 digits), prepend lada
-  if (digits.length >= 8 && digits.length <= 11) {
-    return `${lada}${digits}`;
-  }
-
-  return digits;
-}
-
 async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<string, any>) {
   try {
     const res = await fetch(apiUrl, {

@@ -15,26 +15,20 @@ const logStep = (step: string, details?: any) => {
 const DIAS_GRACIA = 3;
 
 // ── WhatsApp helpers ──────────────────────────────
-function getPhoneCandidates(phone: string, ladaPais: string = "52"): string[] {
+function getPhoneCandidates(phone: string): string[] {
   const digits = String(phone || "").replace(/\D/g, "");
-  const lada = String(ladaPais || "52").replace(/\D/g, "");
   const candidates = new Set<string>();
   if (digits) candidates.add(digits);
-
-  // If phone looks like a local number, prepend lada
-  if (digits.length >= 8 && digits.length <= 11 && !digits.startsWith(lada)) {
-    candidates.add(`${lada}${digits}`);
-    if (lada === "52") candidates.add(`521${digits}`);
+  if (digits.length === 10) {
+    candidates.add(`52${digits}`);
+    candidates.add(`521${digits}`);
   }
-
-  // MX special variants
-  if (lada === "52" && digits.startsWith("52") && !digits.startsWith("521")) {
+  if (digits.length === 12 && digits.startsWith("52")) {
     candidates.add(`521${digits.slice(2)}`);
   }
-  if (lada === "52" && digits.startsWith("521")) {
+  if (digits.length === 13 && digits.startsWith("521")) {
     candidates.add(`52${digits.slice(3)}`);
   }
-
   return Array.from(candidates);
 }
 
@@ -78,14 +72,6 @@ async function notifyEmpresaAdmins(
 
     if (!waConfig?.activo) return;
 
-    // Get empresa lada_pais
-    const { data: empresaData } = await supabase
-      .from("empresas")
-      .select("lada_pais")
-      .eq("id", empresaId)
-      .single();
-    const ladaPais = empresaData?.lada_pais || "52";
-
     const { data: admins } = await supabase
       .from("user_roles")
       .select("user_id")
@@ -102,10 +88,10 @@ async function notifyEmpresaAdmins(
 
     for (const profile of (profiles || [])) {
       if (!profile.telefono) continue;
-      const candidates = getPhoneCandidates(profile.telefono, ladaPais);
+      const candidates = getPhoneCandidates(profile.telefono);
       const result = await sendWhatsAppWithFallback(waConfig.api_url, waConfig.api_token, mensaje, candidates);
 
-      logStep("WA notification", { phone: result.phoneUsed, success: result.success, tipo, ladaPais });
+      logStep("WA notification", { phone: result.phoneUsed, success: result.success, tipo });
 
       await supabase.from("whatsapp_log").insert({
         empresa_id: empresaId,
