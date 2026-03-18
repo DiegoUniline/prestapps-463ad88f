@@ -417,7 +417,7 @@ export default function PrestamoDetallePage() {
         cliente: { nombre: cliente.nombre_completo },
         prestamo: { folio: folioId, num_cuotas: prestamo.num_cuotas },
       },
-      `🧾 Recibo de pago #${i + 1} por ${$$(Number(pg.monto_recibido))} - ${folioId}`,
+      `✅ *Comprobante de pago recibido*\n\n👤 *${cliente.nombre_completo}*\n💰 Monto: *${$$(Number(pg.monto_recibido))}*\n📋 Préstamo: ${folioId}\n📅 Cuota ${cuotaMatch?.num_cuota || (i + 1)} de ${prestamo.num_cuotas}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`,
     );
     if (result.success) {
       toast.success("Recibo enviado por WhatsApp");
