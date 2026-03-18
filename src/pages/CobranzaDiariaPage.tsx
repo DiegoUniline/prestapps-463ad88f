@@ -322,6 +322,7 @@ export default function CobranzaDiariaPage() {
   const [filtroCobrador, setFiltroCobrador] = useState("todos");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [showVencidas, setShowVencidas] = useState(true);
+  const [showKpis, setShowKpis] = useState(false);
 
   // Payment modal state
   const [pagoOpen, setPagoOpen] = useState(false);
