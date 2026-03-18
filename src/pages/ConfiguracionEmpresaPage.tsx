@@ -268,7 +268,7 @@ function DatosGeneralesTab() {
               </Select>
             ) : (
               <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">
-                {monedaSimbolo} — {MONEDAS.find((m) => m.codigo === form.moneda_codigo)?.nombre || form.moneda_codigo}
+                {form.moneda_simbolo} — {MONEDAS.find((m) => m.codigo === form.moneda_codigo)?.nombre || form.moneda_codigo}
               </p>
             )}
           </div>
