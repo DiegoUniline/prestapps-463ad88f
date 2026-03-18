@@ -123,7 +123,7 @@ interface PermissionRow {
 }
 
 /** Read-only hook for permission checks (no mutation overhead) */
-function usePermisosRead() {
+export function usePermisosRead() {
   const { empresaId } = useEmpresa();
 
   const { data: rows = [], isLoading } = useQuery({
