@@ -542,8 +542,111 @@ export default function PagosPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+      {/* MOBILE Cards */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-lg border border-border p-4">
+              <Skeleton className="h-4 w-3/4 mb-2" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <p className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron pagos</p>
+        ) : filtered.map((p) => (
+          <div
+            key={p.id}
+            className={cn(
+              "bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)] overflow-hidden",
+              p.anulado && "opacity-60"
+            )}
+          >
+            {/* Card header */}
+            <div className="px-3 py-2.5 flex items-center justify-between border-b border-border/50">
+              <div className="min-w-0">
+                <p className={cn("font-semibold text-[13px] truncate", p.anulado && "line-through")}>{p.cliente}</p>
+                <p className="text-[11px] text-muted-foreground">{p.shortId} · {p.fecha ? fmtDate(p.fecha, "dd/MM/yyyy HH:mm") : "—"}</p>
+              </div>
+              <div className="text-right shrink-0 ml-2">
+                <p className={cn("font-bold text-[15px]", p.anulado ? "line-through text-muted-foreground" : "text-foreground")}>{$$(p.montoRecibido)}</p>
+                {p.anulado && <span className="text-[10px] font-semibold text-destructive uppercase">Anulado</span>}
+              </div>
+            </div>
+
+            {/* Card body — breakdown */}
+            <div className="px-3 py-2 grid grid-cols-3 gap-x-2 gap-y-1 text-[11px]">
+              <div>
+                <span className="text-muted-foreground">Capital</span>
+                <p className={cn("font-medium", p.aplicadoCapital === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoCapital)}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Interés</span>
+                <p className={cn("font-medium", p.aplicadoInteres === 0 && "text-muted-foreground/50")}>{$$(p.aplicadoInteres)}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Mora</span>
+                <p className={cn("font-medium", p.aplicadoMora > 0 ? "text-destructive" : "text-muted-foreground/50")}>{$$(p.aplicadoMora)}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Método</span>
+                <p><MetodoDot metodo={p.metodo} /></p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Caja</span>
+                <p className="font-medium truncate">{p.caja}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Ruta</span>
+                <p className="font-medium truncate">{p.ruta}</p>
+              </div>
+            </div>
+
+            {/* Card actions */}
+            <div className="px-3 py-2 border-t border-border/50 flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] gap-1 flex-1"
+                onClick={() => handleWhatsApp(p)}
+                disabled={p.anulado}
+              >
+                <MessageCircle className="h-3 w-3 text-[hsl(142,72%,37%)]" />
+                WhatsApp
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] gap-1 flex-1"
+                onClick={() => handleDownloadTicket(p)}
+              >
+                <Download className="h-3 w-3" />
+                Ticket
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                onClick={() => handleEdit(p)}
+                disabled={p.anulado}
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[11px] gap-1 text-destructive hover:text-destructive"
+                onClick={() => handleAnular(p)}
+                disabled={p.anulado}
+              >
+                <XCircle className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP Table */}
+      <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
           <TableHeader>
             <TableRow className="bg-table-header hover:bg-table-header border-b">
