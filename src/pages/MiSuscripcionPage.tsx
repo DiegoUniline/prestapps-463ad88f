@@ -541,22 +541,16 @@ export default function MiSuscripcionPage() {
                     className="w-full"
                     variant={isPro ? "default" : "outline"}
                     onClick={() => {
-                      if (showCurrentPlan) {
-                        setSelectedPlanId(plan.id);
-                        setNumUsuarios(subData?.num_usuarios || 1);
-                        setChangeOpen(true);
-                      } else {
-                        handleCheckout(plan.id, plan.usuarios_incluidos);
-                      }
+                      setSelectedPlanId(plan.id);
+                      setNumUsuarios(plan.usuarios_incluidos);
+                      setChangeOpen(true);
                     }}
-                    disabled={checkoutLoading === plan.id}
                   >
-                    {checkoutLoading === plan.id ? "Procesando..." : (
-                      showCurrentPlan
-                        ? (plan.precio_base_mes > (subData?.precio_base || 0) ? "Upgrade" : "Cambiar")
-                        : "Contratar"
-                    )}
-                    {checkoutLoading !== plan.id && <ArrowRight className="h-4 w-4 ml-1" />}
+                    {showCurrentPlan
+                      ? (plan.precio_base_mes > (subData?.precio_base || 0) ? "Upgrade" : "Cambiar")
+                      : "Contratar"
+                    }
+                    <ArrowRight className="h-4 w-4 ml-1" />
                   </Button>
                 )}
               </CardContent>
