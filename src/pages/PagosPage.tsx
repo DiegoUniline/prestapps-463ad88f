@@ -284,13 +284,20 @@ export default function PagosPage() {
   ];
 
   // ── Action handlers ──────────────────────────────────────────────
-  const handleWhatsApp = async (p: PagoListItem) => {
+  const buildReceiptCaption = (p: PagoListItem) =>
+    `✅ *Comprobante de pago recibido*\n\n👤 *${p.cliente}*\n💰 Monto: *${$$(p.montoRecibido)}*\n📋 Préstamo: ${p.shortId}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`;
+
+  const handleWhatsApp = (p: PagoListItem) => {
     if (!p.clientePhone) { toast.error("Cliente sin teléfono registrado"); return; }
+    setWaPreview({ open: true, pago: p });
+  };
+
+  const sendWhatsAppReceipt = async (p: PagoListItem, caption: string) => {
     const t = toast.loading("Enviando recibo por WhatsApp…");
     try {
       const result = await sendReceiptAsImage(
         empresaId,
-        p.clientePhone,
+        p.clientePhone!,
         {
           pago: {
             folio: `PAG-${p.id.slice(0, 8)}`,
@@ -310,7 +317,7 @@ export default function PagosPage() {
           cliente: { nombre: p.cliente },
           prestamo: { folio: p.shortId, num_cuotas: p.numCuotas },
         },
-        `✅ *Comprobante de pago recibido*\n\n👤 *${p.cliente}*\n💰 Monto: *${$$(p.montoRecibido)}*\n📋 Préstamo: ${p.shortId}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`,
+        caption,
       );
       toast.dismiss(t);
       if (result.success) toast.success("Recibo enviado por WhatsApp");
