@@ -269,6 +269,86 @@ serve(async (req) => {
 });
 
 // ── WhatsApp alert helper ──────────────────────────
+function normalizePhone(phone: string): string {
+  return String(phone || "").replace(/\D/g, "");
+}
+
+function getPhoneCandidates(phone: string): string[] {
+  const raw = String(phone || "").trim();
+  const digits = normalizePhone(raw);
+  const candidates = new Set<string>();
+
+  if (raw) candidates.add(raw);
+  if (digits) candidates.add(digits);
+
+  // MX fallback formats (10-digit local -> 52 / 521)
+  if (digits.length === 10) {
+    candidates.add(`52${digits}`);
+    candidates.add(`521${digits}`);
+  }
+
+  // If already 52 + 10 digits, also try 521 variant
+  if (digits.length === 12 && digits.startsWith("52")) {
+    const local = digits.slice(2);
+    if (local.length === 10) {
+      candidates.add(`521${local}`);
+    }
+  }
+
+  // If already 521 + 10 digits, also try 52 variant
+  if (digits.length === 13 && digits.startsWith("521")) {
+    candidates.add(`52${digits.slice(3)}`);
+  }
+
+  return Array.from(candidates);
+}
+
+async function sendWhatsAppWithFallback(
+  apiUrl: string,
+  apiToken: string,
+  mensaje: string,
+  candidates: string[],
+) {
+  let lastError: any = null;
+
+  for (const candidate of candidates) {
+    try {
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "x-api-token": apiToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "send-text",
+          phone: candidate,
+          message: mensaje,
+        }),
+      });
+
+      const raw = await res.text();
+      let response: any = raw;
+      try {
+        response = raw ? JSON.parse(raw) : null;
+      } catch {
+        // keep raw text
+      }
+
+      if (res.ok) {
+        return { success: true, phoneUsed: candidate, response };
+      }
+
+      lastError = { status: res.status, response, phoneTried: candidate };
+      logStep("WhatsApp attempt failed", { phone: candidate, status: res.status });
+    } catch (e: any) {
+      lastError = { message: e?.message || "Unknown error", phoneTried: candidate };
+      logStep("WhatsApp attempt exception", { phone: candidate, error: e?.message });
+    }
+  }
+
+  return { success: false, phoneUsed: candidates[0] || null, error: lastError };
+}
+
 async function sendWhatsAppAlert(
   supabase: any,
   empresaId: string,
@@ -309,34 +389,30 @@ async function sendWhatsAppAlert(
     for (const profile of (profiles || [])) {
       if (!profile.telefono) continue;
 
-      try {
-        const res = await fetch(waConfig.api_url, {
-          method: "POST",
-          headers: {
-            "x-api-token": waConfig.api_token,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "send-text",
-            phone: profile.telefono,
-            message: opts.mensaje,
-          }),
-        });
-        const data = await res.json();
-        logStep("WhatsApp alert sent", { phone: profile.telefono, success: res.ok });
+      const phoneCandidates = getPhoneCandidates(profile.telefono);
+      if (!phoneCandidates.length) continue;
 
-        // Log it
-        await supabase.from("whatsapp_log").insert({
-          empresa_id: empresaId,
-          telefono: profile.telefono,
-          tipo: "alerta_pago",
-          mensaje: opts.mensaje,
-          status: res.ok ? "enviado" : "error",
-          error_detalle: res.ok ? null : JSON.stringify(data),
-        });
-      } catch (e: any) {
-        logStep("WhatsApp send error", { error: e.message });
-      }
+      const result = await sendWhatsAppWithFallback(
+        waConfig.api_url,
+        waConfig.api_token,
+        opts.mensaje,
+        phoneCandidates,
+      );
+
+      logStep("WhatsApp alert sent", {
+        originalPhone: profile.telefono,
+        phoneUsed: result.phoneUsed,
+        success: result.success,
+      });
+
+      await supabase.from("whatsapp_log").insert({
+        empresa_id: empresaId,
+        telefono: result.phoneUsed || profile.telefono,
+        tipo: "alerta_pago",
+        mensaje: opts.mensaje,
+        status: result.success ? "enviado" : "error",
+        error_detalle: result.success ? null : JSON.stringify(result.error || null),
+      });
     }
   } catch (e: any) {
     logStep("sendWhatsAppAlert error", { error: e.message });
