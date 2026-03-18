@@ -794,6 +794,7 @@ export default function PagosPage() {
           }
           empresaId={empresaId}
           clientePhone={docPreview.pago.clientePhone || undefined}
+          clienteName={docPreview.pago.cliente}
           onWhatsApp={async (phone: string) => {
             const p = docPreview.pago!;
             const caption = buildReceiptCaption(p);
