@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye, Pencil, CreditCard, CalendarCheck, Send, FileDown, Phone, MessageSquare,
+  Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye, Pencil, CreditCard, CalendarCheck, Send, FileDown, Phone, MessageSquare, Coins,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StripeConnectTab } from "@/components/StripeConnectTab";
@@ -21,6 +21,29 @@ import {
   useEmpresaConfig, useSaveEmpresaConfig, useUploadLogo,
   type EmpresaConfig, type TicketCampos, type ContratoCampos,
 } from "@/hooks/useEmpresaConfig";
+import { setCurrencySymbol } from "@/lib/utils";
+import { useEmpresaStore } from "@/stores/empresaStore";
+
+const MONEDAS = [
+  { codigo: "USD", simbolo: "$", nombre: "Dólar estadounidense (USD)" },
+  { codigo: "MXN", simbolo: "$", nombre: "Peso mexicano (MXN)" },
+  { codigo: "COP", simbolo: "$", nombre: "Peso colombiano (COP)" },
+  { codigo: "ARS", simbolo: "$", nombre: "Peso argentino (ARS)" },
+  { codigo: "CLP", simbolo: "$", nombre: "Peso chileno (CLP)" },
+  { codigo: "PEN", simbolo: "S/", nombre: "Sol peruano (PEN)" },
+  { codigo: "GTQ", simbolo: "Q", nombre: "Quetzal guatemalteco (GTQ)" },
+  { codigo: "HNL", simbolo: "L", nombre: "Lempira hondureño (HNL)" },
+  { codigo: "NIO", simbolo: "C$", nombre: "Córdoba nicaragüense (NIO)" },
+  { codigo: "CRC", simbolo: "₡", nombre: "Colón costarricense (CRC)" },
+  { codigo: "PAB", simbolo: "B/.", nombre: "Balboa panameño (PAB)" },
+  { codigo: "DOP", simbolo: "RD$", nombre: "Peso dominicano (DOP)" },
+  { codigo: "BRL", simbolo: "R$", nombre: "Real brasileño (BRL)" },
+  { codigo: "UYU", simbolo: "$U", nombre: "Peso uruguayo (UYU)" },
+  { codigo: "BOB", simbolo: "Bs", nombre: "Boliviano (BOB)" },
+  { codigo: "PYG", simbolo: "₲", nombre: "Guaraní paraguayo (PYG)" },
+  { codigo: "VES", simbolo: "Bs.D", nombre: "Bolívar venezolano (VES)" },
+  { codigo: "EUR", simbolo: "€", nombre: "Euro (EUR)" },
+];
 
 // ── Tab 1: Datos Generales ──
 function DatosGeneralesTab() {
