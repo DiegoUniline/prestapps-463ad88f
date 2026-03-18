@@ -36,6 +36,7 @@ interface NavItem {
   icon: LucideIcon;
   roles: AppRole[];
   superAdminOnly?: boolean;
+  permModule?: PermisoModule;
 }
 
 interface NavModule {
