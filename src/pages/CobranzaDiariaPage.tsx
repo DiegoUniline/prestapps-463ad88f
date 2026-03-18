@@ -563,8 +563,43 @@ export default function CobranzaDiariaPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
+      {/* Mobile KPI Strip — compact summary, tap to expand */}
+      <div className="md:hidden">
+        <button
+          onClick={() => setShowKpis((v) => !v)}
+          className="w-full flex items-center justify-between bg-card border rounded-lg px-3 py-2"
+        >
+          <div className="flex items-center gap-3 text-[12px]">
+            <span className="font-semibold">{kpis.cobradas}/{kpis.total}</span>
+            <span className="text-muted-foreground">cobradas</span>
+            <span className="text-success font-semibold">{$$(kpis.cobrado)}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-destructive font-semibold">{$$(kpis.porCobrar)}</span>
+            <span className="text-muted-foreground">pte</span>
+          </div>
+          <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", showKpis && "rotate-90")} />
+        </button>
+        {showKpis && (
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {[
+              { label: "Cobrado", value: $$(kpis.cobrado), color: "text-success" },
+              { label: "Por Cobrar", value: $$(kpis.porCobrar), color: "text-destructive" },
+              { label: "Eficiencia", value: `${kpis.porcentaje.toFixed(1)}%`, color: "text-primary" },
+              { label: "Pendientes", value: kpis.pendientes, color: "text-warning" },
+              { label: "Mora", value: $$(kpis.mora), color: "text-destructive" },
+              { label: "Cobradas", value: kpis.cobradas, color: "text-success" },
+            ].map((kpi) => (
+              <div key={kpi.label} className="bg-card border rounded-lg p-2 text-center">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium">{kpi.label}</p>
+                <p className={cn("text-sm font-bold", kpi.color)}>{kpi.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop KPI Cards */}
+      <div className="hidden md:grid grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
         {[
           { label: "Total Cuotas", value: kpis.total, icon: Users, color: "text-foreground" },
           { label: "Cobradas", value: kpis.cobradas, icon: CheckCircle2, color: "text-success" },
@@ -577,10 +612,10 @@ export default function CobranzaDiariaPage() {
           <Card key={kpi.label} className="border-border/60">
             <CardContent className="p-2.5 md:p-3">
               <div className="flex items-center justify-between mb-0.5 md:mb-1">
-                <span className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{kpi.label}</span>
-                <kpi.icon className={cn("h-3 w-3 md:h-3.5 md:w-3.5", kpi.color)} />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{kpi.label}</span>
+                <kpi.icon className={cn("h-3.5 w-3.5", kpi.color)} />
               </div>
-              <p className={cn("text-base md:text-lg font-bold", kpi.color)}>{kpi.value}</p>
+              <p className={cn("text-lg font-bold", kpi.color)}>{kpi.value}</p>
             </CardContent>
           </Card>
         ))}
