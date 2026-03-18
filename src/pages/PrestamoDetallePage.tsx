@@ -426,7 +426,7 @@ export default function PrestamoDetallePage() {
     }
   };
 
-
+  return (
     <div>
       {/* ── HEADER ────────────────────────────────────────────── */}
       <div className="bg-card px-4 md:px-6 py-4 md:py-5 border-b border-border">
