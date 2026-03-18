@@ -43,7 +43,7 @@ function DatosGeneralesTab() {
     },
   });
 
-  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0 });
+  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, lada_pais: "52" });
 
   useEffect(() => {
     if (empresa) {
