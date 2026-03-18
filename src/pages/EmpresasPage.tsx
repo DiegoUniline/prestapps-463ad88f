@@ -170,9 +170,9 @@ export default function EmpresasPage() {
         }).eq("id", editId);
         if (error) throw error;
       } else {
-        if (!form.adminEmail.trim()) throw new Error("El correo del administrador es requerido");
+        if (!(form.adminEmail ?? "").trim()) throw new Error("El correo del administrador es requerido");
         if (!form.adminPassword || form.adminPassword.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
-        if (!form.adminNombre.trim()) throw new Error("El nombre del administrador es requerido");
+        if (!(form.adminNombre ?? "").trim()) throw new Error("El nombre del administrador es requerido");
 
         const { data: newEmpresa, error: empError } = await supabase.from("empresas").insert({
           nombre: form.nombre.trim(),
