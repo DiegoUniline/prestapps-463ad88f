@@ -49,11 +49,13 @@ Deno.serve(async (req) => {
 
     // ── send-text ────────────────────────────────
     if (action === "send-text") {
-      const { phone, message, tipo, referencia_id } = body;
+      const { phone, message, tipo, referencia_id, cliente_lada } = body;
+      const effectiveLada = cliente_lada || ladaPais;
+      const normalizedPhone = normalizePhoneWithLada(phone, effectiveLada);
       
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-text",
-        phone,
+        phone: normalizedPhone,
         message,
       });
 
