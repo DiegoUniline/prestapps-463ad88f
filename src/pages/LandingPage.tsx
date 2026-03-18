@@ -159,11 +159,18 @@ export default function LandingPage() {
             <a href="#precios" className="hover:text-foreground transition-colors">Precios</a>
             <a href="#contacto" className="hover:text-foreground transition-colors">Contacto</a>
           </div>
-          <Link to="/login">
-            <Button size="sm" className="font-semibold">
-              Iniciar Sesión <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/login">
+              <Button size="sm" variant="outline" className="font-semibold">
+                Iniciar Sesión
+              </Button>
+            </Link>
+            <Link to="/registro">
+              <Button size="sm" className="font-semibold">
+                Crear Cuenta Gratis <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -187,9 +194,9 @@ export default function LandingPage() {
                 <strong className="text-foreground"> Sin papel, sin errores, sin estrés.</strong>
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                <Link to="/login">
+                <Link to="/registro">
                   <Button size="lg" className="text-base px-8 h-12 font-semibold shadow-lg shadow-primary/25 w-full sm:w-auto">
-                    Probar Gratis <ArrowRight className="ml-2 h-5 w-5" />
+                    Probar 7 Días Gratis <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
                 <a href="#modulos">
@@ -460,7 +467,7 @@ export default function LandingPage() {
                       </div>
                     ))}
                   </div>
-                  <Link to="/login" className="block">
+                  <Link to={plan.name === "Enterprise" ? "#contacto" : "/registro"} className="block">
                     <Button
                       className="w-full font-semibold"
                       variant={plan.highlight ? "default" : "outline"}
@@ -490,7 +497,7 @@ export default function LandingPage() {
             y dinero que llega solo. <strong className="text-primary-foreground">Así de fácil.</strong>
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/login">
+            <Link to="/registro">
               <Button size="lg" variant="secondary" className="text-base px-8 h-12 font-semibold">
                 Comenzar Gratis <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
