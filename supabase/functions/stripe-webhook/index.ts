@@ -208,6 +208,49 @@ serve(async (req) => {
         break;
       }
 
+      // ── Charge failed — notify admin via WhatsApp ──
+      case "charge.failed": {
+        const charge = event.data.object as Stripe.Charge;
+        const customerEmail = charge.billing_details?.email || charge.receipt_email || "desconocido";
+        const amount = ((charge.amount || 0) / 100).toFixed(2);
+        const currency = (charge.currency || "mxn").toUpperCase();
+        const failureMessage = charge.failure_message || "Error desconocido";
+        const failureCode = charge.failure_code || "N/A";
+
+        logStep("Charge failed", { customerEmail, amount, failureCode, failureMessage });
+
+        // Find empresa by stripe customer
+        const customerId = charge.customer as string;
+        if (customerId) {
+          const { data: suscripcionData } = await supabase
+            .from("suscripciones")
+            .select("empresa_id")
+            .eq("stripe_customer_id", customerId)
+            .single();
+
+          if (suscripcionData?.empresa_id) {
+            await sendWhatsAppAlert(supabase, suscripcionData.empresa_id, {
+              tipo: "pago_fallido",
+              mensaje: `⚠️ *Pago fallido en Stripe*\n\n` +
+                `💳 Tarjeta: ${charge.payment_method_details?.card?.brand || "?"} ****${charge.payment_method_details?.card?.last4 || "????"}\n` +
+                `💰 Monto: $${amount} ${currency}\n` +
+                `❌ Error: ${failureMessage}\n` +
+                `📧 Cliente: ${customerEmail}\n\n` +
+                `Por favor intenta con otro método de pago o contacta a tu banco.`,
+            });
+          }
+        }
+        break;
+      }
+
+      // ── Payment intent failed ──
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        logStep("Payment intent failed", { id: pi.id, status: pi.status });
+        // Already handled by charge.failed above
+        break;
+      }
+
       default:
         logStep("Unhandled event type", { type: event.type });
     }
