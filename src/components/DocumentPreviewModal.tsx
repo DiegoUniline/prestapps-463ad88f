@@ -15,10 +15,12 @@ interface DocumentPreviewModalProps {
   generateDoc: () => Promise<jsPDF>;
   empresaId?: string;
   clientePhone?: string;
+  /** Optional custom WhatsApp handler — when provided, bypasses the default PDF-send logic */
+  onWhatsApp?: (phone: string) => Promise<void>;
 }
 
 export function DocumentPreviewModal({
-  open, onOpenChange, title, fileName, generateDoc, empresaId, clientePhone,
+  open, onOpenChange, title, fileName, generateDoc, empresaId, clientePhone, onWhatsApp,
 }: DocumentPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -64,24 +66,30 @@ export function DocumentPreviewModal({
       setShowPhoneInput(true);
       return;
     }
-    if (!docRef || !empresaId) return;
 
     setSending(true);
     try {
-      const blob = docRef.output("blob");
-      const result = await sendDocumentViaWhatsApp(
-        empresaId,
-        phone.trim(),
-        blob,
-        fileName,
-        `📄 ${title} - ${fileName}`,
-      );
-      if (result.success) {
-        toast.success("Documento enviado por WhatsApp");
-        setShowPhoneInput(false);
+      // Use custom handler if provided (e.g. send as image)
+      if (onWhatsApp) {
+        await onWhatsApp(phone.trim());
       } else {
-        toast.error(result.error || "Error al enviar");
+        // Default: send PDF as file
+        if (!docRef || !empresaId) return;
+        const blob = docRef.output("blob");
+        const result = await sendDocumentViaWhatsApp(
+          empresaId,
+          phone.trim(),
+          blob,
+          fileName,
+          `📄 ${title} - ${fileName}`,
+        );
+        if (result.success) {
+          toast.success("Documento enviado por WhatsApp");
+        } else {
+          toast.error(result.error || "Error al enviar");
+        }
       }
+      setShowPhoneInput(false);
     } catch (e: any) {
       toast.error(e.message || "Error al enviar");
     } finally {
@@ -110,7 +118,7 @@ export function DocumentPreviewModal({
                   size="sm"
                   className="h-8 text-[12px]"
                   onClick={handleWhatsApp}
-                  disabled={!docRef || sending}
+                  disabled={sending}
                 >
                   {sending ? (
                     <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
