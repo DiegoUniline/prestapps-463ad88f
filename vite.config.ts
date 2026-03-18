@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
-    react(),
+    react({ fastRefresh: false }),
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "prompt",
