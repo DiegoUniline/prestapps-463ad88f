@@ -8,6 +8,8 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuthStore } from "@/stores/authStore";
 import { isSuperAdmin } from "@/components/SuperAdminGuard";
 import { supabase } from "@/integrations/supabase/client";
+import { usePermisos } from "@/hooks/usePermisos";
+import { routeToModule } from "@/lib/permissionMap";
 import {
   Sidebar,
   SidebarContent,
