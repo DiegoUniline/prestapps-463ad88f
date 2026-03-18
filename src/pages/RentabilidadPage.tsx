@@ -205,30 +205,52 @@ export default function RentabilidadPage() {
 
 function RentabilidadTable({ columns, rows }: { columns: string[]; rows: string[][] }) {
   return (
-    <Card>
-      <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map(col => (
-                <TableHead key={col} className={cn("text-xs", col !== columns[0] && "text-right")}>{col}</TableHead>
+    <>
+      {/* MOBILE Cards */}
+      <div className="md:hidden space-y-2">
+        {rows.length === 0 ? (
+          <p className="text-center py-8 text-muted-foreground text-[13px]">Sin datos</p>
+        ) : rows.map((row, i) => (
+          <div key={i} className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            <p className="font-semibold text-[13px] truncate mb-1.5">{row[0]}</p>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+              {columns.slice(1).map((col, j) => (
+                <div key={col} className="flex justify-between">
+                  <span className="text-muted-foreground">{col}</span>
+                  <span className="font-medium">{row[j + 1]}</span>
+                </div>
               ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row, i) => (
-              <TableRow key={i}>
-                {row.map((cell, j) => (
-                  <TableCell key={j} className={cn("text-sm", j > 0 && "text-right", j === 0 && "font-medium")}>{cell}</TableCell>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP Table */}
+      <Card className="hidden md:block">
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {columns.map(col => (
+                  <TableHead key={col} className={cn("text-xs", col !== columns[0] && "text-right")}>{col}</TableHead>
                 ))}
               </TableRow>
-            ))}
-            {rows.length === 0 && (
-              <TableRow><TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">Sin datos</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row, i) => (
+                <TableRow key={i}>
+                  {row.map((cell, j) => (
+                    <TableCell key={j} className={cn("text-sm", j > 0 && "text-right", j === 0 && "font-medium")}>{cell}</TableCell>
+                  ))}
+                </TableRow>
+              ))}
+              {rows.length === 0 && (
+                <TableRow><TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">Sin datos</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+    </>
   );
 }
