@@ -159,11 +159,18 @@ export default function LandingPage() {
             <a href="#precios" className="hover:text-foreground transition-colors">Precios</a>
             <a href="#contacto" className="hover:text-foreground transition-colors">Contacto</a>
           </div>
-          <Link to="/login">
-            <Button size="sm" className="font-semibold">
-              Iniciar Sesión <ArrowRight className="ml-1 h-4 w-4" />
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link to="/login">
+              <Button size="sm" variant="outline" className="font-semibold">
+                Iniciar Sesión
+              </Button>
+            </Link>
+            <Link to="/registro">
+              <Button size="sm" className="font-semibold">
+                Crear Cuenta Gratis <ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </nav>
 
