@@ -796,6 +796,7 @@ export default function PagosPage() {
           clientePhone={docPreview.pago.clientePhone || undefined}
           onWhatsApp={async (phone: string) => {
             const p = docPreview.pago!;
+            const caption = buildReceiptCaption(p);
             const result = await sendReceiptAsImage(
               empresaId,
               phone,
@@ -818,11 +819,23 @@ export default function PagosPage() {
                 cliente: { nombre: p.cliente },
                 prestamo: { folio: p.shortId, num_cuotas: p.numCuotas },
               },
-              `✅ *Comprobante de pago recibido*\n\n👤 *${p.cliente}*\n💰 Monto: *${$$(p.montoRecibido)}*\n📋 Préstamo: ${p.shortId}\n\n🙏 ¡Gracias por tu pago!`,
+              caption,
             );
             if (result.success) toast.success("Recibo enviado por WhatsApp");
             else toast.error("Error: " + (result.error || "desconocido"));
           }}
+        />
+      )}
+
+      {/* WhatsApp Preview Modal */}
+      {waPreview.pago && (
+        <WhatsAppPreviewModal
+          open={waPreview.open}
+          onOpenChange={(open) => setWaPreview({ open, pago: open ? waPreview.pago : null })}
+          phone={waPreview.pago.clientePhone || ""}
+          message={buildReceiptCaption(waPreview.pago)}
+          onSend={async (msg) => { await sendWhatsAppReceipt(waPreview.pago!, msg); }}
+          clienteName={waPreview.pago.cliente}
         />
       )}
     </div>

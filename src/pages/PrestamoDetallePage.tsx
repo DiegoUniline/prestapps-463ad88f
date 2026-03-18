@@ -27,6 +27,7 @@ import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
 
 // ── Badge colors ──────────────────────────────────────────────────
