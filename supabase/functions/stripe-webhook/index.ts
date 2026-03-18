@@ -267,3 +267,78 @@ serve(async (req) => {
     });
   }
 });
+
+// ── WhatsApp alert helper ──────────────────────────
+async function sendWhatsAppAlert(
+  supabase: any,
+  empresaId: string,
+  opts: { tipo: string; mensaje: string }
+) {
+  try {
+    // Get WhatsApp config
+    const { data: waConfig } = await supabase
+      .from("whatsapp_config")
+      .select("api_url, api_token, activo")
+      .eq("empresa_id", empresaId)
+      .single();
+
+    if (!waConfig?.activo) {
+      logStep("WhatsApp not active for empresa", { empresaId });
+      return;
+    }
+
+    // Get admin profiles for this empresa
+    const { data: admins } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+
+    if (!admins?.length) {
+      logStep("No admin users found");
+      return;
+    }
+
+    const adminIds = admins.map((a: any) => a.user_id);
+
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("telefono, nombre_completo")
+      .eq("empresa_id", empresaId)
+      .in("id", adminIds);
+
+    for (const profile of (profiles || [])) {
+      if (!profile.telefono) continue;
+
+      try {
+        const res = await fetch(waConfig.api_url, {
+          method: "POST",
+          headers: {
+            "x-api-token": waConfig.api_token,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "send-text",
+            phone: profile.telefono,
+            message: opts.mensaje,
+          }),
+        });
+        const data = await res.json();
+        logStep("WhatsApp alert sent", { phone: profile.telefono, success: res.ok });
+
+        // Log it
+        await supabase.from("whatsapp_log").insert({
+          empresa_id: empresaId,
+          telefono: profile.telefono,
+          tipo: "alerta_pago",
+          mensaje: opts.mensaje,
+          status: res.ok ? "enviado" : "error",
+          error_detalle: res.ok ? null : JSON.stringify(data),
+        });
+      } catch (e: any) {
+        logStep("WhatsApp send error", { error: e.message });
+      }
+    }
+  } catch (e: any) {
+    logStep("sendWhatsAppAlert error", { error: e.message });
+  }
+}
