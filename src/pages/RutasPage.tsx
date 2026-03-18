@@ -175,8 +175,8 @@ function RutaDetallePage() {
     try {
       if (isNew) {
         const { error } = await supabase.from("rutas").insert({
-          nombre: nombre.trim(),
-          descripcion: descripcion.trim() || null,
+          nombre: (nombre ?? "").trim(),
+          descripcion: (descripcion ?? "").trim() || null,
           cobrador_id: cobradorId === "__none__" ? null : (cobradorId || null),
           empresa_id: empresaId,
         });
