@@ -645,16 +645,18 @@ export default function MiSuscripcionPage() {
         )}
       </div>
 
-      {/* ── DIALOG: CAMBIAR PLAN / USUARIOS ────────────────── */}
+      {/* ── DIALOG: CARRITO — ELEGIR PLAN + USUARIOS ───────── */}
       <Dialog open={changeOpen} onOpenChange={setChangeOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingCart className="h-5 w-5 text-primary" />
-              Cambiar plan o usuarios
+              {hasActiveSub ? "Cambiar plan o usuarios" : "Configura tu plan"}
             </DialogTitle>
             <DialogDescription>
-              Selecciona el plan y cantidad de usuarios que necesitas
+              {hasActiveSub
+                ? "Selecciona el plan y cantidad de usuarios que necesitas"
+                : "Elige tu plan y la cantidad de usuarios. Se generará una factura para que realices el pago."}
             </DialogDescription>
           </DialogHeader>
 
@@ -673,7 +675,7 @@ export default function MiSuscripcionPage() {
                 <SelectContent>
                   {planes.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.nombre} — {$$(p.precio_base_mes)}/mes ({p.usuarios_incluidos} usuarios)
+                      {p.nombre} — {$$(p.precio_base_mes)}/mes ({p.usuarios_incluidos} usuarios incl.)
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -688,8 +690,8 @@ export default function MiSuscripcionPage() {
                   variant="outline"
                   size="icon"
                   className="h-9 w-9"
-                  disabled={!selectedPlan || numUsuarios <= 1}
-                  onClick={() => setNumUsuarios(Math.max(1, numUsuarios - 1))}
+                  disabled={!selectedPlan || numUsuarios <= (selectedPlan?.usuarios_incluidos || 1)}
+                  onClick={() => setNumUsuarios(Math.max(selectedPlan?.usuarios_incluidos || 1, numUsuarios - 1))}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
@@ -709,7 +711,7 @@ export default function MiSuscripcionPage() {
                 )}
                 {selectedPlan && numUsuarios > selectedPlan.usuarios_incluidos && (
                   <span className="text-xs text-primary font-medium">
-                    {numUsuarios - selectedPlan.usuarios_incluidos} extra(s)
+                    +{numUsuarios - selectedPlan.usuarios_incluidos} extra(s) × {$$(selectedPlan.precio_usuario_extra)}
                   </span>
                 )}
               </div>
@@ -718,8 +720,11 @@ export default function MiSuscripcionPage() {
             {/* Cost breakdown */}
             {costCalc && selectedPlan && (
               <div className="bg-secondary rounded-lg p-4 space-y-2 text-sm">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  Resumen de tu pedido
+                </p>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Plan {selectedPlan.nombre}</span>
+                  <span className="text-muted-foreground">Plan {selectedPlan.nombre} (base)</span>
                   <span>{$$(selectedPlan.precio_base_mes)}</span>
                 </div>
                 {costCalc.extraUsers > 0 && (
@@ -731,10 +736,24 @@ export default function MiSuscripcionPage() {
                   </div>
                 )}
                 <Separator />
-                <div className="flex justify-between font-bold text-base">
-                  <span>Total mensual</span>
-                  <span className="text-primary">{$$(costCalc.total)}</span>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Costo mensual completo</span>
+                  <span className="font-semibold">{$$(costCalc.total)}/mes</span>
                 </div>
+
+                {/* Proration note */}
+                {!hasActiveSub && (
+                  <>
+                    <Separator />
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <CalendarDays className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+                      <span>
+                        Se generará una factura {new Date().getDate() !== 1 ? "prorrateada por los días restantes del mes" : "por el mes completo"}.
+                        La facturación regular se ancla al día 1 de cada mes.
+                      </span>
+                    </div>
+                  </>
+                )}
 
                 {/* Difference vs current */}
                 {hasActiveSub && currentCost > 0 && (
@@ -752,16 +771,6 @@ export default function MiSuscripcionPage() {
                 )}
               </div>
             )}
-
-            {hasActiveSub && (
-              <div className="flex items-start gap-2 text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>
-                  Al cambiar de plan se generará un prorrateo automático. Solo pagarás la diferencia proporcional
-                  a los días restantes del ciclo actual.
-                </span>
-              </div>
-            )}
           </div>
 
           <DialogFooter>
@@ -769,15 +778,47 @@ export default function MiSuscripcionPage() {
               Cancelar
             </Button>
             <Button
-              onClick={() => {
-                handleCheckout(selectedPlanId, numUsuarios);
-                setChangeOpen(false);
+              onClick={async () => {
+                if (hasActiveSub) {
+                  // Existing subscriber → Stripe checkout for plan change
+                  handleCheckout(selectedPlanId, numUsuarios);
+                  setChangeOpen(false);
+                } else {
+                  // New subscriber → select-plan generates invoice
+                  setSelectPlanLoading(true);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("select-plan", {
+                      body: { plan_id: selectedPlanId, num_usuarios: numUsuarios },
+                    });
+                    if (error) throw error;
+                    if (data?.error) throw new Error(data.error);
+                    toast.success(
+                      `Plan ${data.plan_nombre} seleccionado. Factura ${data.factura.es_prorrateo ? "prorrateada" : "mensual"} por ${$$(data.factura.total)} generada.`,
+                      { duration: 6000 }
+                    );
+                    setChangeOpen(false);
+                    refetch();
+                  } catch (err: any) {
+                    toast.error(err.message || "Error al seleccionar plan");
+                  } finally {
+                    setSelectPlanLoading(false);
+                  }
+                }
               }}
-              disabled={!selectedPlanId || checkoutLoading !== null}
+              disabled={!selectedPlanId || selectPlanLoading || checkoutLoading !== null}
               className="gap-2"
             >
-              <CreditCard className="h-4 w-4" />
-              {hasActiveSub ? "Cambiar y pagar" : "Contratar"}
+              {selectPlanLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+              ) : (
+                <Receipt className="h-4 w-4" />
+              )}
+              {selectPlanLoading
+                ? "Generando factura..."
+                : hasActiveSub
+                  ? "Cambiar y pagar"
+                  : "Generar factura"
+              }
             </Button>
           </DialogFooter>
         </DialogContent>
