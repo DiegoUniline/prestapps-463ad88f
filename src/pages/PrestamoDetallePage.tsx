@@ -390,9 +390,20 @@ export default function PrestamoDetallePage() {
     return generarReciboPagos(pdfPrestamo, pdfPagos);
   };
 
-  const handleSendReceiptWA = async (pg: any, i: number) => {
+  const buildReceiptCaption = (pg: any, i: number) => {
+    const cuotaMatch = amort.find(c => c.id === pg.cuota_id);
+    return `✅ *Comprobante de pago recibido*\n\n👤 *${cliente?.nombre_completo}*\n💰 Monto: *${$$(Number(pg.monto_recibido))}*\n📋 Préstamo: ${folioId}\n📅 Cuota ${cuotaMatch?.num_cuota || (i + 1)} de ${prestamo.num_cuotas}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`;
+  };
+
+  const handleSendReceiptWA = (pg: any, i: number) => {
     const telefono = cliente?.telefono;
     if (!telefono) { toast.error("Cliente sin teléfono"); return; }
+    setWaPreview({ open: true, pg, idx: i });
+  };
+
+  const doSendReceiptWA = async (pg: any, i: number, caption: string) => {
+    const telefono = cliente?.telefono;
+    if (!telefono) return;
     const cuotaMatch = amort.find(c => c.id === pg.cuota_id);
     const result = await sendReceiptAsImage(
       empresaId,
@@ -416,10 +427,10 @@ export default function PrestamoDetallePage() {
           direccion: (empresaData as any)?.direccion || undefined,
           logo_url: empresaData?.logo_url || null,
         },
-        cliente: { nombre: cliente.nombre_completo },
+        cliente: { nombre: cliente?.nombre_completo || "Cliente" },
         prestamo: { folio: folioId, num_cuotas: prestamo.num_cuotas },
       },
-      `✅ *Comprobante de pago recibido*\n\n👤 *${cliente.nombre_completo}*\n💰 Monto: *${$$(Number(pg.monto_recibido))}*\n📋 Préstamo: ${folioId}\n📅 Cuota ${cuotaMatch?.num_cuota || (i + 1)} de ${prestamo.num_cuotas}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`,
+      caption,
     );
     if (result.success) {
       toast.success("Recibo enviado por WhatsApp");
