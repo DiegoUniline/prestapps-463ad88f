@@ -245,6 +245,34 @@ function DatosGeneralesTab() {
             )}
           </div>
           <div className="space-y-2">
+            <Label className="flex items-center gap-1.5"><Coins className="h-4 w-4 text-primary" /> Moneda</Label>
+            <p className="text-xs text-muted-foreground">Se usará en todo el sistema: reportes, tickets, contratos y pantallas</p>
+            {editing ? (
+              <Select
+                value={form.moneda_codigo}
+                onValueChange={(val) => {
+                  const m = MONEDAS.find((m) => m.codigo === val);
+                  if (m) setForm({ ...form, moneda_codigo: m.codigo, moneda_simbolo: m.simbolo });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONEDAS.map((m) => (
+                    <SelectItem key={m.codigo} value={m.codigo}>
+                      <span className="font-semibold mr-1">{m.simbolo}</span> {m.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">
+                {form.moneda_simbolo} — {MONEDAS.find((m) => m.codigo === form.moneda_codigo)?.nombre || form.moneda_codigo}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
             <Label>Días de gracia para mora</Label>
             <p className="text-xs text-muted-foreground">Número de días después del vencimiento antes de marcar como "Vencido"</p>
             {editing ? (
