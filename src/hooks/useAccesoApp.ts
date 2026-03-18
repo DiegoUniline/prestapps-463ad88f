@@ -90,8 +90,10 @@ export function useAccesoApp() {
   // Show banner for: trial (countdown), gracia, suspendida, trial_expirado
   const showBanner = estado === "trial" || estado === "gracia" || estado === "suspendida" || estado === "trial_expirado";
 
-  // Block access for: suspendida, cancelada, sin_suscripcion, trial_expirado
-  const blocked = estado === "suspendida" || estado === "cancelada" || estado === "sin_suscripcion" || estado === "trial_expirado";
+  // Block access for: suspendida, cancelada, sin_suscripcion
+  // trial_expirado: only block if grace period is over (dias_gracia_restantes === 0)
+  const trialGraceOver = estado === "trial_expirado" && (data?.dias_gracia_restantes === 0 || data?.dias_gracia_restantes === null);
+  const blocked = estado === "suspendida" || estado === "cancelada" || estado === "sin_suscripcion" || trialGraceOver;
 
   return {
     subscribed,
