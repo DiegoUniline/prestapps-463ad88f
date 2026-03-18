@@ -132,6 +132,31 @@ export function MobileMenuSheet({ role }: { role: string }) {
                 </div>
               </div>
             ))}
+
+            {/* Sync / force update button */}
+            <div className="border-t pt-4 mt-2">
+              <button
+                onClick={async () => {
+                  setOpen(false);
+                  // Clear all caches (service worker, browser cache)
+                  if ("caches" in window) {
+                    const names = await caches.keys();
+                    await Promise.all(names.map((n) => caches.delete(n)));
+                  }
+                  // Unregister service workers
+                  if ("serviceWorker" in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map((r) => r.unregister()));
+                  }
+                  // Hard reload
+                  window.location.reload();
+                }}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <RefreshCw className="h-4 w-4 shrink-0" />
+                <span>Sincronizar cambios</span>
+              </button>
+            </div>
           </div>
         </ScrollArea>
       </SheetContent>
