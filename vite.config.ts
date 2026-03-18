@@ -11,6 +11,14 @@ export default {
   resolve: {
     alias: {
       "@": new URL("./src", import.meta.url).pathname,
+      "@tanstack/react-query": new URL(
+        "./node_modules/@tanstack/react-query",
+        import.meta.url,
+      ).pathname,
+      "@tanstack/query-core": new URL(
+        "./node_modules/@tanstack/query-core",
+        import.meta.url,
+      ).pathname,
     },
   },
   build: {
