@@ -508,6 +508,18 @@ export default function CrmCobranzaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* WhatsApp Preview Modal */}
+      {waPreview.prestamo && (
+        <WhatsAppPreviewModal
+          open={waPreview.open}
+          onOpenChange={(open) => setWaPreview({ open, prestamo: open ? waPreview.prestamo : null })}
+          phone={waPreview.prestamo.cliente.telefono || ""}
+          message={buildWhatsAppMessage(waPreview.prestamo)}
+          onSend={sendWhatsAppCobranza}
+          clienteName={waPreview.prestamo.cliente.nombre_completo}
+        />
+      )}
     </div>
   );
 }
