@@ -36,6 +36,10 @@ export function invalidateFinanceQueries(
   queryClient.invalidateQueries({ queryKey: ["pagos-all"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["cobros-diarios"], refetchType: "all" });
 
+  // Dashboard & prestamos list
+  queryClient.invalidateQueries({ queryKey: ["dashboard"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["prestamos-list-v2"], refetchType: "all" });
+
   // Per-prestamo if provided
   if (opts?.prestamoId) {
     queryClient.invalidateQueries({ queryKey: ["amortizacion", opts.prestamoId], refetchType: "all" });
