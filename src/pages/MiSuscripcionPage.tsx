@@ -785,7 +785,7 @@ export default function MiSuscripcionPage() {
                   handleCheckout(selectedPlanId, numUsuarios);
                   setChangeOpen(false);
                 } else {
-                  // New subscriber → select-plan generates invoice
+                  // New subscriber → select-plan generates invoice, then redirect to Stripe
                   setSelectPlanLoading(true);
                   try {
                     const { data, error } = await supabase.functions.invoke("select-plan", {
@@ -794,11 +794,22 @@ export default function MiSuscripcionPage() {
                     if (error) throw error;
                     if (data?.error) throw new Error(data.error);
                     toast.success(
-                      `Plan ${data.plan_nombre} seleccionado. Factura ${data.factura.es_prorrateo ? "prorrateada" : "mensual"} por ${$$(data.factura.total)} generada.`,
-                      { duration: 6000 }
+                      `Factura por ${$$(data.factura.total)} generada. Redirigiendo a pago...`,
+                      { duration: 4000 }
                     );
+                    // Invalidate queries so facturas and subscription show immediately
+                    queryClient.invalidateQueries({ queryKey: ["mis-facturas"] });
+                    queryClient.invalidateQueries({ queryKey: ["subscription-status"] });
                     setChangeOpen(false);
-                    refetch();
+
+                    // Now redirect to Stripe checkout
+                    const { data: checkoutData, error: checkoutErr } = await supabase.functions.invoke("create-checkout", {
+                      body: { plan_id: selectedPlanId, num_usuarios: numUsuarios },
+                    });
+                    if (checkoutErr) throw checkoutErr;
+                    if (checkoutData?.url) {
+                      window.open(checkoutData.url, "_blank");
+                    }
                   } catch (err: any) {
                     toast.error(err.message || "Error al seleccionar plan");
                   } finally {
