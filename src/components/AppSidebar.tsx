@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import logoIcon from "@/assets/logo-icon.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole, type AppRole } from "@/hooks/useCurrentUserRole";
+import { usePermisosRead, type PermisoModule } from "@/hooks/usePermisos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuthStore } from "@/stores/authStore";
 import { isSuperAdmin } from "@/components/SuperAdminGuard";
