@@ -193,10 +193,11 @@ Deno.serve(async (req) => {
 
         const message = replaceVariables(template.mensaje, vars);
 
+        const normalizedPhone = normalizePhone(cliente.telefono, ladaPais);
         try {
           const result = await sendWhatsApp(config.api_url, config.api_token, {
             action: "send-text",
-            phone: cliente.telefono,
+            phone: normalizedPhone,
             message,
           });
 
