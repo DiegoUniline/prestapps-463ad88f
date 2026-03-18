@@ -92,7 +92,7 @@ export function QuickCreateDialog({ entityType, open, onOpenChange, onCreated }:
       const insertData: Record<string, any> = { empresa_id: empresaId };
       for (const field of config.fields) {
         if (values[field.key]?.trim()) {
-          insertData[field.key] = values[field.key].trim();
+          insertData[field.key] = (values[field.key] ?? "").trim();
         }
       }
 

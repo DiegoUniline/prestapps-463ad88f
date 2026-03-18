@@ -197,9 +197,9 @@ function UsuarioDetallePage() {
     setSaving(true);
     try {
       const payload = {
-        nombre_completo: nombre.trim(),
-        telefono: telefono.trim() || null,
-        direccion: direccion.trim() || null,
+        nombre_completo: (nombre ?? "").trim(),
+        telefono: (telefono ?? "").trim() || null,
+        direccion: (direccion ?? "").trim() || null,
         rol,
         porcentaje_comision: parseFloat(comision) || 0,
         activo,

@@ -54,7 +54,7 @@ export default function RegisterPage() {
 
       // Auto-login
       const { error: loginError } = await supabase.auth.signInWithPassword({
-        email: form.email.trim().toLowerCase(),
+        email: (form.email ?? "").trim().toLowerCase(),
         password: form.password,
       });
 

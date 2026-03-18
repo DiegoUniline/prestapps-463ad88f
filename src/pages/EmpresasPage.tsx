@@ -188,9 +188,9 @@ export default function EmpresasPage() {
         const { data: result, error: fnError } = await supabase.functions.invoke("manage-users", {
           body: {
             action: "create",
-            email: form.adminEmail.trim(),
+            email: (form.adminEmail ?? "").trim(),
             password: form.adminPassword,
-            nombre_completo: form.adminNombre.trim(),
+            nombre_completo: (form.adminNombre ?? "").trim(),
             telefono: form.adminTelefono || null,
             rol: "Admin",
             activo: true,
