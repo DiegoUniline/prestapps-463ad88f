@@ -94,10 +94,38 @@ export default function MiSuscripcionPage() {
       refetch();
       window.history.replaceState({}, "", "/mi-suscripcion");
     } else if (params.get("checkout") === "cancel") {
-      toast.info("Proceso de pago cancelado");
+      toast.error("El pago no se completó. Intenta de nuevo o usa otro método de pago.", {
+        duration: 8000,
+      });
+      // Send WhatsApp notification about cancelled/failed checkout
+      notifyPaymentIssue("cancelado");
       window.history.replaceState({}, "", "/mi-suscripcion");
     }
   }, [refetch]);
+
+  const notifyPaymentIssue = async (tipo: string) => {
+    try {
+      const empresaId = subData?.empresa_id || storeEmpresaId;
+      if (!empresaId) return;
+      // Get admin phone from profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("telefono")
+        .eq("empresa_id", empresaId)
+        .eq("id", user?.id || "")
+        .single();
+      if (!profile?.telefono) return;
+      await supabase.functions.invoke("whatsapp-sender", {
+        body: {
+          action: "send-text",
+          empresa_id: empresaId,
+          phone: profile.telefono,
+          message: `⚠️ *Alerta de Suscripción*\n\nEl proceso de pago fue ${tipo}. Por favor intenta nuevamente desde Mi Suscripción o usa un método de pago diferente.`,
+          tipo: "alerta_pago",
+        },
+      });
+    } catch { /* silent */ }
+  };
 
   const { data: planes = [] } = useQuery({
     queryKey: ["planes-disponibles"],

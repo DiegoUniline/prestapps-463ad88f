@@ -208,6 +208,49 @@ serve(async (req) => {
         break;
       }
 
+      // ── Charge failed — notify admin via WhatsApp ──
+      case "charge.failed": {
+        const charge = event.data.object as Stripe.Charge;
+        const customerEmail = charge.billing_details?.email || charge.receipt_email || "desconocido";
+        const amount = ((charge.amount || 0) / 100).toFixed(2);
+        const currency = (charge.currency || "mxn").toUpperCase();
+        const failureMessage = charge.failure_message || "Error desconocido";
+        const failureCode = charge.failure_code || "N/A";
+
+        logStep("Charge failed", { customerEmail, amount, failureCode, failureMessage });
+
+        // Find empresa by stripe customer
+        const customerId = charge.customer as string;
+        if (customerId) {
+          const { data: suscripcionData } = await supabase
+            .from("suscripciones")
+            .select("empresa_id")
+            .eq("stripe_customer_id", customerId)
+            .single();
+
+          if (suscripcionData?.empresa_id) {
+            await sendWhatsAppAlert(supabase, suscripcionData.empresa_id, {
+              tipo: "pago_fallido",
+              mensaje: `⚠️ *Pago fallido en Stripe*\n\n` +
+                `💳 Tarjeta: ${charge.payment_method_details?.card?.brand || "?"} ****${charge.payment_method_details?.card?.last4 || "????"}\n` +
+                `💰 Monto: $${amount} ${currency}\n` +
+                `❌ Error: ${failureMessage}\n` +
+                `📧 Cliente: ${customerEmail}\n\n` +
+                `Por favor intenta con otro método de pago o contacta a tu banco.`,
+            });
+          }
+        }
+        break;
+      }
+
+      // ── Payment intent failed ──
+      case "payment_intent.payment_failed": {
+        const pi = event.data.object as Stripe.PaymentIntent;
+        logStep("Payment intent failed", { id: pi.id, status: pi.status });
+        // Already handled by charge.failed above
+        break;
+      }
+
       default:
         logStep("Unhandled event type", { type: event.type });
     }
@@ -224,3 +267,78 @@ serve(async (req) => {
     });
   }
 });
+
+// ── WhatsApp alert helper ──────────────────────────
+async function sendWhatsAppAlert(
+  supabase: any,
+  empresaId: string,
+  opts: { tipo: string; mensaje: string }
+) {
+  try {
+    // Get WhatsApp config
+    const { data: waConfig } = await supabase
+      .from("whatsapp_config")
+      .select("api_url, api_token, activo")
+      .eq("empresa_id", empresaId)
+      .single();
+
+    if (!waConfig?.activo) {
+      logStep("WhatsApp not active for empresa", { empresaId });
+      return;
+    }
+
+    // Get admin profiles for this empresa
+    const { data: admins } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+
+    if (!admins?.length) {
+      logStep("No admin users found");
+      return;
+    }
+
+    const adminIds = admins.map((a: any) => a.user_id);
+
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("telefono, nombre_completo")
+      .eq("empresa_id", empresaId)
+      .in("id", adminIds);
+
+    for (const profile of (profiles || [])) {
+      if (!profile.telefono) continue;
+
+      try {
+        const res = await fetch(waConfig.api_url, {
+          method: "POST",
+          headers: {
+            "x-api-token": waConfig.api_token,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "send-text",
+            phone: profile.telefono,
+            message: opts.mensaje,
+          }),
+        });
+        const data = await res.json();
+        logStep("WhatsApp alert sent", { phone: profile.telefono, success: res.ok });
+
+        // Log it
+        await supabase.from("whatsapp_log").insert({
+          empresa_id: empresaId,
+          telefono: profile.telefono,
+          tipo: "alerta_pago",
+          mensaje: opts.mensaje,
+          status: res.ok ? "enviado" : "error",
+          error_detalle: res.ok ? null : JSON.stringify(data),
+        });
+      } catch (e: any) {
+        logStep("WhatsApp send error", { error: e.message });
+      }
+    }
+  } catch (e: any) {
+    logStep("sendWhatsAppAlert error", { error: e.message });
+  }
+}
