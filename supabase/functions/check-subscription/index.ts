@@ -78,24 +78,47 @@ serve(async (req) => {
 
     logStep("Subscription found", { id: suscripcion.id, estado: suscripcion.estado, es_manual: suscripcion.es_manual });
 
-    // For manual subscriptions, check fecha_vencimiento
-    if (suscripcion.es_manual) {
-      const vencida = suscripcion.fecha_vencimiento && new Date(suscripcion.fecha_vencimiento) < new Date();
-      const estado = vencida ? "suspendida" : suscripcion.estado;
+    // For manual/trial subscriptions, check fecha_vencimiento
+    if (suscripcion.es_manual || suscripcion.estado === "trial") {
+      let estado = suscripcion.estado;
+      let diasTrialRestantes: number | null = null;
+      let diasGraciaRestantes: number | null = null;
+
+      if (suscripcion.estado === "trial" && suscripcion.fecha_vencimiento) {
+        const vencimiento = new Date(suscripcion.fecha_vencimiento);
+        const now = new Date();
+        const diffMs = vencimiento.getTime() - now.getTime();
+        diasTrialRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+        if (diasTrialRestantes <= 0) {
+          // Trial expired → needs to choose plan
+          estado = "trial_expirado";
+        }
+      } else if (suscripcion.estado !== "trial") {
+        const vencida = suscripcion.fecha_vencimiento && new Date(suscripcion.fecha_vencimiento) < new Date();
+        if (vencida) estado = "suspendida";
+      }
+
+      if (estado === "gracia" && suscripcion.actualizado_en) {
+        const graciaStart = new Date(suscripcion.actualizado_en);
+        const daysSince = Math.floor((new Date().getTime() - graciaStart.getTime()) / (1000 * 60 * 60 * 24));
+        diasGraciaRestantes = Math.max(0, DIAS_GRACIA - daysSince);
+      }
 
       return new Response(JSON.stringify({
         subscribed: estado === "activa" || estado === "trial",
         estado,
         suscripcion_id: suscripcion.id,
-        plan_nombre: suscripcion.planes?.nombre || "Manual",
+        plan_nombre: suscripcion.planes?.nombre || (estado === "trial" || estado === "trial_expirado" ? "Prueba Gratuita" : "Manual"),
         num_usuarios: suscripcion.num_usuarios,
         fecha_vencimiento: suscripcion.fecha_vencimiento,
         fecha_proximo_cobro: suscripcion.fecha_proximo_cobro,
-        es_manual: true,
+        es_manual: suscripcion.es_manual,
         empresa_id: empresaId,
         card_brand: null,
         card_last4: null,
-        dias_gracia_restantes: null,
+        dias_gracia_restantes: diasGraciaRestantes,
+        dias_trial_restantes: diasTrialRestantes,
         factura_pendiente: null,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

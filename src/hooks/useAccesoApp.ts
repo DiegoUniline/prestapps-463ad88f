@@ -21,6 +21,7 @@ export interface SubscriptionStatus {
   card_last4?: string | null;
   stripe_customer_id?: string;
   dias_gracia_restantes?: number | null;
+  dias_trial_restantes?: number | null;
   factura_pendiente?: {
     id: string;
     numero_factura: string;
@@ -36,8 +37,6 @@ export function useAccesoApp() {
   const isSuperAdmin = user?.email === "diego.leon@uniline.mx";
   const empresaId = useEmpresaStore((s) => s.empresaId);
 
-  // SuperAdmin viewing their own context (no empresa selected or default)
-  // still needs to query if they switched to another empresa
   const isViewingOtherEmpresa = isSuperAdmin && !!empresaId;
 
   const { data, isLoading, refetch } = useQuery<SubscriptionStatus>({
@@ -52,7 +51,7 @@ export function useAccesoApp() {
     staleTime: 30_000,
   });
 
-  // SuperAdmin without empresa context — full access, no subscription needed
+  // SuperAdmin without empresa context — full access
   if (isSuperAdmin && !isViewingOtherEmpresa) {
     return {
       subscribed: true,
@@ -63,11 +62,12 @@ export function useAccesoApp() {
       showBanner: false,
       blocked: false,
       diasGraciaRestantes: null as number | null,
+      diasTrialRestantes: null as number | null,
       facturaPendiente: null as SubscriptionStatus["factura_pendiente"],
     };
   }
 
-  // SuperAdmin viewing another empresa — show their real subscription but never block
+  // SuperAdmin viewing another empresa — show real state, never block
   if (isSuperAdmin && isViewingOtherEmpresa) {
     const estado = data?.estado || "sin_suscripcion";
     return {
@@ -77,16 +77,21 @@ export function useAccesoApp() {
       data: data || null,
       refetch,
       showBanner: false,
-      blocked: false, // never block superadmin
+      blocked: false,
       diasGraciaRestantes: data?.dias_gracia_restantes ?? null,
+      diasTrialRestantes: data?.dias_trial_restantes ?? null,
       facturaPendiente: data?.factura_pendiente ?? null,
     };
   }
 
   const estado = data?.estado || "sin_suscripcion";
   const subscribed = data?.subscribed || false;
-  const showBanner = estado === "gracia" || estado === "suspendida";
-  const blocked = estado === "suspendida" || estado === "cancelada" || estado === "sin_suscripcion";
+
+  // Show banner for: trial (countdown), gracia, suspendida, trial_expirado
+  const showBanner = estado === "trial" || estado === "gracia" || estado === "suspendida" || estado === "trial_expirado";
+
+  // Block access for: suspendida, cancelada, sin_suscripcion, trial_expirado
+  const blocked = estado === "suspendida" || estado === "cancelada" || estado === "sin_suscripcion" || estado === "trial_expirado";
 
   return {
     subscribed,
@@ -97,6 +102,7 @@ export function useAccesoApp() {
     showBanner,
     blocked,
     diasGraciaRestantes: data?.dias_gracia_restantes ?? null,
+    diasTrialRestantes: data?.dias_trial_restantes ?? null,
     facturaPendiente: data?.factura_pendiente ?? null,
   };
 }
