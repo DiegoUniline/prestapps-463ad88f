@@ -309,6 +309,12 @@ serve(async (req) => {
         logStep("Unhandled event type", { type: event.type });
     }
 
+    // ── Handle Connect account events (tenant's customer charges) ──
+    const connectedAccountId = (event as any).account as string | undefined;
+    if (connectedAccountId) {
+      await handleConnectEvent(supabase, event, connectedAccountId);
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -321,6 +327,132 @@ serve(async (req) => {
     });
   }
 });
+
+// ── Handle Stripe Connect events (tenant customer charges) ──
+async function handleConnectEvent(
+  supabase: any,
+  event: Stripe.Event,
+  stripeAccountId: string,
+) {
+  // Only handle payment events from connected accounts
+  if (!["payment_intent.succeeded", "payment_intent.payment_failed"].includes(event.type)) return;
+
+  const pi = event.data.object as Stripe.PaymentIntent;
+  const meta = pi.metadata || {};
+  const empresaId = meta.empresa_id;
+  const clienteId = meta.cliente_id;
+  const prestamoId = meta.prestamo_id;
+  const cuotaId = meta.cuota_id;
+
+  if (!empresaId || !clienteId) {
+    logStep("Connect event missing metadata", { type: event.type, stripeAccountId });
+    return;
+  }
+
+  logStep("Connect event", { type: event.type, empresaId, clienteId, prestamoId });
+
+  // Get empresa info (lada + name)
+  const { data: empresa } = await supabase
+    .from("empresas")
+    .select("nombre, lada_pais")
+    .eq("id", empresaId)
+    .single();
+  const ladaEmpresa = empresa?.lada_pais || "52";
+  const empresaNombre = empresa?.nombre || "la empresa";
+
+  // Get client info
+  const { data: cliente } = await supabase
+    .from("clientes")
+    .select("nombre_completo, telefono, lada_pais")
+    .eq("id", clienteId)
+    .single();
+
+  if (!cliente?.telefono) {
+    logStep("Client has no phone, skipping WhatsApp", { clienteId });
+    return;
+  }
+
+  // Use client's lada override, or fall back to empresa lada
+  const ladaCliente = cliente.lada_pais || ladaEmpresa;
+
+  // Get WhatsApp config for this empresa
+  const { data: waConfig } = await supabase
+    .from("whatsapp_config")
+    .select("api_url, api_token, activo")
+    .eq("empresa_id", empresaId)
+    .single();
+
+  if (!waConfig?.activo) {
+    logStep("WhatsApp not active for empresa", { empresaId });
+    return;
+  }
+
+  // Get payment method info for display
+  const { data: pm } = await supabase
+    .from("stripe_payment_methods")
+    .select("brand, last4")
+    .eq("empresa_id", empresaId)
+    .eq("cliente_id", clienteId)
+    .eq("activo", true)
+    .maybeSingle();
+
+  const cardInfo = pm ? `${(pm.brand || "Tarjeta").toUpperCase()} ****${pm.last4 || "????"}` : "tarjeta registrada";
+  const monto = ((pi.amount || 0) / 100).toFixed(2);
+  const moneda = (pi.currency || "usd").toUpperCase();
+  const cuotaLabel = cuotaId ? ` de la cuota` : "";
+  const prestamoLabel = prestamoId ? ` del préstamo PRE-${prestamoId.slice(0, 8)}` : "";
+
+  let mensaje = "";
+
+  if (event.type === "payment_intent.succeeded") {
+    mensaje = `✅ *Pago procesado exitosamente*\n\n` +
+      `Hola ${cliente.nombre_completo}, le confirmamos que se ha procesado su pago${cuotaLabel}${prestamoLabel}.\n\n` +
+      `💰 *Monto:* $${monto} ${moneda}\n` +
+      `💳 *Tarjeta:* ${cardInfo}\n` +
+      `🏢 *Empresa:* ${empresaNombre}\n\n` +
+      `Gracias por su pago puntual. 🙏`;
+  } else {
+    const lastError = (pi as any).last_payment_error;
+    const errorMsg = lastError?.message || "Error al procesar el pago";
+    const friendlyError = getReadableError(lastError?.code || "", errorMsg);
+
+    mensaje = `⚠️ *No pudimos procesar su pago*\n\n` +
+      `Hola ${cliente.nombre_completo}, le informamos que no se pudo procesar su cobro${cuotaLabel}${prestamoLabel}.\n\n` +
+      `💰 *Monto:* $${monto} ${moneda}\n` +
+      `💳 *Tarjeta:* ${cardInfo}\n` +
+      `❌ *Motivo:* ${friendlyError}\n` +
+      `🏢 *Empresa:* ${empresaNombre}\n\n` +
+      `Por favor verifique su método de pago o comuníquese con ${empresaNombre} para más información. 📞`;
+  }
+
+  // Send WhatsApp to client using correct lada
+  const phoneCandidates = getPhoneCandidates(cliente.telefono, ladaCliente);
+
+  const result = await sendWhatsAppWithFallback(
+    waConfig.api_url,
+    waConfig.api_token,
+    mensaje,
+    phoneCandidates,
+  );
+
+  logStep("Connect WhatsApp to client", {
+    type: event.type,
+    clienteId,
+    phoneUsed: result.phoneUsed,
+    success: result.success,
+    ladaUsed: ladaCliente,
+  });
+
+  // Log
+  await supabase.from("whatsapp_log").insert({
+    empresa_id: empresaId,
+    telefono: result.phoneUsed || cliente.telefono,
+    tipo: event.type === "payment_intent.succeeded" ? "cobro_exitoso_cliente" : "cobro_fallido_cliente",
+    mensaje,
+    status: result.success ? "enviado" : "error",
+    error_detalle: result.success ? null : JSON.stringify(result.error || null),
+  }).catch(() => {});
+}
 
 // ── WhatsApp alert helper ──────────────────────────
 function normalizePhone(phone: string): string {
