@@ -155,15 +155,22 @@ export function AppSidebar() {
   const userEmail = useAuthStore((s) => s.user?.email);
   const superAdmin = isSuperAdmin(userEmail);
 
-  const visibleModules = modules
+  const visibleModules = useMemo(() => modules
     .map((mod) => ({
       ...mod,
-      items: loading ? mod.items : mod.items.filter((item) => {
+      items: (loading || permLoading) ? [] : mod.items.filter((item) => {
         if (item.superAdminOnly && !superAdmin) return false;
-        return item.roles.includes(role);
+        if (!item.roles.includes(role)) return false;
+        // Check granular permission if permModule is defined
+        if (item.permModule) {
+          return isAllowed(role, item.permModule, "ver");
+        }
+        return true;
       }),
     }))
-    .filter((mod) => mod.items.length > 0);
+    .filter((mod) => mod.items.length > 0),
+    [loading, permLoading, role, superAdmin, isAllowed]
+  );
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
