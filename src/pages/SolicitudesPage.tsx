@@ -281,68 +281,108 @@ export default function SolicitudesPage() {
           ) : filtered.length === 0 ? (
             <EmptyState icon={FileInput} title="No hay solicitudes" description="Las solicitudes de préstamo aparecerán aquí" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
-                  <TableHead className="text-center">Cuotas</TableHead>
-                  <TableHead>Frecuencia</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* MOBILE Cards */}
+              <div className="md:hidden space-y-3">
                 {filtered.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium text-sm">
-                      {s.clientes?.nombre_completo || "—"}
-                      <br />
-                      <span className="text-xs text-muted-foreground">{s.clientes?.id_cliente}</span>
-                    </TableCell>
-                    <TableCell className="text-right text-sm">{$$(Number(s.monto_solicitado))}</TableCell>
-                    <TableCell className="text-center text-sm">{s.num_cuotas}</TableCell>
-                    <TableCell className="text-sm capitalize">{s.frecuencia}</TableCell>
-                    <TableCell className="text-sm">{s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={s.status} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailSol(s)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {s.status === "Pendiente" && canApprove && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-green-600 hover:text-green-700"
-                              onClick={() => setApproveTarget(s)}
-                              disabled={approveMutation.isPending}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive"
-                              onClick={() => { setRejectId(s.id); setMotivo(""); }}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </>
-                        )}
-                        {s.status === "Pendiente" && !canApprove && (
-                          <span className="text-xs text-muted-foreground italic">Solo lectura</span>
-                        )}
+                  <div key={s.id} className="border rounded-lg p-3">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[13px] truncate">{s.clientes?.nombre_completo || "—"}</p>
+                        <p className="text-[11px] text-muted-foreground">{s.clientes?.id_cliente} · {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</p>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                      <StatusBadge status={s.status} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-2 text-[11px]">
+                      <div><span className="text-muted-foreground">Monto</span><p className="font-semibold">{$$(Number(s.monto_solicitado))}</p></div>
+                      <div><span className="text-muted-foreground">Cuotas</span><p className="font-medium">{s.num_cuotas}</p></div>
+                      <div><span className="text-muted-foreground">Frecuencia</span><p className="font-medium capitalize">{s.frecuencia}</p></div>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/50">
+                      <Button variant="ghost" size="sm" className="h-7 text-[11px] flex-1" onClick={() => setDetailSol(s)}>
+                        <Eye className="h-3 w-3 mr-1" />Ver
+                      </Button>
+                      {s.status === "Pendiente" && canApprove && (
+                        <>
+                          <Button variant="ghost" size="sm" className="h-7 text-[11px] text-success" onClick={() => setApproveTarget(s)} disabled={approveMutation.isPending}>
+                            <Check className="h-3 w-3 mr-1" />Aprobar
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-[11px] text-destructive" onClick={() => { setRejectId(s.id); setMotivo(""); }}>
+                            <X className="h-3 w-3 mr-1" />Rechazar
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* DESKTOP Table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
+                      <TableHead className="text-center">Cuotas</TableHead>
+                      <TableHead>Frecuencia</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((s) => (
+                      <TableRow key={s.id}>
+                        <TableCell className="font-medium text-sm">
+                          {s.clientes?.nombre_completo || "—"}
+                          <br />
+                          <span className="text-xs text-muted-foreground">{s.clientes?.id_cliente}</span>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{$$(Number(s.monto_solicitado))}</TableCell>
+                        <TableCell className="text-center text-sm">{s.num_cuotas}</TableCell>
+                        <TableCell className="text-sm capitalize">{s.frecuencia}</TableCell>
+                        <TableCell className="text-sm">{s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={s.status} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailSol(s)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {s.status === "Pendiente" && canApprove && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-green-600 hover:text-green-700"
+                                  onClick={() => setApproveTarget(s)}
+                                  disabled={approveMutation.isPending}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => { setRejectId(s.id); setMotivo(""); }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            {s.status === "Pendiente" && !canApprove && (
+                              <span className="text-xs text-muted-foreground italic">Solo lectura</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

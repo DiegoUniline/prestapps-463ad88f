@@ -207,42 +207,69 @@ export default function AuditoriaPage() {
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}</div>
       ) : (
-        <Card>
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs w-8"></TableHead>
-                  <TableHead className="text-xs">Fecha/Hora</TableHead>
-                  <TableHead className="text-xs">Acción</TableHead>
-                  <TableHead className="text-xs">Descripción</TableHead>
-                  <TableHead className="text-xs">Usuario</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.slice(0, 200).map(e => {
-                  const Icon = e.icono;
-                  return (
-                    <TableRow key={e.id}>
-                      <TableCell className="px-3"><Icon className={cn("h-4 w-4", e.color)} /></TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {e.fecha ? format(new Date(e.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">{e.accion}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm max-w-[300px] truncate">{e.descripcion}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{e.usuario}</TableCell>
-                    </TableRow>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Sin registros</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
+        <>
+          {/* MOBILE Cards */}
+          <div className="md:hidden space-y-2">
+            {filtered.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground text-[13px]">Sin registros</p>
+            ) : filtered.slice(0, 200).map((e) => {
+              const Icon = e.icono;
+              return (
+                <div key={e.id} className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+                  <div className="flex items-start gap-2">
+                    <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", e.color)} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-[9px]">{e.accion}</Badge>
+                        <span className="text-[10px] text-muted-foreground">{e.fecha ? format(new Date(e.fecha), "dd/MM HH:mm", { locale: es }) : "—"}</span>
+                      </div>
+                      <p className="text-[12px] mt-1 truncate">{e.descripcion}</p>
+                      <p className="text-[10px] text-muted-foreground">por {e.usuario}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </Card>
+
+          {/* DESKTOP Table */}
+          <Card className="hidden md:block">
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs w-8"></TableHead>
+                    <TableHead className="text-xs">Fecha/Hora</TableHead>
+                    <TableHead className="text-xs">Acción</TableHead>
+                    <TableHead className="text-xs">Descripción</TableHead>
+                    <TableHead className="text-xs">Usuario</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.slice(0, 200).map(e => {
+                    const Icon = e.icono;
+                    return (
+                      <TableRow key={e.id}>
+                        <TableCell className="px-3"><Icon className={cn("h-4 w-4", e.color)} /></TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {e.fecha ? format(new Date(e.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px]">{e.accion}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm max-w-[300px] truncate">{e.descripcion}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{e.usuario}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Sin registros</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </>
       )}
     </div>
   );

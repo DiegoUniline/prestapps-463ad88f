@@ -91,7 +91,39 @@ function UsuariosListPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Buscar..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-      <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+      {/* MOBILE Cards */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-lg border border-border p-4"><Skeleton className="h-4 w-3/4 mb-2" /><Skeleton className="h-3 w-1/2" /></div>
+        )) : filtered.length === 0 ? (
+          <p className="text-center py-8 text-muted-foreground text-[13px]">No hay usuarios</p>
+        ) : filtered.map((u) => (
+          <div key={u.id} className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)] p-3 cursor-pointer active:bg-muted/50 transition-colors" onClick={() => navigate(`/usuarios/${u.id}`)}>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9 shrink-0">
+                {u.foto_url && <AvatarImage src={u.foto_url} />}
+                <AvatarFallback className="bg-primary/10 text-primary text-[11px]">
+                  {u.nombre_completo.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-[13px] truncate">{u.nombre_completo}</p>
+                  <Badge className={cn("text-[9px] shrink-0", rolColors[u.rol] || rolColors.cobrador)}>{rolLabels[u.rol] || u.rol}</Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate">{u.email}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[12px] font-medium">{u.porcentaje_comision}%</p>
+                <p className="text-[10px] text-muted-foreground">{u.activo ? "Activo" : "Inactivo"}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP Table */}
+      <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
           <TableHeader>
             <TableRow className="bg-table-header hover:bg-table-header border-b">

@@ -63,8 +63,31 @@ export default function PromesasPage() {
         ))}
       </div>
 
-      {/* Table */}
-      <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+      {/* MOBILE Cards */}
+      <div className="md:hidden space-y-2">
+        {isLoading ? Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-lg border border-border p-4"><Skeleton className="h-4 w-3/4 mb-2" /><Skeleton className="h-3 w-1/2" /></div>
+        )) : promesas.length === 0 ? (
+          <p className="text-center py-8 text-muted-foreground text-[13px]">No hay promesas de pago</p>
+        ) : promesas.map((p: any) => (
+          <div key={p.id} className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            <div className="flex items-start justify-between">
+              <div className="min-w-0">
+                <p className="font-semibold text-[13px] truncate">{p.prestamos?.clientes?.nombre_completo || "—"}</p>
+                <p className="text-[11px] text-muted-foreground">{p.fecha_prometida}</p>
+              </div>
+              <div className="text-right shrink-0 ml-2">
+                <p className="font-bold text-[14px]">{$$(Number(p.monto_prometido))}</p>
+                <Badge className={cn("text-[9px]", statusBadge[p.status] || "bg-muted text-muted-foreground")}>{p.status}</Badge>
+              </div>
+            </div>
+            {p.notas && <p className="text-[11px] text-muted-foreground mt-1 truncate">{p.notas}</p>}
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP Table */}
+      <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
           <TableHeader>
             <TableRow className="bg-table-header hover:bg-table-header border-b">

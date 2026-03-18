@@ -395,7 +395,23 @@ export default function CobradoresPage() {
       {cortes.length > 0 && (
         <div>
           <h2 className="text-[14px] font-semibold mb-2">Historial de Cortes</h2>
-          <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+          {/* Mobile cortes cards */}
+          <div className="md:hidden space-y-2">
+            {cortes.map((ct: any) => (
+              <div key={ct.id} className="bg-card rounded-lg border border-border p-3 text-[12px]">
+                <div className="flex justify-between items-start">
+                  <div><p className="font-medium text-[13px]">{ct.cobrador_nombre || "—"}</p><p className="text-muted-foreground">{ct.created_at ? format(new Date(ct.created_at), "dd/MM/yyyy HH:mm") : "—"}</p></div>
+                  <p className="font-semibold">{$$(Number(ct.monto_depositado))}</p>
+                </div>
+                <div className="flex justify-between mt-1.5 text-[11px]">
+                  <span className="text-muted-foreground">Cobrado: {$$(Number(ct.total_cobrado))}</span>
+                  <span className="text-success font-medium">Comisión: {$$(Number(ct.monto_comision))} ({ct.porcentaje_usado}%)</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop cortes table */}
+          <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
             <Table>
               <TableHeader>
                 <TableRow className="bg-table-header hover:bg-table-header border-b">
