@@ -826,10 +826,10 @@ export default function MiSuscripcionPage() {
                 <Receipt className="h-4 w-4" />
               )}
               {selectPlanLoading
-                ? "Generando factura..."
+                ? "Procesando..."
                 : hasActiveSub
                   ? "Cambiar y pagar"
-                  : "Generar factura"
+                  : "Generar factura y pagar"
               }
             </Button>
           </DialogFooter>
