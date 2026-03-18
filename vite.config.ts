@@ -21,16 +21,17 @@ export default defineConfig({
       "react/jsx-dev-runtime": resolveFromNodeModules("react/jsx-dev-runtime.js"),
       "react-router": resolveFromNodeModules("react-router"),
       "react-router-dom": resolveFromNodeModules("react-router-dom"),
+      "@remix-run/router": resolveFromNodeModules("@remix-run/router"),
       "@tanstack/react-query": resolveFromNodeModules("@tanstack/react-query"),
       "@tanstack/query-core": resolveFromNodeModules("@tanstack/query-core"),
     },
-    dedupe: ["react", "react-dom", "react-router", "react-router-dom"],
+    dedupe: ["react", "react-dom", "react-router", "react-router-dom", "@remix-run/router"],
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-react": ["react", "react-dom", "react-router", "react-router-dom", "@remix-run/router"],
           "vendor-query": ["@tanstack/react-query", "@tanstack/query-core"],
           "vendor-supabase": ["@supabase/supabase-js"],
           "vendor-ui": [
