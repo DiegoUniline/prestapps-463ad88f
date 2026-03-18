@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 
 const TIPOS_GESTION = [
   { value: "llamada", label: "📞 Llamada", icon: Phone },
