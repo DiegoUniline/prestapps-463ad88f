@@ -542,8 +542,8 @@ export default function LandingPage() {
                 <a href="tel:3171035768" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                   <Phone className="h-4 w-4 text-primary" /> 317 103 5768
                 </a>
-                <a href="mailto:diego.leon@uniline.mx" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  <Mail className="h-4 w-4 text-primary" /> diego.leon@uniline.mx
+                <a href="mailto:soporte@uniline.mx" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <Mail className="h-4 w-4 text-primary" /> soporte@uniline.mx
                 </a>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Globe className="h-4 w-4 text-primary" /> uniline.mx
