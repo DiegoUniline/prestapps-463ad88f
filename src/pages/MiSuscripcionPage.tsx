@@ -84,6 +84,7 @@ export default function MiSuscripcionPage() {
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [numUsuarios, setNumUsuarios] = useState(1);
   const [showAllFacturas, setShowAllFacturas] = useState(false);
+  const [selectPlanLoading, setSelectPlanLoading] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
