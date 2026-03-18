@@ -33,6 +33,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get empresa lada_pais for phone normalization
+    const { data: empresaData } = await supabase
+      .from("empresas")
+      .select("lada_pais")
+      .eq("id", empresa_id)
+      .single();
+    const ladaPais = empresaData?.lada_pais || "52";
+
     if (!config.activo && !isTest) {
       return new Response(JSON.stringify({ error: "WhatsApp está inactivo para esta empresa. Actívalo en configuración." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
