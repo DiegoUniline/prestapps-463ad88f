@@ -78,6 +78,7 @@ export default function PermisosPage() {
       onSuccess: () => {
         toast.success("Permisos guardados correctamente");
         setDirty(false);
+        setInitialized(null); // force reload from DB after save
       },
       onError: () => toast.error("Error al guardar permisos"),
     });
