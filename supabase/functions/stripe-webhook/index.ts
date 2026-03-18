@@ -12,6 +12,22 @@ const logStep = (step: string, details?: any) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${d}`);
 };
 
+function getReadableError(code: string, message: string): string {
+  const map: Record<string, string> = {
+    card_declined: "Tu tarjeta fue rechazada por el banco",
+    insufficient_funds: "Fondos insuficientes en la tarjeta",
+    expired_card: "Tu tarjeta está vencida",
+    incorrect_cvc: "El código de seguridad (CVC) es incorrecto",
+    processing_error: "Error temporal al procesar el pago",
+    lost_card: "La tarjeta fue reportada como perdida",
+    stolen_card: "La tarjeta fue reportada como robada",
+    generic_decline: "El banco rechazó la transacción",
+    authentication_required: "Se requiere autenticación adicional (3D Secure)",
+    payment_intent_payment_attempt_failed: "No se pudo completar el cobro",
+  };
+  return map[code] || message || "Error al procesar el pago";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
