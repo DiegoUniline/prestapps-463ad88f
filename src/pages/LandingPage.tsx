@@ -497,7 +497,7 @@ export default function LandingPage() {
             y dinero que llega solo. <strong className="text-primary-foreground">Así de fácil.</strong>
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/login">
+            <Link to="/registro">
               <Button size="lg" variant="secondary" className="text-base px-8 h-12 font-semibold">
                 Comenzar Gratis <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
