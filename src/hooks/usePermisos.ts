@@ -122,9 +122,9 @@ interface PermissionRow {
   allowed: boolean;
 }
 
-export function usePermisos() {
+/** Read-only hook for permission checks (no mutation overhead) */
+function usePermisosRead() {
   const { empresaId } = useEmpresa();
-  const queryClient = useQueryClient();
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["role_permissions", empresaId],
@@ -141,7 +141,6 @@ export function usePermisos() {
     staleTime: 1000 * 60 * 10,
   });
 
-  // Build a stable map: "role:module:action" -> boolean
   const permMap = useMemo(() => {
     const map = new Map<string, boolean>();
     for (const r of rows) {
@@ -151,17 +150,24 @@ export function usePermisos() {
   }, [rows]);
 
   const isAllowed = useCallback((role: AppRole, module: PermisoModule, action: PermisoAction): boolean => {
-    // Admin always has access to permisos page
     if (role === "admin" && module === "permisos") return true;
     const key = `${role}:${module}:${action}`;
     if (permMap.has(key)) return permMap.get(key)!;
     return DEFAULTS[key] ?? false;
   }, [permMap]);
 
+  return { isAllowed, isLoading, rows, permMap };
+}
+
+/** Full hook with mutation support — use only in PermisosPage */
+export function usePermisos() {
+  const { empresaId } = useEmpresa();
+  const queryClient = useQueryClient();
+  const readResult = usePermisosRead();
+
   const saveMutation = useMutation({
     mutationFn: async (perms: { role: AppRole; module: string; action: string; allowed: boolean }[]) => {
       if (!empresaId) return;
-      // Upsert all permissions
       const rows = perms.map((p) => ({
         empresa_id: empresaId,
         role: p.role,
@@ -180,13 +186,13 @@ export function usePermisos() {
     },
   });
 
-  return { isAllowed, isLoading, rows, saveMutation, permMap };
+  return { ...readResult, saveMutation };
 }
 
 /** Lightweight hook for checking a single permission in components */
 export function useCan(module: PermisoModule, action: PermisoAction): boolean {
   const { role } = useCurrentUserRole();
-  const { isAllowed, isLoading } = usePermisos();
+  const { isAllowed, isLoading } = usePermisosRead();
   if (isLoading) return false;
   return isAllowed(role, module, action);
 }
