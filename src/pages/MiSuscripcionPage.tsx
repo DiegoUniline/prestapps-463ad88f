@@ -107,11 +107,19 @@ export default function MiSuscripcionPage() {
     try {
       const empresaId = subData?.empresa_id || storeEmpresaId;
       if (!empresaId) return;
+      // Get admin phone from profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("telefono")
+        .eq("empresa_id", empresaId)
+        .eq("id", user?.id || "")
+        .single();
+      if (!profile?.telefono) return;
       await supabase.functions.invoke("whatsapp-sender", {
         body: {
           action: "send-text",
           empresa_id: empresaId,
-          phone: user?.phone || "",
+          phone: profile.telefono,
           message: `⚠️ *Alerta de Suscripción*\n\nEl proceso de pago fue ${tipo}. Por favor intenta nuevamente desde Mi Suscripción o usa un método de pago diferente.`,
           tipo: "alerta_pago",
         },
