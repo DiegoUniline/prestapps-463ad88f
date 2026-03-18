@@ -76,6 +76,7 @@ type Plan = {
 export default function MiSuscripcionPage() {
   const { data: subData, loading, refetch, subscribed, estado } = useAccesoApp();
   const user = useAuthStore((s) => s.user);
+  const queryClient = useQueryClient();
   const { empresaId: storeEmpresaId, empresaNombre } = useEmpresa();
   const isSuperAdmin = user?.email === "diego.leon@uniline.mx";
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
