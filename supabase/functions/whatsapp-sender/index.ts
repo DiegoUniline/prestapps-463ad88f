@@ -239,6 +239,21 @@ Deno.serve(async (req) => {
 });
 
 // ── Helpers ────────────────────────────────────────
+function normalizePhoneWithLada(phone: string, ladaPais: string = "52"): string {
+  const digits = String(phone || "").replace(/\D/g, "");
+  const lada = String(ladaPais || "52").replace(/\D/g, "");
+
+  // If it already starts with the lada, return as-is
+  if (digits.startsWith(lada)) return digits;
+
+  // If it looks like a local number (8-11 digits), prepend lada
+  if (digits.length >= 8 && digits.length <= 11) {
+    return `${lada}${digits}`;
+  }
+
+  return digits;
+}
+
 async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<string, any>) {
   try {
     const res = await fetch(apiUrl, {
