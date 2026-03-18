@@ -203,6 +203,7 @@ export default function PagosPage() {
   const [anularPago, setAnularPago] = useState<any>(null);
   const [editPago, setEditPago] = useState<any>(null);
   const [docPreview, setDocPreview] = useState<{ open: boolean; pago: PagoListItem | null }>({ open: false, pago: null });
+  const [waPreview, setWaPreview] = useState<{ open: boolean; pago: PagoListItem | null }>({ open: false, pago: null });
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
