@@ -20,7 +20,9 @@ export default function PermissionGuard({ children, module }: PermissionGuardPro
   }
 
   if (!isAllowed(role, module, "ver")) {
-    return <Navigate to="/dashboard" replace />;
+    // If dashboard itself is blocked, redirect to mi-cobranza to avoid loop
+    const fallback = module === "dashboard" ? "/mi-cobranza" : "/dashboard";
+    return <Navigate to={fallback} replace />;
   }
 
   return <>{children}</>;
