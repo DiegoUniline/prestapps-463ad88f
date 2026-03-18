@@ -104,7 +104,8 @@ Deno.serve(async (req) => {
 
     // ── send-file ────────────────────────────────
     if (action === "send-file") {
-      const { phone, url, fileName, tipo, referencia_id } = body;
+      const { url, fileName, tipo, referencia_id } = body;
+      const phone = normalizePhone(body.phone || "", ladaPais);
 
       const result = await sendWhatsApp(config.api_url, config.api_token, {
         action: "send-file",
