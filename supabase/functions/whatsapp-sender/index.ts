@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
 
           await supabase.from("whatsapp_log").insert({
             empresa_id,
-            telefono: cliente.telefono,
+            telefono: normalizedPhone,
             tipo: "aviso",
             mensaje: message,
             status: result.success ? "enviado" : "error",
