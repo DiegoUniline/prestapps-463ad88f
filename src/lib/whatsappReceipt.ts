@@ -59,8 +59,10 @@ const DEFAULT_CONFIG: TicketConfig = {
   },
 };
 
+import { getCurrencySymbol } from "@/lib/utils";
+
 const $$ = (n: number) =>
-  `$${(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `${getCurrencySymbol()}${(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 async function fetchTicketConfig(empresaId: string): Promise<TicketConfig> {
   try {
