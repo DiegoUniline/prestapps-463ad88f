@@ -85,24 +85,23 @@ serve(async (req) => {
       let diasGraciaRestantes: number | null = null;
 
       if (suscripcion.estado === "trial" && suscripcion.fecha_vencimiento) {
-        const vencimiento = new Date(suscripcion.fecha_vencimiento + "T23:59:59");
-        const now = new Date();
-        const diffMs = vencimiento.getTime() - now.getTime();
-        diasTrialRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-
-        if (diasTrialRestantes <= 0) {
-          // Trial expired — calculate grace days (3 days after expiration)
-          const daysSinceExpiry = Math.floor((now.getTime() - vencimiento.getTime()) / (1000 * 60 * 60 * 24));
+        const vencStr = suscripcion.fecha_vencimiento; // "YYYY-MM-DD"
+        const todayStr = new Date().toISOString().split("T")[0];
+        
+        if (todayStr <= vencStr) {
+          // Still in trial
+          const vencDate = new Date(vencStr + "T23:59:59Z");
+          const diffMs = vencDate.getTime() - Date.now();
+          diasTrialRestantes = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+        } else {
+          // Trial expired — calculate grace days
+          const vencDate = new Date(vencStr + "T00:00:00Z");
+          const todayDate = new Date(todayStr + "T00:00:00Z");
+          const daysSinceExpiry = Math.floor((todayDate.getTime() - vencDate.getTime()) / (1000 * 60 * 60 * 24));
+          diasTrialRestantes = 0;
           diasGraciaRestantes = Math.max(0, DIAS_GRACIA - daysSinceExpiry);
-
-          if (diasGraciaRestantes > 0) {
-            // Still within grace period
-            estado = "trial_expirado";
-          } else {
-            // Grace period over — fully blocked
-            estado = "trial_expirado";
-            diasGraciaRestantes = 0;
-          }
+          estado = "trial_expirado";
+          logStep("Trial expired", { daysSinceExpiry, diasGraciaRestantes });
         }
       } else if (suscripcion.estado !== "trial") {
         const vencida = suscripcion.fecha_vencimiento && new Date(suscripcion.fecha_vencimiento) < new Date();
