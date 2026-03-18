@@ -20,6 +20,7 @@ import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 import { AnularPagoModal } from "@/components/AnularPagoModal";
 import { EditPagoModal } from "@/components/EditPagoModal";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 import { generarReciboPagos } from "@/lib/pdfDocuments";
 import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
 import { toast } from "sonner";
