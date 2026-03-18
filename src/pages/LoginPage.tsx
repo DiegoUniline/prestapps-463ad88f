@@ -151,7 +151,11 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center">
+        <div className="text-center space-y-2">
+          <Link to="/registro" className="text-sm text-primary font-medium hover:underline">
+            ¿No tienes cuenta? Regístrate gratis →
+          </Link>
+          <br />
           <Link to="/landing" className="text-sm text-muted-foreground hover:text-primary transition-colors">
             ← Conoce más sobre PrestApp
           </Link>
