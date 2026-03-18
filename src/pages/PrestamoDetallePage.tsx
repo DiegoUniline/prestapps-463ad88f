@@ -219,7 +219,7 @@ export default function PrestamoDetallePage() {
   const { data: empresaData } = useQuery({
     queryKey: ["empresa-datos", empresaId],
     queryFn: async () => {
-      const { data } = await supabase.from("empresas").select("nombre, logo_url").eq("id", empresaId).single();
+      const { data } = await supabase.from("empresas").select("nombre, logo_url, telefono, direccion").eq("id", empresaId).single();
       return data;
     },
     enabled: !!prestamo,
