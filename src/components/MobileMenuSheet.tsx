@@ -138,23 +138,27 @@ export function MobileMenuSheet({ role }: { role: string }) {
               <button
                 onClick={async () => {
                   setOpen(false);
-                  // Clear all caches (service worker, browser cache)
+                  try {
+                    const reg = await navigator.serviceWorker?.getRegistration();
+                    if (reg?.waiting) {
+                      reg.waiting.postMessage({ type: "SKIP_WAITING" });
+                      navigator.serviceWorker.addEventListener("controllerchange", () => {
+                        window.location.reload();
+                      });
+                      return;
+                    }
+                  } catch {}
+                  // Fallback: clear caches and hard reload
                   if ("caches" in window) {
                     const names = await caches.keys();
                     await Promise.all(names.map((n) => caches.delete(n)));
                   }
-                  // Unregister service workers
-                  if ("serviceWorker" in navigator) {
-                    const regs = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(regs.map((r) => r.unregister()));
-                  }
-                  // Hard reload
                   window.location.reload();
                 }}
                 className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted transition-colors"
               >
                 <RefreshCw className="h-4 w-4 shrink-0" />
-                <span>Sincronizar cambios</span>
+                <span>Actualizar app</span>
               </button>
             </div>
           </div>
