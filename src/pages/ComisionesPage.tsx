@@ -444,42 +444,62 @@ export default function ComisionesPage() {
             {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
           </div>
         ) : (
-          <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-table-header hover:bg-table-header border-b">
-                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Fecha</TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Concepto</TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Caja</TableHead>
-                  <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Monto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {historial.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-[13px]">
-                      No hay comisiones pagadas
-                    </TableCell>
+          <>
+            {/* MOBILE Cards */}
+            <div className="md:hidden space-y-2">
+              {historial.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground text-[13px]">No hay comisiones pagadas</p>
+              ) : historial.map((h: any) => (
+                <div key={h.id} className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium truncate">{(h.concepto || "").replace(/\[.*?\]\s*/, "")}</p>
+                      <p className="text-[10px] text-muted-foreground">{format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: es })} · {(h.cajas as any)?.nombre || "—"}</p>
+                    </div>
+                    <p className="font-semibold text-destructive text-[13px] shrink-0 ml-2">-{$$(Number(h.monto || 0))}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* DESKTOP Table */}
+            <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-table-header hover:bg-table-header border-b">
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Fecha</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Concepto</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Caja</TableHead>
+                    <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Monto</TableHead>
                   </TableRow>
-                ) : (
-                  historial.map((h: any) => (
-                    <TableRow key={h.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
-                      <TableCell className="text-[13px] px-3">
-                        {format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
-                      </TableCell>
-                      <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
-                        {(h.concepto || "").replace(/\[.*?\]\s*/, "")}
-                      </TableCell>
-                      <TableCell className="text-[13px] px-3">{(h.cajas as any)?.nombre || "—"}</TableCell>
-                      <TableCell className="text-right font-semibold text-destructive text-[13px] px-3">
-                        -{$$(Number(h.monto || 0))}
+                </TableHeader>
+                <TableBody>
+                  {historial.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-[13px]">
+                        No hay comisiones pagadas
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : (
+                    historial.map((h: any) => (
+                      <TableRow key={h.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
+                        <TableCell className="text-[13px] px-3">
+                          {format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                        </TableCell>
+                        <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
+                          {(h.concepto || "").replace(/\[.*?\]\s*/, "")}
+                        </TableCell>
+                        <TableCell className="text-[13px] px-3">{(h.cajas as any)?.nombre || "—"}</TableCell>
+                        <TableCell className="text-right font-semibold text-destructive text-[13px] px-3">
+                          -{$$(Number(h.monto || 0))}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </div>
 

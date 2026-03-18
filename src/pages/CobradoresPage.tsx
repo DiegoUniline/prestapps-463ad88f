@@ -298,8 +298,38 @@ export default function CobradoresPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+      {/* MOBILE Cards */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-lg border border-border p-4"><Skeleton className="h-4 w-3/4 mb-2" /><Skeleton className="h-3 w-1/2" /></div>
+        )) : filtered.length === 0 ? (
+          <p className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron usuarios</p>
+        ) : filtered.map((c) => (
+          <div key={c.id} className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)] overflow-hidden">
+            <div className="px-3 py-2.5 flex items-center justify-between border-b border-border/50">
+              <div className="min-w-0">
+                <p className="font-semibold text-[13px] truncate">{c.nombre_completo}</p>
+                <p className="text-[11px] text-muted-foreground">{c.telefono || "Sin teléfono"}</p>
+              </div>
+              <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium shrink-0 ml-2", c.activo ? "bg-badge-activo text-badge-activo-foreground" : "bg-badge-liquidado text-badge-liquidado-foreground")}>
+                {c.activo ? "Activo" : "Inactivo"}
+              </span>
+            </div>
+            <div className="px-3 py-2 grid grid-cols-2 gap-2 text-[11px]">
+              <div><span className="text-muted-foreground">Comisión</span><p className="font-medium">{c.porcentaje_comision}%</p></div>
+              <div><span className="text-muted-foreground">Efectivo en mano</span><p className={cn("font-semibold", c.efectivo_en_mano > 0 ? "text-warning" : "text-muted-foreground")}>{$$(c.efectivo_en_mano)}</p></div>
+            </div>
+            <div className="px-3 py-2 border-t border-border/50">
+              <Button variant="secondary" size="sm" className="h-7 text-[11px] w-full" disabled={c.efectivo_en_mano <= 0} onClick={() => prepararCorte(c)}>
+                <Scissors className="h-3 w-3 mr-1" />Hacer Corte
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP Table */}
+      <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
           <TableHeader>
             <TableRow className="bg-table-header hover:bg-table-header border-b">
@@ -362,12 +392,26 @@ export default function CobradoresPage() {
           </TableBody>
         </Table>
       </div>
-
-      {/* Historial de Cortes */}
       {cortes.length > 0 && (
         <div>
           <h2 className="text-[14px] font-semibold mb-2">Historial de Cortes</h2>
-          <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+          {/* Mobile cortes cards */}
+          <div className="md:hidden space-y-2">
+            {cortes.map((ct: any) => (
+              <div key={ct.id} className="bg-card rounded-lg border border-border p-3 text-[12px]">
+                <div className="flex justify-between items-start">
+                  <div><p className="font-medium text-[13px]">{ct.cobrador_nombre || "—"}</p><p className="text-muted-foreground">{ct.created_at ? format(new Date(ct.created_at), "dd/MM/yyyy HH:mm") : "—"}</p></div>
+                  <p className="font-semibold">{$$(Number(ct.monto_depositado))}</p>
+                </div>
+                <div className="flex justify-between mt-1.5 text-[11px]">
+                  <span className="text-muted-foreground">Cobrado: {$$(Number(ct.total_cobrado))}</span>
+                  <span className="text-success font-medium">Comisión: {$$(Number(ct.monto_comision))} ({ct.porcentaje_usado}%)</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Desktop cortes table */}
+          <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
             <Table>
               <TableHeader>
                 <TableRow className="bg-table-header hover:bg-table-header border-b">

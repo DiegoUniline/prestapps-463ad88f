@@ -88,7 +88,31 @@ function RutasListPage() {
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva Ruta
         </Button>
       </div>
-      <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+      {/* MOBILE Cards */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-lg border border-border p-4"><Skeleton className="h-4 w-3/4 mb-2" /><Skeleton className="h-3 w-1/2" /></div>
+        )) : rutas.length === 0 ? (
+          <p className="text-center py-8 text-muted-foreground text-[13px]">No hay rutas registradas</p>
+        ) : rutas.map((r) => (
+          <div key={r.id} className="bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)] p-3 cursor-pointer active:bg-muted/50 transition-colors" onClick={() => navigate(`/rutas/${r.id}`)}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <MapPin className="h-4 w-4 text-primary shrink-0" />
+                <p className="font-semibold text-[13px] truncate">{r.nombre}</p>
+              </div>
+              <span className="text-[12px] font-medium text-primary shrink-0 ml-2">{r.prestamosCount} prést.</span>
+            </div>
+            <div className="mt-1.5 text-[11px] text-muted-foreground">
+              <p>Cobrador: {r.cobradorNombre}</p>
+              {r.descripcion && <p className="truncate">{r.descripcion}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP Table */}
+      <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
           <TableHeader>
             <TableRow className="bg-table-header hover:bg-table-header border-b">

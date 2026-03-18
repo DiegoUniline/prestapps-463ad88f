@@ -253,52 +253,76 @@ export default function GastosPage() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* Table / Cards */}
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
       ) : (
-        <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-table-header hover:bg-table-header border-b">
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Fecha</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Categoría</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Concepto</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Caja</TableHead>
-                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Monto</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-[13px]">
-                    No se encontraron gastos
-                  </TableCell>
+        <>
+          {/* MOBILE Cards */}
+          <div className="md:hidden space-y-2">
+            {filtered.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron gastos</p>
+            ) : filtered.map((g) => (
+              <div key={g.id} className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0">
+                    <p className="font-medium text-[13px] truncate">{g.concepto.replace(/\[.*?\]\s*/, "")}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge variant="outline" className="text-[10px]">{g.categoria}</Badge>
+                      <span className="text-[11px] text-muted-foreground">{g.caja}</span>
+                    </div>
+                  </div>
+                  <p className="font-semibold text-destructive text-[13px] shrink-0 ml-2">-{$$(g.monto)}</p>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">{format(new Date(g.fecha), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* DESKTOP Table */}
+          <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-table-header hover:bg-table-header border-b">
+                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Fecha</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Categoría</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Concepto</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Caja</TableHead>
+                  <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Monto</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map((g) => (
-                  <TableRow key={g.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
-                    <TableCell className="text-[13px] px-3">
-                      {format(new Date(g.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
-                    </TableCell>
-                    <TableCell className="px-3">
-                      <Badge variant="outline" className="text-[11px]">{g.categoria}</Badge>
-                    </TableCell>
-                    <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
-                      {g.concepto.replace(/\[.*?\]\s*/, "")}
-                    </TableCell>
-                    <TableCell className="text-[13px] px-3">{g.caja}</TableCell>
-                    <TableCell className="text-right font-semibold text-destructive text-[13px] px-3">
-                      -{$$(g.monto)}
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-[13px]">
+                      No se encontraron gastos
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  filtered.map((g) => (
+                    <TableRow key={g.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
+                      <TableCell className="text-[13px] px-3">
+                        {format(new Date(g.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
+                      </TableCell>
+                      <TableCell className="px-3">
+                        <Badge variant="outline" className="text-[11px]">{g.categoria}</Badge>
+                      </TableCell>
+                      <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
+                        {g.concepto.replace(/\[.*?\]\s*/, "")}
+                      </TableCell>
+                      <TableCell className="text-[13px] px-3">{g.caja}</TableCell>
+                      <TableCell className="text-right font-semibold text-destructive text-[13px] px-3">
+                        -{$$(g.monto)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {/* Modal: Registrar Gasto */}
