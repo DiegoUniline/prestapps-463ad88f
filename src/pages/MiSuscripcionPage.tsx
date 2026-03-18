@@ -25,7 +25,8 @@ import { es } from "date-fns/locale";
 
 const ESTADO_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
   activa: { label: "Activa", variant: "default", color: "text-emerald-600" },
-  trial: { label: "Prueba", variant: "outline", color: "text-blue-600" },
+  trial: { label: "Prueba gratuita", variant: "outline", color: "text-blue-600" },
+  trial_expirado: { label: "Prueba expirada", variant: "destructive", color: "text-destructive" },
   gracia: { label: "En gracia", variant: "secondary", color: "text-amber-600" },
   suspendida: { label: "Suspendida", variant: "destructive", color: "text-destructive" },
   cancelada: { label: "Cancelada", variant: "destructive", color: "text-destructive" },
