@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -140,19 +141,22 @@ export function usePermisos() {
     staleTime: 1000 * 60 * 10,
   });
 
-  // Build a map: "role:module:action" -> boolean
-  const permMap = new Map<string, boolean>();
-  for (const r of rows) {
-    permMap.set(`${r.role}:${r.module}:${r.action}`, r.allowed);
-  }
+  // Build a stable map: "role:module:action" -> boolean
+  const permMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const r of rows) {
+      map.set(`${r.role}:${r.module}:${r.action}`, r.allowed);
+    }
+    return map;
+  }, [rows]);
 
-  function isAllowed(role: AppRole, module: PermisoModule, action: PermisoAction): boolean {
+  const isAllowed = useCallback((role: AppRole, module: PermisoModule, action: PermisoAction): boolean => {
     // Admin always has access to permisos page
     if (role === "admin" && module === "permisos") return true;
     const key = `${role}:${module}:${action}`;
     if (permMap.has(key)) return permMap.get(key)!;
     return DEFAULTS[key] ?? false;
-  }
+  }, [permMap]);
 
   const saveMutation = useMutation({
     mutationFn: async (perms: { role: AppRole; module: string; action: string; allowed: boolean }[]) => {
