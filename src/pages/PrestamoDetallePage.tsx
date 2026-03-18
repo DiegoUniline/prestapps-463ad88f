@@ -1264,6 +1264,46 @@ export default function PrestamoDetallePage() {
           generateDoc={generateDocForPreview}
           empresaId={empresaId}
           clientePhone={cliente?.telefono || ""}
+          onWhatsApp={docPreview.type === "pagos" ? async (phone: string) => {
+            // Send each pago as an image receipt with good copy
+            for (let i = 0; i < pagosRaw.length; i++) {
+              const pg = pagosRaw[i];
+              const cuotaMatch = amort.find(c => c.id === pg.cuota_id);
+              const result = await sendReceiptAsImage(
+                empresaId,
+                phone,
+                {
+                  pago: {
+                    folio: `PAG-${pg.id.slice(0, 8)}`,
+                    monto_recibido: Number(pg.monto_recibido),
+                    aplicado_mora: Number(pg.aplicado_mora || 0),
+                    aplicado_interes: Number(pg.aplicado_interes || 0),
+                    aplicado_capital: Number(pg.aplicado_capital || 0),
+                    metodo_pago: pg.metodo_pago || "Efectivo",
+                    saldo_restante: saldoPendiente,
+                    cuota_num: cuotaMatch?.num_cuota || (i + 1),
+                    proxima_cuota: proximaCuota ? new Date(proximaCuota.fecha_vencimiento).toLocaleDateString("es-MX") : undefined,
+                    monto_proxima: proximaCuota ? Number(proximaCuota.saldo_total || 0) : undefined,
+                  },
+                  empresa: {
+                    nombre: empresaData?.nombre || "Empresa",
+                    telefono: (empresaData as any)?.telefono || undefined,
+                    direccion: (empresaData as any)?.direccion || undefined,
+                    logo_url: empresaData?.logo_url || null,
+                  },
+                  cliente: { nombre: cliente?.nombre_completo || "Cliente" },
+                  prestamo: { folio: folioId, num_cuotas: prestamo.num_cuotas },
+                },
+                `✅ *Comprobante de pago recibido*\n\n👤 *${cliente?.nombre_completo}*\n💰 Monto: *${$$(Number(pg.monto_recibido))}*\n📋 Préstamo: ${folioId}\n📅 Cuota ${cuotaMatch?.num_cuota || (i + 1)} de ${prestamo.num_cuotas}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`,
+              );
+              if (result.success) {
+                toast.success(`Recibo #${i + 1} enviado por WhatsApp`);
+              } else {
+                toast.error("Error: " + (result.error || "desconocido"));
+                return;
+              }
+            }
+          } : undefined}
         />
       )}
     </div>
