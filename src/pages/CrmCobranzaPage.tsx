@@ -391,7 +391,7 @@ export default function CrmCobranzaPage() {
                               <Plus className="h-3.5 w-3.5" />
                             </Button>
                             {p.cliente.telefono && (
-                              <Button variant="outline" size="icon" className="h-7 w-7 text-green-600" onClick={() => sendWhatsAppCobranza(p)} disabled={sendingWA === p.id}>
+                              <Button variant="outline" size="icon" className="h-7 w-7 text-[hsl(142,72%,37%)]" onClick={() => handleWhatsAppPreview(p)} disabled={sendingWA === p.id}>
                                 {sendingWA === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5" />}
                               </Button>
                             )}
