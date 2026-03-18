@@ -2,7 +2,7 @@ import { useAccesoApp } from "@/hooks/useAccesoApp";
 import { Link } from "react-router-dom";
 import { AlertTriangle, Lock, CreditCard, Sparkles, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { $$ } from "@/lib/utils";
+import { $$, cn } from "@/lib/utils";
 
 export function SubscriptionBanner() {
   const { estado, showBanner, diasGraciaRestantes, diasTrialRestantes, facturaPendiente } = useAccesoApp();
