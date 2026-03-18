@@ -36,17 +36,7 @@ export async function sendDocumentViaWhatsApp(
       .from("empresa-assets")
       .getPublicUrl(storagePath);
 
-    // 4. Send text caption first, then the file
-    await supabase.functions.invoke("whatsapp-sender", {
-      body: {
-        action: "send-text",
-        empresa_id: empresaId,
-        phone,
-        message: caption,
-        tipo: "documento",
-      },
-    });
-
+    // 4. Send the file with caption
     const { data: result, error: invokeErr } = await supabase.functions.invoke("whatsapp-sender", {
       body: {
         action: "send-file",
@@ -54,6 +44,7 @@ export async function sendDocumentViaWhatsApp(
         phone,
         url: urlData.publicUrl,
         fileName,
+        caption,
         tipo: "documento",
       },
     });

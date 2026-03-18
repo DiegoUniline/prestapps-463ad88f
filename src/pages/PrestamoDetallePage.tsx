@@ -27,6 +27,7 @@ import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
+import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
 
 // ── Badge colors ──────────────────────────────────────────────────
 const estadoBadge: Record<string, string> = {
@@ -219,7 +220,7 @@ export default function PrestamoDetallePage() {
   const { data: empresaData } = useQuery({
     queryKey: ["empresa-datos", empresaId],
     queryFn: async () => {
-      const { data } = await supabase.from("empresas").select("nombre, logo_url").eq("id", empresaId).single();
+      const { data } = await supabase.from("empresas").select("nombre, logo_url, telefono, direccion").eq("id", empresaId).single();
       return data;
     },
     enabled: !!prestamo,
@@ -385,6 +386,44 @@ export default function PrestamoDetallePage() {
     if (t === "estado") return generarEstadoCuenta(pdfPrestamo, pdfCuotas, pdfPagos);
     if (t === "contrato") return generarContrato(pdfPrestamo, pdfCuotas);
     return generarReciboPagos(pdfPrestamo, pdfPagos);
+  };
+
+  const handleSendReceiptWA = async (pg: any, i: number) => {
+    const telefono = cliente?.telefono;
+    if (!telefono) { toast.error("Cliente sin teléfono"); return; }
+    const cuotaMatch = amort.find(c => c.id === pg.cuota_id);
+    const result = await sendReceiptAsImage(
+      empresaId,
+      telefono,
+      {
+        pago: {
+          folio: `PAG-${pg.id.slice(0, 8)}`,
+          monto_recibido: Number(pg.monto_recibido),
+          aplicado_mora: Number(pg.aplicado_mora || 0),
+          aplicado_interes: Number(pg.aplicado_interes || 0),
+          aplicado_capital: Number(pg.aplicado_capital || 0),
+          metodo_pago: pg.metodo_pago || "Efectivo",
+          saldo_restante: saldoPendiente,
+          cuota_num: cuotaMatch?.num_cuota || (i + 1),
+          proxima_cuota: proximaCuota ? new Date(proximaCuota.fecha_vencimiento).toLocaleDateString("es-MX") : undefined,
+          monto_proxima: proximaCuota ? Number(proximaCuota.saldo_total || 0) : undefined,
+        },
+        empresa: {
+          nombre: empresaData?.nombre || "Empresa",
+          telefono: (empresaData as any)?.telefono || undefined,
+          direccion: (empresaData as any)?.direccion || undefined,
+          logo_url: empresaData?.logo_url || null,
+        },
+        cliente: { nombre: cliente.nombre_completo },
+        prestamo: { folio: folioId, num_cuotas: prestamo.num_cuotas },
+      },
+      `🧾 Recibo de pago #${i + 1} por ${$$(Number(pg.monto_recibido))} - ${folioId}`,
+    );
+    if (result.success) {
+      toast.success("Recibo enviado por WhatsApp");
+    } else {
+      toast.error("Error: " + (result.error || "desconocido"));
+    }
   };
 
   return (
@@ -974,26 +1013,8 @@ export default function PrestamoDetallePage() {
                                           <Eye className="h-3.5 w-3.5" />
                                         </button>
                                         <button
-                                          title="Enviar comprobante por WhatsApp"
-                                          onClick={async () => {
-                                            try {
-                                              const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]);
-                                              const pdfBlob = doc.output("blob");
-                                              const telefono = cliente?.telefono;
-                                              if (!telefono) { toast.error("Cliente sin teléfono"); return; }
-                                              const fileName = `recibo-pago-${i + 1}-${Date.now()}.pdf`;
-                                              const { error: upErr } = await supabase.storage.from("empresa-assets").upload(`temp/${fileName}`, pdfBlob, { contentType: "application/pdf" });
-                                              if (upErr) throw upErr;
-                                              const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(`temp/${fileName}`);
-                                              await supabase.functions.invoke("whatsapp-sender", {
-                                                body: { action: "send-file", phone: telefono, url: urlData.publicUrl, message: `📄 Comprobante de pago #${i + 1} por ${$$(Number(pg.monto_recibido))}`, empresa_id: empresaId },
-                                              });
-                                              toast.success("Comprobante enviado por WhatsApp");
-                                              setTimeout(() => supabase.storage.from("empresa-assets").remove([`temp/${fileName}`]), 30000);
-                                            } catch (err: any) {
-                                              toast.error("Error al enviar: " + (err.message || err));
-                                            }
-                                          }}
+                                          title="Enviar recibo por WhatsApp"
+                                          onClick={() => handleSendReceiptWA(pg, i)}
                                           className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-[hsl(142,72%,37%)] hover:bg-[hsl(142,72%,37%)]/10 transition-colors"
                                         >
                                           <Send className="h-3.5 w-3.5" />
