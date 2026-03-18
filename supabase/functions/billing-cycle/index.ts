@@ -14,6 +14,106 @@ const logStep = (step: string, details?: any) => {
 
 const DIAS_GRACIA = 3;
 
+// ── WhatsApp helpers ──────────────────────────────
+function getPhoneCandidates(phone: string): string[] {
+  const digits = String(phone || "").replace(/\D/g, "");
+  const candidates = new Set<string>();
+  if (digits) candidates.add(digits);
+  if (digits.length === 10) {
+    candidates.add(`52${digits}`);
+    candidates.add(`521${digits}`);
+  }
+  if (digits.length === 12 && digits.startsWith("52")) {
+    candidates.add(`521${digits.slice(2)}`);
+  }
+  if (digits.length === 13 && digits.startsWith("521")) {
+    candidates.add(`52${digits.slice(3)}`);
+  }
+  return Array.from(candidates);
+}
+
+async function sendWhatsAppWithFallback(
+  apiUrl: string,
+  apiToken: string,
+  mensaje: string,
+  candidates: string[],
+) {
+  for (const candidate of candidates) {
+    try {
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "x-api-token": apiToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send-text", phone: candidate, message: mensaje }),
+      });
+      const raw = await res.text();
+      let response: any = raw;
+      try { response = JSON.parse(raw); } catch { /* keep raw */ }
+      if (res.ok) return { success: true, phoneUsed: candidate, response };
+      logStep("WA attempt failed", { phone: candidate, status: res.status });
+    } catch (e: any) {
+      logStep("WA attempt exception", { phone: candidate, error: e?.message });
+    }
+  }
+  return { success: false, phoneUsed: candidates[0] || null };
+}
+
+async function notifyEmpresaAdmins(
+  supabase: any,
+  empresaId: string,
+  mensaje: string,
+  tipo: string,
+) {
+  try {
+    const { data: waConfig } = await supabase
+      .from("whatsapp_config")
+      .select("api_url, api_token, activo")
+      .eq("empresa_id", empresaId)
+      .single();
+
+    if (!waConfig?.activo) return;
+
+    const { data: admins } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+
+    if (!admins?.length) return;
+
+    const adminIds = admins.map((a: any) => a.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("telefono, nombre_completo")
+      .eq("empresa_id", empresaId)
+      .in("id", adminIds);
+
+    for (const profile of (profiles || [])) {
+      if (!profile.telefono) continue;
+      const candidates = getPhoneCandidates(profile.telefono);
+      const result = await sendWhatsAppWithFallback(waConfig.api_url, waConfig.api_token, mensaje, candidates);
+
+      logStep("WA notification", { phone: result.phoneUsed, success: result.success, tipo });
+
+      await supabase.from("whatsapp_log").insert({
+        empresa_id: empresaId,
+        telefono: result.phoneUsed || profile.telefono,
+        tipo,
+        mensaje,
+        status: result.success ? "enviado" : "error",
+        error_detalle: result.success ? null : "No se pudo entregar",
+      });
+    }
+  } catch (e: any) {
+    logStep("notifyEmpresaAdmins error", { error: e.message });
+  }
+}
+
+// ── Format helpers ──
+const formatMXN = (n: number) =>
+  `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatDate = (d: Date) =>
+  d.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -82,6 +182,8 @@ serve(async (req) => {
           // For manual or non-Stripe — create pending invoice
           const isStripeBilled = !!sub.stripe_subscription_id;
 
+          const fechaVencimiento = new Date(now.getFullYear(), now.getMonth(), 1 + DIAS_GRACIA);
+
           const { error: facErr } = await supabase.from("facturas").insert({
             empresa_id: sub.empresa_id,
             suscripcion_id: sub.id,
@@ -94,7 +196,7 @@ serve(async (req) => {
             subtotal,
             total,
             estado: isStripeBilled ? "procesando" : "pendiente",
-            fecha_vencimiento: new Date(now.getFullYear(), now.getMonth(), 1 + DIAS_GRACIA).toISOString(),
+            fecha_vencimiento: fechaVencimiento.toISOString(),
           });
 
           if (facErr) {
@@ -103,10 +205,50 @@ serve(async (req) => {
             logStep("Invoice created", { empresa_id: sub.empresa_id, total, isStripeBilled });
           }
 
+          // ── Get empresa name for WA messages ──
+          const { data: empresaData } = await supabase
+            .from("empresas")
+            .select("nombre")
+            .eq("id", sub.empresa_id)
+            .single();
+          const empresaNombre = empresaData?.nombre || "tu empresa";
+          const planNombre = plan?.nombre || "tu plan";
+          const mesNombre = now.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+
+          // ── Send WhatsApp: Invoice generated notification ──
+          if (isStripeBilled) {
+            // Stripe will auto-charge — friendly heads-up
+            await notifyEmpresaAdmins(supabase, sub.empresa_id,
+              `¡Hola! 👋\n\n` +
+              `Te informamos que hoy se generó tu factura de *${mesNombre}* para *${empresaNombre}*.\n\n` +
+              `📋 *Factura:* ${facNum}\n` +
+              `💰 *Monto:* ${formatMXN(total)} MXN\n` +
+              `📦 *Plan:* ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n\n` +
+              `💳 El cobro se procesará automáticamente a tu tarjeta registrada.\n\n` +
+              `Si tu pago no se procesa, tienes *${DIAS_GRACIA} días de gracia* antes de que se suspenda el servicio.\n\n` +
+              `¿Necesitas actualizar tu método de pago? Hazlo desde *Mi Suscripción* en la app. 📱\n\n` +
+              `Gracias por ser parte de *PrestApps*. 🚀`,
+              "factura_generada",
+            );
+          } else {
+            // Manual / no-stripe — let them know they need to pay
+            await notifyEmpresaAdmins(supabase, sub.empresa_id,
+              `¡Hola! 👋\n\n` +
+              `Se ha generado tu factura de *${mesNombre}* para *${empresaNombre}*.\n\n` +
+              `📋 *Factura:* ${facNum}\n` +
+              `💰 *Monto:* ${formatMXN(total)} MXN\n` +
+              `📦 *Plan:* ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n` +
+              `📅 *Fecha límite:* ${formatDate(fechaVencimiento)}\n\n` +
+              `Tienes *${DIAS_GRACIA} días de gracia* para realizar tu pago sin interrupción del servicio.\n\n` +
+              `Ingresa a *Mi Suscripción* en la app para registrar tu método de pago. 📱\n\n` +
+              `¡Gracias por confiar en *PrestApps*! 🚀`,
+              "factura_generada",
+            );
+          }
+
           // ── For manual subs with Stripe customer — attempt charge ──
           if (!isStripeBilled && stripe && sub.stripe_customer_id) {
             try {
-              // Get default payment method from Stripe
               const customer = await stripe.customers.retrieve(sub.stripe_customer_id);
               const pmId = typeof customer !== "string" && !customer.deleted
                 ? (customer.invoice_settings?.default_payment_method as string) || null
@@ -129,7 +271,6 @@ serve(async (req) => {
                 });
 
                 if (pi.status === "succeeded") {
-                  // Update invoice to paid
                   await supabase.from("facturas")
                     .update({
                       estado: "pagada",
@@ -139,7 +280,6 @@ serve(async (req) => {
                     .eq("empresa_id", sub.empresa_id)
                     .eq("periodo_inicio", periodoInicio);
 
-                  // Update next billing date
                   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 1);
                   await supabase.from("suscripciones")
                     .update({
@@ -150,11 +290,21 @@ serve(async (req) => {
 
                   logStep("Manual sub charged successfully", { empresa_id: sub.empresa_id, amount: total });
                   results.push({ empresa_id: sub.empresa_id, action: "charged", amount: total });
+
+                  // WA: Payment successful
+                  await notifyEmpresaAdmins(supabase, sub.empresa_id,
+                    `¡Hola! 🎉\n\n` +
+                    `Tu pago de *${mesNombre}* para *${empresaNombre}* se procesó exitosamente.\n\n` +
+                    `✅ *Monto cobrado:* ${formatMXN(total)} MXN\n` +
+                    `🧾 *Factura:* ${facNum}\n` +
+                    `📅 *Próximo cobro:* ${formatDate(nextMonth)}\n\n` +
+                    `¡Gracias por confiar en *PrestApps*! Sigue creciendo tu negocio. 🚀`,
+                    "pago_exitoso",
+                  );
                 } else {
                   throw new Error(`PaymentIntent status: ${pi.status}`);
                 }
               } else {
-                // No payment method — set to gracia
                 await supabase.from("suscripciones")
                   .update({ estado: "gracia", actualizado_en: now.toISOString() })
                   .eq("id", sub.id);
@@ -172,7 +322,6 @@ serve(async (req) => {
               results.push({ empresa_id: sub.empresa_id, action: "gracia", reason: "charge_failed", error: msg });
             }
           } else if (!isStripeBilled && !sub.stripe_customer_id) {
-            // No Stripe at all — set to gracia
             await supabase.from("suscripciones")
               .update({ estado: "gracia", actualizado_en: now.toISOString() })
               .eq("id", sub.id);
@@ -207,8 +356,47 @@ serve(async (req) => {
 
         logStep("Grace expired → suspendida", { empresa_id: sub.empresa_id, daysSinceGracia });
         results.push({ empresa_id: sub.empresa_id, action: "suspendida", daysSinceGracia });
+
+        // ── WA: Subscription suspended ──
+        const { data: empData } = await supabase
+          .from("empresas")
+          .select("nombre")
+          .eq("id", sub.empresa_id)
+          .single();
+
+        await notifyEmpresaAdmins(supabase, sub.empresa_id,
+          `¡Hola! ⚠️\n\n` +
+          `Lamentamos informarte que la suscripción de *${empData?.nombre || "tu empresa"}* ha sido *suspendida* porque no recibimos tu pago dentro del periodo de gracia.\n\n` +
+          `🔒 Tu acceso a los módulos operativos ha sido restringido temporalmente.\n\n` +
+          `Para reactivar tu cuenta de inmediato:\n` +
+          `1️⃣ Abre la app y ve a *Mi Suscripción*\n` +
+          `2️⃣ Actualiza tu método de pago\n` +
+          `3️⃣ Tu acceso se restaurará al instante ✅\n\n` +
+          `Tus datos están seguros y no se perderán. 🔐\n\n` +
+          `¿Tienes problemas? Responde a este mensaje y te ayudamos. 💬`,
+          "suscripcion_suspendida",
+        );
       } else {
-        logStep("Still in grace", { empresa_id: sub.empresa_id, daysLeft: DIAS_GRACIA - daysSinceGracia });
+        const daysLeft = DIAS_GRACIA - daysSinceGracia;
+        logStep("Still in grace", { empresa_id: sub.empresa_id, daysLeft });
+
+        // ── WA: Daily grace reminder (only if >0 days passed) ──
+        if (daysSinceGracia > 0) {
+          const { data: empData } = await supabase
+            .from("empresas")
+            .select("nombre")
+            .eq("id", sub.empresa_id)
+            .single();
+
+          await notifyEmpresaAdmins(supabase, sub.empresa_id,
+            `¡Hola! 👋\n\n` +
+            `Te recordamos que el pago de suscripción de *${empData?.nombre || "tu empresa"}* aún está pendiente.\n\n` +
+            `⏳ Te ${daysLeft === 1 ? "queda *1 día*" : `quedan *${daysLeft} días*`} de gracia antes de que se suspenda tu servicio.\n\n` +
+            `💳 Actualiza tu método de pago desde *Mi Suscripción* para evitar interrupciones.\n\n` +
+            `¡Estamos para ayudarte! 🙏`,
+            "recordatorio_gracia",
+          );
+        }
       }
     }
 
