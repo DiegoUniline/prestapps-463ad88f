@@ -170,7 +170,7 @@ function RutaDetallePage() {
   }
 
   const handleGuardar = async () => {
-    if (!nombre.trim()) { toast.error("El nombre es requerido"); return; }
+    if (!(nombre ?? "").trim()) { toast.error("El nombre es requerido"); return; }
     setSaving(true);
     try {
       if (isNew) {
