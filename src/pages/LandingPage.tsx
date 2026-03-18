@@ -37,8 +37,8 @@ const showcaseModules = [
   },
   {
     id: "mapa",
-    title: "Mapa GPS de Operaciones",
-    desc: "Visualiza en un mapa interactivo dónde se registraron préstamos, pagos y domicilios de clientes. Verifica que las operaciones se realizaron en el lugar correcto.",
+    title: "Mapa GPS y Seguimiento",
+    desc: "¿Dónde están tus cobradores? ¿Realmente visitaron al cliente? Mapa interactivo con todos los puntos de cobranza, visitas y ubicaciones de clientes en tiempo real.",
     img: screenshotMapa,
     reverse: false,
   },

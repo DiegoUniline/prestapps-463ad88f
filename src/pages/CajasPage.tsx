@@ -60,7 +60,6 @@ function useKardex() {
       const { data: pagos, error: pagErr } = await supabase
         .from("pagos")
         .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
-        .eq("anulado", false)
         .order("created_at", { ascending: false })
         .limit(500);
       if (pagErr) throw pagErr;
@@ -68,8 +67,7 @@ function useKardex() {
       // 3) Préstamos (desembolsos) — siempre mostrar como salida
       const { data: prestamos, error: preErr } = await supabase
         .from("prestamos")
-        .select("id, monto_solicitado, created_at, fecha_registro, caja_id, estado, cajas ( nombre ), clientes ( nombre_completo )")
-        .not("estado", "eq", "Cancelado")
+        .select("id, monto_solicitado, created_at, fecha_registro, caja_id, cajas ( nombre ), clientes ( nombre_completo )")
         .order("created_at", { ascending: false })
         .limit(500);
       if (preErr) throw preErr;

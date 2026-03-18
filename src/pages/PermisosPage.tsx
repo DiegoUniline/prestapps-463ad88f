@@ -22,19 +22,16 @@ const ROLES: { key: AppRole; label: string; color: string }[] = [
 ];
 
 export default function PermisosPage() {
-  const { isAllowed, saveMutation, isLoading, rows } = usePermisos();
+  const { isAllowed, saveMutation, isLoading } = usePermisos();
   const [activeRole, setActiveRole] = useState<AppRole>("supervisor");
 
   // Local state for editing: "module:action" -> boolean
   const [local, setLocal] = useState<Record<string, boolean>>({});
   const [dirty, setDirty] = useState(false);
-  const [initialized, setInitialized] = useState<string | null>(null);
 
-  // Initialize local state from current permissions — only when role changes or data loads
+  // Initialize local state from current permissions
   useEffect(() => {
     if (isLoading) return;
-    const key = `${activeRole}-${rows.length}`;
-    if (initialized === key) return;
     const state: Record<string, boolean> = {};
     for (const mod of MODULE_DEFINITIONS) {
       for (const act of mod.actions) {
@@ -43,8 +40,7 @@ export default function PermisosPage() {
     }
     setLocal(state);
     setDirty(false);
-    setInitialized(key);
-  }, [activeRole, isLoading, rows.length]);
+  }, [activeRole, isLoading, isAllowed]);
 
   const toggle = (module: string, action: string) => {
     // Don't allow editing admin permisos module
@@ -78,7 +74,6 @@ export default function PermisosPage() {
       onSuccess: () => {
         toast.success("Permisos guardados correctamente");
         setDirty(false);
-        setInitialized(null); // force reload from DB after save
       },
       onError: () => toast.error("Error al guardar permisos"),
     });

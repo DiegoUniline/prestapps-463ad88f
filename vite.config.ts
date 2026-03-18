@@ -1,10 +1,11 @@
-import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
+import { VitePWA } from "vite-plugin-pwa";
 
-const resolveFromNodeModules = (packagePath: string) =>
-  fileURLToPath(new URL(`./node_modules/${packagePath}`, import.meta.url));
-
-export default defineConfig({
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
@@ -12,37 +13,68 @@ export default defineConfig({
       overlay: false,
     },
   },
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+    VitePWA({
+      registerType: "prompt",
+      includeAssets: ["favicon.ico", "logo-icon.png"],
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/oewuzgugsjqtznmgnfhp\.supabase\.co\/rest\/v1\/.*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "supabase-api-cache",
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 },
+              networkTimeoutSeconds: 5,
+            },
+          },
+          {
+            urlPattern: /^https:\/\/oewuzgugsjqtznmgnfhp\.supabase\.co\/storage\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "supabase-storage-cache",
+              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
+            },
+          },
+        ],
+        navigateFallbackDenylist: [/^\/~oauth/],
+      },
+      manifest: {
+        name: "PrestApp — Sistema de Préstamos",
+        short_name: "PrestApp",
+        description: "Sistema SaaS de gestión de préstamos y cobranza",
+        theme_color: "#EA184D",
+        background_color: "#F0F0F0",
+        display: "standalone",
+        orientation: "portrait-primary",
+        start_url: "/",
+        scope: "/",
+        icons: [
+          { src: "/logo-icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/logo-icon.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
+      },
+    }),
+  ].filter(Boolean),
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-      react: resolveFromNodeModules("react"),
-      "react-dom": resolveFromNodeModules("react-dom"),
-      "react/jsx-runtime": resolveFromNodeModules("react/jsx-runtime.js"),
-      "react/jsx-dev-runtime": resolveFromNodeModules("react/jsx-dev-runtime.js"),
-      "react-router": resolveFromNodeModules("react-router"),
-      "react-router-dom": resolveFromNodeModules("react-router-dom"),
-      "@remix-run/router": resolveFromNodeModules("@remix-run/router"),
-      "@tanstack/react-query": resolveFromNodeModules("@tanstack/react-query"),
-      "@tanstack/query-core": resolveFromNodeModules("@tanstack/query-core"),
+      "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react-router", "react-router-dom", "@remix-run/router"],
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router", "react-router-dom", "@remix-run/router"],
-          "vendor-query": ["@tanstack/react-query", "@tanstack/query-core"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-ui": [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-popover",
-            "@radix-ui/react-select",
-            "@radix-ui/react-tabs",
-          ],
-          "vendor-charts": ["recharts"],
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-select', '@radix-ui/react-tabs'],
+          'vendor-charts': ['recharts'],
         },
       },
     },
   },
-});
+}));
