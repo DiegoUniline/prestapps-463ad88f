@@ -253,99 +253,151 @@ export default function CrmCobranzaPage() {
         </Select>
       </div>
 
-      {/* Table */}
+      {/* List */}
       {isLoading ? (
         <div className="text-center py-12"><Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" /></div>
+      ) : filtered.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground text-sm">No hay cuentas que coincidan con los filtros</Card>
       ) : (
-        <Card>
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Cliente</TableHead>
-                  <TableHead className="text-xs text-center">Días Atraso</TableHead>
-                  <TableHead className="text-xs text-center">Cuotas Vencidas</TableHead>
-                  <TableHead className="text-xs text-right">Mora</TableHead>
-                  <TableHead className="text-xs text-right">Total Adeudado</TableHead>
-                  <TableHead className="text-xs text-center">Gestiones</TableHead>
-                  <TableHead className="text-xs text-center">Última Gestión</TableHead>
-                  <TableHead className="text-xs text-center">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((p: any) => {
-                  const gests = getGestionesForPrestamo(p.id);
-                  const lastGestion = gests[0];
-                  const lastResultado = lastGestion ? RESULTADOS.find((r) => r.value === lastGestion.resultado) : null;
+        <>
+          {/* Mobile: Cards */}
+          <div className="space-y-2 md:hidden">
+            {filtered.map((p: any) => {
+              const gests = getGestionesForPrestamo(p.id);
+              const lastGestion = gests[0];
+              const lastResultado = lastGestion ? RESULTADOS.find((r) => r.value === lastGestion.resultado) : null;
 
-                  return (
-                    <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{p.cliente.nombre_completo}</p>
-                          <p className="text-xs text-muted-foreground">{p.cliente.telefono || "Sin teléfono"}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={cn("font-bold text-sm", getSeverityColor(p.maxDiasAtraso))}>
-                          {p.maxDiasAtraso > 0 ? `${p.maxDiasAtraso}d` : "—"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {p.cuotasVencidas > 0 ? (
-                          <Badge variant="destructive" className="text-[10px]">{p.cuotasVencidas}</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px]">0</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right text-sm font-medium text-destructive">{$$(p.totalMora)}</TableCell>
-                      <TableCell className="text-right text-sm font-medium">{$$(p.totalAdeudado)}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="text-[10px]">{gests.length}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {lastGestion ? (
-                          <div className="text-xs">
-                            <span className={cn("inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium", lastResultado?.color)}>
-                              {lastResultado?.label || lastGestion.resultado}
-                            </span>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              {format(new Date(lastGestion.created_at), "dd/MM", { locale: es })}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => { setSelectedPrestamo(p); setOpenGestion(true); }}>
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
-                          {p.cliente.telefono && (
-                            <Button variant="outline" size="icon" className="h-7 w-7 text-green-600" onClick={() => sendWhatsAppCobranza(p)} disabled={sendingWA === p.id}>
-                              {sendingWA === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5" />}
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/prestamos/${p.id}`)}>
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No hay cuentas que coincidan con los filtros
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+              return (
+                <Card key={p.id} className="p-3" onClick={() => navigate(`/prestamos/${p.id}`)}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">{p.cliente.nombre_completo}</p>
+                      <p className="text-[11px] text-muted-foreground">{p.cliente.telefono || "Sin teléfono"}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-sm">{$$(p.totalAdeudado)}</p>
+                      {p.totalMora > 0 && <p className="text-[10px] text-destructive">Mora: {$$(p.totalMora)}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-2 pt-2 border-t">
+                    {p.maxDiasAtraso > 0 && (
+                      <span className={cn("text-xs font-bold", getSeverityColor(p.maxDiasAtraso))}>
+                        {p.maxDiasAtraso}d atraso
+                      </span>
+                    )}
+                    {p.cuotasVencidas > 0 && (
+                      <Badge variant="destructive" className="text-[10px] h-5">{p.cuotasVencidas} vencida{p.cuotasVencidas > 1 ? "s" : ""}</Badge>
+                    )}
+                    {lastResultado && (
+                      <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium ml-auto", lastResultado.color)}>
+                        {lastResultado.label}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1 mt-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => { setSelectedPrestamo(p); setOpenGestion(true); }}>
+                      <Plus className="h-3 w-3 mr-1" /> Gestión
+                    </Button>
+                    {p.cliente.telefono && (
+                      <Button variant="outline" size="sm" className="h-7 text-xs text-green-600" onClick={() => sendWhatsAppCobranza(p)} disabled={sendingWA === p.id}>
+                        {sendingWA === p.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageSquare className="h-3 w-3" />}
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate(`/prestamos/${p.id}`)}>
+                      <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
-        </Card>
+
+          {/* Desktop: Table */}
+          <Card className="hidden md:block">
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Cliente</TableHead>
+                    <TableHead className="text-xs text-center">Días Atraso</TableHead>
+                    <TableHead className="text-xs text-center">Cuotas Vencidas</TableHead>
+                    <TableHead className="text-xs text-right">Mora</TableHead>
+                    <TableHead className="text-xs text-right">Total Adeudado</TableHead>
+                    <TableHead className="text-xs text-center">Gestiones</TableHead>
+                    <TableHead className="text-xs text-center">Última Gestión</TableHead>
+                    <TableHead className="text-xs text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((p: any) => {
+                    const gests = getGestionesForPrestamo(p.id);
+                    const lastGestion = gests[0];
+                    const lastResultado = lastGestion ? RESULTADOS.find((r) => r.value === lastGestion.resultado) : null;
+
+                    return (
+                      <TableRow key={p.id} className="cursor-pointer hover:bg-muted/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-sm">{p.cliente.nombre_completo}</p>
+                            <p className="text-xs text-muted-foreground">{p.cliente.telefono || "Sin teléfono"}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className={cn("font-bold text-sm", getSeverityColor(p.maxDiasAtraso))}>
+                            {p.maxDiasAtraso > 0 ? `${p.maxDiasAtraso}d` : "—"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {p.cuotasVencidas > 0 ? (
+                            <Badge variant="destructive" className="text-[10px]">{p.cuotasVencidas}</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px]">0</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium text-destructive">{$$(p.totalMora)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium">{$$(p.totalAdeudado)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-[10px]">{gests.length}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {lastGestion ? (
+                            <div className="text-xs">
+                              <span className={cn("inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium", lastResultado?.color)}>
+                                {lastResultado?.label || lastGestion.resultado}
+                              </span>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {format(new Date(lastGestion.created_at), "dd/MM", { locale: es })}
+                              </p>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => { setSelectedPrestamo(p); setOpenGestion(true); }}>
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                            {p.cliente.telefono && (
+                              <Button variant="outline" size="icon" className="h-7 w-7 text-green-600" onClick={() => sendWhatsAppCobranza(p)} disabled={sendingWA === p.id}>
+                                {sendingWA === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5" />}
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/prestamos/${p.id}`)}>
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </>
       )}
 
       {/* ── Nueva Gestión Modal ── */}
