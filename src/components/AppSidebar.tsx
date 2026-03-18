@@ -112,7 +112,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { role, loading } = useCurrentUserRole();
-  const { empresaId } = useEmpresa();
+  const { isAllowed, isLoading: permLoading } = usePermisosRead();
   const queryClient = useQueryClient();
 
   // Prefetch main views on mount — keys MUST match actual hook keys
