@@ -35,10 +35,29 @@ export interface SubscriptionStatus {
 
 export function useAccesoApp() {
   const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
+  const roleLoading = useAuthStore((s) => s.roleLoading);
   const isSuperAdmin = user?.email === "diego.leon@uniline.mx";
   const empresaId = useEmpresaStore((s) => s.empresaId);
 
   const isViewingOtherEmpresa = isSuperAdmin && !!empresaId;
+
+  // Non-admin roles (cobrador, supervisor) should never be blocked by subscription
+  // since they can't manage subscriptions anyway
+  if (!roleLoading && role !== "admin" && !isSuperAdmin) {
+    return {
+      subscribed: true,
+      estado: "activa" as const,
+      loading: false,
+      data: null as SubscriptionStatus | null,
+      refetch: (() => {}) as any,
+      showBanner: false,
+      blocked: false,
+      diasGraciaRestantes: null as number | null,
+      diasTrialRestantes: null as number | null,
+      facturaPendiente: null as SubscriptionStatus["factura_pendiente"],
+    };
+  }
 
   const { data, isLoading, refetch } = useQuery<SubscriptionStatus>({
     queryKey: ["subscription-status", user?.id, empresaId],
