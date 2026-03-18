@@ -194,9 +194,9 @@ export default function LandingPage() {
                 <strong className="text-foreground"> Sin papel, sin errores, sin estrés.</strong>
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                <Link to="/login">
+                <Link to="/registro">
                   <Button size="lg" className="text-base px-8 h-12 font-semibold shadow-lg shadow-primary/25 w-full sm:w-auto">
-                    Probar Gratis <ArrowRight className="ml-2 h-5 w-5" />
+                    Probar 7 Días Gratis <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
                 <a href="#modulos">
