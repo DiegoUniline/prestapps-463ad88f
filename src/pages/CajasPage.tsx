@@ -796,6 +796,15 @@ export default function CajasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Kardex Sheet */}
+      <CajaKardexSheet
+        open={!!kardexCaja}
+        onOpenChange={(v) => !v && setKardexCaja(null)}
+        cajaId={kardexCaja?.id || ""}
+        cajaNombre={kardexCaja?.nombre || ""}
+        saldoActual={kardexCaja?.saldo || 0}
+      />
     </div>
   );
 }
