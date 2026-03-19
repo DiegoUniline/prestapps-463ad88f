@@ -49,13 +49,6 @@ function useCajaKardex(cajaId: string, open: boolean) {
         .eq("caja_id", cajaId)
         .order("created_at", { ascending: true });
 
-      const { data: pagos } = await supabase
-        .from("pagos")
-        .select("id, created_at, monto_recibido, anulado, prestamos ( clientes ( nombre_completo ) )")
-        .eq("caja_id", cajaId)
-        .eq("anulado", false)
-        .order("created_at", { ascending: true });
-
       const rows: KardexRow[] = [];
 
       for (const m of movs || []) {
@@ -67,19 +60,6 @@ function useCajaKardex(cajaId: string, open: boolean) {
           concepto,
           monto: Number(m.monto || 0),
           categoria: classifyConcepto(concepto, m.tipo as "entrada" | "salida"),
-        });
-      }
-
-      for (const p of pagos || []) {
-        const cliente = (p.prestamos as any)?.clientes?.nombre_completo || "";
-        const concepto = `Cobro cuota${cliente ? ` — ${cliente}` : ""}`;
-        rows.push({
-          id: `p-${p.id}`,
-          fecha: p.created_at || "",
-          tipo: "entrada",
-          concepto,
-          monto: Number(p.monto_recibido || 0),
-          categoria: "Cobros",
         });
       }
 
