@@ -69,6 +69,7 @@ export default function NuevoPrestamoPage() {
   const { data: cajas = [] } = useCajasOptions(empresaId);
   const { data: rutas = [] } = useRutasOptions(empresaId);
   const { data: frecuencias = [] } = useFrecuenciasPagoActivas();
+  const { data: planesCuotas = [] } = usePlanesCuotasActivos();
   const geo = useGeoLocation();
 
   const [clienteId, setClienteId] = useState("");
