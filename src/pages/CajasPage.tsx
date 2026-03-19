@@ -490,7 +490,29 @@ export default function CajasPage() {
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-[14px]">{c.nombre}</p>
-                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}>
+                          <Eye className="h-3.5 w-3.5 mr-2" />Ver detalle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openModalForCaja("depositar", c.id)}>
+                          <ArrowDownLeft className="h-3.5 w-3.5 mr-2 text-success" />Depositar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openModalForCaja("retirar", c.id)}>
+                          <ArrowUpRight className="h-3.5 w-3.5 mr-2 text-destructive" />Retirar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
+                          <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
                 <p className="text-2xl font-bold mt-1">{$$(Number(c.saldo_actual || 0))}</p>
                 {c.descripcion && <p className="text-[12px] text-muted-foreground mt-0.5">{c.descripcion}</p>}
