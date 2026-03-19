@@ -57,6 +57,7 @@ const modules: NavModule[] = [
       { title: "Mi Cobranza", url: "/mi-cobranza", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"], permModule: "mi_cobranza" },
       { title: "Cobranza Diaria", url: "/cobranza", icon: ClipboardCheck, roles: ["admin", "supervisor", "cobrador"], permModule: "cobranza" },
       { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin", "supervisor", "cobrador"], permModule: "prestamos" },
+      { title: "Planes de Cuotas", url: "/planes-cuotas", icon: BookOpen, roles: ["admin", "supervisor"], permModule: "prestamos" },
       { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"], permModule: "pagos" },
       { title: "Promesas", url: "/promesas", icon: CalendarCheck, roles: ["admin", "supervisor", "cobrador"], permModule: "promesas" },
       { title: "Solicitudes", url: "/solicitudes", icon: FileInput, roles: ["admin", "supervisor", "cobrador"], permModule: "solicitudes" },

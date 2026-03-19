@@ -36,6 +36,7 @@ import ClienteCobranzaDetallePage from "@/pages/ClienteCobranzaDetallePage";
 import CobradorViewPage from "@/pages/CobradorViewPage";
 import SolicitudesPage from "@/pages/SolicitudesPage";
 import SolicitudPrestamoPage from "@/pages/SolicitudPrestamoPage";
+import PlanesCuotasPage from "@/pages/PlanesCuotasPage";
 import GastosPage from "@/pages/GastosPage";
 
 // Lazy — infrequent/heavy pages
@@ -118,6 +119,7 @@ const App = () => (
               <Route path="/mi-cobranza" element={<CobradorViewPage />} />
               <Route path="/prestamos" element={<PrestamosPage />} />
               <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
+              <Route path="/planes-cuotas" element={<PlanesCuotasPage />} />
               <Route path="/pagos" element={<PagosPage />} />
               <Route path="/promesas" element={<PromesasPage />} />
               <Route path="/solicitudes" element={<SolicitudesPage />} />

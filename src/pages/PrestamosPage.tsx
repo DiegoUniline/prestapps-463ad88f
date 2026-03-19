@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePlanesCuotasActivos, type PlanCuota } from "@/hooks/useCatalogos";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -482,9 +481,6 @@ export default function PrestamosPage() {
 
   const colSpanTotal = visibleColumns.length + 1; // +1 for checkbox
 
-  const { data: planesCuotas = [] } = usePlanesCuotasActivos();
-  const [mainTab, setMainTab] = useState("prestamos");
-
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -494,15 +490,6 @@ export default function PrestamosPage() {
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nuevo
         </Button>
       </div>
-
-      {/* Main tabs: Préstamos / Planes de Cuotas */}
-      <Tabs value={mainTab} onValueChange={setMainTab}>
-        <TabsList className="bg-muted">
-          <TabsTrigger value="prestamos">Vista Préstamos</TabsTrigger>
-          <TabsTrigger value="planes">Planes de Cuotas <span className="ml-1.5 text-[10px] opacity-70">({planesCuotas.length})</span></TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="prestamos" className="space-y-5 mt-0">
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -826,55 +813,6 @@ export default function PrestamosPage() {
       </div>
 
         </TabsContent>
-      </Tabs>
-
-      </TabsContent>
-
-      {/* Planes de Cuotas tab */}
-      <TabsContent value="planes" className="mt-4">
-        <div className="bg-card rounded-lg border border-border shadow-sm">
-          <div className="px-4 py-3 border-b border-border">
-            <p className="text-sm font-medium">Planes de cuotas activos</p>
-            <p className="text-xs text-muted-foreground">Estos planes se usan como plantilla al crear un nuevo préstamo. Adminístralos desde Catálogos.</p>
-          </div>
-          {planesCuotas.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              <p>No hay planes de cuotas configurados.</p>
-              <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/catalogos")}>Ir a Catálogos</Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead className="text-center">Cuotas</TableHead>
-                  <TableHead className="text-center">Tasa %</TableHead>
-                  <TableHead className="text-center">Frecuencia</TableHead>
-                  <TableHead className="text-center">Modalidad</TableHead>
-                  <TableHead className="text-center">Mora</TableHead>
-                  <TableHead className="text-center">Com. Colocador</TableHead>
-                  <TableHead className="text-center">Com. Cobrador</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {planesCuotas.map((plan) => (
-                  <TableRow key={plan.id}>
-                    <TableCell className="font-medium">{plan.nombre}</TableCell>
-                    <TableCell className="text-center">{plan.num_cuotas}</TableCell>
-                    <TableCell className="text-center">{plan.tasa_interes}%</TableCell>
-                    <TableCell className="text-center capitalize">{plan.frecuencia}</TableCell>
-                    <TableCell className="text-center capitalize">{plan.modalidad === "fijo" ? "Cuota Fija" : "Saldos Insolutos"}</TableCell>
-                    <TableCell className="text-center">{plan.tipo_mora === "porcentaje" ? `${plan.valor_mora}%` : $$(plan.valor_mora)}/día</TableCell>
-                    <TableCell className="text-center">{plan.comision_colocador}%</TableCell>
-                    <TableCell className="text-center">{plan.comision_cobrador}%</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
-      </TabsContent>
-
       </Tabs>
 
       {lightboxPhoto && (
