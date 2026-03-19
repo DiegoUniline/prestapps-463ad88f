@@ -49,27 +49,51 @@ function useCajaStats(cajaId: string) {
     queryFn: async () => {
       const { data: prestamos } = await supabase
         .from("prestamos")
-        .select("id, monto_solicitado, monto_total_pagar, estado")
+        .select("id, monto_solicitado, monto_total_pagar, estado, tipo_mora, valor_mora")
         .eq("caja_id", cajaId)
         .not("estado", "in", '("Cancelado")');
 
       if (!prestamos?.length) return { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
 
       const ids = prestamos.map(p => p.id);
+      const prestamoMap = new Map(prestamos.map((p) => [p.id, p]));
       const { data: amortData } = await supabase
         .from("amortizacion")
-        .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento")
+        .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes, mora_pagada, status, fecha_vencimiento")
         .in("prestamo_id", ids);
 
       const today = new Date().toISOString().slice(0, 10);
       const prestamoAgg: Record<string, { saldo: number; mora: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
+
       for (const a of amortData || []) {
-        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, capital: 0, interes: 0, tieneAtraso: false };
-        prestamoAgg[a.prestamo_id].saldo += Number(a.saldo_total || 0);
-        prestamoAgg[a.prestamo_id].mora += Number(a.saldo_mora || 0);
-        prestamoAgg[a.prestamo_id].capital += Number(a.saldo_capital || 0);
-        prestamoAgg[a.prestamo_id].interes += Number(a.saldo_interes || 0);
-        if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) prestamoAgg[a.prestamo_id].tieneAtraso = true;
+        const p = prestamoMap.get(a.prestamo_id);
+        if (!prestamoAgg[a.prestamo_id]) {
+          prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, capital: 0, interes: 0, tieneAtraso: false };
+        }
+
+        const saldoCapital = Number(a.saldo_capital || 0);
+        const saldoInteres = Number(a.saldo_interes || 0);
+        const saldoMoraGuardada = Number(a.saldo_mora || 0);
+        let moraPendiente = saldoMoraGuardada;
+
+        const hayAtraso = !!a.fecha_vencimiento && a.fecha_vencimiento < today;
+        if (hayAtraso && Number(a.saldo_total || 0) > 0 && Number(p?.valor_mora || 0) > 0) {
+          const diasAtraso = Math.max(0, Math.floor((new Date(today).getTime() - new Date(a.fecha_vencimiento).getTime()) / 86400000));
+          const baseMora = p?.tipo_mora === "porcentaje"
+            ? Number(a.capital_interes || 0) * (Number(p?.valor_mora || 0) / 100) * diasAtraso
+            : Number(p?.valor_mora || 0) * diasAtraso;
+          const moraCalculada = Math.max(0, baseMora - Number(a.mora_pagada || 0));
+          moraPendiente = Math.max(saldoMoraGuardada, moraCalculada);
+        }
+
+        prestamoAgg[a.prestamo_id].capital += saldoCapital;
+        prestamoAgg[a.prestamo_id].interes += saldoInteres;
+        prestamoAgg[a.prestamo_id].mora += moraPendiente;
+        prestamoAgg[a.prestamo_id].saldo += saldoCapital + saldoInteres + moraPendiente;
+
+        if (hayAtraso && (saldoCapital + saldoInteres + moraPendiente) > 0) {
+          prestamoAgg[a.prestamo_id].tieneAtraso = true;
+        }
       }
 
       let activos = 0, colocado = 0, totalPagar = 0, porCobrar = 0, capitalPorCobrar = 0, interesPorCobrar = 0, moraPorCobrar = 0, ganancia = 0, enMora = 0, moraTotal = 0, liquidados = 0, capitalRecuperado = 0;
@@ -85,9 +109,10 @@ function useCajaStats(cajaId: string) {
         capitalPorCobrar += agg.capital;
         interesPorCobrar += agg.interes;
         moraPorCobrar += agg.mora;
-        ganancia += total - monto;
+        ganancia += (total - monto) + agg.mora;
         if (agg.tieneAtraso) { enMora++; moraTotal += agg.mora; }
       }
+
       return { activos, colocado, totalPagar, porCobrar, capitalPorCobrar, interesPorCobrar, moraPorCobrar, ganancia, enMora, moraTotal, liquidados, capitalRecuperado };
     },
   });
@@ -233,7 +258,7 @@ export default function CajaDetallePage() {
     { label: "Capital por Cobrar", value: $$(s.capitalPorCobrar), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
     { label: "Interés por Cobrar", value: $$(s.interesPorCobrar), icon: TrendingUp, accent: "text-warning", bg: "bg-warning/10" },
     { label: "Mora por Cobrar", value: $$(s.moraPorCobrar), icon: AlertTriangle, accent: "text-destructive", bg: "bg-destructive/10" },
-    { label: "Ganancia Proyectada", value: $$(s.ganancia + s.moraPorCobrar), icon: PiggyBank, accent: "text-success", bg: "bg-success/10" },
+    { label: "Ganancia Proyectada", value: $$(s.ganancia), icon: PiggyBank, accent: "text-success", bg: "bg-success/10" },
     { label: "Entradas Total", value: $$(flujoData.totalEntradas), icon: ArrowDownLeft, accent: "text-success", bg: "bg-success/10" },
     { label: "Salidas Total", value: $$(flujoData.totalSalidas), icon: ArrowUpRight, accent: "text-destructive", bg: "bg-destructive/10" },
   ];
