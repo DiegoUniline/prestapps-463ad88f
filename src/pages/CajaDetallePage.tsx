@@ -63,17 +63,18 @@ function useCajaStats(cajaId: string) {
         .in("prestamo_id", ids);
 
       const today = new Date().toISOString().slice(0, 10);
-      const prestamoAgg: Record<string, { saldo: number; mora: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
+      const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
 
       for (const a of amortData || []) {
         const p = prestamoMap.get(a.prestamo_id);
         if (!prestamoAgg[a.prestamo_id]) {
-          prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, capital: 0, interes: 0, tieneAtraso: false };
+          prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, capital: 0, interes: 0, tieneAtraso: false };
         }
 
         const saldoCapital = Number(a.saldo_capital || 0);
         const saldoInteres = Number(a.saldo_interes || 0);
         const saldoMoraGuardada = Number(a.saldo_mora || 0);
+        const moraPagada = Number(a.mora_pagada || 0);
         let moraPendiente = saldoMoraGuardada;
 
         const hayAtraso = !!a.fecha_vencimiento && a.fecha_vencimiento < today;
@@ -82,13 +83,14 @@ function useCajaStats(cajaId: string) {
           const baseMora = p?.tipo_mora === "porcentaje"
             ? Number(a.capital_interes || 0) * (Number(p?.valor_mora || 0) / 100) * diasAtraso
             : Number(p?.valor_mora || 0) * diasAtraso;
-          const moraCalculada = Math.max(0, baseMora - Number(a.mora_pagada || 0));
+          const moraCalculada = Math.max(0, baseMora - moraPagada);
           moraPendiente = Math.max(saldoMoraGuardada, moraCalculada);
         }
 
         prestamoAgg[a.prestamo_id].capital += saldoCapital;
         prestamoAgg[a.prestamo_id].interes += saldoInteres;
         prestamoAgg[a.prestamo_id].mora += moraPendiente;
+        prestamoAgg[a.prestamo_id].moraCobrada += moraPagada;
         prestamoAgg[a.prestamo_id].saldo += saldoCapital + saldoInteres + moraPendiente;
 
         if (hayAtraso && (saldoCapital + saldoInteres + moraPendiente) > 0) {
@@ -98,7 +100,7 @@ function useCajaStats(cajaId: string) {
 
       let activos = 0, colocado = 0, totalPagar = 0, porCobrar = 0, capitalPorCobrar = 0, interesPorCobrar = 0, moraPorCobrar = 0, ganancia = 0, enMora = 0, moraTotal = 0, liquidados = 0, capitalRecuperado = 0;
       for (const p of prestamos) {
-        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, capital: 0, interes: 0, tieneAtraso: false };
+        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, moraCobrada: 0, capital: 0, interes: 0, tieneAtraso: false };
         const monto = Number(p.monto_solicitado || 0);
         const total = Number(p.monto_total_pagar || 0);
         const isActive = p.estado !== "Liquidado";
@@ -109,7 +111,8 @@ function useCajaStats(cajaId: string) {
         capitalPorCobrar += agg.capital;
         interesPorCobrar += agg.interes;
         moraPorCobrar += agg.mora;
-        ganancia += (total - monto) + agg.mora;
+        // Ganancia = interés original (total-monto) + mora cobrada + mora pendiente
+        ganancia += (total - monto) + agg.moraCobrada + agg.mora;
         if (agg.tieneAtraso) { enMora++; moraTotal += agg.mora; }
       }
 
