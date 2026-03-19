@@ -108,6 +108,7 @@ export default function NuevoPrestamoPage() {
   const [montoPagadoInicial, setMontoPagadoInicial] = useState("");
   const [inicialMode, setInicialMode] = useState<"cuotas" | "monto">("cuotas");
   const [fechaTexto, setFechaTexto] = useState("");
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   // Cálculos
   const monto = parseFloat(montoSolicitado) || 0;
