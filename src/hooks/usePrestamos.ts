@@ -94,7 +94,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
 
   // Amortization can exceed 1000 rows — use fetchAllRows
   // Other lookups (clientes, cajas, rutas, profiles) are bounded by unique IDs so they're fine
-  const [amortData, clientesRes, cajasRes, rutasRes, cobradoresRes] = await Promise.all([
+  const [amortData, clientesRes, cajasRes, rutasRes, cobradoresRes, pagosRes] = await Promise.all([
     fetchAllRows<any>(
       supabase
         .from("amortizacion")
@@ -113,6 +113,12 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
     cobradorIds.length > 0
       ? supabase.from("profiles").select("id, nombre_completo").in("id", cobradorIds)
       : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("pagos")
+      .select("prestamo_id, fecha_pago, monto_recibido")
+      .in("prestamo_id", prestamoIds)
+      .eq("anulado", false)
+      .order("fecha_pago", { ascending: false }),
   ]);
 
   const clientesData = clientesRes.error ? [] : clientesRes.data || [];
