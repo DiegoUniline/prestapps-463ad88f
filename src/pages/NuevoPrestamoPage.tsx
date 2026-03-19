@@ -736,6 +736,19 @@ export default function NuevoPrestamoPage() {
           </CardContent>
         </Card>
       </div>
+      {quickCreate && (
+        <QuickCreateDialog
+          entityType={quickCreate}
+          open={!!quickCreate}
+          onOpenChange={(open) => { if (!open) setQuickCreate(null); }}
+          onCreated={(id, label) => {
+            if (quickCreate === "cliente") setClienteId(id);
+            else if (quickCreate === "caja") setCajaId(id);
+            else if (quickCreate === "ruta") setRutaId(id);
+            setQuickCreate(null);
+          }}
+        />
+      )}
     </div>
   );
 }
