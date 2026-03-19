@@ -194,6 +194,7 @@ export default function PrestamoDetallePage() {
   const [cancelarOpen, setCancelarOpen] = useState(false);
   const [reestructurarOpen, setReestructurarOpen] = useState(false);
   const [editarOpen, setEditarOpen] = useState(false);
+  const [liquidarOpen, setLiquidarOpen] = useState(false);
   const [docPreview, setDocPreview] = useState<{ open: boolean; type: "estado" | "contrato" | "pagos" | null }>({ open: false, type: null });
   const [editPagoOpen, setEditPagoOpen] = useState(false);
   const [editPagoData, setEditPagoData] = useState<any>(null);
