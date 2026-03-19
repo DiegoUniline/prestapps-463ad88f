@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CajaKardexSheet from "@/components/CajaKardexSheet";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -225,6 +226,7 @@ type ModalType = "depositar" | "retirar" | "transferir" | "nueva-caja" | null;
 
 // ── Component ─────────────────────────────────────────────────────
 export default function CajasPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
   const { data: cajas = [], isLoading } = useCajas(empresaId);
@@ -428,7 +430,7 @@ export default function CajasPage() {
                   <TableRow
                     key={c.id}
                     className={cn("cursor-pointer", selectedCaja === c.id && "bg-[hsl(var(--table-selected))]")}
-                    onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}
+                    onClick={() => navigate(`/cajas/${c.id}`)}
                   >
                     <TableCell>
                       <div>
@@ -451,7 +453,7 @@ export default function CajasPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}>
+                          <DropdownMenuItem onClick={() => navigate(`/cajas/${c.id}`)}>
                             <Eye className="h-3.5 w-3.5 mr-2" />Ver detalle
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openModalForCaja("depositar", c.id)}>
@@ -486,7 +488,7 @@ export default function CajasPage() {
                   "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
                   selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
                 )}
-                onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}
+                onClick={() => navigate(`/cajas/${c.id}`)}
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-[14px]">{c.nombre}</p>
@@ -498,7 +500,7 @@ export default function CajasPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}>
+                        <DropdownMenuItem onClick={() => navigate(`/cajas/${c.id}`)}>
                           <Eye className="h-3.5 w-3.5 mr-2" />Ver detalle
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openModalForCaja("depositar", c.id)}>

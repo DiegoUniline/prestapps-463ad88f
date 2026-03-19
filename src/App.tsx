@@ -29,6 +29,7 @@ import PromesasPage from "@/pages/PromesasPage";
 import ClientesPage from "@/pages/ClientesPage";
 import ClienteDetallePage from "@/pages/ClienteDetallePage";
 import CajasPage from "@/pages/CajasPage";
+import CajaDetallePage from "@/pages/CajaDetallePage";
 import RutasPage from "@/pages/RutasPage";
 import CobradoresPage from "@/pages/CobradoresPage";
 import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
@@ -132,7 +133,7 @@ const App = () => (
 
               <Route path="/prestamos/nuevo" element={<RoleGuard allowed={["admin"]}><NuevoPrestamoPage /></RoleGuard>} />
               <Route path="/cajas" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
-              <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]}><CajasPage /></RoleGuard>} />
+              <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]}><CajaDetallePage /></RoleGuard>} />
               <Route path="/rutas" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
               <Route path="/rutas/:id" element={<RoleGuard allowed={["admin"]}><RutasPage /></RoleGuard>} />
               <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><CobradoresPage /></RoleGuard>} />
