@@ -96,9 +96,11 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
     }
 
     setSaving(true);
+    onOpenChange(false); // Close immediately to prevent double-clicks
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
+      // Mark payment as anulado first
       const { error: pagoErr } = await supabase
         .from("pagos")
         .update({
@@ -109,6 +111,9 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
         } as any)
         .eq("id", pago.id);
       if (pagoErr) throw pagoErr;
+
+      // Small delay to allow any concurrent annulments to mark their pagos first
+      await new Promise((r) => setTimeout(r, 500));
 
       await (supabase.rpc as any)("recalcular_mora", { p_prestamo_id: pago.prestamo_id });
 
