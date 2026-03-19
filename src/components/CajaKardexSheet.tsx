@@ -219,7 +219,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
           <div className="px-5 pt-3">
             <TabsList className="w-full">
               <TabsTrigger value="kardex" className="flex-1 text-[13px]">Kardex</TabsTrigger>
-              <TabsTrigger value="resultados" className="flex-1 text-[13px]">Estado de Resultados</TabsTrigger>
+              <TabsTrigger value="flujo" className="flex-1 text-[13px]">Flujo de Efectivo</TabsTrigger>
             </TabsList>
           </div>
 
