@@ -741,6 +741,8 @@ export type Database = {
           lada_pais: string
           logo_url: string | null
           max_usuarios: number
+          moneda_codigo: string
+          moneda_simbolo: string
           nombre: string
           plan: string
           ruc: string | null
@@ -757,6 +759,8 @@ export type Database = {
           lada_pais?: string
           logo_url?: string | null
           max_usuarios?: number
+          moneda_codigo?: string
+          moneda_simbolo?: string
           nombre: string
           plan?: string
           ruc?: string | null
@@ -773,6 +777,8 @@ export type Database = {
           lada_pais?: string
           logo_url?: string | null
           max_usuarios?: number
+          moneda_codigo?: string
+          moneda_simbolo?: string
           nombre?: string
           plan?: string
           ruc?: string | null
