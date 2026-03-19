@@ -132,6 +132,14 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   const rutasMap = Object.fromEntries(rutasData.map((r) => [r.id, r.nombre || "—"]));
   const cobradorMap = Object.fromEntries(cobradoresData.map((c) => [c.id, c.nombre_completo || "—"]));
 
+  // Build último pago map (pagos already sorted desc by fecha_pago, keep first per prestamo)
+  const ultimoPagoMap: Record<string, { fecha: string; monto: number }> = {};
+  for (const pg of (pagosRes.data || [])) {
+    if (!ultimoPagoMap[pg.prestamo_id]) {
+      ultimoPagoMap[pg.prestamo_id] = { fecha: pg.fecha_pago, monto: Number(pg.monto_recibido || 0) };
+    }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number }> = {};
 
