@@ -721,7 +721,7 @@ export default function NuevoPrestamoPage() {
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={() => navigate("/prestamos")}>Cancelar</Button>
-              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || (!esInicial && tipoCuenta === "prestamo" && cajaId && monto > Number((cajas.find((c: any) => c.id === cajaId) as any)?.saldo_actual || 0))}>
                 <Save className="h-4 w-4 mr-1.5" />
                 {createMutation.isPending ? "Guardando..." : tipoCuenta === "prestamo" ? "Crear Préstamo" : "Crear Venta"}
               </Button>
