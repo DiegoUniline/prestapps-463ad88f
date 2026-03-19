@@ -650,15 +650,34 @@ export default function PrestamosPage() {
               {/* Header */}
               <div className="px-3 py-2.5 flex items-center justify-between border-b border-border/50">
                 <div className="flex items-center gap-2 min-w-0">
-                  <Avatar className="h-7 w-7 shrink-0">
-                    {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
-                    <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-                      {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="h-7 w-7 shrink-0">
+                      {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
+                      <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+                        {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    {atendidoIds.has(p.id) && (
+                      <span
+                        className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card animate-pulse"
+                        style={{ backgroundColor: atendidoColor }}
+                        title="Atendido esta semana"
+                      />
+                    )}
+                  </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-[13px] truncate">{p.cliente}</p>
                     <p className="text-[11px] text-muted-foreground">{p.idPrestamo} · {fmtDate(p.fechaRegistro)}</p>
+                    {p.ultimoPagoFecha && (
+                      <p className="text-[10px] text-muted-foreground leading-tight">
+                        Últ. pago: {(() => {
+                          const dd = new Date(p.ultimoPagoFecha + "T12:00:00");
+                          const dia = dd.toLocaleDateString("es-MX", { weekday: "short" });
+                          const fecha = dd.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+                          return `${dia.charAt(0).toUpperCase() + dia.slice(1)} ${fecha}`;
+                        })()} · {$$(p.ultimoPagoMonto ?? 0)}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <span className={cn(
