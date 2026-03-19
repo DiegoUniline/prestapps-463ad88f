@@ -221,6 +221,11 @@ export default function NuevoPrestamoPage() {
 
       const esVenta = tipoCuenta !== "prestamo";
 
+      // Require caja for non-initial prestamos
+      if (!esInicial && !esVenta && !cajaId) {
+        throw new Error("Selecciona una caja antes de crear el préstamo");
+      }
+
       // Validate caja balance if not carga inicial and not a sale
       if (!esInicial && !esVenta && cajaId) {
         const { data: caja } = await supabase
