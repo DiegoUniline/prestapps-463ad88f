@@ -508,6 +508,9 @@ export default function PrestamoDetallePage() {
           <Button size="sm" className="h-8 text-[12px] md:text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }} disabled={isCancelado}>
             <HandCoins className="h-3.5 w-3.5 mr-1" />Pago
           </Button>
+          <Button size="sm" variant="outline" className="h-8 text-[12px] md:text-[13px]" onClick={() => setLiquidarOpen(true)} disabled={isCancelado || estado === "Liquidado"}>
+            <Zap className="h-3.5 w-3.5 mr-1" />Liquidar
+          </Button>
           {!isCancelado && <StripeChargeButton
             prestamoId={prestamo.id}
             clienteId={cliente?.id}
