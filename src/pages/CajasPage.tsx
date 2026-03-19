@@ -488,7 +488,7 @@ export default function CajasPage() {
                   "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
                   selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
                 )}
-                onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}
+                onClick={() => navigate(`/cajas/${c.id}`)}
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-[14px]">{c.nombre}</p>
