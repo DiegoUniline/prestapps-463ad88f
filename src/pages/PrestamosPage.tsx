@@ -481,9 +481,6 @@ export default function PrestamosPage() {
 
   const colSpanTotal = visibleColumns.length + 1; // +1 for checkbox
 
-  const { data: planesCuotas = [] } = usePlanesCuotasActivos();
-  const [mainTab, setMainTab] = useState("prestamos");
-
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -493,15 +490,6 @@ export default function PrestamosPage() {
           <Plus className="h-3.5 w-3.5 mr-1.5" />Nuevo
         </Button>
       </div>
-
-      {/* Main tabs: Préstamos / Planes de Cuotas */}
-      <Tabs value={mainTab} onValueChange={setMainTab}>
-        <TabsList className="bg-muted">
-          <TabsTrigger value="prestamos">Vista Préstamos</TabsTrigger>
-          <TabsTrigger value="planes">Planes de Cuotas <span className="ml-1.5 text-[10px] opacity-70">({planesCuotas.length})</span></TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="prestamos" className="space-y-5 mt-0">
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
