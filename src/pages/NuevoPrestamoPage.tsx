@@ -590,31 +590,7 @@ export default function NuevoPrestamoPage() {
               </div>
             </div>
 
-            {/* Caja + Ruta */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Caja</Label>
-                <SearchableSelect
-                  options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
-                  value={cajaId}
-                  onValueChange={setCajaId}
-                  placeholder="Seleccionar caja"
-                  onCreate={() => setQuickCreate("caja")}
-                  createLabel="Crear nueva caja"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[13px]">Ruta</Label>
-                <SearchableSelect
-                  options={rutas.map((r) => ({ value: r.id, label: r.nombre }))}
-                  value={rutaId}
-                  onValueChange={setRutaId}
-                  placeholder="Seleccionar ruta"
-                  onCreate={() => setQuickCreate("ruta")}
-                  createLabel="Crear nueva ruta"
-                />
-              </div>
-            </div>
+
 
             {/* Carga inicial checkbox - only for prestamos */}
             {tipoCuenta === "prestamo" && (
