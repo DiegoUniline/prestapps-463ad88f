@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, TrendingDown, Loader2, FileText, AlertTriangle, PiggyBank, BarChart3, CalendarIcon, X, LayoutGrid, List } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, TrendingDown, Loader2, FileText, AlertTriangle, PiggyBank, BarChart3, CalendarIcon, X, LayoutGrid, List, MoreHorizontal, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
