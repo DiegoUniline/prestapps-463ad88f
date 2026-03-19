@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
+import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDialog";
 import { Loader2, Pencil } from "lucide-react";
-import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 interface EditPrestamoModalProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
   const [cobradorId, setCobradorId] = useState("");
   const [notas, setNotas] = useState("");
   const [codigoInterno, setCodigoInterno] = useState("");
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -110,35 +112,40 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Ruta</Label>
-                <Select value={rutaId || "__none__"} onValueChange={(v) => setRutaId(v === "__none__" ? "" : v)}>
-                  <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin ruta" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin ruta</SelectItem>
-                    {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
+                <SearchableSelect
+                  options={rutas.map((r) => ({ value: r.id, label: r.nombre }))}
+                  value={rutaId}
+                  onValueChange={setRutaId}
+                  placeholder="Sin ruta"
+                  allowNone noneLabel="Sin ruta"
+                  triggerClassName="mt-1"
+                  onCreate={() => setQuickCreate("ruta")}
+                  createLabel="Crear nueva ruta"
+                />
               </div>
               <div>
                 <Label className="text-xs">Cobrador</Label>
-                <Select value={cobradorId || "__none__"} onValueChange={(v) => setCobradorId(v === "__none__" ? "" : v)}>
-                  <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin cobrador" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin cobrador</SelectItem>
-                    {cobradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={cobradores.map((c) => ({ value: c.id, label: c.nombre }))}
+                  value={cobradorId}
+                  onValueChange={setCobradorId}
+                  placeholder="Sin cobrador"
+                  allowNone noneLabel="Sin cobrador"
+                  triggerClassName="mt-1"
+                />
               </div>
               <div className="sm:col-span-2">
                 <Label className="text-xs">Caja</Label>
-                <Select value={cajaId || "__none__"} onValueChange={(v) => setCajaId(v === "__none__" ? "" : v)}>
-                  <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin caja" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin caja</SelectItem>
-                    {cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
+                <SearchableSelect
+                  options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
+                  value={cajaId}
+                  onValueChange={setCajaId}
+                  placeholder="Sin caja"
+                  allowNone noneLabel="Sin caja"
+                  triggerClassName="mt-1"
+                  onCreate={() => setQuickCreate("caja")}
+                  createLabel="Crear nueva caja"
+                />
               </div>
             </div>
           </div>
@@ -171,13 +178,16 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
               </div>
               <div>
                 <Label className="text-xs">Tipo Mora</Label>
-                <Select value={tipoMora} onValueChange={setTipoMora}>
-                  <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="porcentaje">Porcentaje</SelectItem>
-                    <SelectItem value="fijo">Fijo</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "porcentaje", label: "Porcentaje" },
+                    { value: "fijo", label: "Fijo" },
+                  ]}
+                  value={tipoMora}
+                  onValueChange={setTipoMora}
+                  placeholder="Tipo mora"
+                  triggerClassName="mt-1"
+                />
               </div>
               <div>
                 <Label className="text-xs">Valor Mora {tipoMora === "porcentaje" ? "(%)" : "($)"}</Label>
@@ -226,6 +236,18 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
           </Button>
         </DialogFooter>
       </DialogContent>
+      {quickCreate && (
+        <QuickCreateDialog
+          entityType={quickCreate}
+          open={!!quickCreate}
+          onOpenChange={(open) => { if (!open) setQuickCreate(null); }}
+          onCreated={(id) => {
+            if (quickCreate === "ruta") setRutaId(id);
+            else if (quickCreate === "caja") setCajaId(id);
+            setQuickCreate(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 }

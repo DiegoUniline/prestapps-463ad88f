@@ -13,13 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
+import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ArrowLeft, CalendarIcon, Send, AlertTriangle } from "lucide-react";
-import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { toast } from "sonner";
@@ -78,6 +79,7 @@ export default function SolicitudPrestamoPage() {
   const [tipoMora, setTipoMora] = useState("porcentaje");
   const [valorMora, setValorMora] = useState("");
   const [notas, setNotas] = useState("");
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   const monto = parseFloat(montoSolicitado) || 0;
   const tasa = parseFloat(tasaInteres) || 0;
@@ -167,15 +169,15 @@ export default function SolicitudPrestamoPage() {
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-[13px]">Cliente *</Label>
-              <Select value={clienteId} onValueChange={setClienteId}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                <SelectContent>
-                  {clientes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre_completo} ({c.id_cliente})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
+              <SearchableSelect
+                options={clientes.map((c) => ({ value: c.id, label: c.nombre_completo, subtitle: c.id_cliente }))}
+                value={clienteId}
+                onValueChange={setClienteId}
+                placeholder="Buscar cliente..."
+                searchPlaceholder="Nombre o código..."
+                onCreate={() => setQuickCreate("cliente")}
+                createLabel="Crear nuevo cliente"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -196,31 +198,32 @@ export default function SolicitudPrestamoPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Frecuencia</Label>
-                <Select value={frecuencia} onValueChange={setFrecuencia}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {frecuencias.length > 0 ? frecuencias.map((f) => (
-                      <SelectItem key={f.id} value={f.nombre}>{f.nombre.charAt(0).toUpperCase() + f.nombre.slice(1)}</SelectItem>
-                    )) : (
-                      <>
-                        <SelectItem value="diario">Diario</SelectItem>
-                        <SelectItem value="semanal">Semanal</SelectItem>
-                        <SelectItem value="quincenal">Quincenal</SelectItem>
-                        <SelectItem value="mensual">Mensual</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={(frecuencias.length > 0
+                    ? frecuencias.map((f) => ({ value: f.nombre, label: f.nombre.charAt(0).toUpperCase() + f.nombre.slice(1) }))
+                    : [
+                        { value: "diario", label: "Diario" },
+                        { value: "semanal", label: "Semanal" },
+                        { value: "quincenal", label: "Quincenal" },
+                        { value: "mensual", label: "Mensual" },
+                      ]
+                  )}
+                  value={frecuencia}
+                  onValueChange={setFrecuencia}
+                  placeholder="Frecuencia"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Modalidad</Label>
-                <Select value={modalidad} onValueChange={setModalidad}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fijo">Cuota Fija</SelectItem>
-                    <SelectItem value="insolutos">Saldos Insolutos</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "fijo", label: "Cuota Fija" },
+                    { value: "insolutos", label: "Saldos Insolutos" },
+                  ]}
+                  value={modalidad}
+                  onValueChange={setModalidad}
+                  placeholder="Modalidad"
+                />
               </div>
             </div>
 
@@ -242,13 +245,14 @@ export default function SolicitudPrestamoPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Caja</Label>
-                <Select value={cajaId} onValueChange={setCajaId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    {cajas.map((c) => (<SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
+                <SearchableSelect
+                  options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
+                  value={cajaId}
+                  onValueChange={setCajaId}
+                  placeholder="Seleccionar caja"
+                  onCreate={() => setQuickCreate("caja")}
+                  createLabel="Crear nueva caja"
+                />
                 {saldoCaja !== null && (
                   <p className={cn("text-xs", excedeSaldo ? "text-destructive font-medium" : "text-muted-foreground")}>
                     Saldo disponible: {$$(saldoCaja)}
@@ -263,13 +267,14 @@ export default function SolicitudPrestamoPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Ruta</Label>
-                <Select value={rutaId} onValueChange={setRutaId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    {rutas.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
+                <SearchableSelect
+                  options={rutas.map((r) => ({ value: r.id, label: r.nombre }))}
+                  value={rutaId}
+                  onValueChange={setRutaId}
+                  placeholder="Seleccionar ruta"
+                  onCreate={() => setQuickCreate("ruta")}
+                  createLabel="Crear nueva ruta"
+                />
               </div>
             </div>
 
@@ -280,13 +285,15 @@ export default function SolicitudPrestamoPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Tipo Mora</Label>
-                <Select value={tipoMora} onValueChange={setTipoMora}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="porcentaje">% por día</SelectItem>
-                    <SelectItem value="fijo">Fijo por día</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "porcentaje", label: "% por día" },
+                    { value: "fijo", label: "Fijo por día" },
+                  ]}
+                  value={tipoMora}
+                  onValueChange={setTipoMora}
+                  placeholder="Tipo mora"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Mora / día</Label>
@@ -363,6 +370,19 @@ export default function SolicitudPrestamoPage() {
           </CardContent>
         </Card>
       </div>
+      {quickCreate && (
+        <QuickCreateDialog
+          entityType={quickCreate}
+          open={!!quickCreate}
+          onOpenChange={(open) => { if (!open) setQuickCreate(null); }}
+          onCreated={(id) => {
+            if (quickCreate === "cliente") setClienteId(id);
+            else if (quickCreate === "caja") setCajaId(id);
+            else if (quickCreate === "ruta") setRutaId(id);
+            setQuickCreate(null);
+          }}
+        />
+      )}
     </div>
   );
 }

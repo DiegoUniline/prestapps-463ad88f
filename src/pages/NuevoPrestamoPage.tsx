@@ -8,11 +8,13 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFrecuenciasPagoActivas } from "@/hooks/useCatalogos";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect, SearchableOption } from "@/components/shared/SearchableSelect";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +24,6 @@ import { format, addDays, addWeeks, addMonths, parse, isValid } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
-import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 function useClientesOptions(empresaId: string) {
   return useQuery({
@@ -107,6 +108,7 @@ export default function NuevoPrestamoPage() {
   const [montoPagadoInicial, setMontoPagadoInicial] = useState("");
   const [inicialMode, setInicialMode] = useState<"cuotas" | "monto">("cuotas");
   const [fechaTexto, setFechaTexto] = useState("");
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   // Cálculos
   const monto = parseFloat(montoSolicitado) || 0;
@@ -362,15 +364,17 @@ export default function NuevoPrestamoPage() {
             {/* Tipo de Cuenta */}
             <div className="space-y-1.5">
               <Label className="text-[13px]">Tipo de Cuenta *</Label>
-              <Select value={tipoCuenta} onValueChange={setTipoCuenta}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="prestamo">💰 Préstamo</SelectItem>
-                  <SelectItem value="venta_seguro">🛡️ Venta de Seguro</SelectItem>
-                  <SelectItem value="venta_producto">📦 Venta de Producto</SelectItem>
-                  <SelectItem value="venta_servicio">🔧 Venta de Servicio</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={[
+                  { value: "prestamo", label: "💰 Préstamo" },
+                  { value: "venta_seguro", label: "🛡️ Venta de Seguro" },
+                  { value: "venta_producto", label: "📦 Venta de Producto" },
+                  { value: "venta_servicio", label: "🔧 Venta de Servicio" },
+                ]}
+                value={tipoCuenta}
+                onValueChange={setTipoCuenta}
+                placeholder="Tipo de cuenta"
+              />
               {tipoCuenta !== "prestamo" && (
                 <p className="text-[11px] text-muted-foreground">Las ventas no descuentan de caja al crear, solo suman al cobrar.</p>
               )}
@@ -383,15 +387,15 @@ export default function NuevoPrestamoPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Cliente *</Label>
-                <Select value={clienteId} onValueChange={setClienteId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                  <SelectContent>
-                    {clientes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nombre_completo} ({c.id_cliente})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
+                <SearchableSelect
+                  options={clientes.map((c) => ({ value: c.id, label: c.nombre_completo, subtitle: c.id_cliente }))}
+                  value={clienteId}
+                  onValueChange={setClienteId}
+                  placeholder="Buscar cliente..."
+                  searchPlaceholder="Nombre o código..."
+                  onCreate={() => setQuickCreate("cliente")}
+                  createLabel="Crear nuevo cliente"
+                />
               </div>
             </div>
 
@@ -415,31 +419,32 @@ export default function NuevoPrestamoPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Frecuencia</Label>
-                <Select value={frecuencia} onValueChange={setFrecuencia}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {frecuencias.length > 0 ? frecuencias.map((f) => (
-                      <SelectItem key={f.id} value={f.nombre}>{f.nombre.charAt(0).toUpperCase() + f.nombre.slice(1)}</SelectItem>
-                    )) : (
-                      <>
-                        <SelectItem value="diario">Diario</SelectItem>
-                        <SelectItem value="semanal">Semanal</SelectItem>
-                        <SelectItem value="quincenal">Quincenal</SelectItem>
-                        <SelectItem value="mensual">Mensual</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={(frecuencias.length > 0
+                    ? frecuencias.map((f) => ({ value: f.nombre, label: f.nombre.charAt(0).toUpperCase() + f.nombre.slice(1) }))
+                    : [
+                        { value: "diario", label: "Diario" },
+                        { value: "semanal", label: "Semanal" },
+                        { value: "quincenal", label: "Quincenal" },
+                        { value: "mensual", label: "Mensual" },
+                      ]
+                  )}
+                  value={frecuencia}
+                  onValueChange={setFrecuencia}
+                  placeholder="Frecuencia"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Modalidad</Label>
-                <Select value={modalidad} onValueChange={setModalidad}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fijo">Cuota Fija</SelectItem>
-                    <SelectItem value="insolutos">Saldos Insolutos</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "fijo", label: "Cuota Fija" },
+                    { value: "insolutos", label: "Saldos Insolutos" },
+                  ]}
+                  value={modalidad}
+                  onValueChange={setModalidad}
+                  placeholder="Modalidad"
+                />
               </div>
             </div>
 
@@ -511,27 +516,25 @@ export default function NuevoPrestamoPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Caja</Label>
-                <Select value={cajaId} onValueChange={setCajaId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    {cajas.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
+                <SearchableSelect
+                  options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
+                  value={cajaId}
+                  onValueChange={setCajaId}
+                  placeholder="Seleccionar caja"
+                  onCreate={() => setQuickCreate("caja")}
+                  createLabel="Crear nueva caja"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Ruta</Label>
-                <Select value={rutaId} onValueChange={setRutaId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    {rutas.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
+                <SearchableSelect
+                  options={rutas.map((r) => ({ value: r.id, label: r.nombre }))}
+                  value={rutaId}
+                  onValueChange={setRutaId}
+                  placeholder="Seleccionar ruta"
+                  onCreate={() => setQuickCreate("ruta")}
+                  createLabel="Crear nueva ruta"
+                />
               </div>
             </div>
 
@@ -733,6 +736,19 @@ export default function NuevoPrestamoPage() {
           </CardContent>
         </Card>
       </div>
+      {quickCreate && (
+        <QuickCreateDialog
+          entityType={quickCreate}
+          open={!!quickCreate}
+          onOpenChange={(open) => { if (!open) setQuickCreate(null); }}
+          onCreated={(id, label) => {
+            if (quickCreate === "cliente") setClienteId(id);
+            else if (quickCreate === "caja") setCajaId(id);
+            else if (quickCreate === "ruta") setRutaId(id);
+            setQuickCreate(null);
+          }}
+        />
+      )}
     </div>
   );
 }

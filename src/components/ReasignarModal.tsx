@@ -3,11 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
+import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Route, UserCheck } from "lucide-react";
-import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 interface ReasignarModalProps {
   open: boolean;
@@ -39,6 +40,7 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
   const [rutaId, setRutaId] = useState(currentRutaId || "__none__");
   const [cobradorId, setCobradorId] = useState(currentCobradorId || "__none__");
   const [saving, setSaving] = useState(false);
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   const handleSave = async () => {
     setSaving(true);
@@ -72,29 +74,28 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
         <div className="px-5 space-y-4 pb-4">
           <div>
             <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Ruta</Label>
-            <Select value={rutaId} onValueChange={setRutaId}>
-              <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Sin ruta" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Sin ruta</SelectItem>
-                {rutas.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
+            <SearchableSelect
+              options={rutas.map((r) => ({ value: r.id, label: r.nombre }))}
+              value={rutaId}
+              onValueChange={setRutaId}
+              placeholder="Sin ruta"
+              allowNone noneLabel="Sin ruta"
+              triggerClassName="mt-1"
+              onCreate={() => setQuickCreate("ruta")}
+              createLabel="Crear nueva ruta"
+            />
           </div>
 
           <div>
             <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Cobrador</Label>
-            <Select value={cobradorId} onValueChange={setCobradorId}>
-              <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Sin cobrador" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Sin cobrador</SelectItem>
-                {cobradores.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={cobradores.map((c) => ({ value: c.id, label: c.nombre }))}
+              value={cobradorId}
+              onValueChange={setCobradorId}
+              placeholder="Sin cobrador"
+              allowNone noneLabel="Sin cobrador"
+              triggerClassName="mt-1"
+            />
           </div>
         </div>
 
@@ -108,6 +109,17 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
           </Button>
         </DialogFooter>
       </DialogContent>
+      {quickCreate && (
+        <QuickCreateDialog
+          entityType={quickCreate}
+          open={!!quickCreate}
+          onOpenChange={(open) => { if (!open) setQuickCreate(null); }}
+          onCreated={(id) => {
+            if (quickCreate === "ruta") setRutaId(id);
+            setQuickCreate(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 }

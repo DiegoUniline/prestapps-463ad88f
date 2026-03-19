@@ -14,12 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
+import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDialog";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn, $$ } from "@/lib/utils";
 import { HandCoins, Info, Loader2, AlertTriangle, CalendarIcon } from "lucide-react";
-import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 interface Cuota {
   id: string;
@@ -89,6 +90,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const [selectedCobradorId, setSelectedCobradorId] = useState<string>(cobradorId || "");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   // Set default payment method when catalog loads
   if (metodosPago.length > 0 && !metodo) {
@@ -393,15 +395,15 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Método de Pago</Label>
-              <Select value={metodo} onValueChange={setMetodo}>
-                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                <SelectContent>
-                  {metodosPago.map((m) => (
-                    <SelectItem key={m.id} value={m.nombre}>{m.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <QuickCreateButton entityType="metodo_pago" onCreated={(_id, label) => setMetodo(label)} />
+              <SearchableSelect
+                options={metodosPago.map((m) => ({ value: m.nombre, label: m.nombre }))}
+                value={metodo}
+                onValueChange={setMetodo}
+                placeholder="Seleccionar..."
+                triggerClassName="mt-1"
+                onCreate={() => setQuickCreate("metodo_pago")}
+                createLabel="Crear método de pago"
+              />
               {metodosPago.find((m) => m.nombre === metodo)?.requiere_validacion && (
                 <div className="flex items-center gap-1.5 mt-1.5 text-amber-600 text-[11px]">
                   <AlertTriangle className="h-3 w-3" />
@@ -411,28 +413,27 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
-              <Select value={cajaId} onValueChange={setCajaId}>
-                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                <SelectContent>
-                  {cajas.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
+              <SearchableSelect
+                options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
+                value={cajaId}
+                onValueChange={setCajaId}
+                placeholder="Seleccionar..."
+                triggerClassName="mt-1"
+                onCreate={() => setQuickCreate("caja")}
+                createLabel="Crear nueva caja"
+              />
             </div>
             {/* Cobrador selector — only admin can change it */}
             {isAdmin && (
               <div className="col-span-2">
                 <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Cobrador (comisión)</Label>
-                <Select value={selectedCobradorId} onValueChange={setSelectedCobradorId}>
-                  <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
-                  <SelectContent>
-                    {cobradores.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={cobradores.map((c) => ({ value: c.id, label: c.nombre_completo }))}
+                  value={selectedCobradorId}
+                  onValueChange={setSelectedCobradorId}
+                  placeholder="Sin asignar"
+                  triggerClassName="mt-1"
+                />
                 <p className="text-[10px] text-muted-foreground mt-1">
                   Se pre-asigna el cobrador del préstamo. Solo cambia si es necesario.
                 </p>
@@ -609,6 +610,18 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           </Button>
         </DialogFooter>
       </DialogContent>
+      {quickCreate && (
+        <QuickCreateDialog
+          entityType={quickCreate}
+          open={!!quickCreate}
+          onOpenChange={(open) => { if (!open) setQuickCreate(null); }}
+          onCreated={(id, label) => {
+            if (quickCreate === "metodo_pago") setMetodo(label);
+            else if (quickCreate === "caja") setCajaId(id);
+            setQuickCreate(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
