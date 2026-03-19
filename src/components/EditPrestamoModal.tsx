@@ -178,13 +178,16 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
               </div>
               <div>
                 <Label className="text-xs">Tipo Mora</Label>
-                <Select value={tipoMora} onValueChange={setTipoMora}>
-                  <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="porcentaje">Porcentaje</SelectItem>
-                    <SelectItem value="fijo">Fijo</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "porcentaje", label: "Porcentaje" },
+                    { value: "fijo", label: "Fijo" },
+                  ]}
+                  value={tipoMora}
+                  onValueChange={setTipoMora}
+                  placeholder="Tipo mora"
+                  triggerClassName="mt-1"
+                />
               </div>
               <div>
                 <Label className="text-xs">Valor Mora {tipoMora === "porcentaje" ? "(%)" : "($)"}</Label>
