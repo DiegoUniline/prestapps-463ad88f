@@ -434,7 +434,7 @@ export default function CajaDetallePage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
                     { label: "Capital Colocado", value: $$(s.colocado), color: "text-foreground" },
-                    { label: "Total a Cobrar", value: $$(s.totalPagar), color: "text-foreground" },
+                    { label: "Total a Cobrar", value: $$(s.totalPagar + s.moraPorCobrar + s.moraCobrada), color: "text-foreground" },
                     { label: "Pendiente", value: $$(s.porCobrar), color: "text-warning" },
                     { label: "Ganancia", value: $$(s.ganancia), color: "text-success" },
                     { label: "Liquidados", value: String(s.liquidados), color: "text-muted-foreground" },
