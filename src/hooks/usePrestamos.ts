@@ -198,6 +198,8 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       fechaPrimerPago: p.fecha_primer_pago || "",
       tieneAtraso: amort.tieneAtraso,
       diasAtraso: amort.diasAtraso,
+      ultimoPagoFecha: ultimoPagoMap[p.id]?.fecha || null,
+      ultimoPagoMonto: ultimoPagoMap[p.id]?.monto || null,
     };
   });
 }
