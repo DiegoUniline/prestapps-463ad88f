@@ -80,6 +80,7 @@ export default function SolicitudPrestamoPage() {
   const [tipoMora, setTipoMora] = useState("porcentaje");
   const [valorMora, setValorMora] = useState("");
   const [notas, setNotas] = useState("");
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   const monto = parseFloat(montoSolicitado) || 0;
   const tasa = parseFloat(tasaInteres) || 0;
