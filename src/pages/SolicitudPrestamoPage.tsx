@@ -286,13 +286,15 @@ export default function SolicitudPrestamoPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Tipo Mora</Label>
-                <Select value={tipoMora} onValueChange={setTipoMora}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="porcentaje">% por día</SelectItem>
-                    <SelectItem value="fijo">Fijo por día</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "porcentaje", label: "% por día" },
+                    { value: "fijo", label: "Fijo por día" },
+                  ]}
+                  value={tipoMora}
+                  onValueChange={setTipoMora}
+                  placeholder="Tipo mora"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Mora / día</Label>
