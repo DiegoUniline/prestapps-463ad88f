@@ -414,12 +414,13 @@ export default function CajasPage() {
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">Ganancia</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">En Mora</TableHead>
                 <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] text-right">Mora $</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-[hsl(var(--table-header-foreground))] w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={9}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ))
               ) : cajas.map((c) => {
                 const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
@@ -442,6 +443,29 @@ export default function CajasPage() {
                     <TableCell className="text-right text-[13px] text-success">{$$(cs.gananciaProyectada)}</TableCell>
                     <TableCell className={cn("text-right text-[13px]", cs.enMora > 0 && "text-destructive")}>{cs.enMora}</TableCell>
                     <TableCell className={cn("text-right text-[13px]", cs.moraTotal > 0 && "text-destructive")}>{$$(cs.moraTotal)}</TableCell>
+                    <TableCell className="px-1" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}>
+                            <Eye className="h-3.5 w-3.5 mr-2" />Ver detalle
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openModalForCaja("depositar", c.id)}>
+                            <ArrowDownLeft className="h-3.5 w-3.5 mr-2 text-success" />Depositar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openModalForCaja("retirar", c.id)}>
+                            <ArrowUpRight className="h-3.5 w-3.5 mr-2 text-destructive" />Retirar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
+                            <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 );
               })}
