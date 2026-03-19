@@ -229,11 +229,11 @@ export default function CajaDetallePage() {
   const kpis = [
     { label: "Préstamos Activos", value: String(s.activos), icon: FileText, accent: "text-[hsl(217,91%,60%)]", bg: "bg-[hsl(217,91%,60%)]/10" },
     { label: "Monto Colocado", value: $$(s.colocado), icon: DollarSign, accent: "text-foreground", bg: "bg-muted" },
-    { label: "Total por Cobrar", value: $$(s.capitalPorCobrar + s.interesPorCobrar + s.moraPorCobrar), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
+    { label: "Total a Cobrar", value: $$(s.totalPagar + s.moraPorCobrar), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
     { label: "Capital por Cobrar", value: $$(s.capitalPorCobrar), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
     { label: "Interés por Cobrar", value: $$(s.interesPorCobrar), icon: TrendingUp, accent: "text-warning", bg: "bg-warning/10" },
     { label: "Mora por Cobrar", value: $$(s.moraPorCobrar), icon: AlertTriangle, accent: "text-destructive", bg: "bg-destructive/10" },
-    { label: "Ganancia Proyectada", value: $$(s.ganancia), icon: PiggyBank, accent: "text-success", bg: "bg-success/10" },
+    { label: "Ganancia Proyectada", value: $$(s.ganancia + s.moraPorCobrar), icon: PiggyBank, accent: "text-success", bg: "bg-success/10" },
     { label: "Entradas Total", value: $$(flujoData.totalEntradas), icon: ArrowDownLeft, accent: "text-success", bg: "bg-success/10" },
     { label: "Salidas Total", value: $$(flujoData.totalSalidas), icon: ArrowUpRight, accent: "text-destructive", bg: "bg-destructive/10" },
   ];
