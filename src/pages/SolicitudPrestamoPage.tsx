@@ -170,15 +170,15 @@ export default function SolicitudPrestamoPage() {
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <Label className="text-[13px]">Cliente *</Label>
-              <Select value={clienteId} onValueChange={setClienteId}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                <SelectContent>
-                  {clientes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre_completo} ({c.id_cliente})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <QuickCreateButton entityType="cliente" onCreated={(id) => setClienteId(id)} />
+              <SearchableSelect
+                options={clientes.map((c) => ({ value: c.id, label: c.nombre_completo, subtitle: c.id_cliente }))}
+                value={clienteId}
+                onValueChange={setClienteId}
+                placeholder="Buscar cliente..."
+                searchPlaceholder="Nombre o código..."
+                onCreate={() => setQuickCreate("cliente")}
+                createLabel="Crear nuevo cliente"
+              />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
