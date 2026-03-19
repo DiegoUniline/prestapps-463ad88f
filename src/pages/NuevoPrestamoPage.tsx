@@ -8,6 +8,7 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFrecuenciasPagoActivas } from "@/hooks/useCatalogos";
 import { Button } from "@/components/ui/button";
+import { SearchableSelect, SearchableOption } from "@/components/shared/SearchableSelect";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
