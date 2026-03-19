@@ -814,7 +814,7 @@ export default function PrestamosPage() {
                 </TableCell>
                 {visibleColumns.map((col) => (
                   <TableCell key={col.key} className={cn("px-3", col.className)}>
-                    {col.render(p, { setLightboxPhoto })}
+                    {col.render(p, { setLightboxPhoto, atendidoIds, atendidoColor })}
                   </TableCell>
                 ))}
               </TableRow>
