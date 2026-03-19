@@ -26,6 +26,8 @@ export interface PrestamoListItem {
   fechaPrimerPago: string;
   tieneAtraso: boolean;
   diasAtraso: number;
+  ultimoPagoFecha: string | null;
+  ultimoPagoMonto: number | null;
 }
 
 interface FetchFilters {
@@ -92,7 +94,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
 
   // Amortization can exceed 1000 rows — use fetchAllRows
   // Other lookups (clientes, cajas, rutas, profiles) are bounded by unique IDs so they're fine
-  const [amortData, clientesRes, cajasRes, rutasRes, cobradoresRes] = await Promise.all([
+  const [amortData, clientesRes, cajasRes, rutasRes, cobradoresRes, pagosRes] = await Promise.all([
     fetchAllRows<any>(
       supabase
         .from("amortizacion")
@@ -111,6 +113,12 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
     cobradorIds.length > 0
       ? supabase.from("profiles").select("id, nombre_completo").in("id", cobradorIds)
       : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("pagos")
+      .select("prestamo_id, fecha_pago, monto_recibido")
+      .in("prestamo_id", prestamoIds)
+      .eq("anulado", false)
+      .order("fecha_pago", { ascending: false }),
   ]);
 
   const clientesData = clientesRes.error ? [] : clientesRes.data || [];
@@ -123,6 +131,14 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   const cajasMap = Object.fromEntries(cajasData.map((c) => [c.id, c.nombre || "—"]));
   const rutasMap = Object.fromEntries(rutasData.map((r) => [r.id, r.nombre || "—"]));
   const cobradorMap = Object.fromEntries(cobradoresData.map((c) => [c.id, c.nombre_completo || "—"]));
+
+  // Build último pago map (pagos already sorted desc by fecha_pago, keep first per prestamo)
+  const ultimoPagoMap: Record<string, { fecha: string; monto: number }> = {};
+  for (const pg of (pagosRes.data || [])) {
+    if (!ultimoPagoMap[pg.prestamo_id]) {
+      ultimoPagoMap[pg.prestamo_id] = { fecha: pg.fecha_pago, monto: Number(pg.monto_recibido || 0) };
+    }
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number }> = {};
@@ -182,6 +198,8 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       fechaPrimerPago: p.fecha_primer_pago || "",
       tieneAtraso: amort.tieneAtraso,
       diasAtraso: amort.diasAtraso,
+      ultimoPagoFecha: ultimoPagoMap[p.id]?.fecha || null,
+      ultimoPagoMonto: ultimoPagoMap[p.id]?.monto || null,
     };
   });
 }
