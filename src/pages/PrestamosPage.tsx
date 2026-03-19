@@ -19,6 +19,7 @@ import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useNavigate } from "react-router-dom";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
+import { useAtendidos } from "@/hooks/useAtendidos";
 
 // ── Estado badge styles ───────────────────────────────────────────
 const estadoBadge: Record<string, string> = {
