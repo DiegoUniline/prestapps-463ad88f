@@ -514,27 +514,25 @@ export default function NuevoPrestamoPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Caja</Label>
-                <Select value={cajaId} onValueChange={setCajaId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    {cajas.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
+                <SearchableSelect
+                  options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
+                  value={cajaId}
+                  onValueChange={setCajaId}
+                  placeholder="Seleccionar caja"
+                  onCreate={() => setQuickCreate("caja")}
+                  createLabel="Crear nueva caja"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Ruta</Label>
-                <Select value={rutaId} onValueChange={setRutaId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                  <SelectContent>
-                    {rutas.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
+                <SearchableSelect
+                  options={rutas.map((r) => ({ value: r.id, label: r.nombre }))}
+                  value={rutaId}
+                  onValueChange={setRutaId}
+                  placeholder="Seleccionar ruta"
+                  onCreate={() => setQuickCreate("ruta")}
+                  createLabel="Crear nueva ruta"
+                />
               </div>
             </div>
 
