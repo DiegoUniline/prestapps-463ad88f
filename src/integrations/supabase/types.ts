@@ -2128,6 +2128,10 @@ export type Database = {
         Args: { p_empresa_id: string; p_tipo: string }
         Returns: string
       }
+      rebuild_amortizacion: {
+        Args: { p_prestamo_id: string }
+        Returns: undefined
+      }
       recalcular_mora: { Args: { p_prestamo_id: string }; Returns: undefined }
       switch_empresa: { Args: { p_empresa_id: string }; Returns: undefined }
     }

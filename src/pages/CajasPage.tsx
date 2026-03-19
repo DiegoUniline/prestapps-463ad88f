@@ -1,4 +1,5 @@
 import { useState } from "react";
+import CajaKardexSheet from "@/components/CajaKardexSheet";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -242,6 +243,7 @@ export default function CajasPage() {
 
   const [selectedCaja, setSelectedCaja] = useState<string | null>(null);
   const [cajasView, setCajasView] = useState<"table" | "cards">("table");
+  const [kardexCaja, setKardexCaja] = useState<{ id: string; nombre: string; saldo: number } | null>(null);
 
   // Kardex filters
   const [selCategoria, setSelCategoria] = useState<Set<string>>(new Set());
@@ -430,7 +432,7 @@ export default function CajasPage() {
                   <TableRow
                     key={c.id}
                     className={cn("cursor-pointer", selectedCaja === c.id && "bg-[hsl(var(--table-selected))]")}
-                    onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
+                    onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}
                   >
                     <TableCell>
                       <div>
@@ -465,7 +467,7 @@ export default function CajasPage() {
                   "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
                   selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
                 )}
-                onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
+                onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}
               >
                 <div className="flex items-center justify-between">
                   <p className="font-semibold text-[14px]">{c.nombre}</p>
@@ -794,6 +796,15 @@ export default function CajasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Kardex Sheet */}
+      <CajaKardexSheet
+        open={!!kardexCaja}
+        onOpenChange={(v) => !v && setKardexCaja(null)}
+        cajaId={kardexCaja?.id || ""}
+        cajaNombre={kardexCaja?.nombre || ""}
+        saldoActual={kardexCaja?.saldo || 0}
+      />
     </div>
   );
 }
