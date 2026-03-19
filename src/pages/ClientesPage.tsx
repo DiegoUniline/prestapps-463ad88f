@@ -274,7 +274,12 @@ export default function ClientesPage() {
                   <div key={c.id} className="bg-card border rounded-lg p-3 cursor-pointer active:bg-muted/50" onClick={() => navigate(`/clientes/${c.id}`)}>
                     <div className="flex items-center justify-between">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-[13px] truncate">{c.nombre_completo}</p>
+                        <div className="flex items-center gap-1.5">
+                          {atendidoClienteIds.has(c.id) && (
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: atendidoColor }} />
+                          )}
+                          <p className="font-medium text-[13px] truncate">{c.nombre_completo}</p>
+                        </div>
                         <p className="text-[11px] text-muted-foreground">{c.id_cliente} · {c.telefono || "Sin tel."}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
