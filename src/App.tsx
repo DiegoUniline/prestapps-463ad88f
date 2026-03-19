@@ -29,6 +29,7 @@ import PromesasPage from "@/pages/PromesasPage";
 import ClientesPage from "@/pages/ClientesPage";
 import ClienteDetallePage from "@/pages/ClienteDetallePage";
 import CajasPage from "@/pages/CajasPage";
+import CajaDetallePage from "@/pages/CajaDetallePage";
 import RutasPage from "@/pages/RutasPage";
 import CobradoresPage from "@/pages/CobradoresPage";
 import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
