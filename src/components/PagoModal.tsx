@@ -20,7 +20,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn, $$ } from "@/lib/utils";
 import { HandCoins, Info, Loader2, AlertTriangle, CalendarIcon } from "lucide-react";
-import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 interface Cuota {
   id: string;
