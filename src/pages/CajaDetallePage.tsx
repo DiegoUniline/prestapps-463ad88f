@@ -89,6 +89,10 @@ function useCajaStats(cajaId: string) {
         if (agg.tieneAtraso) { enMora++; moraTotal += agg.mora; }
       }
       return { activos, colocado, totalPagar, porCobrar, capitalPorCobrar, interesPorCobrar, moraPorCobrar, ganancia, enMora, moraTotal, liquidados, capitalRecuperado };
+    },
+  });
+}
+
 interface KardexRow { id: string; fecha: string; tipo: "entrada" | "salida"; concepto: string; monto: number; categoria: string; }
 
 function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string {
