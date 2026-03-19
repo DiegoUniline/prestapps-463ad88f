@@ -429,11 +429,59 @@ export default function NuevoPrestamoPage() {
               </div>
             </div>
 
+            {/* Caja + Ruta */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Caja {tipoCuenta === "prestamo" && !esInicial ? "*" : ""}</Label>
+                <SearchableSelect
+                  options={cajas.map((c: any) => ({ value: c.id, label: c.nombre, subtitle: `Saldo: ${$$(Number(c.saldo_actual || 0))}` }))}
+                  value={cajaId}
+                  onValueChange={setCajaId}
+                  placeholder="Seleccionar caja"
+                  onCreate={() => setQuickCreate("caja")}
+                  createLabel="Crear nueva caja"
+                />
+                {cajaId && (() => {
+                  const cajaSelec = cajas.find((c: any) => c.id === cajaId);
+                  const saldo = Number((cajaSelec as any)?.saldo_actual || 0);
+                  return (
+                    <p className={cn("text-[11px] font-medium", saldo > 0 ? "text-green-600" : "text-destructive")}>
+                      Disponible: {$$(saldo)}
+                    </p>
+                  );
+                })()}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Ruta</Label>
+                <SearchableSelect
+                  options={rutas.map((r) => ({ value: r.id, label: r.nombre }))}
+                  value={rutaId}
+                  onValueChange={setRutaId}
+                  placeholder="Seleccionar ruta"
+                  onCreate={() => setQuickCreate("ruta")}
+                  createLabel="Crear nueva ruta"
+                />
+              </div>
+            </div>
+
             {/* Monto + Tasa + Cuotas */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Monto *</Label>
                 <Input type="number" min="0" value={montoSolicitado} onChange={(e) => setMontoSolicitado(e.target.value)} placeholder="0.00" />
+                {(() => {
+                  if (esInicial || tipoCuenta !== "prestamo" || !cajaId || !monto) return null;
+                  const cajaSelec = cajas.find((c: any) => c.id === cajaId);
+                  const saldo = Number((cajaSelec as any)?.saldo_actual || 0);
+                  if (monto > saldo) {
+                    return (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" /> Excede el saldo en caja ({$$(saldo)})
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Tasa (%)</Label>
