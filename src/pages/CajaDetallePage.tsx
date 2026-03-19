@@ -107,17 +107,11 @@ function useCajaKardex(cajaId: string) {
     enabled: !!cajaId,
     queryFn: async () => {
       const { data: movs } = await supabase.from("movimientos_caja").select("id, created_at, tipo, monto, concepto").eq("caja_id", cajaId).order("created_at", { ascending: true });
-      const { data: pagos } = await supabase.from("pagos").select("id, created_at, monto_recibido, anulado, prestamos ( clientes ( nombre_completo ) )").eq("caja_id", cajaId).eq("anulado", false).order("created_at", { ascending: true });
 
       const rows: KardexRow[] = [];
       for (const m of movs || []) {
         const concepto = m.concepto || (m.tipo === "entrada" ? "Depósito" : "Retiro");
         rows.push({ id: m.id, fecha: m.created_at || "", tipo: m.tipo as "entrada" | "salida", concepto, monto: Number(m.monto || 0), categoria: classifyConcepto(concepto, m.tipo as "entrada" | "salida") });
-      }
-      for (const p of pagos || []) {
-        const cliente = (p.prestamos as any)?.clientes?.nombre_completo || "";
-        const concepto = `Cobro cuota${cliente ? ` — ${cliente}` : ""}`;
-        rows.push({ id: `p-${p.id}`, fecha: p.created_at || "", tipo: "entrada", concepto, monto: Number(p.monto_recibido || 0), categoria: "Cobros" });
       }
       rows.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
       return rows;
