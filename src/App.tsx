@@ -36,6 +36,7 @@ import ClienteCobranzaDetallePage from "@/pages/ClienteCobranzaDetallePage";
 import CobradorViewPage from "@/pages/CobradorViewPage";
 import SolicitudesPage from "@/pages/SolicitudesPage";
 import SolicitudPrestamoPage from "@/pages/SolicitudPrestamoPage";
+import PlanesCuotasPage from "@/pages/PlanesCuotasPage";
 import GastosPage from "@/pages/GastosPage";
 
 // Lazy — infrequent/heavy pages
