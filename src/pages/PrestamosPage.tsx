@@ -827,6 +827,56 @@ export default function PrestamosPage() {
 
         </TabsContent>
       </Tabs>
+
+      </TabsContent>
+
+      {/* Planes de Cuotas tab */}
+      <TabsContent value="planes" className="mt-4">
+        <div className="bg-card rounded-lg border border-border shadow-sm">
+          <div className="px-4 py-3 border-b border-border">
+            <p className="text-sm font-medium">Planes de cuotas activos</p>
+            <p className="text-xs text-muted-foreground">Estos planes se usan como plantilla al crear un nuevo préstamo. Adminístralos desde Catálogos.</p>
+          </div>
+          {planesCuotas.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">
+              <p>No hay planes de cuotas configurados.</p>
+              <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate("/catalogos")}>Ir a Catálogos</Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead className="text-center">Cuotas</TableHead>
+                  <TableHead className="text-center">Tasa %</TableHead>
+                  <TableHead className="text-center">Frecuencia</TableHead>
+                  <TableHead className="text-center">Modalidad</TableHead>
+                  <TableHead className="text-center">Mora</TableHead>
+                  <TableHead className="text-center">Com. Colocador</TableHead>
+                  <TableHead className="text-center">Com. Cobrador</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {planesCuotas.map((plan) => (
+                  <TableRow key={plan.id}>
+                    <TableCell className="font-medium">{plan.nombre}</TableCell>
+                    <TableCell className="text-center">{plan.num_cuotas}</TableCell>
+                    <TableCell className="text-center">{plan.tasa_interes}%</TableCell>
+                    <TableCell className="text-center capitalize">{plan.frecuencia}</TableCell>
+                    <TableCell className="text-center capitalize">{plan.modalidad === "fijo" ? "Cuota Fija" : "Saldos Insolutos"}</TableCell>
+                    <TableCell className="text-center">{plan.tipo_mora === "porcentaje" ? `${plan.valor_mora}%` : $$(plan.valor_mora)}/día</TableCell>
+                    <TableCell className="text-center">{plan.comision_colocador}%</TableCell>
+                    <TableCell className="text-center">{plan.comision_cobrador}%</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </TabsContent>
+
+      </Tabs>
+
       {lightboxPhoto && (
         <PhotoLightbox open={!!lightboxPhoto} onOpenChange={(o) => !o && setLightboxPhoto(null)} src={lightboxPhoto.src} alt={lightboxPhoto.alt} />
       )}
