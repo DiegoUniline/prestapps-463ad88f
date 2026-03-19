@@ -238,7 +238,6 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
 
       invalidateFinanceQueries(queryClient, { prestamoId: pago.prestamo_id });
       toast.success("Pago anulado correctamente");
-      onOpenChange(false);
       setMotivo("");
     } catch (err: any) {
       toast.error("Error al anular: " + (err.message || err));
