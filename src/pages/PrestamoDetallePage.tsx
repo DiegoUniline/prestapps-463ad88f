@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { LiquidarModal } from "@/components/LiquidarModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -193,6 +194,7 @@ export default function PrestamoDetallePage() {
   const [cancelarOpen, setCancelarOpen] = useState(false);
   const [reestructurarOpen, setReestructurarOpen] = useState(false);
   const [editarOpen, setEditarOpen] = useState(false);
+  const [liquidarOpen, setLiquidarOpen] = useState(false);
   const [docPreview, setDocPreview] = useState<{ open: boolean; type: "estado" | "contrato" | "pagos" | null }>({ open: false, type: null });
   const [editPagoOpen, setEditPagoOpen] = useState(false);
   const [editPagoData, setEditPagoData] = useState<any>(null);
@@ -507,6 +509,9 @@ export default function PrestamoDetallePage() {
           {/* Action buttons */}
           <Button size="sm" className="h-8 text-[12px] md:text-[13px] bg-primary hover:bg-primary/90" onClick={() => { setSelectedCuota(null); setPagoOpen(true); }} disabled={isCancelado}>
             <HandCoins className="h-3.5 w-3.5 mr-1" />Pago
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 text-[12px] md:text-[13px]" onClick={() => setLiquidarOpen(true)} disabled={isCancelado || estado === "Liquidado"}>
+            <Zap className="h-3.5 w-3.5 mr-1" />Liquidar
           </Button>
           {!isCancelado && <StripeChargeButton
             prestamoId={prestamo.id}
@@ -1178,7 +1183,28 @@ export default function PrestamoDetallePage() {
         montoInicial={selectedCuota ? Number(selectedCuota.saldo_total || 0) : undefined}
       />
 
-      {/* Promesa Modal */}
+      {/* Liquidar Modal */}
+      <LiquidarModal
+        open={liquidarOpen}
+        onOpenChange={setLiquidarOpen}
+        prestamoId={prestamo.id}
+        cuotasPendientes={amort.filter((c) => (c.saldo_total || 0) > 0).map((c) => ({
+          id: c.id,
+          num_cuota: c.num_cuota,
+          saldo_mora: Number(c.saldo_mora || 0),
+          saldo_interes: Number(c.saldo_interes || 0),
+          saldo_capital: Number(c.saldo_capital || 0),
+          saldo_total: Number(c.saldo_total || 0),
+          mora_pagada: Number(c.mora_pagada || 0),
+          interes_pagado: Number(c.interes_pagado || 0),
+          capital_pagado: Number(c.capital_pagado || 0),
+        }))}
+        cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
+        rutaId={prestamo.ruta_id}
+        cobradorId={prestamo.cobrador_id}
+      />
+
+
       {selectedCuota && (
         <PromesaModal
           open={promesaOpen}
