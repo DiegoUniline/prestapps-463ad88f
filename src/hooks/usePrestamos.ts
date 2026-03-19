@@ -26,6 +26,8 @@ export interface PrestamoListItem {
   fechaPrimerPago: string;
   tieneAtraso: boolean;
   diasAtraso: number;
+  ultimoPagoFecha: string | null;
+  ultimoPagoMonto: number | null;
 }
 
 interface FetchFilters {
