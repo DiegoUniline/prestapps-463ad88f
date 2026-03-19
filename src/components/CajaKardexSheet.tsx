@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, TrendingDown } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn, $$ } from "@/lib/utils";
@@ -89,105 +89,103 @@ function useCajaKardex(cajaId: string, open: boolean) {
   });
 }
 
-// ── Estado de Resultados Tab ──────────────────────────────────────
-function EstadoResultados({ rows }: { rows: KardexRow[] }) {
-  const { ingresos, egresos, resultado } = useMemo(() => {
-    const cats: Record<string, { total: number; tipo: "entrada" | "salida" }> = {};
+// ── Flujo de Efectivo Tab ──────────────────────────────────────
+function FlujoEfectivo({ rows, saldoActual }: { rows: KardexRow[]; saldoActual: number }) {
+  const data = useMemo(() => {
+    const entradas: Record<string, number> = {};
+    const salidas: Record<string, number> = {};
+    let totalEntradas = 0;
+    let totalSalidas = 0;
 
     for (const r of rows) {
-      if (!cats[r.categoria]) cats[r.categoria] = { total: 0, tipo: r.tipo };
-      cats[r.categoria].total += r.monto;
-    }
-
-    const ingresoCats = ["Cobros", "Depósitos"];
-    const egresoCats = ["Desembolsos", "Gastos", "Comisiones", "Retiros"];
-
-    const ingresos = ingresoCats
-      .map((c) => ({ label: c, monto: cats[c]?.total || 0 }))
-      .filter((i) => i.monto > 0);
-
-    // Add any other entrada categories not in the known list
-    for (const [cat, val] of Object.entries(cats)) {
-      if (val.tipo === "entrada" && !ingresoCats.includes(cat) && cat !== "Transferencias") {
-        ingresos.push({ label: cat, monto: val.total });
+      if (r.tipo === "entrada") {
+        entradas[r.categoria] = (entradas[r.categoria] || 0) + r.monto;
+        totalEntradas += r.monto;
+      } else {
+        salidas[r.categoria] = (salidas[r.categoria] || 0) + r.monto;
+        totalSalidas += r.monto;
       }
     }
 
-    const egresos = egresoCats
-      .map((c) => ({ label: c, monto: cats[c]?.total || 0 }))
-      .filter((i) => i.monto > 0);
+    const saldoInicial = saldoActual - totalEntradas + totalSalidas;
+    const flujoNeto = totalEntradas - totalSalidas;
 
-    // Add any other salida categories not in the known list
-    for (const [cat, val] of Object.entries(cats)) {
-      if (val.tipo === "salida" && !egresoCats.includes(cat) && cat !== "Transferencias") {
-        egresos.push({ label: cat, monto: val.total });
-      }
-    }
+    return { entradas, salidas, totalEntradas, totalSalidas, saldoInicial, flujoNeto, saldoFinal: saldoActual };
+  }, [rows, saldoActual]);
 
-    const totalIngresos = ingresos.reduce((s, i) => s + i.monto, 0);
-    const totalEgresos = egresos.reduce((s, i) => s + i.monto, 0);
-    const transferenciasIn = cats["Transferencias"]?.tipo === "entrada" ? cats["Transferencias"]?.total || 0 : 0;
-    const transferenciasOut = cats["Transferencias"]?.tipo === "salida" ? cats["Transferencias"]?.total || 0 : 0;
-
-    return {
-      ingresos: { items: ingresos, total: totalIngresos, transferencias: transferenciasIn },
-      egresos: { items: egresos, total: totalEgresos, transferencias: transferenciasOut },
-      resultado: totalIngresos + transferenciasIn - totalEgresos - transferenciasOut,
-    };
-  }, [rows]);
-
-  const LineItem = ({ label, monto, variant = "normal" }: { label: string; monto: number; variant?: "normal" | "total" | "result" }) => (
+  const LineItem = ({ label, monto, variant = "normal" }: { label: string; monto: number; variant?: "normal" | "total" | "saldo" }) => (
     <div className={cn(
-      "flex items-center justify-between py-2 px-4",
+      "flex items-center justify-between py-2.5 px-4",
       variant === "total" && "border-t border-border font-semibold bg-muted/30",
-      variant === "result" && "border-t-2 border-foreground font-bold text-base bg-muted/50",
+      variant === "saldo" && "border-t-2 border-foreground font-bold text-base bg-muted/50 py-3",
     )}>
       <span className={cn("text-[13px]", variant === "normal" && "text-muted-foreground pl-3")}>{label}</span>
       <span className={cn(
-        "text-[13px] tabular-nums",
-        variant === "result" && (monto >= 0 ? "text-success" : "text-destructive"),
-        variant === "total" && "text-foreground",
+        "text-[13px] tabular-nums font-medium",
+        variant === "saldo" && "text-base",
       )}>
-        {variant === "result" && monto >= 0 ? "+" : ""}{$$(Math.abs(monto))}
+        {$$(monto)}
       </span>
     </div>
   );
 
   return (
     <div className="divide-y divide-border/50">
-      {/* Ingresos section */}
+      {/* Saldo Inicial */}
+      <div className="py-2">
+        <div className="flex items-center gap-2 px-4 py-2">
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-semibold">Saldo Inicial</span>
+        </div>
+        <LineItem label="Saldo al inicio" monto={data.saldoInicial} variant="total" />
+      </div>
+
+      {/* Entradas */}
       <div className="py-2">
         <div className="flex items-center gap-2 px-4 py-2">
           <ArrowDownLeft className="h-4 w-4 text-success" />
-          <span className="text-sm font-semibold text-success">Ingresos</span>
+          <span className="text-sm font-semibold text-success">Entradas de Efectivo</span>
         </div>
-        {ingresos.items.map((i) => (
-          <LineItem key={i.label} label={i.label} monto={i.monto} />
-        ))}
-        {ingresos.transferencias > 0 && (
-          <LineItem label="Transferencias recibidas" monto={ingresos.transferencias} />
+        {Object.entries(data.entradas)
+          .sort(([, a], [, b]) => b - a)
+          .map(([cat, monto]) => (
+            <LineItem key={cat} label={cat} monto={monto} />
+          ))}
+        {Object.keys(data.entradas).length === 0 && (
+          <p className="text-[12px] text-muted-foreground px-7 py-2">Sin entradas</p>
         )}
-        <LineItem label="Total Ingresos" monto={ingresos.total + ingresos.transferencias} variant="total" />
+        <LineItem label="Total Entradas" monto={data.totalEntradas} variant="total" />
       </div>
 
-      {/* Egresos section */}
+      {/* Salidas */}
       <div className="py-2">
         <div className="flex items-center gap-2 px-4 py-2">
           <ArrowUpRight className="h-4 w-4 text-destructive" />
-          <span className="text-sm font-semibold text-destructive">Egresos</span>
+          <span className="text-sm font-semibold text-destructive">Salidas de Efectivo</span>
         </div>
-        {egresos.items.map((i) => (
-          <LineItem key={i.label} label={i.label} monto={i.monto} />
-        ))}
-        {egresos.transferencias > 0 && (
-          <LineItem label="Transferencias enviadas" monto={egresos.transferencias} />
+        {Object.entries(data.salidas)
+          .sort(([, a], [, b]) => b - a)
+          .map(([cat, monto]) => (
+            <LineItem key={cat} label={cat} monto={monto} />
+          ))}
+        {Object.keys(data.salidas).length === 0 && (
+          <p className="text-[12px] text-muted-foreground px-7 py-2">Sin salidas</p>
         )}
-        <LineItem label="Total Egresos" monto={egresos.total + egresos.transferencias} variant="total" />
+        <LineItem label="Total Salidas" monto={data.totalSalidas} variant="total" />
       </div>
 
-      {/* Resultado */}
+      {/* Flujo Neto + Saldo Final */}
       <div className="py-2">
-        <LineItem label="Resultado Neto" monto={resultado} variant="result" />
+        <div className="flex items-center justify-between py-2.5 px-4">
+          <span className="text-[13px] font-semibold flex items-center gap-1.5">
+            {data.flujoNeto >= 0 ? <TrendingUp className="h-3.5 w-3.5 text-success" /> : <TrendingDown className="h-3.5 w-3.5 text-destructive" />}
+            Flujo Neto
+          </span>
+          <span className={cn("text-[13px] tabular-nums font-semibold", data.flujoNeto >= 0 ? "text-success" : "text-destructive")}>
+            {data.flujoNeto >= 0 ? "+" : ""}{$$(data.flujoNeto)}
+          </span>
+        </div>
+        <LineItem label="Saldo Final" monto={data.saldoFinal} variant="saldo" />
       </div>
     </div>
   );
@@ -221,7 +219,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
           <div className="px-5 pt-3">
             <TabsList className="w-full">
               <TabsTrigger value="kardex" className="flex-1 text-[13px]">Kardex</TabsTrigger>
-              <TabsTrigger value="resultados" className="flex-1 text-[13px]">Estado de Resultados</TabsTrigger>
+              <TabsTrigger value="flujo" className="flex-1 text-[13px]">Flujo de Efectivo</TabsTrigger>
             </TabsList>
           </div>
 
@@ -293,7 +291,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
           </TabsContent>
 
           {/* Estado de Resultados Tab */}
-          <TabsContent value="resultados" className="flex-1 overflow-auto mt-0 px-0">
+          <TabsContent value="flujo" className="flex-1 overflow-auto mt-0 px-0">
             {isLoading ? (
               <div className="p-4 space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
@@ -301,7 +299,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
             ) : rows.length === 0 ? (
               <p className="text-center py-12 text-muted-foreground text-sm">Sin movimientos</p>
             ) : (
-              <EstadoResultados rows={rows} />
+              <FlujoEfectivo rows={rows} saldoActual={saldoActual} />
             )}
           </TabsContent>
         </Tabs>
