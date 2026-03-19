@@ -39,7 +39,7 @@ interface ColumnDef {
   label: string;
   sortKey?: SortKey;
   defaultVisible: boolean;
-  render: (p: PrestamoListItem, helpers: { setLightboxPhoto: (v: { src: string; alt: string }) => void }) => React.ReactNode;
+  render: (p: PrestamoListItem, helpers: { setLightboxPhoto: (v: { src: string; alt: string }) => void; atendidoIds?: Set<string>; atendidoColor?: string }) => React.ReactNode;
   className?: string;
 }
 
