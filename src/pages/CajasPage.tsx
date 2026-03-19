@@ -256,6 +256,11 @@ export default function CajasPage() {
     setNombreCaja(""); setDescCaja("");
   };
 
+  const openModalForCaja = (type: ModalType, id: string) => {
+    setCajaId(id);
+    setModal(type);
+  };
+
   const invalidate = () => invalidateFinanceQueries(queryClient);
 
   // ── Create caja ─────────────────────────────────────────────────
