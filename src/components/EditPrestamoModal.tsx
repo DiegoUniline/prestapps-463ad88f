@@ -112,35 +112,40 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Ruta</Label>
-                <Select value={rutaId || "__none__"} onValueChange={(v) => setRutaId(v === "__none__" ? "" : v)}>
-                  <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin ruta" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin ruta</SelectItem>
-                    {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="ruta" onCreated={(id) => setRutaId(id)} />
+                <SearchableSelect
+                  options={rutas.map((r) => ({ value: r.id, label: r.nombre }))}
+                  value={rutaId}
+                  onValueChange={setRutaId}
+                  placeholder="Sin ruta"
+                  allowNone noneLabel="Sin ruta"
+                  triggerClassName="mt-1"
+                  onCreate={() => setQuickCreate("ruta")}
+                  createLabel="Crear nueva ruta"
+                />
               </div>
               <div>
                 <Label className="text-xs">Cobrador</Label>
-                <Select value={cobradorId || "__none__"} onValueChange={(v) => setCobradorId(v === "__none__" ? "" : v)}>
-                  <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin cobrador" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin cobrador</SelectItem>
-                    {cobradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={cobradores.map((c) => ({ value: c.id, label: c.nombre }))}
+                  value={cobradorId}
+                  onValueChange={setCobradorId}
+                  placeholder="Sin cobrador"
+                  allowNone noneLabel="Sin cobrador"
+                  triggerClassName="mt-1"
+                />
               </div>
               <div className="sm:col-span-2">
                 <Label className="text-xs">Caja</Label>
-                <Select value={cajaId || "__none__"} onValueChange={(v) => setCajaId(v === "__none__" ? "" : v)}>
-                  <SelectTrigger className="mt-1 h-9 text-sm"><SelectValue placeholder="Sin caja" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Sin caja</SelectItem>
-                    {cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <QuickCreateButton entityType="caja" onCreated={(id) => setCajaId(id)} />
+                <SearchableSelect
+                  options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
+                  value={cajaId}
+                  onValueChange={setCajaId}
+                  placeholder="Sin caja"
+                  allowNone noneLabel="Sin caja"
+                  triggerClassName="mt-1"
+                  onCreate={() => setQuickCreate("caja")}
+                  createLabel="Crear nueva caja"
+                />
               </div>
             </div>
           </div>
