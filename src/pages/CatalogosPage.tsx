@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Banknote, CreditCard, ShieldCheck, Plus, Pencil, Trash2, CheckCircle, XCircle,
-  Clock, FileText, Heart, Briefcase,
+  Clock, FileText, Heart, Briefcase, ListOrdered,
 } from "lucide-react";
 import {
   useMetodosPago, useUpsertMetodoPago, useDeleteMetodoPago,
@@ -26,7 +26,8 @@ import {
   useTiposDocumento, useUpsertTipoDocumento, useDeleteTipoDocumento,
   useEstadosCiviles, useUpsertEstadoCivil, useDeleteEstadoCivil,
   useSituacionesLaborales, useUpsertSituacionLaboral, useDeleteSituacionLaboral,
-  type MetodoPago, type EstadoPrestamo, type CatalogoSimple,
+  usePlanesCuotas, useUpsertPlanCuota, useDeletePlanCuota,
+  type MetodoPago, type EstadoPrestamo, type CatalogoSimple, type PlanCuota,
 } from "@/hooks/useCatalogos";
 import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
