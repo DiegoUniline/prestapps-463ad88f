@@ -181,10 +181,10 @@ function usePrestamosByCaja() {
       const today = new Date().toISOString().slice(0, 10);
 
       // Per-prestamo aggregation
-      const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; tieneAtraso: boolean }> = {};
+      const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; moraGuardada: number; tieneAtraso: boolean }> = {};
       for (const a of amortData || []) {
         const p = prestamoMap.get(a.prestamo_id);
-        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, tieneAtraso: false };
+        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, moraGuardada: 0, tieneAtraso: false };
 
         const saldoMoraGuardada = Number(a.saldo_mora || 0);
         const moraPagada = Number(a.mora_pagada || 0);
@@ -202,6 +202,7 @@ function usePrestamosByCaja() {
         prestamoAgg[a.prestamo_id].saldo += Number(a.saldo_total || 0);
         prestamoAgg[a.prestamo_id].mora += moraPendiente;
         prestamoAgg[a.prestamo_id].moraCobrada += moraPagada;
+        prestamoAgg[a.prestamo_id].moraGuardada += saldoMoraGuardada;
         if (hayAtraso && Number(a.saldo_total || 0) > 0) {
           prestamoAgg[a.prestamo_id].tieneAtraso = true;
         }
