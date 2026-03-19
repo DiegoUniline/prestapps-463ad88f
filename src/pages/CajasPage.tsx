@@ -500,7 +500,7 @@ export default function CajasPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}>
+                        <DropdownMenuItem onClick={() => navigate(`/cajas/${c.id}`)}>
                           <Eye className="h-3.5 w-3.5 mr-2" />Ver detalle
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openModalForCaja("depositar", c.id)}>
