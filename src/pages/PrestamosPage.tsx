@@ -88,7 +88,12 @@ const ALL_COLUMNS: ColumnDef[] = [
           <span className="font-medium text-[13px] whitespace-nowrap">{p.cliente}</span>
           {p.ultimoPagoFecha && (
             <p className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
-              Últ. pago: {fmtDate(p.ultimoPagoFecha)} · {$$(p.ultimoPagoMonto ?? 0)}
+              Últ. pago: {(() => {
+                const d = new Date(p.ultimoPagoFecha + "T12:00:00");
+                const dia = d.toLocaleDateString("es-MX", { weekday: "long" });
+                const fecha = d.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+                return `${dia.charAt(0).toUpperCase() + dia.slice(1)} ${fecha}`;
+              })()} · {$$(p.ultimoPagoMonto ?? 0)}
             </p>
           )}
         </div>
