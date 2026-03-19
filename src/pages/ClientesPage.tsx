@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, Loader2, Users, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useClientes, useUpdateCliente } from "@/hooks/useClientes";
+import { useAtendidos } from "@/hooks/useAtendidos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -145,6 +146,7 @@ export default function ClientesPage() {
   const { data: clientes, isLoading } = useClientes({ search, estado: estadoFilter, empresaId });
   const updateCliente = useUpdateCliente();
   const { data: estados, isLoading: loadingEC } = useEstadosCuenta();
+  const { clienteIds: atendidoClienteIds, color: atendidoColor } = useAtendidos(empresaId);
 
   const handleToggleActivo = (e: React.MouseEvent, id: string, activo: boolean) => {
     e.stopPropagation();
@@ -236,7 +238,18 @@ export default function ClientesPage() {
                     clientes?.map((c) => (
                       <TableRow key={c.id} className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors" onClick={() => navigate(`/clientes/${c.id}`)}>
                         <TableCell className="font-mono text-[12px] px-3">{c.id_cliente}</TableCell>
-                        <TableCell className="font-medium text-[13px] px-3">{c.nombre_completo}</TableCell>
+                        <TableCell className="font-medium text-[13px] px-3">
+                          <div className="flex items-center gap-1.5">
+                            {atendidoClienteIds.has(c.id) && (
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: atendidoColor }}
+                                title="Atendido esta semana"
+                              />
+                            )}
+                            {c.nombre_completo}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-[13px] px-3">{c.telefono || "—"}</TableCell>
                         <TableCell className="text-[13px] px-3">{c.dni || "—"}</TableCell>
                         <TableCell className="text-[13px] px-3">{c.situacion_laboral || "—"}</TableCell>
@@ -261,7 +274,12 @@ export default function ClientesPage() {
                   <div key={c.id} className="bg-card border rounded-lg p-3 cursor-pointer active:bg-muted/50" onClick={() => navigate(`/clientes/${c.id}`)}>
                     <div className="flex items-center justify-between">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-[13px] truncate">{c.nombre_completo}</p>
+                        <div className="flex items-center gap-1.5">
+                          {atendidoClienteIds.has(c.id) && (
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: atendidoColor }} />
+                          )}
+                          <p className="font-medium text-[13px] truncate">{c.nombre_completo}</p>
+                        </div>
                         <p className="text-[11px] text-muted-foreground">{c.id_cliente} · {c.telefono || "Sin tel."}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">

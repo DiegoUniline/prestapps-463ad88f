@@ -19,6 +19,7 @@ import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useNavigate } from "react-router-dom";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
+import { useAtendidos } from "@/hooks/useAtendidos";
 
 // ── Estado badge styles ───────────────────────────────────────────
 const estadoBadge: Record<string, string> = {
@@ -39,7 +40,7 @@ interface ColumnDef {
   label: string;
   sortKey?: SortKey;
   defaultVisible: boolean;
-  render: (p: PrestamoListItem, helpers: { setLightboxPhoto: (v: { src: string; alt: string }) => void }) => React.ReactNode;
+  render: (p: PrestamoListItem, helpers: { setLightboxPhoto: (v: { src: string; alt: string }) => void; atendidoIds?: Set<string>; atendidoColor?: string }) => React.ReactNode;
   className?: string;
 }
 
@@ -63,17 +64,26 @@ const ALL_COLUMNS: ColumnDef[] = [
   },
   {
     key: "cliente", label: "Cliente", sortKey: "cliente", defaultVisible: true,
-    render: (p, { setLightboxPhoto }) => (
+    render: (p, { setLightboxPhoto, atendidoIds, atendidoColor }) => (
       <div className="flex items-center gap-2 whitespace-nowrap">
-        <Avatar
-          className={cn("h-6 w-6 shrink-0", p.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
-          onClick={(e) => { if (p.clienteFoto) { e.stopPropagation(); setLightboxPhoto({ src: p.clienteFoto, alt: p.cliente }); } }}
-        >
-          {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
-          <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-            {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar
+            className={cn("h-6 w-6 shrink-0", p.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+            onClick={(e) => { if (p.clienteFoto) { e.stopPropagation(); setLightboxPhoto({ src: p.clienteFoto, alt: p.cliente }); } }}
+          >
+            {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
+            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
+              {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          {atendidoIds?.has(p.id) && (
+            <span
+              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card"
+              style={{ backgroundColor: atendidoColor || "#22c55e" }}
+              title="Atendido esta semana"
+            />
+          )}
+        </div>
         <span className="font-medium text-[13px]">{p.cliente}</span>
       </div>
     ),
@@ -335,6 +345,7 @@ export default function PrestamosPage() {
   const roleFilters = role === "admin" ? { empresaId } : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId, empresaId };
   const { data: prestamos = [], isLoading, isError } = usePrestamos(roleFilters);
   const { data: cajasRaw = [] } = useCajasOptions(empresaId);
+  const { prestamoIds: atendidoIds, color: atendidoColor } = useAtendidos(empresaId);
   const { data: rutasRaw = [] } = useRutasOptions(empresaId);
 
   const cajasOpts = cajasRaw.map((c) => c.nombre);
@@ -766,7 +777,7 @@ export default function PrestamosPage() {
                           </TableCell>
                           {visibleColumns.map((col) => (
                             <TableCell key={col.key} className={cn("px-3", col.className)}>
-                              {col.render(p, { setLightboxPhoto })}
+                             {col.render(p, { setLightboxPhoto, atendidoIds, atendidoColor })}
                             </TableCell>
                           ))}
                         </TableRow>
@@ -803,7 +814,7 @@ export default function PrestamosPage() {
                 </TableCell>
                 {visibleColumns.map((col) => (
                   <TableCell key={col.key} className={cn("px-3", col.className)}>
-                    {col.render(p, { setLightboxPhoto })}
+                    {col.render(p, { setLightboxPhoto, atendidoIds, atendidoColor })}
                   </TableCell>
                 ))}
               </TableRow>

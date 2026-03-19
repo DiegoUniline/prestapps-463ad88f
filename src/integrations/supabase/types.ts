@@ -142,6 +142,62 @@ export type Database = {
           },
         ]
       }
+      cat_cuotas: {
+        Row: {
+          activo: boolean
+          comision_cobrador: number
+          comision_colocador: number
+          created_at: string | null
+          empresa_id: string | null
+          frecuencia: Database["public"]["Enums"]["frecuencia_pago"]
+          id: string
+          modalidad: Database["public"]["Enums"]["prestamo_modalidad"]
+          nombre: string
+          num_cuotas: number
+          tasa_interes: number
+          tipo_mora: Database["public"]["Enums"]["tipo_mora"]
+          valor_mora: number
+        }
+        Insert: {
+          activo?: boolean
+          comision_cobrador?: number
+          comision_colocador?: number
+          created_at?: string | null
+          empresa_id?: string | null
+          frecuencia?: Database["public"]["Enums"]["frecuencia_pago"]
+          id?: string
+          modalidad?: Database["public"]["Enums"]["prestamo_modalidad"]
+          nombre: string
+          num_cuotas?: number
+          tasa_interes?: number
+          tipo_mora?: Database["public"]["Enums"]["tipo_mora"]
+          valor_mora?: number
+        }
+        Update: {
+          activo?: boolean
+          comision_cobrador?: number
+          comision_colocador?: number
+          created_at?: string | null
+          empresa_id?: string | null
+          frecuencia?: Database["public"]["Enums"]["frecuencia_pago"]
+          id?: string
+          modalidad?: Database["public"]["Enums"]["prestamo_modalidad"]
+          nombre?: string
+          num_cuotas?: number
+          tasa_interes?: number
+          tipo_mora?: Database["public"]["Enums"]["tipo_mora"]
+          valor_mora?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cat_cuotas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cat_estados_civiles: {
         Row: {
           activo: boolean
