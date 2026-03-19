@@ -89,6 +89,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const [selectedCobradorId, setSelectedCobradorId] = useState<string>(cobradorId || "");
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   // Set default payment method when catalog loads
   if (metodosPago.length > 0 && !metodo) {
