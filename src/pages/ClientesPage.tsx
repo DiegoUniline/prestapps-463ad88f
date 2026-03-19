@@ -146,6 +146,7 @@ export default function ClientesPage() {
   const { data: clientes, isLoading } = useClientes({ search, estado: estadoFilter, empresaId });
   const updateCliente = useUpdateCliente();
   const { data: estados, isLoading: loadingEC } = useEstadosCuenta();
+  const { clienteIds: atendidoClienteIds, color: atendidoColor } = useAtendidos(empresaId);
 
   const handleToggleActivo = (e: React.MouseEvent, id: string, activo: boolean) => {
     e.stopPropagation();
