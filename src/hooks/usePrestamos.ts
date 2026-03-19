@@ -223,7 +223,7 @@ export function useCajasOptions(empresaId?: string) {
   return useQuery({
     queryKey: ["cajas-options", empresaId],
     queryFn: async () => {
-      let query = supabase.from("cajas").select("id, nombre").order("nombre");
+      let query = supabase.from("cajas").select("id, nombre, saldo_actual").order("nombre");
       if (empresaId) query = query.eq("empresa_id", empresaId);
       const { data } = await query;
       return data || [];
