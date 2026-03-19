@@ -233,3 +233,97 @@ export const useDeleteEstadoCivil = () => useDeleteSimple("cat_estados_civiles",
 export const useSituacionesLaborales = () => useSimpleCatalog("cat_situaciones_laborales", "cat-situaciones-laborales");
 export const useUpsertSituacionLaboral = () => useUpsertSimple("cat_situaciones_laborales", "cat-situaciones-laborales", "Situación laboral");
 export const useDeleteSituacionLaboral = () => useDeleteSimple("cat_situaciones_laborales", "cat-situaciones-laborales", "Situación laboral");
+
+// ── Planes de Cuotas ──
+export interface PlanCuota {
+  id: string;
+  nombre: string;
+  num_cuotas: number;
+  tasa_interes: number;
+  comision_colocador: number;
+  comision_cobrador: number;
+  frecuencia: string;
+  modalidad: string;
+  tipo_mora: string;
+  valor_mora: number;
+  activo: boolean;
+}
+
+export function usePlanesCuotas() {
+  return useQuery({
+    queryKey: ["cat-planes-cuotas"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cat_cuotas" as any)
+        .select("*")
+        .order("created_at");
+      if (error) throw error;
+      return (data || []) as unknown as PlanCuota[];
+    },
+  });
+}
+
+export function usePlanesCuotasActivos() {
+  return useQuery({
+    queryKey: ["cat-planes-cuotas-activos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cat_cuotas" as any)
+        .select("*")
+        .eq("activo", true)
+        .order("nombre");
+      if (error) throw error;
+      return (data || []) as unknown as PlanCuota[];
+    },
+  });
+}
+
+export function useUpsertPlanCuota() {
+  const qc = useQueryClient();
+  const empresaId = useEmpresaStore((s) => s.empresaId);
+  return useMutation({
+    mutationFn: async (item: Partial<PlanCuota> & { nombre: string }) => {
+      const payload = {
+        nombre: item.nombre,
+        num_cuotas: item.num_cuotas ?? 1,
+        tasa_interes: item.tasa_interes ?? 0,
+        comision_colocador: item.comision_colocador ?? 0,
+        comision_cobrador: item.comision_cobrador ?? 0,
+        frecuencia: item.frecuencia ?? "semanal",
+        modalidad: item.modalidad ?? "fijo",
+        tipo_mora: item.tipo_mora ?? "porcentaje",
+        valor_mora: item.valor_mora ?? 0,
+        activo: item.activo ?? true,
+      };
+      if (item.id) {
+        const { error } = await supabase.from("cat_cuotas" as any).update(payload as any).eq("id", item.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("cat_cuotas" as any).insert({ ...payload, empresa_id: empresaId } as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cat-planes-cuotas"] });
+      qc.invalidateQueries({ queryKey: ["cat-planes-cuotas-activos"] });
+      toast.success("Plan de cuotas guardado");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}
+
+export function useDeletePlanCuota() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("cat_cuotas" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cat-planes-cuotas"] });
+      qc.invalidateQueries({ queryKey: ["cat-planes-cuotas-activos"] });
+      toast.success("Plan de cuotas eliminado");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+}

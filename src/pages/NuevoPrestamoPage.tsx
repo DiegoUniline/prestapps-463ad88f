@@ -6,7 +6,7 @@ import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useFrecuenciasPagoActivas } from "@/hooks/useCatalogos";
+import { useFrecuenciasPagoActivas, usePlanesCuotasActivos, type PlanCuota } from "@/hooks/useCatalogos";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect, SearchableOption } from "@/components/shared/SearchableSelect";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,7 @@ export default function NuevoPrestamoPage() {
   const { data: cajas = [] } = useCajasOptions(empresaId);
   const { data: rutas = [] } = useRutasOptions(empresaId);
   const { data: frecuencias = [] } = useFrecuenciasPagoActivas();
+  const { data: planesCuotas = [] } = usePlanesCuotasActivos();
   const geo = useGeoLocation();
 
   const [clienteId, setClienteId] = useState("");
@@ -379,6 +380,35 @@ export default function NuevoPrestamoPage() {
                 <p className="text-[11px] text-muted-foreground">Las ventas no descuentan de caja al crear, solo suman al cobrar.</p>
               )}
             </div>
+
+            {/* Plan de cuotas (pre-fill) */}
+            {planesCuotas.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-[13px]">Plan de Cuotas</Label>
+                <SearchableSelect
+                  options={planesCuotas.map((p) => ({
+                    value: p.id,
+                    label: p.nombre,
+                    subtitle: `${p.num_cuotas} cuotas · ${p.tasa_interes}% · ${p.frecuencia}`,
+                  }))}
+                  value=""
+                  onValueChange={(planId) => {
+                    const plan = planesCuotas.find((p) => p.id === planId);
+                    if (plan) {
+                      setNumCuotas(String(plan.num_cuotas));
+                      setTasaInteres(String(plan.tasa_interes));
+                      setFrecuencia(plan.frecuencia);
+                      setModalidad(plan.modalidad);
+                      setTipoMora(plan.tipo_mora);
+                      setValorMora(String(plan.valor_mora));
+                    }
+                  }}
+                  placeholder="Seleccionar plan (opcional)"
+                  searchPlaceholder="Buscar plan..."
+                />
+                <p className="text-[11px] text-muted-foreground">Selecciona un plan para pre-llenar cuotas, tasa, frecuencia y mora.</p>
+              </div>
+            )}
             {/* Código Interno + Cliente */}
             <div className="grid grid-cols-[120px_1fr] gap-3">
               <div className="space-y-1.5">
