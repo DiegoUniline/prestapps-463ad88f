@@ -16,6 +16,7 @@ export function invalidateFinanceQueries(
   queryClient.invalidateQueries({ queryKey: ["cajas-page"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["cajas-options"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["kardex-all"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["caja-kardex"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["movimientos-all"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["prestamos-by-caja"], refetchType: "all" });
 
