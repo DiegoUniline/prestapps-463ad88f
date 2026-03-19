@@ -291,7 +291,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
           </TabsContent>
 
           {/* Estado de Resultados Tab */}
-          <TabsContent value="resultados" className="flex-1 overflow-auto mt-0 px-0">
+          <TabsContent value="flujo" className="flex-1 overflow-auto mt-0 px-0">
             {isLoading ? (
               <div className="p-4 space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
@@ -299,7 +299,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
             ) : rows.length === 0 ? (
               <p className="text-center py-12 text-muted-foreground text-sm">Sin movimientos</p>
             ) : (
-              <EstadoResultados rows={rows} />
+              <FlujoEfectivo rows={rows} saldoActual={saldoActual} />
             )}
           </TabsContent>
         </Tabs>
