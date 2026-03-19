@@ -199,31 +199,32 @@ export default function SolicitudPrestamoPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Frecuencia</Label>
-                <Select value={frecuencia} onValueChange={setFrecuencia}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {frecuencias.length > 0 ? frecuencias.map((f) => (
-                      <SelectItem key={f.id} value={f.nombre}>{f.nombre.charAt(0).toUpperCase() + f.nombre.slice(1)}</SelectItem>
-                    )) : (
-                      <>
-                        <SelectItem value="diario">Diario</SelectItem>
-                        <SelectItem value="semanal">Semanal</SelectItem>
-                        <SelectItem value="quincenal">Quincenal</SelectItem>
-                        <SelectItem value="mensual">Mensual</SelectItem>
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={(frecuencias.length > 0
+                    ? frecuencias.map((f) => ({ value: f.nombre, label: f.nombre.charAt(0).toUpperCase() + f.nombre.slice(1) }))
+                    : [
+                        { value: "diario", label: "Diario" },
+                        { value: "semanal", label: "Semanal" },
+                        { value: "quincenal", label: "Quincenal" },
+                        { value: "mensual", label: "Mensual" },
+                      ]
+                  )}
+                  value={frecuencia}
+                  onValueChange={setFrecuencia}
+                  placeholder="Frecuencia"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Modalidad</Label>
-                <Select value={modalidad} onValueChange={setModalidad}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fijo">Cuota Fija</SelectItem>
-                    <SelectItem value="insolutos">Saldos Insolutos</SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={[
+                    { value: "fijo", label: "Cuota Fija" },
+                    { value: "insolutos", label: "Saldos Insolutos" },
+                  ]}
+                  value={modalidad}
+                  onValueChange={setModalidad}
+                  placeholder="Modalidad"
+                />
               </div>
             </div>
 
