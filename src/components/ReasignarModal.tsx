@@ -109,6 +109,17 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
           </Button>
         </DialogFooter>
       </DialogContent>
+      {quickCreate && (
+        <QuickCreateDialog
+          entityType={quickCreate}
+          open={!!quickCreate}
+          onOpenChange={(open) => { if (!open) setQuickCreate(null); }}
+          onCreated={(id) => {
+            if (quickCreate === "ruta") setRutaId(id);
+            setQuickCreate(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 }

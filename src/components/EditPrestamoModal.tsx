@@ -236,6 +236,18 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
           </Button>
         </DialogFooter>
       </DialogContent>
+      {quickCreate && (
+        <QuickCreateDialog
+          entityType={quickCreate}
+          open={!!quickCreate}
+          onOpenChange={(open) => { if (!open) setQuickCreate(null); }}
+          onCreated={(id) => {
+            if (quickCreate === "ruta") setRutaId(id);
+            else if (quickCreate === "caja") setCajaId(id);
+            setQuickCreate(null);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
