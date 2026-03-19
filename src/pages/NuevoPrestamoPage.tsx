@@ -364,15 +364,17 @@ export default function NuevoPrestamoPage() {
             {/* Tipo de Cuenta */}
             <div className="space-y-1.5">
               <Label className="text-[13px]">Tipo de Cuenta *</Label>
-              <Select value={tipoCuenta} onValueChange={setTipoCuenta}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="prestamo">💰 Préstamo</SelectItem>
-                  <SelectItem value="venta_seguro">🛡️ Venta de Seguro</SelectItem>
-                  <SelectItem value="venta_producto">📦 Venta de Producto</SelectItem>
-                  <SelectItem value="venta_servicio">🔧 Venta de Servicio</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={[
+                  { value: "prestamo", label: "💰 Préstamo" },
+                  { value: "venta_seguro", label: "🛡️ Venta de Seguro" },
+                  { value: "venta_producto", label: "📦 Venta de Producto" },
+                  { value: "venta_servicio", label: "🔧 Venta de Servicio" },
+                ]}
+                value={tipoCuenta}
+                onValueChange={setTipoCuenta}
+                placeholder="Tipo de cuenta"
+              />
               {tipoCuenta !== "prestamo" && (
                 <p className="text-[11px] text-muted-foreground">Las ventas no descuentan de caja al crear, solo suman al cobrar.</p>
               )}
