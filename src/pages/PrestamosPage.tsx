@@ -65,10 +65,10 @@ const ALL_COLUMNS: ColumnDef[] = [
   {
     key: "cliente", label: "Cliente", sortKey: "cliente", defaultVisible: true,
     render: (p, { setLightboxPhoto, atendidoIds, atendidoColor }) => (
-      <div className="flex items-center gap-2 whitespace-nowrap">
+      <div className="flex items-center gap-2">
         <div className="relative">
           <Avatar
-            className={cn("h-6 w-6 shrink-0", p.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+            className={cn("h-7 w-7 shrink-0", p.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
             onClick={(e) => { if (p.clienteFoto) { e.stopPropagation(); setLightboxPhoto({ src: p.clienteFoto, alt: p.cliente }); } }}
           >
             {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
@@ -78,13 +78,20 @@ const ALL_COLUMNS: ColumnDef[] = [
           </Avatar>
           {atendidoIds?.has(p.id) && (
             <span
-              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-card"
+              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card animate-pulse"
               style={{ backgroundColor: atendidoColor || "#22c55e" }}
               title="Atendido esta semana"
             />
           )}
         </div>
-        <span className="font-medium text-[13px]">{p.cliente}</span>
+        <div className="min-w-0">
+          <span className="font-medium text-[13px] whitespace-nowrap">{p.cliente}</span>
+          {p.ultimoPagoFecha && (
+            <p className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
+              Últ. pago: {fmtDate(p.ultimoPagoFecha)} · {$$(p.ultimoPagoMonto ?? 0)}
+            </p>
+          )}
+        </div>
       </div>
     ),
   },
