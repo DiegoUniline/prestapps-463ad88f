@@ -24,7 +24,6 @@ import { format, addDays, addWeeks, addMonths, parse, isValid } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
-import { QuickCreateButton } from "@/components/shared/QuickCreateDialog";
 
 function useClientesOptions(empresaId: string) {
   return useQuery({
