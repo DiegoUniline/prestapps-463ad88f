@@ -45,6 +45,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
   const [cobradorId, setCobradorId] = useState("");
   const [notas, setNotas] = useState("");
   const [codigoInterno, setCodigoInterno] = useState("");
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   useEffect(() => {
     if (open) {
