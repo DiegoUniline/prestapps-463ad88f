@@ -40,6 +40,7 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
   const [rutaId, setRutaId] = useState(currentRutaId || "__none__");
   const [cobradorId, setCobradorId] = useState(currentCobradorId || "__none__");
   const [saving, setSaving] = useState(false);
+  const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   const handleSave = async () => {
     setSaving(true);
