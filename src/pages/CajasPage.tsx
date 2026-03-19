@@ -369,20 +369,9 @@ export default function CajasPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Cajas</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" className="h-8 text-[13px]" onClick={() => setModal("depositar")}>
-            <ArrowDownLeft className="h-3.5 w-3.5 mr-1.5" />Depositar
-          </Button>
-          <Button variant="secondary" size="sm" className="h-8 text-[13px]" onClick={() => setModal("retirar")}>
-            <ArrowUpRight className="h-3.5 w-3.5 mr-1.5" />Retirar
-          </Button>
-          <Button variant="secondary" size="sm" className="h-8 text-[13px]" onClick={() => setModal("transferir")}>
-            <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />Transferir
-          </Button>
-          <Button size="sm" className="h-8 text-[13px]" onClick={() => setModal("nueva-caja")}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva Caja
-          </Button>
-        </div>
+        <Button size="sm" className="h-8 text-[13px]" onClick={() => setModal("nueva-caja")}>
+          <Plus className="h-3.5 w-3.5 mr-1.5" />Nueva Caja
+        </Button>
       </div>
 
       {/* KPI Cards */}
