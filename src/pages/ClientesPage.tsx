@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, Loader2, Users, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useClientes, useUpdateCliente } from "@/hooks/useClientes";
+import { useAtendidos } from "@/hooks/useAtendidos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
