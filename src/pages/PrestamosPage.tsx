@@ -345,6 +345,7 @@ export default function PrestamosPage() {
   const roleFilters = role === "admin" ? { empresaId } : { rutaIds: rutaIds.length > 0 ? rutaIds : undefined, cobradorId, empresaId };
   const { data: prestamos = [], isLoading, isError } = usePrestamos(roleFilters);
   const { data: cajasRaw = [] } = useCajasOptions(empresaId);
+  const { prestamoIds: atendidoIds, color: atendidoColor } = useAtendidos(empresaId);
   const { data: rutasRaw = [] } = useRutasOptions(empresaId);
 
   const cajasOpts = cajasRaw.map((c) => c.nombre);
