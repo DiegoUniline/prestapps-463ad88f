@@ -53,7 +53,7 @@ function useCajaStats(cajaId: string) {
         .eq("caja_id", cajaId)
         .not("estado", "in", '("Cancelado")');
 
-      if (!prestamos?.length) return { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
+      if (!prestamos?.length) return { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
 
       const ids = prestamos.map(p => p.id);
       const { data: amortData } = await supabase
@@ -62,17 +62,19 @@ function useCajaStats(cajaId: string) {
         .in("prestamo_id", ids);
 
       const today = new Date().toISOString().slice(0, 10);
-      const prestamoAgg: Record<string, { saldo: number; mora: number; tieneAtraso: boolean }> = {};
+      const prestamoAgg: Record<string, { saldo: number; mora: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
       for (const a of amortData || []) {
-        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, tieneAtraso: false };
+        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, capital: 0, interes: 0, tieneAtraso: false };
         prestamoAgg[a.prestamo_id].saldo += Number(a.saldo_total || 0);
         prestamoAgg[a.prestamo_id].mora += Number(a.saldo_mora || 0);
+        prestamoAgg[a.prestamo_id].capital += Number(a.saldo_capital || 0);
+        prestamoAgg[a.prestamo_id].interes += Number(a.saldo_interes || 0);
         if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) prestamoAgg[a.prestamo_id].tieneAtraso = true;
       }
 
-      let activos = 0, colocado = 0, totalPagar = 0, porCobrar = 0, ganancia = 0, enMora = 0, moraTotal = 0, liquidados = 0, capitalRecuperado = 0;
+      let activos = 0, colocado = 0, totalPagar = 0, porCobrar = 0, capitalPorCobrar = 0, interesPorCobrar = 0, moraPorCobrar = 0, ganancia = 0, enMora = 0, moraTotal = 0, liquidados = 0, capitalRecuperado = 0;
       for (const p of prestamos) {
-        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, tieneAtraso: false };
+        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, capital: 0, interes: 0, tieneAtraso: false };
         const monto = Number(p.monto_solicitado || 0);
         const total = Number(p.monto_total_pagar || 0);
         const isActive = p.estado !== "Liquidado";
@@ -80,14 +82,13 @@ function useCajaStats(cajaId: string) {
         colocado += monto;
         totalPagar += total;
         porCobrar += agg.saldo;
+        capitalPorCobrar += agg.capital;
+        interesPorCobrar += agg.interes;
+        moraPorCobrar += agg.mora;
         ganancia += total - monto;
         if (agg.tieneAtraso) { enMora++; moraTotal += agg.mora; }
       }
-      return { activos, colocado, totalPagar, porCobrar, ganancia, enMora, moraTotal, liquidados, capitalRecuperado };
-    },
-  });
-}
-
+      return { activos, colocado, totalPagar, porCobrar, capitalPorCobrar, interesPorCobrar, moraPorCobrar, ganancia, enMora, moraTotal, liquidados, capitalRecuperado };
 interface KardexRow { id: string; fecha: string; tipo: "entrada" | "salida"; concepto: string; monto: number; categoria: string; }
 
 function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string {
@@ -219,15 +220,15 @@ export default function CajaDetallePage() {
   const pieEntradas = useMemo(() => Object.entries(flujoData.entradas).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [flujoData]);
   const pieSalidas = useMemo(() => Object.entries(flujoData.salidas).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [flujoData]);
 
-  const s = stats || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
+  const s = stats || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
 
   const kpis = [
-    { label: "Saldo Actual", value: $$(saldoActual), icon: Wallet, accent: "text-primary", bg: "bg-primary/10" },
     { label: "Préstamos Activos", value: String(s.activos), icon: FileText, accent: "text-[hsl(217,91%,60%)]", bg: "bg-[hsl(217,91%,60%)]/10" },
     { label: "Monto Colocado", value: $$(s.colocado), icon: DollarSign, accent: "text-foreground", bg: "bg-muted" },
-    { label: "Por Cobrar", value: $$(s.porCobrar), icon: TrendingUp, accent: "text-warning", bg: "bg-warning/10" },
+    { label: "Capital por Cobrar", value: $$(s.capitalPorCobrar), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
+    { label: "Interés por Cobrar", value: $$(s.interesPorCobrar), icon: TrendingUp, accent: "text-warning", bg: "bg-warning/10" },
+    { label: "Mora por Cobrar", value: $$(s.moraPorCobrar), icon: AlertTriangle, accent: "text-destructive", bg: "bg-destructive/10" },
     { label: "Ganancia Proyectada", value: $$(s.ganancia), icon: PiggyBank, accent: "text-success", bg: "bg-success/10" },
-    { label: `En Mora (${s.enMora})`, value: $$(s.moraTotal), icon: AlertTriangle, accent: "text-destructive", bg: "bg-destructive/10" },
     { label: "Entradas Total", value: $$(flujoData.totalEntradas), icon: ArrowDownLeft, accent: "text-success", bg: "bg-success/10" },
     { label: "Salidas Total", value: $$(flujoData.totalSalidas), icon: ArrowUpRight, accent: "text-destructive", bg: "bg-destructive/10" },
   ];
@@ -248,7 +249,8 @@ export default function CajaDetallePage() {
               <Wallet className="h-5 w-5 text-primary" />
               {caja.nombre}
             </h1>
-            {caja.descripcion && <p className="text-sm text-muted-foreground">{caja.descripcion}</p>}
+            <p className="text-3xl font-extrabold tracking-tight mt-0.5">{$$(saldoActual)}</p>
+            {caja.descripcion && <p className="text-sm text-muted-foreground mt-0.5">{caja.descripcion}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2">
