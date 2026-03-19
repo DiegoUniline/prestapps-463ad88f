@@ -53,7 +53,7 @@ function useCajaStats(cajaId: string) {
         .eq("caja_id", cajaId)
         .not("estado", "in", '("Cancelado")');
 
-      if (!prestamos?.length) return { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
+      if (!prestamos?.length) return { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, moraCobrada: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
 
       const ids = prestamos.map(p => p.id);
       const prestamoMap = new Map(prestamos.map((p) => [p.id, p]));
@@ -98,7 +98,7 @@ function useCajaStats(cajaId: string) {
         }
       }
 
-      let activos = 0, colocado = 0, totalPagar = 0, porCobrar = 0, capitalPorCobrar = 0, interesPorCobrar = 0, moraPorCobrar = 0, ganancia = 0, enMora = 0, moraTotal = 0, liquidados = 0, capitalRecuperado = 0;
+      let activos = 0, colocado = 0, totalPagar = 0, porCobrar = 0, capitalPorCobrar = 0, interesPorCobrar = 0, moraPorCobrar = 0, moraCobrada = 0, ganancia = 0, enMora = 0, moraTotal = 0, liquidados = 0, capitalRecuperado = 0;
       for (const p of prestamos) {
         const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, moraCobrada: 0, capital: 0, interes: 0, tieneAtraso: false };
         const monto = Number(p.monto_solicitado || 0);
@@ -111,12 +111,12 @@ function useCajaStats(cajaId: string) {
         capitalPorCobrar += agg.capital;
         interesPorCobrar += agg.interes;
         moraPorCobrar += agg.mora;
-        // Ganancia = interés original (total-monto) + mora cobrada + mora pendiente
+        moraCobrada += agg.moraCobrada;
         ganancia += (total - monto) + agg.moraCobrada + agg.mora;
         if (agg.tieneAtraso) { enMora++; moraTotal += agg.mora; }
       }
 
-      return { activos, colocado, totalPagar, porCobrar, capitalPorCobrar, interesPorCobrar, moraPorCobrar, ganancia, enMora, moraTotal, liquidados, capitalRecuperado };
+      return { activos, colocado, totalPagar, porCobrar, capitalPorCobrar, interesPorCobrar, moraPorCobrar, moraCobrada, ganancia, enMora, moraTotal, liquidados, capitalRecuperado };
     },
   });
 }
@@ -252,12 +252,12 @@ export default function CajaDetallePage() {
   const pieEntradas = useMemo(() => Object.entries(flujoData.entradas).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [flujoData]);
   const pieSalidas = useMemo(() => Object.entries(flujoData.salidas).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [flujoData]);
 
-  const s = stats || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
+  const s = stats || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, moraCobrada: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
 
   const kpis = [
     { label: "Préstamos Activos", value: String(s.activos), icon: FileText, accent: "text-[hsl(217,91%,60%)]", bg: "bg-[hsl(217,91%,60%)]/10" },
     { label: "Monto Colocado", value: $$(s.colocado), icon: DollarSign, accent: "text-foreground", bg: "bg-muted" },
-    { label: "Total a Cobrar", value: $$(s.totalPagar + s.moraPorCobrar), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
+    { label: "Total a Cobrar", value: $$(s.totalPagar + s.moraPorCobrar + s.moraCobrada), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
     { label: "Capital por Cobrar", value: $$(s.capitalPorCobrar), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
     { label: "Interés por Cobrar", value: $$(s.interesPorCobrar), icon: TrendingUp, accent: "text-warning", bg: "bg-warning/10" },
     { label: "Mora por Cobrar", value: $$(s.moraPorCobrar), icon: AlertTriangle, accent: "text-destructive", bg: "bg-destructive/10" },
