@@ -226,6 +226,7 @@ type ModalType = "depositar" | "retirar" | "transferir" | "nueva-caja" | null;
 
 // ── Component ─────────────────────────────────────────────────────
 export default function CajasPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
   const { data: cajas = [], isLoading } = useCajas(empresaId);
