@@ -432,7 +432,7 @@ export default function CajasPage() {
                   <TableRow
                     key={c.id}
                     className={cn("cursor-pointer", selectedCaja === c.id && "bg-[hsl(var(--table-selected))]")}
-                    onClick={() => setSelectedCaja(selectedCaja === c.id ? null : c.id)}
+                    onClick={() => setKardexCaja({ id: c.id, nombre: c.nombre, saldo: Number(c.saldo_actual || 0) })}
                   >
                     <TableCell>
                       <div>
