@@ -220,15 +220,15 @@ export default function CajaDetallePage() {
   const pieEntradas = useMemo(() => Object.entries(flujoData.entradas).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [flujoData]);
   const pieSalidas = useMemo(() => Object.entries(flujoData.salidas).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [flujoData]);
 
-  const s = stats || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
+  const s = stats || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
 
   const kpis = [
-    { label: "Saldo Actual", value: $$(saldoActual), icon: Wallet, accent: "text-primary", bg: "bg-primary/10" },
     { label: "Préstamos Activos", value: String(s.activos), icon: FileText, accent: "text-[hsl(217,91%,60%)]", bg: "bg-[hsl(217,91%,60%)]/10" },
     { label: "Monto Colocado", value: $$(s.colocado), icon: DollarSign, accent: "text-foreground", bg: "bg-muted" },
-    { label: "Por Cobrar", value: $$(s.porCobrar), icon: TrendingUp, accent: "text-warning", bg: "bg-warning/10" },
+    { label: "Capital por Cobrar", value: $$(s.capitalPorCobrar), icon: TrendingUp, accent: "text-primary", bg: "bg-primary/10" },
+    { label: "Interés por Cobrar", value: $$(s.interesPorCobrar), icon: TrendingUp, accent: "text-warning", bg: "bg-warning/10" },
+    { label: "Mora por Cobrar", value: $$(s.moraPorCobrar), icon: AlertTriangle, accent: "text-destructive", bg: "bg-destructive/10" },
     { label: "Ganancia Proyectada", value: $$(s.ganancia), icon: PiggyBank, accent: "text-success", bg: "bg-success/10" },
-    { label: `En Mora (${s.enMora})`, value: $$(s.moraTotal), icon: AlertTriangle, accent: "text-destructive", bg: "bg-destructive/10" },
     { label: "Entradas Total", value: $$(flujoData.totalEntradas), icon: ArrowDownLeft, accent: "text-success", bg: "bg-success/10" },
     { label: "Salidas Total", value: $$(flujoData.totalSalidas), icon: ArrowUpRight, accent: "text-destructive", bg: "bg-destructive/10" },
   ];
@@ -249,7 +249,8 @@ export default function CajaDetallePage() {
               <Wallet className="h-5 w-5 text-primary" />
               {caja.nombre}
             </h1>
-            {caja.descripcion && <p className="text-sm text-muted-foreground">{caja.descripcion}</p>}
+            <p className="text-3xl font-extrabold tracking-tight mt-0.5">{$$(saldoActual)}</p>
+            {caja.descripcion && <p className="text-sm text-muted-foreground mt-0.5">{caja.descripcion}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2">
