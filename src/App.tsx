@@ -119,6 +119,7 @@ const App = () => (
               <Route path="/mi-cobranza" element={<CobradorViewPage />} />
               <Route path="/prestamos" element={<PrestamosPage />} />
               <Route path="/prestamos/:id" element={<PrestamoDetallePage />} />
+              <Route path="/planes-cuotas" element={<PlanesCuotasPage />} />
               <Route path="/pagos" element={<PagosPage />} />
               <Route path="/promesas" element={<PromesasPage />} />
               <Route path="/solicitudes" element={<SolicitudesPage />} />
