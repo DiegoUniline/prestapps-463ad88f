@@ -238,7 +238,18 @@ export default function ClientesPage() {
                     clientes?.map((c) => (
                       <TableRow key={c.id} className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors" onClick={() => navigate(`/clientes/${c.id}`)}>
                         <TableCell className="font-mono text-[12px] px-3">{c.id_cliente}</TableCell>
-                        <TableCell className="font-medium text-[13px] px-3">{c.nombre_completo}</TableCell>
+                        <TableCell className="font-medium text-[13px] px-3">
+                          <div className="flex items-center gap-1.5">
+                            {atendidoClienteIds.has(c.id) && (
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: atendidoColor }}
+                                title="Atendido esta semana"
+                              />
+                            )}
+                            {c.nombre_completo}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-[13px] px-3">{c.telefono || "—"}</TableCell>
                         <TableCell className="text-[13px] px-3">{c.dni || "—"}</TableCell>
                         <TableCell className="text-[13px] px-3">{c.situacion_laboral || "—"}</TableCell>
