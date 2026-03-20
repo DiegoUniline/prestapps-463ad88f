@@ -174,7 +174,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
       const { data: prestamo } = await supabase
         .from("prestamos")
-        .select("id, num_cuotas, monto_solicitado, clientes!inner(nombre_completo, telefono)")
+        .select("id, id_prestamo, num_cuotas, monto_solicitado, clientes!inner(nombre_completo, telefono)")
         .eq("id", prestamoId)
         .single();
 
