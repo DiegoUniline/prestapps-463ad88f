@@ -140,6 +140,16 @@ const ALL_COLUMNS: ColumnDef[] = [
     className: "text-right",
   },
   {
+    key: "saldoCapital", label: "Cap. Pte", sortKey: "saldoCapital" as any, defaultVisible: false,
+    render: (p) => <span className="text-right font-medium text-[13px]">{$$(p.saldoCapital)}</span>,
+    className: "text-right",
+  },
+  {
+    key: "saldoInteres", label: "Int. Pte", sortKey: "saldoInteres" as any, defaultVisible: false,
+    render: (p) => <span className="text-right font-medium text-[13px]">{$$(p.saldoInteres)}</span>,
+    className: "text-right",
+  },
+  {
     key: "mora", label: "Mora", sortKey: "mora", defaultVisible: true,
     render: (p) => (
       <span className={cn("text-right font-bold text-[13px]", (p.mora ?? 0) > 0 ? "text-destructive" : "text-muted-foreground")}>
@@ -763,10 +773,12 @@ export default function PrestamosPage() {
             ) : groupedData ? (
               <>
                 {groupedData.map(([groupName, items]) => {
-                  const isExpanded = expandedGroups.has(groupName);
+                   const isExpanded = expandedGroups.has(groupName);
                   const sumMonto = items.reduce((s, p) => s + p.montoSolicitado, 0);
                   const sumPagar = items.reduce((s, p) => s + p.montoPagar, 0);
                   const sumSaldo = items.reduce((s, p) => s + p.saldo, 0);
+                  const sumCapital = items.reduce((s, p) => s + p.saldoCapital, 0);
+                  const sumInteres = items.reduce((s, p) => s + p.saldoInteres, 0);
                   const sumMora = items.reduce((s, p) => s + p.mora, 0);
                   return (
                     <React.Fragment key={groupName}>
@@ -778,7 +790,7 @@ export default function PrestamosPage() {
                           {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
                         </TableCell>
                         {visibleColumns.map((col, ci) => {
-                          const numericKeys = ["montoSolicitado", "montoPagar", "saldo", "mora"];
+                          const numericKeys = ["montoSolicitado", "montoPagar", "saldo", "saldoCapital", "saldoInteres", "mora"];
                           if (ci === 0) {
                             return (
                               <TableCell key={col.key} className="px-3 py-2">
@@ -791,10 +803,14 @@ export default function PrestamosPage() {
                             const sum = col.key === "montoSolicitado" ? sumMonto
                               : col.key === "montoPagar" ? sumPagar
                               : col.key === "saldo" ? sumSaldo
+                              : col.key === "saldoCapital" ? sumCapital
+                              : col.key === "saldoInteres" ? sumInteres
                               : sumMora;
                             const label = col.key === "montoSolicitado" ? "Prestado"
                               : col.key === "montoPagar" ? "A Pagar"
                               : col.key === "saldo" ? "Saldo"
+                              : col.key === "saldoCapital" ? "Cap. Pte"
+                              : col.key === "saldoInteres" ? "Int. Pte"
                               : "Mora";
                             return (
                               <TableCell key={col.key} className={cn("px-3 py-2", col.className)}>
@@ -860,6 +876,8 @@ export default function PrestamosPage() {
                       {col.key === "montoSolicitado" ? $$(filtered.reduce((s, p) => s + p.montoSolicitado, 0)) :
                        col.key === "montoPagar" ? $$(filtered.reduce((s, p) => s + p.montoPagar, 0)) :
                        col.key === "saldo" ? $$(filtered.reduce((s, p) => s + p.saldo, 0)) :
+                       col.key === "saldoCapital" ? $$(filtered.reduce((s, p) => s + p.saldoCapital, 0)) :
+                       col.key === "saldoInteres" ? $$(filtered.reduce((s, p) => s + p.saldoInteres, 0)) :
                        col.key === "mora" ? $$(filtered.reduce((s, p) => s + p.mora, 0)) :
                        col.key === "codigoInterno" ? <span className="font-bold text-[11px] uppercase text-muted-foreground">Totales</span> :
                        ""}
