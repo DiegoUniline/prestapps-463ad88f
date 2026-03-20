@@ -66,7 +66,7 @@ function usePagosAll(empresaId: string) {
             id, monto_recibido, aplicado_mora, aplicado_interes, aplicado_capital,
             metodo_pago, created_at, prestamo_id, anulado, cuota_id, caja_id, cobrador_id, fecha_pago,
             cajas ( nombre ),
-            prestamos!pagos_prestamo_id_fkey ( id, num_cuotas, clientes ( nombre_completo, telefono ), rutas ( nombre ), empresas ( nombre, telefono, direccion, logo_url ) )
+            prestamos!pagos_prestamo_id_fkey ( id, id_prestamo, num_cuotas, clientes ( nombre_completo, telefono ), rutas ( nombre ), empresas ( nombre, telefono, direccion, logo_url ) )
           `)
           .eq("empresa_id", empresaId)
           .order("created_at", { ascending: false })
