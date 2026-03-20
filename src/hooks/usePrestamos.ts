@@ -196,6 +196,8 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       cobrador: p.cobrador_id ? (cobradorMap[p.cobrador_id] || "—") : "—",
       cobradorId: p.cobrador_id,
       saldo: amort.saldo,
+      saldoCapital: amort.saldoCapital,
+      saldoInteres: amort.saldoInteres,
       mora: amort.mora,
       estado,
       fechaRegistro: p.fecha_registro || "",
