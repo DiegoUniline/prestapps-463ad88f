@@ -811,7 +811,7 @@ export default function PagosPage() {
               phone,
               {
                 pago: {
-                  folio: `PAG-${p.id.slice(0, 8)}`,
+                  folio: p.shortId,
                   monto_recibido: p.montoRecibido,
                   aplicado_mora: p.aplicadoMora,
                   aplicado_interes: p.aplicadoInteres,
