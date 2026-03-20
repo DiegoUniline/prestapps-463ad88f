@@ -209,12 +209,7 @@ export default function CobradoresPage() {
         empresa_id: empresaId,
       });
 
-      const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", corteCajaId).single();
-      if (cajaData) {
-        await supabase.from("cajas").update({
-          saldo_actual: Number(cajaData.saldo_actual || 0) + corteDeposito,
-        }).eq("id", corteCajaId);
-      }
+      // saldo_actual se sincroniza automáticamente via trigger
 
       // 3) Pay commission as separate exit from same caja
       if (corteComision > 0) {
@@ -225,13 +220,7 @@ export default function CobradoresPage() {
           concepto: `Comisión cobrador: ${selectedCobrador.nombre_completo} (${selectedCobrador.porcentaje_comision}%)`,
           empresa_id: empresaId,
         });
-
-        const { data: cajaData2 } = await supabase.from("cajas").select("saldo_actual").eq("id", corteCajaId).single();
-        if (cajaData2) {
-          await supabase.from("cajas").update({
-            saldo_actual: Number(cajaData2.saldo_actual || 0) - corteComision,
-          }).eq("id", corteCajaId);
-        }
+        // saldo_actual se sincroniza automáticamente via trigger
       }
 
       // 4) Reset cobrador cash to 0

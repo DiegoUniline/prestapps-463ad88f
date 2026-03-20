@@ -176,19 +176,7 @@ export default function SolicitudesPage() {
           registrado_por: user?.id,
         });
 
-        // Update caja balance
-        const { data: cajaActual } = await supabase
-          .from("cajas")
-          .select("saldo_actual")
-          .eq("id", sol.caja_id)
-          .single();
-
-        if (cajaActual) {
-          await supabase
-            .from("cajas")
-            .update({ saldo_actual: Number(cajaActual.saldo_actual) - monto })
-            .eq("id", sol.caja_id);
-        }
+        // saldo_actual se sincroniza automáticamente via trigger
       }
 
       // Update solicitud status

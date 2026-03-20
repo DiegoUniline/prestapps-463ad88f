@@ -142,13 +142,7 @@ export default function GastosPage() {
       });
       if (error) throw error;
 
-      // 2) Update caja balance
-      const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", cajaId).single();
-      if (cajaData) {
-        await supabase.from("cajas").update({
-          saldo_actual: Number(cajaData.saldo_actual || 0) - montoNum,
-        }).eq("id", cajaId);
-      }
+      // saldo_actual se sincroniza automáticamente via trigger
 
       toast.success(`Gasto de ${$$(montoNum)} registrado`);
       invalidateFinanceQueries(queryClient);

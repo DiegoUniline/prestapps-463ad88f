@@ -143,9 +143,7 @@ export default function LiquidarRutaPage() {
         .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
         .eq("id", selectedCobrador.id);
 
-      // 2) Increase caja balance
-      const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", cajaId).single();
-      await supabase.from("cajas").update({ saldo_actual: (Number(cajaData?.saldo_actual) || 0) + montoNum }).eq("id", cajaId);
+      // saldo_actual se sincroniza automáticamente via trigger
 
       // 3) Register movimiento_caja
       await supabase.from("movimientos_caja").insert({

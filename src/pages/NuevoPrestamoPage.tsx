@@ -321,18 +321,7 @@ export default function NuevoPrestamoPage() {
           registrado_por: user?.id,
         });
 
-        const { data: cajaActual } = await supabase
-          .from("cajas")
-          .select("saldo_actual")
-          .eq("id", cajaId)
-          .single();
-
-        if (cajaActual) {
-          await supabase
-            .from("cajas")
-            .update({ saldo_actual: Number(cajaActual.saldo_actual) - monto })
-            .eq("id", cajaId);
-        }
+        // saldo_actual se sincroniza automáticamente via trigger
       }
 
       return data;
