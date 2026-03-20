@@ -883,7 +883,7 @@ export default function CobranzaDiariaPage() {
                     const totalCobradas = items.reduce((s, c) => s + c.cuotasCobradas, 0);
                     const totalPendientes = items.reduce((s, c) => s + c.cuotasPendientes, 0);
                     return (
-                      <React.Fragment key={groupName}>
+                       <React.Fragment key={groupName}>
                         <TableRow
                           className="bg-muted/60 hover:bg-muted/80 cursor-pointer border-b border-border"
                           onClick={() => toggleGroup(groupName)}
@@ -891,30 +891,34 @@ export default function CobranzaDiariaPage() {
                           <TableCell className="px-3 py-2">
                             {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
                           </TableCell>
-                          <TableCell colSpan={8} className="px-3 py-2">
-                            <div className="flex items-center gap-3 flex-wrap">
-                              <span className="font-bold text-[13px]">{groupName}</span>
-                              <span className="text-[11px] text-muted-foreground font-medium">({totalClientes} clientes)</span>
-                              <div className="flex items-center gap-2 ml-auto flex-wrap">
-                                <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
-                                  <span className="text-muted-foreground">Cuotas:</span>
-                                  <span className="font-semibold text-success">{totalCobradas}✓</span>
-                                  <span className="text-muted-foreground">/</span>
-                                  <span className="font-semibold">{totalPendientes} pte</span>
-                                </span>
-                                <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
-                                  <span className="text-muted-foreground">Saldo:</span>
-                                  <span className="font-semibold">{$$(sumSaldo)}</span>
-                                </span>
-                                {sumMora > 0 && (
-                                  <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 border border-destructive/20 px-2 py-0.5 text-[11px]">
-                                    <span className="text-destructive/70">Mora:</span>
-                                    <span className="font-semibold text-destructive">{$$(sumMora)}</span>
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+                          {/* Group name */}
+                          <TableCell className="px-3 py-2">
+                            <span className="font-bold text-[13px]">{groupName}</span>
+                            <span className="ml-2 text-[11px] text-muted-foreground font-medium">({totalClientes})</span>
                           </TableCell>
+                          {/* Cuentas - empty */}
+                          <TableCell className="px-3 py-2" />
+                          {/* Cuotas Hoy */}
+                          <TableCell className="text-center px-3 py-2">
+                            <span className="text-[12px]">
+                              <span className="text-success font-semibold">{totalCobradas}✓</span>
+                              <span className="text-muted-foreground"> / {totalPendientes} pte</span>
+                            </span>
+                          </TableCell>
+                          {/* Ruta - empty */}
+                          <TableCell className="px-3 py-2" />
+                          {/* Mora */}
+                          <TableCell className="text-right px-3 py-2">
+                            <span className={cn("font-semibold text-[12px]", sumMora > 0 ? "text-destructive" : "text-muted-foreground")}>{sumMora > 0 ? $$(sumMora) : "—"}</span>
+                          </TableCell>
+                          {/* Saldo */}
+                          <TableCell className="text-right px-3 py-2">
+                            <span className="font-semibold text-[12px]">{$$(sumSaldo)}</span>
+                          </TableCell>
+                          {/* Estado - empty */}
+                          <TableCell className="px-3 py-2" />
+                          {/* Acciones - empty */}
+                          <TableCell className="px-3 py-2" />
                         </TableRow>
                         {isExpanded && items.map((cli) => renderClientRow(cli))}
                       </React.Fragment>

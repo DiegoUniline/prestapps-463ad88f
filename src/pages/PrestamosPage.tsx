@@ -772,35 +772,32 @@ export default function PrestamosPage() {
                         className="bg-muted/60 hover:bg-muted/80 cursor-pointer border-b border-border"
                         onClick={() => toggleGroup(groupName)}
                       >
-                        <TableCell colSpan={1} className="px-3 py-2">
+                        <TableCell className="px-3 py-2 w-10">
                           {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
                         </TableCell>
-                        <TableCell colSpan={visibleColumns.length} className="px-3 py-2">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="font-bold text-[13px]">{groupName}</span>
-                            <span className="text-[11px] text-muted-foreground font-medium">({items.length})</span>
-                            <div className="flex items-center gap-2 ml-auto flex-wrap">
-                              <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
-                                <span className="text-muted-foreground">Prestado:</span>
-                                <span className="font-semibold">{$$(sumMonto)}</span>
-                              </span>
-                              <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
-                                <span className="text-muted-foreground">A Pagar:</span>
-                                <span className="font-semibold">{$$(sumPagar)}</span>
-                              </span>
-                              <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
-                                <span className="text-muted-foreground">Saldo:</span>
-                                <span className="font-semibold">{$$(sumSaldo)}</span>
-                              </span>
-                              {sumMora > 0 && (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 border border-destructive/20 px-2 py-0.5 text-[11px]">
-                                  <span className="text-destructive/70">Mora:</span>
-                                  <span className="font-semibold text-destructive">{$$(sumMora)}</span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
+                        {visibleColumns.map((col, ci) => {
+                          const numericKeys = ["montoSolicitado", "montoPagar", "saldo", "mora"];
+                          if (ci === 0) {
+                            return (
+                              <TableCell key={col.key} className="px-3 py-2">
+                                <span className="font-bold text-[13px]">{groupName}</span>
+                                <span className="ml-2 text-[11px] text-muted-foreground font-medium">({items.length})</span>
+                              </TableCell>
+                            );
+                          }
+                          if (numericKeys.includes(col.key)) {
+                            const sum = col.key === "montoSolicitado" ? sumMonto
+                              : col.key === "montoPagar" ? sumPagar
+                              : col.key === "saldo" ? sumSaldo
+                              : sumMora;
+                            return (
+                              <TableCell key={col.key} className={cn("px-3 py-2", col.className)}>
+                                <span className={cn("font-semibold text-[12px]", col.key === "mora" && sum > 0 && "text-destructive")}>{$$(sum)}</span>
+                              </TableCell>
+                            );
+                          }
+                          return <TableCell key={col.key} className="px-3 py-2" />;
+                        })}
                       </TableRow>
                       {isExpanded && items.map((p) => (
                         <TableRow
