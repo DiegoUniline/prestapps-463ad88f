@@ -77,7 +77,7 @@ function usePagosAll(empresaId: string) {
         cliente: p.prestamos?.clientes?.nombre_completo || "—",
         clientePhone: p.prestamos?.clientes?.telefono || null,
         prestamoId: p.prestamo_id,
-        shortId: `PRE-${(p.prestamo_id || "").slice(0, 8)}`,
+        shortId: p.prestamos?.id_prestamo || `PRE-${(p.prestamo_id || "").slice(0, 8)}`,
         fecha: p.created_at || "",
         montoRecibido: Number(p.monto_recibido || 0),
         aplicadoMora: Number(p.aplicado_mora || 0),

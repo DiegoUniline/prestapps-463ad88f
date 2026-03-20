@@ -412,7 +412,7 @@ export default function PrestamoDetallePage() {
       telefono,
       {
         pago: {
-          folio: `PAG-${pg.id.slice(0, 8)}`,
+          folio: prestamo?.id_prestamo || `PRE-${pg.id.slice(0, 8)}`,
           monto_recibido: Number(pg.monto_recibido),
           aplicado_mora: Number(pg.aplicado_mora || 0),
           aplicado_interes: Number(pg.aplicado_interes || 0),
