@@ -344,9 +344,8 @@ export default function CajasPage() {
     const nota = concepto.trim() || `Transferencia ${origen?.nombre} → ${destino?.nombre}`;
 
     await supabase.from("movimientos_caja").insert({ caja_id: cajaId, tipo: "salida", monto: m, concepto: nota, empresa_id: empresaId });
-    await supabase.from("cajas").update({ saldo_actual: (Number(origen?.saldo_actual) || 0) - m }).eq("id", cajaId);
     await supabase.from("movimientos_caja").insert({ caja_id: cajaDestinoId, tipo: "entrada", monto: m, concepto: nota, empresa_id: empresaId });
-    await supabase.from("cajas").update({ saldo_actual: (Number(destino?.saldo_actual) || 0) + m }).eq("id", cajaDestinoId);
+    // saldo_actual se sincroniza automáticamente via trigger
 
     setSaving(false);
     toast.success(`Transferencia de ${$$(m)} completada`);
