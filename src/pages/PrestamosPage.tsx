@@ -140,6 +140,16 @@ const ALL_COLUMNS: ColumnDef[] = [
     className: "text-right",
   },
   {
+    key: "saldoCapital", label: "Cap. Pte", sortKey: "saldoCapital" as any, defaultVisible: false,
+    render: (p) => <span className="text-right font-medium text-[13px]">{$$(p.saldoCapital)}</span>,
+    className: "text-right",
+  },
+  {
+    key: "saldoInteres", label: "Int. Pte", sortKey: "saldoInteres" as any, defaultVisible: false,
+    render: (p) => <span className="text-right font-medium text-[13px]">{$$(p.saldoInteres)}</span>,
+    className: "text-right",
+  },
+  {
     key: "mora", label: "Mora", sortKey: "mora", defaultVisible: true,
     render: (p) => (
       <span className={cn("text-right font-bold text-[13px]", (p.mora ?? 0) > 0 ? "text-destructive" : "text-muted-foreground")}>
