@@ -174,7 +174,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
       const { data: prestamo } = await supabase
         .from("prestamos")
-        .select("id, num_cuotas, monto_solicitado, clientes!inner(nombre_completo, telefono)")
+        .select("id, id_prestamo, num_cuotas, monto_solicitado, clientes!inner(nombre_completo, telefono)")
         .eq("id", prestamoId)
         .single();
 
@@ -200,7 +200,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       const totalMora = dist.reduce((s, d) => s + d.mora, 0);
       const totalInteres = dist.reduce((s, d) => s + d.interes, 0);
       const totalCapital = dist.reduce((s, d) => s + d.capital, 0);
-      const folio = `PAG-${prestamoId.slice(0, 8)}`;
+      const folio = (prestamo as any)?.id_prestamo || `PRE-${prestamoId.slice(0, 8)}`;
 
       const { sendReceiptAsImage } = await import("@/lib/whatsappReceipt");
       await sendReceiptAsImage(

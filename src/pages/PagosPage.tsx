@@ -66,7 +66,7 @@ function usePagosAll(empresaId: string) {
             id, monto_recibido, aplicado_mora, aplicado_interes, aplicado_capital,
             metodo_pago, created_at, prestamo_id, anulado, cuota_id, caja_id, cobrador_id, fecha_pago,
             cajas ( nombre ),
-            prestamos!pagos_prestamo_id_fkey ( id, num_cuotas, clientes ( nombre_completo, telefono ), rutas ( nombre ), empresas ( nombre, telefono, direccion, logo_url ) )
+            prestamos!pagos_prestamo_id_fkey ( id, id_prestamo, num_cuotas, clientes ( nombre_completo, telefono ), rutas ( nombre ), empresas ( nombre, telefono, direccion, logo_url ) )
           `)
           .eq("empresa_id", empresaId)
           .order("created_at", { ascending: false })
@@ -77,7 +77,7 @@ function usePagosAll(empresaId: string) {
         cliente: p.prestamos?.clientes?.nombre_completo || "—",
         clientePhone: p.prestamos?.clientes?.telefono || null,
         prestamoId: p.prestamo_id,
-        shortId: `PRE-${(p.prestamo_id || "").slice(0, 8)}`,
+        shortId: p.prestamos?.id_prestamo || `PRE-${(p.prestamo_id || "").slice(0, 8)}`,
         fecha: p.created_at || "",
         montoRecibido: Number(p.monto_recibido || 0),
         aplicadoMora: Number(p.aplicado_mora || 0),
@@ -300,7 +300,7 @@ export default function PagosPage() {
         p.clientePhone!,
         {
           pago: {
-            folio: `PAG-${p.id.slice(0, 8)}`,
+            folio: p.shortId,
             monto_recibido: p.montoRecibido,
             aplicado_mora: p.aplicadoMora,
             aplicado_interes: p.aplicadoInteres,
@@ -759,7 +759,7 @@ export default function PagosPage() {
           open={docPreview.open}
           onOpenChange={(v) => setDocPreview({ open: v, pago: v ? docPreview.pago : null })}
           title="Ticket de Pago"
-          fileName={`ticket-PAG-${docPreview.pago.id.slice(0, 8)}.pdf`}
+          fileName={`ticket-${docPreview.pago.shortId}.pdf`}
           generateDoc={() =>
             generarReciboPagos(
               {
@@ -811,7 +811,7 @@ export default function PagosPage() {
               phone,
               {
                 pago: {
-                  folio: `PAG-${p.id.slice(0, 8)}`,
+                  folio: p.shortId,
                   monto_recibido: p.montoRecibido,
                   aplicado_mora: p.aplicadoMora,
                   aplicado_interes: p.aplicadoInteres,
