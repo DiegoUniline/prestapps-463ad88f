@@ -792,9 +792,16 @@ export default function PrestamosPage() {
                               : col.key === "montoPagar" ? sumPagar
                               : col.key === "saldo" ? sumSaldo
                               : sumMora;
+                            const label = col.key === "montoSolicitado" ? "Prestado"
+                              : col.key === "montoPagar" ? "A Pagar"
+                              : col.key === "saldo" ? "Saldo"
+                              : "Mora";
                             return (
                               <TableCell key={col.key} className={cn("px-3 py-2", col.className)}>
-                                <span className={cn("font-semibold text-[12px]", col.key === "mora" && sum > 0 && "text-destructive")}>{$$(sum)}</span>
+                                <div className="flex flex-col">
+                                  <span className="text-[9px] text-muted-foreground uppercase tracking-wide">{label}</span>
+                                  <span className={cn("font-semibold text-[12px]", col.key === "mora" && sum > 0 && "text-destructive")}>{$$(sum)}</span>
+                                </div>
                               </TableCell>
                             );
                           }
