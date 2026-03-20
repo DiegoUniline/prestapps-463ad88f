@@ -397,6 +397,9 @@ export default function PrestamosPage() {
     { key: "estado", label: "Estado" },
     { key: "cliente", label: "Cliente" },
     { key: "tipoCuenta", label: "Tipo de préstamo" },
+    { key: "caja", label: "Caja" },
+    { key: "ruta", label: "Ruta" },
+    { key: "cobrador", label: "Cobrador" },
     { key: "mesCreacion", label: "Mes de creación" },
   ];
   const toggleGroup = (g: string) => {
