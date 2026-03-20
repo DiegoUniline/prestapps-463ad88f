@@ -65,30 +65,15 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
 
       // 3. Revertir caja y cobrador
       if (pago.caja_id) {
-        const { data: cajaData } = await supabase
-          .from("cajas")
-          .select("saldo_actual")
-          .eq("id", pago.caja_id)
-          .single();
-
-        await Promise.all([
-          cajaData
-            ? supabase
-                .from("cajas")
-                .update({
-                  saldo_actual: Math.max(0, Number(cajaData.saldo_actual || 0) - pago.monto_recibido),
-                })
-                .eq("id", pago.caja_id)
-            : Promise.resolve({ error: null }),
-          supabase.from("movimientos_caja").insert({
-            caja_id: pago.caja_id,
-            tipo: "salida",
-            monto: pago.monto_recibido,
-            prestamo_id: pago.prestamo_id,
-            concepto: `Anulación de pago — ${motivo.trim()}`,
-            empresa_id: empresaId,
-          }),
-        ]);
+        await supabase.from("movimientos_caja").insert({
+          caja_id: pago.caja_id,
+          tipo: "salida",
+          monto: pago.monto_recibido,
+          prestamo_id: pago.prestamo_id,
+          concepto: `Anulación de pago — ${motivo.trim()}`,
+          empresa_id: empresaId,
+        });
+        // saldo_actual se sincroniza automáticamente via trigger
       }
 
       if (pago.cobrador_id) {

@@ -294,13 +294,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       });
       if (movErr) throw movErr;
 
-      // 4) Update caja balance
-      const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", cajaId).single();
-      if (cajaData) {
-        await supabase.from("cajas").update({
-          saldo_actual: (Number(cajaData.saldo_actual) || 0) + montoNum,
-        }).eq("id", cajaId);
-      }
+      // saldo_actual se sincroniza automáticamente via trigger en movimientos_caja
 
       // 5) Check if all cuotas are paid → update prestamo estado
       const { data: remaining } = await supabase

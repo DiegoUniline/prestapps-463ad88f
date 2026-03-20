@@ -307,13 +307,7 @@ export default function ComisionesPage() {
         empresa_id: empresaId,
       });
 
-      // 2) Update caja
-      const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", cajaId).single();
-      if (cajaData) {
-        await supabase.from("cajas").update({
-          saldo_actual: Number(cajaData.saldo_actual || 0) - comisionCalculada,
-        }).eq("id", cajaId);
-      }
+      // saldo_actual se sincroniza automáticamente via trigger
 
       toast.success(`Comisión de ${$$(comisionCalculada)} pagada a ${nombre}`);
       invalidateFinanceQueries(queryClient);

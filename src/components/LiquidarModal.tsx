@@ -144,15 +144,7 @@ export function LiquidarModal({ open, onOpenChange, prestamoId, cuotasPendientes
         motivo_anulacion: notaLiquidacion,
       } as any);
 
-      // Update caja
-      const { data: cajaData } = await supabase.from("cajas").select("saldo_actual").eq("id", cajaId).single();
-      if (cajaData) {
-        await supabase.from("cajas").update({
-          saldo_actual: (Number(cajaData.saldo_actual) || 0) + Math.round(montoAPagar * 100) / 100,
-        }).eq("id", cajaId);
-      }
-
-      // Movimiento caja
+      // Movimiento caja (saldo se sincroniza automáticamente via trigger)
       await supabase.from("movimientos_caja").insert({
         caja_id: cajaId,
         tipo: "entrada",
