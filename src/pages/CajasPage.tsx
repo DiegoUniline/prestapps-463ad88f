@@ -319,9 +319,7 @@ export default function CajasPage() {
       empresa_id: empresaId,
     });
     if (movErr) { toast.error("Error: " + movErr.message); setSaving(false); return; }
-
-    const saldoActual = Number(caja?.saldo_actual || 0);
-    await supabase.from("cajas").update({ saldo_actual: tipo === "entrada" ? saldoActual + m : saldoActual - m }).eq("id", cajaId);
+    // saldo_actual se sincroniza automáticamente via trigger
 
     setSaving(false);
     toast.success(tipo === "entrada" ? `Depósito de ${$$(m)} registrado` : `Retiro de ${$$(m)} registrado`);
