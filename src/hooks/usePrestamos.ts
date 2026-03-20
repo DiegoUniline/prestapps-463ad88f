@@ -143,13 +143,15 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const amortByPrestamo: Record<string, { saldo: number; mora: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number }> = {};
+  const amortByPrestamo: Record<string, { saldo: number; saldoCapital: number; saldoInteres: number; mora: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number }> = {};
 
   for (const a of amortData) {
     if (!amortByPrestamo[a.prestamo_id]) {
-      amortByPrestamo[a.prestamo_id] = { saldo: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
+      amortByPrestamo[a.prestamo_id] = { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
     }
     amortByPrestamo[a.prestamo_id].saldo += Number(a.saldo_total || 0);
+    amortByPrestamo[a.prestamo_id].saldoCapital += Number(a.saldo_capital || 0);
+    amortByPrestamo[a.prestamo_id].saldoInteres += Number(a.saldo_interes || 0);
     amortByPrestamo[a.prestamo_id].mora += Number(a.saldo_mora || 0);
     if (a.status === "Pagada") amortByPrestamo[a.prestamo_id].pagadas += 1;
     if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
