@@ -759,7 +759,7 @@ export default function PagosPage() {
           open={docPreview.open}
           onOpenChange={(v) => setDocPreview({ open: v, pago: v ? docPreview.pago : null })}
           title="Ticket de Pago"
-          fileName={`ticket-PAG-${docPreview.pago.id.slice(0, 8)}.pdf`}
+          fileName={`ticket-${docPreview.pago.shortId}.pdf`}
           generateDoc={() =>
             generarReciboPagos(
               {
