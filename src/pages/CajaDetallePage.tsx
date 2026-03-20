@@ -201,7 +201,7 @@ export default function CajaDetallePage() {
     setSaving(true);
     const { error } = await supabase.from("movimientos_caja").insert({ caja_id: id, tipo, monto: m, concepto: concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"), empresa_id: empresaId });
     if (error) { toast.error(error.message); setSaving(false); return; }
-    await supabase.from("cajas").update({ saldo_actual: tipo === "entrada" ? saldoActual + m : saldoActual - m }).eq("id", id);
+    // saldo_actual se sincroniza automáticamente via trigger
     setSaving(false);
     toast.success(tipo === "entrada" ? `Depósito de ${$$(m)}` : `Retiro de ${$$(m)}`);
     invalidate();
