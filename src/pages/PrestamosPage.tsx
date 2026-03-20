@@ -801,6 +801,28 @@ export default function PrestamosPage() {
                           return <TableCell key={col.key} className="px-3 py-2" />;
                         })}
                       </TableRow>
+                      {isExpanded && (
+                        <TableRow className="bg-table-header border-b">
+                          <TableHead className="w-10 px-3">
+                            <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                          </TableHead>
+                          {visibleColumns.map((col) => (
+                            <TableHead
+                              key={col.key}
+                              className={cn(
+                                "cursor-pointer select-none whitespace-nowrap text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5",
+                                col.className
+                              )}
+                              onClick={() => col.sortKey && toggleSort(col.sortKey)}
+                            >
+                              <div className="flex items-center gap-1">
+                                {col.label}
+                                {col.sortKey && <SortIcon col={col.sortKey} />}
+                              </div>
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      )}
                       {isExpanded && items.map((p) => (
                         <TableRow
                           key={p.id}
