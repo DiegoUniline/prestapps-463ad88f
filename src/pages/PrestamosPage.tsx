@@ -763,10 +763,12 @@ export default function PrestamosPage() {
             ) : groupedData ? (
               <>
                 {groupedData.map(([groupName, items]) => {
-                  const isExpanded = expandedGroups.has(groupName);
+                   const isExpanded = expandedGroups.has(groupName);
                   const sumMonto = items.reduce((s, p) => s + p.montoSolicitado, 0);
                   const sumPagar = items.reduce((s, p) => s + p.montoPagar, 0);
                   const sumSaldo = items.reduce((s, p) => s + p.saldo, 0);
+                  const sumCapital = items.reduce((s, p) => s + p.saldoCapital, 0);
+                  const sumInteres = items.reduce((s, p) => s + p.saldoInteres, 0);
                   const sumMora = items.reduce((s, p) => s + p.mora, 0);
                   return (
                     <React.Fragment key={groupName}>
