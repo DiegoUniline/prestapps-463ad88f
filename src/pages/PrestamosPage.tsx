@@ -876,6 +876,8 @@ export default function PrestamosPage() {
                       {col.key === "montoSolicitado" ? $$(filtered.reduce((s, p) => s + p.montoSolicitado, 0)) :
                        col.key === "montoPagar" ? $$(filtered.reduce((s, p) => s + p.montoPagar, 0)) :
                        col.key === "saldo" ? $$(filtered.reduce((s, p) => s + p.saldo, 0)) :
+                       col.key === "saldoCapital" ? $$(filtered.reduce((s, p) => s + p.saldoCapital, 0)) :
+                       col.key === "saldoInteres" ? $$(filtered.reduce((s, p) => s + p.saldoInteres, 0)) :
                        col.key === "mora" ? $$(filtered.reduce((s, p) => s + p.mora, 0)) :
                        col.key === "codigoInterno" ? <span className="font-bold text-[11px] uppercase text-muted-foreground">Totales</span> :
                        ""}
