@@ -397,6 +397,9 @@ export default function PrestamosPage() {
     { key: "estado", label: "Estado" },
     { key: "cliente", label: "Cliente" },
     { key: "tipoCuenta", label: "Tipo de préstamo" },
+    { key: "caja", label: "Caja" },
+    { key: "ruta", label: "Ruta" },
+    { key: "cobrador", label: "Cobrador" },
     { key: "mesCreacion", label: "Mes de creación" },
   ];
   const toggleGroup = (g: string) => {
@@ -470,6 +473,9 @@ export default function PrestamosPage() {
       let key: string;
       if (groupBy === "estado") key = p.estado;
       else if (groupBy === "cliente") key = p.cliente;
+      else if (groupBy === "caja") key = p.caja;
+      else if (groupBy === "ruta") key = p.ruta;
+      else if (groupBy === "cobrador") key = p.cobrador;
       else if (groupBy === "tipoCuenta") key = p.tipoCuenta === "prestamo" ? "Préstamo" : p.tipoCuenta === "venta_seguro" ? "Seguro" : p.tipoCuenta === "venta_producto" ? "Producto" : "Servicio";
       else if (groupBy === "mesCreacion") {
         const d = p.fechaRegistro ? new Date(p.fechaRegistro) : null;
