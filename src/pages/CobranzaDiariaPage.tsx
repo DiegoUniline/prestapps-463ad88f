@@ -563,6 +563,97 @@ export default function CobranzaDiariaPage() {
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [clientesAgrupados, groupByKey]);
 
+  const renderClientRow = (cli: typeof clientesAgrupados[number]) => (
+    <TableRow
+      key={cli.clienteId}
+      className={cn(
+        "text-[13px] cursor-pointer hover:bg-muted/50 transition-colors",
+        cli.todasCobradas && "bg-badge-activo/20",
+        cli.tieneVencidas && !cli.todasCobradas && "bg-badge-vencido/10",
+      )}
+      onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
+    >
+      <TableCell className="px-3">
+        <div className="flex items-center gap-1.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className="inline-block h-3 w-3 rounded-full shrink-0 border border-border/40"
+                style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              {cli.atendidoSemana
+                ? `Atendido esta semana (${format(weekStart, "d MMM", { locale: es })} - ${format(weekEnd, "d MMM", { locale: es })})`
+                : `Sin atender esta semana`}
+            </TooltipContent>
+          </Tooltip>
+          {cli.todasCobradas ? (
+            <CheckCircle2 className="h-4 w-4 text-success" />
+          ) : cli.tieneVencidas ? (
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          ) : (
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Avatar
+            className={cn("h-8 w-8 shrink-0 rounded-lg", cli.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+            onClick={(e) => { e.stopPropagation(); cli.clienteFoto && setLightboxPhoto({ src: cli.clienteFoto, alt: cli.clienteNombre }); }}
+          >
+            {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
+            <AvatarFallback className="text-[11px] font-semibold bg-primary/10 text-primary rounded-lg">
+              {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="font-medium">{cli.clienteNombre}</span>
+        </div>
+      </TableCell>
+      <TableCell className="text-center">
+        <span className="text-[12px]">{cli.cuentasActivas}</span>
+      </TableCell>
+      <TableCell className="text-center">
+        <span className="text-[12px]">
+          {cli.cuotasCobradas > 0 && <span className="text-success">{cli.cuotasCobradas}✓ </span>}
+          {cli.cuotasPendientes > 0 && <span className="text-muted-foreground">{cli.cuotasPendientes} pte</span>}
+        </span>
+      </TableCell>
+      <TableCell className="text-[12px] text-muted-foreground">{cli.ruta}</TableCell>
+      <TableCell className={cn("text-right", cli.totalMora > 0 ? "text-destructive font-medium" : "text-muted-foreground")}>
+        {cli.totalMora > 0 ? $$(cli.totalMora) : "—"}
+      </TableCell>
+      <TableCell className="text-right font-semibold">{$$(cli.totalSaldo)}</TableCell>
+      <TableCell className="text-center">
+        {cli.todasCobradas ? (
+          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-activo text-badge-activo-foreground">Al día</span>
+        ) : cli.tieneVencidas ? (
+          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-vencido text-badge-vencido-foreground">Vencido</span>
+        ) : (
+          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-liquidado text-badge-liquidado-foreground">Pendiente</span>
+        )}
+      </TableCell>
+      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+        {!cli.todasCobradas ? (
+          <div className="flex items-center justify-center gap-1">
+            <Button size="sm" className="h-7 text-[11px] px-2.5" onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}>
+              <HandCoins className="h-3 w-3 mr-1" />Cobrar
+            </Button>
+            <Button variant="outline" size="icon" className="h-7 w-7" title="Visita" onClick={() => {
+              const first = cli.cuotas.find((c) => !c.pagada) || cli.cuotas[0];
+              setVisitaItem(first); setVisitaOpen(true);
+            }}>
+              <MapPin className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <span className="text-[11px] text-success font-medium">✓ Cobrado</span>
+        )}
+      </TableCell>
+    </TableRow>
+  );
+
   return (
     <div className="space-y-4">
       {/* Header */}
