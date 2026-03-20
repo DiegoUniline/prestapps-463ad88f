@@ -20,6 +20,8 @@ export interface PrestamoListItem {
   cobrador: string;
   cobradorId: string | null;
   saldo: number;
+  saldoCapital: number;
+  saldoInteres: number;
   mora: number;
   estado: string;
   fechaRegistro: string;
