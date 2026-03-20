@@ -325,6 +325,22 @@ export default function CobranzaDiariaPage() {
   const [showVencidas, setShowVencidas] = useState(true);
   const [showKpis, setShowKpis] = useState(false);
 
+  // Grouping
+  const [groupByKey, setGroupByKey] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const groupByOptions = [
+    { key: "ruta", label: "Ruta" },
+    { key: "cobrador", label: "Cobrador" },
+    { key: "estado", label: "Estado" },
+  ];
+  const toggleGroup = (g: string) => {
+    setExpandedGroups((prev) => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
+  };
+  const handleGroupByChange = (key: string | null) => {
+    setGroupByKey(key);
+    setExpandedGroups(new Set());
+  };
+
   // Payment modal state
   const [pagoOpen, setPagoOpen] = useState(false);
   const [pagoPrestamoId, setPagoPrestamoId] = useState("");
