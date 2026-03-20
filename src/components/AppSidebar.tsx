@@ -135,7 +135,11 @@ export function AppSidebar() {
     queryClient.prefetchQuery({
       queryKey: ["cajas-options", empresaId],
       queryFn: async () => {
-        const { data } = await supabase.from("cajas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
+        const { data } = await supabase
+          .from("cajas")
+          .select("id, nombre, saldo_actual")
+          .eq("empresa_id", empresaId)
+          .order("nombre");
         return data || [];
       },
       staleTime: 1000 * 60 * 5,
