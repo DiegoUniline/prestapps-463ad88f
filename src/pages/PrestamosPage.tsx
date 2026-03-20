@@ -763,6 +763,7 @@ export default function PrestamosPage() {
                 {groupedData.map(([groupName, items]) => {
                   const isExpanded = expandedGroups.has(groupName);
                   const sumMonto = items.reduce((s, p) => s + p.montoSolicitado, 0);
+                  const sumPagar = items.reduce((s, p) => s + p.montoPagar, 0);
                   const sumSaldo = items.reduce((s, p) => s + p.saldo, 0);
                   const sumMora = items.reduce((s, p) => s + p.mora, 0);
                   return (
@@ -774,25 +775,32 @@ export default function PrestamosPage() {
                         <TableCell colSpan={1} className="px-3 py-2">
                           {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
                         </TableCell>
-                        <TableCell colSpan={Math.max(1, visibleColumns.length - 3)} className="px-3 py-2">
-                          <span className="font-bold text-[13px]">{groupName}</span>
-                          <span className="ml-2 text-[11px] text-muted-foreground font-medium">({items.length})</span>
+                        <TableCell colSpan={visibleColumns.length} className="px-3 py-2">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-bold text-[13px]">{groupName}</span>
+                            <span className="text-[11px] text-muted-foreground font-medium">({items.length})</span>
+                            <div className="flex items-center gap-2 ml-auto flex-wrap">
+                              <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
+                                <span className="text-muted-foreground">Prestado:</span>
+                                <span className="font-semibold">{$$(sumMonto)}</span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
+                                <span className="text-muted-foreground">A Pagar:</span>
+                                <span className="font-semibold">{$$(sumPagar)}</span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
+                                <span className="text-muted-foreground">Saldo:</span>
+                                <span className="font-semibold">{$$(sumSaldo)}</span>
+                              </span>
+                              {sumMora > 0 && (
+                                <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 border border-destructive/20 px-2 py-0.5 text-[11px]">
+                                  <span className="text-destructive/70">Mora:</span>
+                                  <span className="font-semibold text-destructive">{$$(sumMora)}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </TableCell>
-                        {visibleColumns.some(c => c.key === "montoSolicitado") && (
-                          <TableCell className="text-right px-3 py-2">
-                            <span className="font-semibold text-[12px]">{$$(sumMonto)}</span>
-                          </TableCell>
-                        )}
-                        {visibleColumns.some(c => c.key === "saldo") && (
-                          <TableCell className="text-right px-3 py-2">
-                            <span className="font-semibold text-[12px]">{$$(sumSaldo)}</span>
-                          </TableCell>
-                        )}
-                        {visibleColumns.some(c => c.key === "mora") && (
-                          <TableCell className="text-right px-3 py-2">
-                            <span className={cn("font-semibold text-[12px]", sumMora > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(sumMora)}</span>
-                          </TableCell>
-                        )}
                       </TableRow>
                       {isExpanded && items.map((p) => (
                         <TableRow

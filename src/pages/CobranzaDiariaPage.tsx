@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,11 +14,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, $$ } from "@/lib/utils";
+import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { format, isToday, parseISO, startOfDay, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
-  XCircle, ChevronLeft, ChevronRight, Users, DollarSign,
+  XCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronRight as ChevronRightIcon, Users, DollarSign,
   TrendingUp, HandCoins, Eye, MapPin, CalendarCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -324,6 +325,22 @@ export default function CobranzaDiariaPage() {
   const [showVencidas, setShowVencidas] = useState(true);
   const [showKpis, setShowKpis] = useState(false);
 
+  // Grouping
+  const [groupByKey, setGroupByKey] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const groupByOptions = [
+    { key: "ruta", label: "Ruta" },
+    { key: "cobrador", label: "Cobrador" },
+    { key: "estado", label: "Estado" },
+  ];
+  const toggleGroup = (g: string) => {
+    setExpandedGroups((prev) => { const n = new Set(prev); n.has(g) ? n.delete(g) : n.add(g); return n; });
+  };
+  const handleGroupByChange = (key: string | null) => {
+    setGroupByKey(key);
+    setExpandedGroups(new Set());
+  };
+
   // Payment modal state
   const [pagoOpen, setPagoOpen] = useState(false);
   const [pagoPrestamoId, setPagoPrestamoId] = useState("");
@@ -525,6 +542,118 @@ export default function CobranzaDiariaPage() {
     });
   }, [filtered, clientesAtendidos]);
 
+  // Grouped clientesAgrupados by selected key
+  const groupedClientes = useMemo(() => {
+    if (!groupByKey) return null;
+    const groups: Record<string, typeof clientesAgrupados> = {};
+    for (const cli of clientesAgrupados) {
+      let key: string;
+      if (groupByKey === "ruta") key = cli.ruta;
+      else if (groupByKey === "cobrador") {
+        const cob = cli.cuotas[0]?.cobrador || "Sin asignar";
+        key = cob;
+      }
+      else if (groupByKey === "estado") {
+        key = cli.todasCobradas ? "Cobrado" : cli.tieneVencidas ? "Vencido" : "Pendiente";
+      }
+      else key = "—";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(cli);
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [clientesAgrupados, groupByKey]);
+
+  const renderClientRow = (cli: typeof clientesAgrupados[number]) => (
+    <TableRow
+      key={cli.clienteId}
+      className={cn(
+        "text-[13px] cursor-pointer hover:bg-muted/50 transition-colors",
+        cli.todasCobradas && "bg-badge-activo/20",
+        cli.tieneVencidas && !cli.todasCobradas && "bg-badge-vencido/10",
+      )}
+      onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
+    >
+      <TableCell className="px-3">
+        <div className="flex items-center gap-1.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className="inline-block h-3 w-3 rounded-full shrink-0 border border-border/40"
+                style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
+              />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              {cli.atendidoSemana
+                ? `Atendido esta semana (${format(weekStart, "d MMM", { locale: es })} - ${format(weekEnd, "d MMM", { locale: es })})`
+                : `Sin atender esta semana`}
+            </TooltipContent>
+          </Tooltip>
+          {cli.todasCobradas ? (
+            <CheckCircle2 className="h-4 w-4 text-success" />
+          ) : cli.tieneVencidas ? (
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          ) : (
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Avatar
+            className={cn("h-8 w-8 shrink-0 rounded-lg", cli.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
+            onClick={(e) => { e.stopPropagation(); cli.clienteFoto && setLightboxPhoto({ src: cli.clienteFoto, alt: cli.clienteNombre }); }}
+          >
+            {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
+            <AvatarFallback className="text-[11px] font-semibold bg-primary/10 text-primary rounded-lg">
+              {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <span className="font-medium">{cli.clienteNombre}</span>
+        </div>
+      </TableCell>
+      <TableCell className="text-center">
+        <span className="text-[12px]">{cli.cuentasActivas}</span>
+      </TableCell>
+      <TableCell className="text-center">
+        <span className="text-[12px]">
+          {cli.cuotasCobradas > 0 && <span className="text-success">{cli.cuotasCobradas}✓ </span>}
+          {cli.cuotasPendientes > 0 && <span className="text-muted-foreground">{cli.cuotasPendientes} pte</span>}
+        </span>
+      </TableCell>
+      <TableCell className="text-[12px] text-muted-foreground">{cli.ruta}</TableCell>
+      <TableCell className={cn("text-right", cli.totalMora > 0 ? "text-destructive font-medium" : "text-muted-foreground")}>
+        {cli.totalMora > 0 ? $$(cli.totalMora) : "—"}
+      </TableCell>
+      <TableCell className="text-right font-semibold">{$$(cli.totalSaldo)}</TableCell>
+      <TableCell className="text-center">
+        {cli.todasCobradas ? (
+          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-activo text-badge-activo-foreground">Al día</span>
+        ) : cli.tieneVencidas ? (
+          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-vencido text-badge-vencido-foreground">Vencido</span>
+        ) : (
+          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-liquidado text-badge-liquidado-foreground">Pendiente</span>
+        )}
+      </TableCell>
+      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+        {!cli.todasCobradas ? (
+          <div className="flex items-center justify-center gap-1">
+            <Button size="sm" className="h-7 text-[11px] px-2.5" onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}>
+              <HandCoins className="h-3 w-3 mr-1" />Cobrar
+            </Button>
+            <Button variant="outline" size="icon" className="h-7 w-7" title="Visita" onClick={() => {
+              const first = cli.cuotas.find((c) => !c.pagada) || cli.cuotas[0];
+              setVisitaItem(first); setVisitaOpen(true);
+            }}>
+              <MapPin className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <span className="text-[11px] text-success font-medium">✓ Cobrado</span>
+        )}
+      </TableCell>
+    </TableRow>
+  );
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -624,6 +753,8 @@ export default function CobranzaDiariaPage() {
 
       {/* Desktop Filters */}
       <div className="hidden md:flex bg-filter-bar border border-filter-bar-border rounded-lg px-4 py-3 flex-wrap items-center gap-3">
+        <GroupByDropdown options={groupByOptions} value={groupByKey} onChange={handleGroupByChange} />
+        <div className="w-px h-5 bg-border" />
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
@@ -742,96 +873,57 @@ export default function CobranzaDiariaPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clientesAgrupados.map((cli) => (
-                <TableRow
-                  key={cli.clienteId}
-                  className={cn(
-                    "text-[13px] cursor-pointer hover:bg-muted/50 transition-colors",
-                    cli.todasCobradas && "bg-badge-activo/20",
-                    cli.tieneVencidas && !cli.todasCobradas && "bg-badge-vencido/10",
-                  )}
-                  onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}
-                >
-                  <TableCell className="px-3">
-                    <div className="flex items-center gap-1.5">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span
-                            className="inline-block h-3 w-3 rounded-full shrink-0 border border-border/40"
-                            style={{ backgroundColor: cli.atendidoSemana ? corteColor : "transparent" }}
-                          />
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="text-xs">
-                          {cli.atendidoSemana
-                            ? `Atendido esta semana (${format(weekStart, "d MMM", { locale: es })} - ${format(weekEnd, "d MMM", { locale: es })})`
-                            : `Sin atender esta semana`}
-                        </TooltipContent>
-                      </Tooltip>
-                      {cli.todasCobradas ? (
-                        <CheckCircle2 className="h-4 w-4 text-success" />
-                      ) : cli.tieneVencidas ? (
-                        <AlertTriangle className="h-4 w-4 text-destructive" />
-                      ) : (
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar
-                        className={cn("h-8 w-8 shrink-0 rounded-lg", cli.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
-                        onClick={() => cli.clienteFoto && setLightboxPhoto({ src: cli.clienteFoto, alt: cli.clienteNombre })}
-                      >
-                        {cli.clienteFoto ? <AvatarImage src={cli.clienteFoto} alt={cli.clienteNombre} className="rounded-lg object-cover" /> : null}
-                        <AvatarFallback className="text-[11px] font-semibold bg-primary/10 text-primary rounded-lg">
-                          {cli.clienteNombre.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{cli.clienteNombre}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-[12px]">{cli.cuentasActivas}</span>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-[12px]">
-                      {cli.cuotasCobradas > 0 && <span className="text-success">{cli.cuotasCobradas}✓ </span>}
-                      {cli.cuotasPendientes > 0 && <span className="text-muted-foreground">{cli.cuotasPendientes} pte</span>}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-[12px] text-muted-foreground">{cli.ruta}</TableCell>
-                  <TableCell className={cn("text-right", cli.totalMora > 0 ? "text-destructive font-medium" : "text-muted-foreground")}>
-                    {cli.totalMora > 0 ? $$(cli.totalMora) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">{$$(cli.totalSaldo)}</TableCell>
-                  <TableCell className="text-center">
-                    {cli.todasCobradas ? (
-                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-activo text-badge-activo-foreground">Al día</span>
-                    ) : cli.tieneVencidas ? (
-                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-vencido text-badge-vencido-foreground">Vencido</span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium bg-badge-liquidado text-badge-liquidado-foreground">Pendiente</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                    {!cli.todasCobradas ? (
-                      <div className="flex items-center justify-center gap-1">
-                        <Button size="sm" className="h-7 text-[11px] px-2.5" onClick={() => openEstadoCuenta(cli.clienteId, cli.clienteNombre)}>
-                          <HandCoins className="h-3 w-3 mr-1" />Cobrar
-                        </Button>
-                        <Button variant="outline" size="icon" className="h-7 w-7" title="Visita" onClick={() => {
-                          const first = cli.cuotas.find((c) => !c.pagada) || cli.cuotas[0];
-                          setVisitaItem(first); setVisitaOpen(true);
-                        }}>
-                          <MapPin className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-success font-medium">✓ Cobrado</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {groupedClientes ? (
+                <>
+                  {groupedClientes.map(([groupName, items]) => {
+                    const isExpanded = expandedGroups.has(groupName);
+                    const sumSaldo = items.reduce((s, c) => s + c.totalSaldo, 0);
+                    const sumMora = items.reduce((s, c) => s + c.totalMora, 0);
+                    const totalClientes = items.length;
+                    const totalCobradas = items.reduce((s, c) => s + c.cuotasCobradas, 0);
+                    const totalPendientes = items.reduce((s, c) => s + c.cuotasPendientes, 0);
+                    return (
+                      <React.Fragment key={groupName}>
+                        <TableRow
+                          className="bg-muted/60 hover:bg-muted/80 cursor-pointer border-b border-border"
+                          onClick={() => toggleGroup(groupName)}
+                        >
+                          <TableCell className="px-3 py-2">
+                            {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
+                          </TableCell>
+                          <TableCell colSpan={8} className="px-3 py-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="font-bold text-[13px]">{groupName}</span>
+                              <span className="text-[11px] text-muted-foreground font-medium">({totalClientes} clientes)</span>
+                              <div className="flex items-center gap-2 ml-auto flex-wrap">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
+                                  <span className="text-muted-foreground">Cuotas:</span>
+                                  <span className="font-semibold text-success">{totalCobradas}✓</span>
+                                  <span className="text-muted-foreground">/</span>
+                                  <span className="font-semibold">{totalPendientes} pte</span>
+                                </span>
+                                <span className="inline-flex items-center gap-1 rounded-md bg-background/80 border border-border px-2 py-0.5 text-[11px]">
+                                  <span className="text-muted-foreground">Saldo:</span>
+                                  <span className="font-semibold">{$$(sumSaldo)}</span>
+                                </span>
+                                {sumMora > 0 && (
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-destructive/10 border border-destructive/20 px-2 py-0.5 text-[11px]">
+                                    <span className="text-destructive/70">Mora:</span>
+                                    <span className="font-semibold text-destructive">{$$(sumMora)}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && items.map((cli) => renderClientRow(cli))}
+                      </React.Fragment>
+                    );
+                  })}
+                </>
+              ) : (
+                clientesAgrupados.map((cli) => renderClientRow(cli))
+              )}
             </TableBody>
           </Table>
         </div>
