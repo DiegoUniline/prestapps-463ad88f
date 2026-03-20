@@ -542,6 +542,27 @@ export default function CobranzaDiariaPage() {
     });
   }, [filtered, clientesAtendidos]);
 
+  // Grouped clientesAgrupados by selected key
+  const groupedClientes = useMemo(() => {
+    if (!groupByKey) return null;
+    const groups: Record<string, typeof clientesAgrupados> = {};
+    for (const cli of clientesAgrupados) {
+      let key: string;
+      if (groupByKey === "ruta") key = cli.ruta;
+      else if (groupByKey === "cobrador") {
+        const cob = cli.cuotas[0]?.cobrador || "Sin asignar";
+        key = cob;
+      }
+      else if (groupByKey === "estado") {
+        key = cli.todasCobradas ? "Cobrado" : cli.tieneVencidas ? "Vencido" : "Pendiente";
+      }
+      else key = "—";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(cli);
+    }
+    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+  }, [clientesAgrupados, groupByKey]);
+
   return (
     <div className="space-y-4">
       {/* Header */}
