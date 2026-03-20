@@ -641,6 +641,8 @@ export default function CobranzaDiariaPage() {
 
       {/* Desktop Filters */}
       <div className="hidden md:flex bg-filter-bar border border-filter-bar-border rounded-lg px-4 py-3 flex-wrap items-center gap-3">
+        <GroupByDropdown options={groupByOptions} value={groupByKey} onChange={handleGroupByChange} />
+        <div className="w-px h-5 bg-border" />
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
