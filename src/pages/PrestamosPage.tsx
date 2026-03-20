@@ -780,7 +780,7 @@ export default function PrestamosPage() {
                           {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />}
                         </TableCell>
                         {visibleColumns.map((col, ci) => {
-                          const numericKeys = ["montoSolicitado", "montoPagar", "saldo", "mora"];
+                          const numericKeys = ["montoSolicitado", "montoPagar", "saldo", "saldoCapital", "saldoInteres", "mora"];
                           if (ci === 0) {
                             return (
                               <TableCell key={col.key} className="px-3 py-2">
@@ -793,10 +793,14 @@ export default function PrestamosPage() {
                             const sum = col.key === "montoSolicitado" ? sumMonto
                               : col.key === "montoPagar" ? sumPagar
                               : col.key === "saldo" ? sumSaldo
+                              : col.key === "saldoCapital" ? sumCapital
+                              : col.key === "saldoInteres" ? sumInteres
                               : sumMora;
                             const label = col.key === "montoSolicitado" ? "Prestado"
                               : col.key === "montoPagar" ? "A Pagar"
                               : col.key === "saldo" ? "Saldo"
+                              : col.key === "saldoCapital" ? "Cap. Pte"
+                              : col.key === "saldoInteres" ? "Int. Pte"
                               : "Mora";
                             return (
                               <TableCell key={col.key} className={cn("px-3 py-2", col.className)}>
