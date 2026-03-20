@@ -723,28 +723,30 @@ export default function PrestamosPage() {
       {/* DESKTOP Table */}
       <div className="hidden md:block bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-table-header hover:bg-table-header border-b">
-              <TableHead className="w-10 px-3">
-                <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-              </TableHead>
-              {visibleColumns.map((col) => (
-                <TableHead
-                  key={col.key}
-                  className={cn(
-                    "cursor-pointer select-none whitespace-nowrap text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5",
-                    col.className
-                  )}
-                  onClick={() => col.sortKey && toggleSort(col.sortKey)}
-                >
-                  <div className="flex items-center gap-1">
-                    {col.label}
-                    {col.sortKey && <SortIcon col={col.sortKey} />}
-                  </div>
+          {!groupedData && (
+            <TableHeader>
+              <TableRow className="bg-table-header hover:bg-table-header border-b">
+                <TableHead className="w-10 px-3">
+                  <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
                 </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
+                {visibleColumns.map((col) => (
+                  <TableHead
+                    key={col.key}
+                    className={cn(
+                      "cursor-pointer select-none whitespace-nowrap text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5",
+                      col.className
+                    )}
+                    onClick={() => col.sortKey && toggleSort(col.sortKey)}
+                  >
+                    <div className="flex items-center gap-1">
+                      {col.label}
+                      {col.sortKey && <SortIcon col={col.sortKey} />}
+                    </div>
+                  </TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+          )}
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
