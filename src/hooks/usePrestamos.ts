@@ -100,7 +100,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
     fetchAllRows<any>(
       supabase
         .from("amortizacion")
-        .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
+        .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento")
         .in("prestamo_id", prestamoIds)
     ),
     clienteIds.length > 0
