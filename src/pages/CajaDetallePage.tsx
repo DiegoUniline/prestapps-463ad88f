@@ -239,6 +239,16 @@ export default function CajaDetallePage() {
     return rows.map(r => { balance += r.tipo === "entrada" ? r.monto : -r.monto; return { ...r, balance }; }).reverse();
   }, [rows]);
 
+  const filteredKardex = useMemo(() => {
+    if (kardexFilter === "Todos") return withBalance;
+    return withBalance.filter(r => r.categoria === kardexFilter);
+  }, [withBalance, kardexFilter]);
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set(rows.map(r => r.categoria));
+    return KARDEX_CATEGORIES.filter(c => c === "Todos" || cats.has(c));
+  }, [rows]);
+
   const flujoData = useMemo(() => {
     const entradas: Record<string, number> = {};
     const salidas: Record<string, number> = {};
