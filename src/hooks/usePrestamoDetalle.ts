@@ -93,7 +93,7 @@ export function usePagos(prestamoId: string | undefined) {
       return data || [];
     },
     enabled: !!prestamoId,
-    staleTime: 15 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 
