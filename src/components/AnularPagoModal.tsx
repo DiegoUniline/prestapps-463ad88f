@@ -43,6 +43,20 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
 
     setSaving(true);
     try {
+      // Validar saldo de caja antes de anular
+      if (pago.caja_id) {
+        const { data: cajaData } = await supabase
+          .from("cajas")
+          .select("saldo_actual, nombre")
+          .eq("id", pago.caja_id)
+          .single();
+        if (cajaData && Number(cajaData.saldo_actual) < pago.monto_recibido) {
+          toast.error(`Saldo insuficiente en caja "${cajaData.nombre}" (${$$(Number(cajaData.saldo_actual))}). No se puede anular un pago de ${$$(pago.monto_recibido)}`);
+          setSaving(false);
+          return;
+        }
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
 
       // 1. Marcar pago como anulado (atómico)
