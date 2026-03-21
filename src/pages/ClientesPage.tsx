@@ -37,7 +37,8 @@ interface EstadoCuenta {
 function useEstadosCuenta() {
   return useQuery({
     queryKey: ["estados-cuenta"],
-    staleTime: 2 * 60 * 1000, // 2 min — heavy query
+    staleTime: 2 * 60 * 1000,
+    queryFn: async () => {
       // 1. All clients
       const { data: clientes, error: cErr } = await supabase
         .from("clientes")
