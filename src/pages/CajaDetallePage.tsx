@@ -467,21 +467,64 @@ export default function CajaDetallePage() {
         </TabsContent>
 
         {/* ── Kardex Tab ──────────────────────────────────────────── */}
-        <TabsContent value="kardex" className="mt-4">
+        <TabsContent value="kardex" className="mt-4 space-y-3">
+          {/* Category filter chips */}
+          {!loadingKardex && withBalance.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {availableCategories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setKardexFilter(cat)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors border",
+                    kardexFilter === cat
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card text-muted-foreground border-border hover:bg-muted"
+                  )}
+                >
+                  {cat}
+                  {cat !== "Todos" && (
+                    <span className="ml-1 opacity-70">
+                      ({withBalance.filter(r => r.categoria === cat).length})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
           {loadingKardex ? (
             <div className="space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
           ) : withBalance.length === 0 ? (
             <p className="text-center py-12 text-muted-foreground text-sm">Sin movimientos</p>
+          ) : filteredKardex.length === 0 ? (
+            <p className="text-center py-12 text-muted-foreground text-sm">Sin movimientos en "{kardexFilter}"</p>
           ) : (
             <>
+              {/* Summary for filtered view */}
+              {kardexFilter !== "Todos" && (
+                <div className="flex items-center gap-4 text-[12px] px-1">
+                  <span className="text-muted-foreground">{filteredKardex.length} movimientos</span>
+                  <span className="text-success font-medium">
+                    +{$$(filteredKardex.filter(r => r.tipo === "entrada").reduce((s, r) => s + r.monto, 0))}
+                  </span>
+                  <span className="text-destructive font-medium">
+                    -{$$(filteredKardex.filter(r => r.tipo === "salida").reduce((s, r) => s + r.monto, 0))}
+                  </span>
+                </div>
+              )}
+
               {/* Mobile */}
               <div className="md:hidden divide-y divide-border bg-card rounded-lg border">
-                {withBalance.map(r => (
+                {filteredKardex.map(r => (
                   <div key={r.id} className="px-4 py-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium truncate">{r.concepto}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{r.categoria}</span>
+                        </p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className={cn("text-[13px] font-semibold", r.tipo === "entrada" ? "text-success" : "text-destructive")}>{r.tipo === "entrada" ? "+" : "-"}{$$(r.monto)}</p>
@@ -499,16 +542,20 @@ export default function CajaDetallePage() {
                     <TableRow className="bg-muted/50">
                       <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3">Fecha</TableHead>
                       <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3">Concepto</TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3">Categoría</TableHead>
                       <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3 text-right">Entrada</TableHead>
                       <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3 text-right">Salida</TableHead>
                       <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3 text-right">Saldo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {withBalance.map(r => (
+                    {filteredKardex.map(r => (
                       <TableRow key={r.id} className="border-b border-border/50">
                         <TableCell className="text-[12px] px-3 whitespace-nowrap">{r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}</TableCell>
                         <TableCell className="text-[13px] px-3 max-w-[250px] truncate">{r.concepto}</TableCell>
+                        <TableCell className="text-[12px] px-3">
+                          <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">{r.categoria}</span>
+                        </TableCell>
                         <TableCell className="text-right text-[13px] px-3 text-success font-medium">{r.tipo === "entrada" ? $$(r.monto) : ""}</TableCell>
                         <TableCell className="text-right text-[13px] px-3 text-destructive font-medium">{r.tipo === "salida" ? $$(r.monto) : ""}</TableCell>
                         <TableCell className="text-right text-[13px] px-3 font-semibold">{$$(r.balance)}</TableCell>
