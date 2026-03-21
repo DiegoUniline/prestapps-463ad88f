@@ -187,6 +187,7 @@ export default function CajaDetallePage() {
 
   const [tab, setTab] = useState("resumen");
   const [modal, setModal] = useState<ModalType>(null);
+  const [kardexFilter, setKardexFilter] = useState("Todos");
   const [monto, setMonto] = useState("");
   const [concepto, setConcepto] = useState("");
   const [cajaDestinoId, setCajaDestinoId] = useState("");
