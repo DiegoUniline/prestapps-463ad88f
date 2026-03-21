@@ -125,7 +125,8 @@ interface KardexRow { id: string; fecha: string; tipo: "entrada" | "salida"; con
 
 function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string {
   const lower = concepto.toLowerCase();
-  if (lower.includes("cobro") || lower.includes("pago cuota")) return "Cobros";
+  if (lower.includes("anulación") || lower.includes("anulacion")) return "Anulaciones";
+  if (lower.includes("pago") || lower.includes("cobro") || lower.includes("cuota")) return "Pagos";
   if (lower.includes("desembolso") || lower.includes("préstamo")) return "Desembolsos";
   if (lower.includes("comisión") || lower.includes("comision") || lower.includes("corte")) return "Comisiones";
   if (lower.includes("transferencia")) return "Transferencias";
@@ -133,6 +134,8 @@ function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string 
   if (tipo === "entrada") return "Depósitos";
   return "Retiros";
 }
+
+const KARDEX_CATEGORIES = ["Todos", "Pagos", "Desembolsos", "Anulaciones", "Gastos", "Comisiones", "Depósitos", "Retiros", "Transferencias"] as const;
 
 function useCajaKardex(cajaId: string) {
   return useQuery({
