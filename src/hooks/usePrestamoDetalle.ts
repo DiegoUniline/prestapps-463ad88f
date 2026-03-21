@@ -48,7 +48,8 @@ export function useAmortizacion(prestamoId: string | undefined) {
     queryFn: async () => {
       if (!prestamoId) return [];
 
-      await (supabase.rpc as any)("recalcular_mora", { p_prestamo_id: prestamoId });
+      // Fire-and-forget mora recalc — don't block the UI
+      (supabase.rpc as any)("recalcular_mora", { p_prestamo_id: prestamoId }).then(() => {});
 
       const { data, error } = await supabase
         .from("amortizacion")
@@ -66,7 +67,7 @@ export function useAmortizacion(prestamoId: string | undefined) {
       return data || [];
     },
     enabled: !!prestamoId,
-    staleTime: 15 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 
@@ -92,7 +93,7 @@ export function usePagos(prestamoId: string | undefined) {
       return data || [];
     },
     enabled: !!prestamoId,
-    staleTime: 15 * 1000,
+    staleTime: 30 * 1000,
   });
 }
 
