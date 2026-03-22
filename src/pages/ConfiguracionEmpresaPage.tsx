@@ -62,7 +62,7 @@ function DatosGeneralesTab() {
         .eq("id", empresaId)
         .single();
       if (error) throw error;
-      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; lada_pais: string; moneda_simbolo: string; moneda_codigo: string };
+      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; dias_por_vencer: number; lada_pais: string; moneda_simbolo: string; moneda_codigo: string };
     },
   });
 
