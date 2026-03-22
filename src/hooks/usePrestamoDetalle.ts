@@ -67,7 +67,7 @@ export function useAmortizacion(prestamoId: string | undefined) {
       return data || [];
     },
     enabled: !!prestamoId,
-    staleTime: 30 * 1000,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
