@@ -56,6 +56,7 @@ const PermisosPage = lazy(() => import("@/pages/PermisosPage"));
 const AlertasPage = lazy(() => import("@/pages/AlertasPage"));
 const RenovacionPage = lazy(() => import("@/pages/RenovacionPage"));
 const RentabilidadPage = lazy(() => import("@/pages/RentabilidadPage"));
+const ReporteSemanalPage = lazy(() => import("@/pages/ReporteSemanalPage"));
 const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
 const ProductividadPage = lazy(() => import("@/pages/ProductividadPage"));
 const MiSuscripcionPage = lazy(() => import("@/pages/MiSuscripcionPage"));
