@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, $$ } from "@/lib/utils";
 import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
+import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
 import { format, isToday, parseISO, startOfDay, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import {

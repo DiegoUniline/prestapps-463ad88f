@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight as ChevronRightIcon, X, CalendarIcon, SlidersHorizontal, ChevronLeft, ChevronRight, DollarSign, HandCoins, TrendingUp, Hash, MoreHorizontal, MessageCircle, Download, Pencil, XCircle } from "lucide-react";
 import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
+import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
