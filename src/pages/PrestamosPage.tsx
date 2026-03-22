@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +18,7 @@ import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
 import { useAtendidos } from "@/hooks/useAtendidos";
@@ -361,6 +362,8 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
 // ── Main page ─────────────────────────────────────────────────────
 export default function PrestamosPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const vistaParam = searchParams.get("vista"); // liquidados | atrasados | por_vencer
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { role, rutaIds, cobradorId } = useCurrentUserRole();
@@ -371,6 +374,22 @@ export default function PrestamosPage() {
   const { prestamoIds: atendidoIds, color: atendidoColor } = useAtendidos(empresaId);
   const { data: rutasRaw = [] } = useRutasOptions(empresaId);
 
+  // Fetch dias_por_vencer from empresa
+  const { data: empresaData } = useQuery({
+    queryKey: ["empresa-dias-vencer", empresaId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("empresas")
+        .select("dias_por_vencer")
+        .eq("id", empresaId)
+        .single();
+      return data as { dias_por_vencer: number } | null;
+    },
+    enabled: !!empresaId,
+    staleTime: 1000 * 60 * 10,
+  });
+  const diasPorVencer = empresaData?.dias_por_vencer ?? 7;
+
   const cajasOpts = cajasRaw.map((c) => c.nombre);
   const rutasOpts = rutasRaw.map((r) => r.nombre);
 
@@ -379,7 +398,15 @@ export default function PrestamosPage() {
 
   const [search, setSearch] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState("todos");
+  // Derive activeTab from URL param or default
+  const activeTab: string = vistaParam === "liquidados" ? "liquidados"
+    : vistaParam === "atrasados" ? "atrasados"
+    : vistaParam === "por_vencer" ? "por_vencer"
+    : "todos";
+  const setActiveTab = (tab: string) => {
+    if (tab === "todos") navigate("/prestamos", { replace: true });
+    else navigate(`/prestamos?vista=${tab}`, { replace: true });
+  };
 
   const [selEstado, setSelEstado] = useState<Set<string>>(new Set());
   const [selCaja, setSelCaja] = useState<Set<string>>(new Set());
@@ -436,8 +463,19 @@ export default function PrestamosPage() {
     if (activeTab === "vigentes") return prestamos.filter((p) => !p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado");
     if (activeTab === "atrasados") return prestamos.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado");
     if (activeTab === "liquidados") return prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado");
+    if (activeTab === "por_vencer") {
+      const today = new Date();
+      const limit = new Date(today);
+      limit.setDate(limit.getDate() + diasPorVencer);
+      const limitStr = limit.toISOString().slice(0, 10);
+      const todayStr = today.toISOString().slice(0, 10);
+      return prestamos.filter((p) =>
+        p.estado !== "Liquidado" && p.estado !== "Cancelado" &&
+        p.proximoVencimiento && p.proximoVencimiento >= todayStr && p.proximoVencimiento <= limitStr
+      );
+    }
     return prestamos;
-  }, [prestamos, activeTab]);
+  }, [prestamos, activeTab, diasPorVencer]);
 
   const filtered = useMemo(() => {
     let data = tabFiltered.filter((p) => {
@@ -512,12 +550,23 @@ export default function PrestamosPage() {
     { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
   ];
 
-  const tabCounts = useMemo(() => ({
-    todos: prestamos.length,
-    vigentes: prestamos.filter((p) => !p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
-    atrasados: prestamos.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
-    liquidados: prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado").length,
-  }), [prestamos]);
+  const tabCounts = useMemo(() => {
+    const today = new Date();
+    const limit = new Date(today);
+    limit.setDate(limit.getDate() + diasPorVencer);
+    const limitStr = limit.toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
+    return {
+      todos: prestamos.length,
+      vigentes: prestamos.filter((p) => !p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
+      atrasados: prestamos.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
+      liquidados: prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado").length,
+      por_vencer: prestamos.filter((p) =>
+        p.estado !== "Liquidado" && p.estado !== "Cancelado" &&
+        p.proximoVencimiento && p.proximoVencimiento >= todayStr && p.proximoVencimiento <= limitStr
+      ).length,
+    };
+  }, [prestamos, diasPorVencer]);
 
   const colSpanTotal = visibleColumns.length + 1; // +1 for checkbox
 
@@ -551,6 +600,7 @@ export default function PrestamosPage() {
           <TabsTrigger value="vigentes">Vigentes <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.vigentes})</span></TabsTrigger>
           <TabsTrigger value="atrasados">Atrasados <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.atrasados})</span></TabsTrigger>
           <TabsTrigger value="liquidados">Liquidados <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.liquidados})</span></TabsTrigger>
+          <TabsTrigger value="por_vencer">Por Vencer <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.por_vencer})</span></TabsTrigger>
         </TabsList>
         <TabsContent value={activeTab} className="space-y-5 mt-4">
 

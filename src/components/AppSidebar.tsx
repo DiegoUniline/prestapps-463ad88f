@@ -18,15 +18,24 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarHeader,
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   LayoutDashboard, CreditCard, Users, Wallet, Route, FileText, HandCoins,
   CalendarCheck, Settings, UserCheck, ClipboardCheck, Building2, MessageSquare,
   Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog, BarChart3,
   FileInput, ShieldCheck, Bell, RefreshCw, PieChart, ScrollText, CalendarDays,
+  ChevronRight, CheckCircle2, Clock, AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +46,7 @@ interface NavItem {
   roles: AppRole[];
   superAdminOnly?: boolean;
   permModule?: PermisoModule;
+  subItems?: { title: string; url: string; icon: LucideIcon }[];
 }
 
 interface NavModule {
@@ -56,7 +66,14 @@ const modules: NavModule[] = [
     items: [
       { title: "Mi Cobranza", url: "/mi-cobranza", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"], permModule: "mi_cobranza" },
       { title: "Cobranza Diaria", url: "/cobranza", icon: ClipboardCheck, roles: ["admin", "supervisor", "cobrador"], permModule: "cobranza" },
-      { title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin", "supervisor", "cobrador"], permModule: "prestamos" },
+      {
+        title: "Préstamos", url: "/prestamos", icon: CreditCard, roles: ["admin", "supervisor", "cobrador"], permModule: "prestamos",
+        subItems: [
+          { title: "Liquidados", url: "/prestamos?vista=liquidados", icon: CheckCircle2 },
+          { title: "Por Vencer", url: "/prestamos?vista=por_vencer", icon: Clock },
+          { title: "Atrasados", url: "/prestamos?vista=atrasados", icon: AlertTriangle },
+        ],
+      },
       { title: "Planes de Cuotas", url: "/planes-cuotas", icon: BookOpen, roles: ["admin", "supervisor"], permModule: "prestamos" },
       { title: "Pagos", url: "/pagos", icon: HandCoins, roles: ["admin", "supervisor", "cobrador"], permModule: "pagos" },
       { title: "Promesas", url: "/promesas", icon: CalendarCheck, roles: ["admin", "supervisor", "cobrador"], permModule: "promesas" },
@@ -155,8 +172,22 @@ export function AppSidebar() {
     });
   }, [queryClient, empresaId]);
 
-  const isActive = (path: string) =>
-    location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
+  const fullPath = location.pathname + location.search;
+
+  const isActive = (path: string) => {
+    // For URLs with query params (sub-items), match exactly
+    if (path.includes("?")) {
+      return fullPath === path;
+    }
+    // For the parent /prestamos, only match exact path without query params
+    if (path === "/prestamos") {
+      return location.pathname === "/prestamos" && !location.search;
+    }
+    return location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
+  };
+
+  // Check if any sub-item is active (to keep collapsible open)
+  const isAnySub = location.pathname === "/prestamos";
 
   const userEmail = useAuthStore((s) => s.user?.email);
   const superAdmin = isSuperAdmin(userEmail);
@@ -167,7 +198,6 @@ export function AppSidebar() {
       items: (loading || permLoading) ? [] : mod.items.filter((item) => {
         if (item.superAdminOnly && !superAdmin) return false;
         if (!item.roles.includes(role)) return false;
-        // Check granular permission if permModule is defined
         if (item.permModule) {
           return isAllowed(role, item.permModule, "ver");
         }
@@ -195,20 +225,60 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {mod.items.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive(item.url)}
-                      className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:border-l-[3px] data-[active=true]:border-l-primary data-[active=true]:font-medium"
-                    >
-                      <NavLink to={item.url} end={item.url === "/"}>
-                        <item.icon className="h-4 w-4" />
-                        {!collapsed && <span className="text-[14px]">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {mod.items.map((item) =>
+                  item.subItems && !collapsed ? (
+                    <Collapsible key={item.url} defaultOpen={isAnySub} className="group/collapsible">
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={isActive(item.url)}
+                          className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:border-l-[3px] data-[active=true]:border-l-primary data-[active=true]:font-medium"
+                        >
+                          <NavLink to={item.url} end>
+                            <item.icon className="h-4 w-4" />
+                            <span className="text-[14px] flex-1">{item.title}</span>
+                            <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
+                              <button className="p-0.5 rounded hover:bg-muted">
+                                <ChevronRight className="h-3.5 w-3.5 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                              </button>
+                            </CollapsibleTrigger>
+                          </NavLink>
+                        </SidebarMenuButton>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.subItems.map((sub) => (
+                              <SidebarMenuSubItem key={sub.url}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={isActive(sub.url)}
+                                  className="data-[active=true]:text-primary data-[active=true]:font-medium"
+                                >
+                                  <NavLink to={sub.url}>
+                                    <sub.icon className="h-3.5 w-3.5" />
+                                    <span className="text-[13px]">{sub.title}</span>
+                                  </NavLink>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  ) : (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive(item.url)}
+                        className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[active=true]:border-l-[3px] data-[active=true]:border-l-primary data-[active=true]:font-medium"
+                      >
+                        <NavLink to={item.url} end={item.url === "/"}>
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span className="text-[14px]">{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

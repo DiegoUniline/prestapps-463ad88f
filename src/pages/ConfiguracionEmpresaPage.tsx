@@ -58,15 +58,15 @@ function DatosGeneralesTab() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("empresas")
-        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, lada_pais, moneda_simbolo, moneda_codigo")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, dias_por_vencer, lada_pais, moneda_simbolo, moneda_codigo")
         .eq("id", empresaId)
         .single();
       if (error) throw error;
-      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; lada_pais: string; moneda_simbolo: string; moneda_codigo: string };
+      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; dias_por_vencer: number; lada_pais: string; moneda_simbolo: string; moneda_codigo: string };
     },
   });
 
-  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, lada_pais: "52", moneda_codigo: "USD", moneda_simbolo: "$" });
+  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, dias_por_vencer: 7, lada_pais: "52", moneda_codigo: "USD", moneda_simbolo: "$" });
 
   useEffect(() => {
     if (empresa) {
@@ -76,6 +76,7 @@ function DatosGeneralesTab() {
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
+        dias_por_vencer: empresa.dias_por_vencer ?? 7,
         lada_pais: empresa.lada_pais || "52",
         moneda_codigo: empresa.moneda_codigo || "USD",
         moneda_simbolo: empresa.moneda_simbolo || "$",
@@ -94,6 +95,7 @@ function DatosGeneralesTab() {
           telefono: form.telefono || null,
           direccion: form.direccion || null,
           dias_gracia: form.dias_gracia,
+          dias_por_vencer: form.dias_por_vencer,
           lada_pais: form.lada_pais || "52",
           moneda_simbolo: form.moneda_simbolo || "$",
           moneda_codigo: form.moneda_codigo || "USD",
@@ -121,6 +123,7 @@ function DatosGeneralesTab() {
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
+        dias_por_vencer: empresa.dias_por_vencer ?? 7,
         lada_pais: empresa.lada_pais || "52",
         moneda_codigo: empresa.moneda_codigo || "USD",
         moneda_simbolo: empresa.moneda_simbolo || "$",
@@ -279,6 +282,15 @@ function DatosGeneralesTab() {
               <Input type="number" min={0} max={90} value={form.dias_gracia} onChange={(e) => setForm({ ...form, dias_gracia: parseInt(e.target.value) || 0 })} />
             ) : (
               <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.dias_gracia} día{form.dias_gracia !== 1 ? "s" : ""}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>Días para "Por Vencer"</Label>
+            <p className="text-xs text-muted-foreground">Préstamos con cuotas que vencen dentro de estos días aparecerán en la vista "Por Vencer"</p>
+            {editing ? (
+              <Input type="number" min={1} max={90} value={form.dias_por_vencer} onChange={(e) => setForm({ ...form, dias_por_vencer: parseInt(e.target.value) || 7 })} />
+            ) : (
+              <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.dias_por_vencer} día{form.dias_por_vencer !== 1 ? "s" : ""}</p>
             )}
           </div>
           {editing && (
