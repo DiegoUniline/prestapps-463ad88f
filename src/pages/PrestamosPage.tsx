@@ -600,6 +600,7 @@ export default function PrestamosPage() {
           <TabsTrigger value="vigentes">Vigentes <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.vigentes})</span></TabsTrigger>
           <TabsTrigger value="atrasados">Atrasados <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.atrasados})</span></TabsTrigger>
           <TabsTrigger value="liquidados">Liquidados <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.liquidados})</span></TabsTrigger>
+          <TabsTrigger value="por_vencer">Por Vencer <span className="ml-1.5 text-[10px] opacity-70">({tabCounts.por_vencer})</span></TabsTrigger>
         </TabsList>
         <TabsContent value={activeTab} className="space-y-5 mt-4">
 
