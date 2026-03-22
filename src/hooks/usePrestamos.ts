@@ -222,14 +222,8 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
 export function usePrestamos(filters?: FetchFilters) {
   const result = useQuery({
     queryKey: ["prestamos-list-v2", filters?.rutaIds, filters?.cobradorId, filters?.empresaId],
-    queryFn: async () => {
-      // Fire-and-forget: sync estados in DB (background) — don't block UI
-      if (filters?.empresaId) {
-        supabase.rpc("actualizar_estados_prestamos" as any, { p_empresa_id: filters.empresaId }).then(() => {});
-      }
-      return fetchPrestamos(filters);
-    },
-    staleTime: 1000 * 60, // 1 minute — data rarely changes between views
+    queryFn: () => fetchPrestamos(filters),
+    staleTime: 1000 * 60 * 5, // 5 min — use global default
   });
   return result;
 }
