@@ -76,6 +76,7 @@ function DatosGeneralesTab() {
         telefono: empresa.telefono || "",
         direccion: empresa.direccion || "",
         dias_gracia: empresa.dias_gracia ?? 0,
+        dias_por_vencer: empresa.dias_por_vencer ?? 7,
         lada_pais: empresa.lada_pais || "52",
         moneda_codigo: empresa.moneda_codigo || "USD",
         moneda_simbolo: empresa.moneda_simbolo || "$",
