@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, $$ } from "@/lib/utils";
 import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
+import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
 import { format, isToday, parseISO, startOfDay, addDays } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -326,7 +327,7 @@ export default function CobranzaDiariaPage() {
   const [showKpis, setShowKpis] = useState(false);
 
   // Grouping
-  const [groupByKey, setGroupByKey] = useState<string | null>(null);
+  const [groupByKey, setGroupByKey] = usePersistedGroupBy("cobranza");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const groupByOptions = [
     { key: "ruta", label: "Ruta" },
