@@ -196,7 +196,7 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
       });
     },
     enabled: !!clienteId,
-    staleTime: 15_000,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
