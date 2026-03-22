@@ -30,6 +30,7 @@ export interface PrestamoListItem {
   diasAtraso: number;
   ultimoPagoFecha: string | null;
   ultimoPagoMonto: number | null;
+  proximoVencimiento: string | null;
 }
 
 interface FetchFilters {
