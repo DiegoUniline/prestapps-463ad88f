@@ -172,7 +172,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   }
 
   return prestamos.map((p) => {
-    const amort = amortByPrestamo[p.id] || { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
+    const amort = amortByPrestamo[p.id] || { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0, proximoVencimiento: null };
 
     // Compute visual estado: override DB estado if real-time data says otherwise
     let estado = p.estado || "Activo";
