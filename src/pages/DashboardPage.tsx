@@ -62,7 +62,7 @@ function useDashboardData(empresaId: string) {
         clientes: clientes || [], promesas: promesas || [], today,
       };
     },
-    refetchInterval: 60_000,
+    staleTime: 1000 * 60 * 3, // 3 min cache
   });
 }
 

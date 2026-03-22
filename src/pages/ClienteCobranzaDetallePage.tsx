@@ -96,7 +96,7 @@ function useClienteInfo(clienteId: string | undefined) {
       return data;
     },
     enabled: !!clienteId,
-    staleTime: 30_000,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -196,7 +196,7 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
       });
     },
     enabled: !!clienteId,
-    staleTime: 15_000,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -219,7 +219,7 @@ function usePagosCliente(clienteId: string | undefined) {
       return (pagos || []).map((p: any) => ({ ...p, idPrestamo: nameMap[p.prestamo_id] || "—" }));
     },
     enabled: !!clienteId,
-    staleTime: 15_000,
+    staleTime: 1000 * 60 * 2,
   });
 }
 

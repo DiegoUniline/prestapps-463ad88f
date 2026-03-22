@@ -103,7 +103,7 @@ function useClientesAtendidosSemana(empresaId: string, weekStartStr: string, wee
       const atendidos = new Set([...clienteIdsFromPagos, ...clienteIdsFromGestiones]);
       return atendidos;
     },
-    staleTime: 30 * 1000, // refresh every 30s
+    staleTime: 1000 * 60 * 2,
   });
 }
 
