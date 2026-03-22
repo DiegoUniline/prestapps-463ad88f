@@ -237,7 +237,6 @@ export function useCajasOptions(empresaId?: string) {
       const { data } = await query;
       return data || [];
     },
-    refetchOnMount: "always",
   });
 }
 

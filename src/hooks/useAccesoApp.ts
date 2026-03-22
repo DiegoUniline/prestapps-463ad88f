@@ -48,8 +48,7 @@ export function useAccesoApp() {
       if (error) throw error;
       return result as SubscriptionStatus;
     },
-    refetchInterval: 60_000,
-    staleTime: 30_000,
+    staleTime: 1000 * 60 * 5,
   });
 
   // SuperAdmin without empresa context — full access
