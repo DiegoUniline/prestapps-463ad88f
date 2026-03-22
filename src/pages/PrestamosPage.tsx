@@ -550,12 +550,23 @@ export default function PrestamosPage() {
     { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
   ];
 
-  const tabCounts = useMemo(() => ({
-    todos: prestamos.length,
-    vigentes: prestamos.filter((p) => !p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
-    atrasados: prestamos.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
-    liquidados: prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado").length,
-  }), [prestamos]);
+  const tabCounts = useMemo(() => {
+    const today = new Date();
+    const limit = new Date(today);
+    limit.setDate(limit.getDate() + diasPorVencer);
+    const limitStr = limit.toISOString().slice(0, 10);
+    const todayStr = today.toISOString().slice(0, 10);
+    return {
+      todos: prestamos.length,
+      vigentes: prestamos.filter((p) => !p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
+      atrasados: prestamos.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado").length,
+      liquidados: prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado").length,
+      por_vencer: prestamos.filter((p) =>
+        p.estado !== "Liquidado" && p.estado !== "Cancelado" &&
+        p.proximoVencimiento && p.proximoVencimiento >= todayStr && p.proximoVencimiento <= limitStr
+      ).length,
+    };
+  }, [prestamos, diasPorVencer]);
 
   const colSpanTotal = visibleColumns.length + 1; // +1 for checkbox
 
