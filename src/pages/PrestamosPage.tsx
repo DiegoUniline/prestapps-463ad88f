@@ -463,8 +463,19 @@ export default function PrestamosPage() {
     if (activeTab === "vigentes") return prestamos.filter((p) => !p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado");
     if (activeTab === "atrasados") return prestamos.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado");
     if (activeTab === "liquidados") return prestamos.filter((p) => p.estado === "Liquidado" || p.estado === "Cancelado");
+    if (activeTab === "por_vencer") {
+      const today = new Date();
+      const limit = new Date(today);
+      limit.setDate(limit.getDate() + diasPorVencer);
+      const limitStr = limit.toISOString().slice(0, 10);
+      const todayStr = today.toISOString().slice(0, 10);
+      return prestamos.filter((p) =>
+        p.estado !== "Liquidado" && p.estado !== "Cancelado" &&
+        p.proximoVencimiento && p.proximoVencimiento >= todayStr && p.proximoVencimiento <= limitStr
+      );
+    }
     return prestamos;
-  }, [prestamos, activeTab]);
+  }, [prestamos, activeTab, diasPorVencer]);
 
   const filtered = useMemo(() => {
     let data = tabFiltered.filter((p) => {
