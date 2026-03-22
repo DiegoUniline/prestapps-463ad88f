@@ -214,6 +214,7 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
       diasAtraso: amort.diasAtraso,
       ultimoPagoFecha: ultimoPagoMap[p.id]?.fecha || null,
       ultimoPagoMonto: ultimoPagoMap[p.id]?.monto || null,
+      proximoVencimiento: amort.proximoVencimiento,
     };
   });
 }
