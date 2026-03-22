@@ -66,7 +66,7 @@ function DatosGeneralesTab() {
     },
   });
 
-  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, lada_pais: "52", moneda_codigo: "USD", moneda_simbolo: "$" });
+  const [form, setForm] = useState({ nombre: "", ruc: "", telefono: "", direccion: "", dias_gracia: 0, dias_por_vencer: 7, lada_pais: "52", moneda_codigo: "USD", moneda_simbolo: "$" });
 
   useEffect(() => {
     if (empresa) {
