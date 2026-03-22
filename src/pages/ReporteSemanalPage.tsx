@@ -89,8 +89,10 @@ export default function ReporteSemanalPage() {
         totalComisiones += monto;
       } else if (concepto.includes("desembolso") || concepto.includes("préstamo") || concepto.includes("prestamo")) {
         // No contar desembolsos
-      } else if (concepto.includes("retiro") || concepto.includes("transferencia")) {
+      } else if (concepto.includes("retiro") || concepto.includes("transferencia") || concepto.includes("retira") || concepto.includes("recurso")) {
         // No contar retiros
+      } else if (concepto.includes("anulación") || concepto.includes("anulacion")) {
+        // No contar anulaciones
       } else {
         gastosDetalle.push({ concepto: m.concepto || "Gasto", monto, fecha });
         totalGastos += monto;
