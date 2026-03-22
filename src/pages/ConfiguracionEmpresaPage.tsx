@@ -284,6 +284,15 @@ function DatosGeneralesTab() {
               <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.dias_gracia} día{form.dias_gracia !== 1 ? "s" : ""}</p>
             )}
           </div>
+          <div className="space-y-2">
+            <Label>Días para "Por Vencer"</Label>
+            <p className="text-xs text-muted-foreground">Préstamos con cuotas que vencen dentro de estos días aparecerán en la vista "Por Vencer"</p>
+            {editing ? (
+              <Input type="number" min={1} max={90} value={form.dias_por_vencer} onChange={(e) => setForm({ ...form, dias_por_vencer: parseInt(e.target.value) || 7 })} />
+            ) : (
+              <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted/50 min-h-[36px]">{form.dias_por_vencer} día{form.dias_por_vencer !== 1 ? "s" : ""}</p>
+            )}
+          </div>
           {editing && (
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleCancel} className="flex-1">
