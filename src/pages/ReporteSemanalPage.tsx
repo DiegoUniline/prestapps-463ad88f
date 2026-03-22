@@ -173,7 +173,7 @@ export default function ReporteSemanalPage() {
         <>
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KPICard label="Total cobrado" value={$$(result.totalCobrado)} icon={<DollarSign className="h-4 w-4" />} />
+            <KPICard label="Interés + Mora" value={$$(result.interesGanado + result.moraGanada)} icon={<DollarSign className="h-4 w-4" />} />
             <KPICard label="Ganancia real" value={$$(result.gananciaReal)} icon={<TrendingUp className="h-4 w-4" />} positive={result.gananciaReal >= 0} />
             <KPICard label="(-) Comisiones" value={$$(result.totalComisiones)} icon={<Percent className="h-4 w-4" />} />
             <KPICard label="(-) Gastos" value={$$(result.totalGastos)} icon={<Receipt className="h-4 w-4" />} />
