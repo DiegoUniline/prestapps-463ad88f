@@ -26,7 +26,7 @@ import {
   LayoutDashboard, CreditCard, Users, Wallet, Route, FileText, HandCoins,
   CalendarCheck, Settings, UserCheck, ClipboardCheck, Building2, MessageSquare,
   Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog, BarChart3,
-  FileInput, ShieldCheck, Bell, RefreshCw, PieChart, ScrollText,
+  FileInput, ShieldCheck, Bell, RefreshCw, PieChart, ScrollText, CalendarDays,
   type LucideIcon,
 } from "lucide-react";
 
@@ -83,6 +83,7 @@ const modules: NavModule[] = [
       { title: "Rentabilidad", url: "/rentabilidad", icon: PieChart, roles: ["admin"] },
       { title: "Productividad", url: "/productividad", icon: BarChart3, roles: ["admin", "supervisor"] },
       { title: "Reportes", url: "/reportes", icon: FileText, roles: ["admin", "supervisor"], permModule: "reportes" },
+      { title: "Reporte Semanal", url: "/reporte-semanal", icon: CalendarDays, roles: ["admin"] },
       { title: "Renovación", url: "/renovacion", icon: RefreshCw, roles: ["admin"] },
     ],
   },

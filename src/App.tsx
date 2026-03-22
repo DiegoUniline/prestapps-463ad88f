@@ -56,6 +56,7 @@ const PermisosPage = lazy(() => import("@/pages/PermisosPage"));
 const AlertasPage = lazy(() => import("@/pages/AlertasPage"));
 const RenovacionPage = lazy(() => import("@/pages/RenovacionPage"));
 const RentabilidadPage = lazy(() => import("@/pages/RentabilidadPage"));
+const ReporteSemanalPage = lazy(() => import("@/pages/ReporteSemanalPage"));
 const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
 const ProductividadPage = lazy(() => import("@/pages/ProductividadPage"));
 const MiSuscripcionPage = lazy(() => import("@/pages/MiSuscripcionPage"));
@@ -152,6 +153,7 @@ const App = () => (
               <Route path="/alertas" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><AlertasPage /></LazyPage></RoleGuard>} />
               <Route path="/renovacion" element={<RoleGuard allowed={["admin"]}><LazyPage><RenovacionPage /></LazyPage></RoleGuard>} />
               <Route path="/rentabilidad" element={<RoleGuard allowed={["admin"]}><LazyPage><RentabilidadPage /></LazyPage></RoleGuard>} />
+              <Route path="/reporte-semanal" element={<RoleGuard allowed={["admin"]}><LazyPage><ReporteSemanalPage /></LazyPage></RoleGuard>} />
               <Route path="/auditoria" element={<RoleGuard allowed={["admin"]}><LazyPage><AuditoriaPage /></LazyPage></RoleGuard>} />
               <Route path="/productividad" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><ProductividadPage /></LazyPage></RoleGuard>} />
               <Route path="/mi-suscripcion" element={<RoleGuard allowed={["admin"]}><LazyPage><MiSuscripcionPage /></LazyPage></RoleGuard>} />
