@@ -4,209 +4,140 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { fetchAllRows } from "@/lib/supabaseQuery";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { cn, $$ } from "@/lib/utils";
-import { CalendarDays, TrendingUp, Wallet, Download, DollarSign, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { format, startOfWeek, endOfWeek, subWeeks, addWeeks, isWithinInterval, parseISO } from "date-fns";
+import { CalendarDays, TrendingUp, Download, DollarSign, CalendarIcon, ArrowDownRight, Percent, Receipt } from "lucide-react";
+import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { exportToPDF, exportToCSV } from "@/lib/reportExport";
 
-/* ──────────────────── helpers ──────────────────── */
-
-function getWeekRanges(weeksBack: number, corteDia: number) {
-  const ranges: { start: Date; end: Date; label: string }[] = [];
-  const today = new Date();
-  // Find start of current week based on corteDia (0=Sun..6=Sat)
-  const todayDay = today.getDay();
-  let diff = todayDay - corteDia;
-  if (diff < 0) diff += 7;
-  const currentWeekStart = new Date(today);
-  currentWeekStart.setDate(today.getDate() - diff);
-  currentWeekStart.setHours(0, 0, 0, 0);
-
-  for (let i = 0; i < weeksBack; i++) {
-    const start = new Date(currentWeekStart);
-    start.setDate(currentWeekStart.getDate() - i * 7);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-    ranges.push({
-      start,
-      end,
-      label: `${format(start, "dd MMM", { locale: es })} — ${format(end, "dd MMM", { locale: es })}`,
-    });
-  }
-  return ranges;
-}
-
-function dateInRange(dateStr: string | null, start: Date, end: Date): boolean {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  return d >= start && d <= end;
-}
-
-/* ──────────────────── main component ──────────────────── */
-
 export default function ReporteSemanalPage() {
   const { empresaId } = useEmpresa();
-  const [weeksBack] = useState(12);
+  const [desde, setDesde] = useState<Date>(subDays(new Date(), 30));
+  const [hasta, setHasta] = useState<Date>(new Date());
+
+  const desdeStr = format(desde, "yyyy-MM-dd");
+  const hastaStr = format(hasta, "yyyy-MM-dd");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["reporte-semanal", empresaId],
+    queryKey: ["reporte-semanal", empresaId, desdeStr, hastaStr],
     queryFn: async () => {
       if (!empresaId) return null;
 
-      const [empresa, pagos, movimientos, cortes] = await Promise.all([
-        supabase.from("empresas").select("corte_dia_semana").eq("id", empresaId).single(),
+      const [pagos, movimientos, cortes] = await Promise.all([
         fetchAllRows(
           supabase.from("pagos")
             .select("monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, fecha_pago, anulado")
             .eq("empresa_id", empresaId)
             .eq("anulado", false)
+            .gte("fecha_pago", desdeStr)
+            .lte("fecha_pago", hastaStr)
         ),
         fetchAllRows(
           supabase.from("movimientos_caja")
             .select("monto, tipo, concepto, created_at")
             .eq("empresa_id", empresaId)
+            .gte("created_at", `${desdeStr}T00:00:00`)
+            .lte("created_at", `${hastaStr}T23:59:59`)
         ),
         fetchAllRows(
           supabase.from("cortes")
-            .select("monto_comision, total_cobrado, monto_depositado, created_at")
+            .select("monto_comision, cobrador_id, created_at")
             .eq("empresa_id", empresaId)
+            .gte("created_at", `${desdeStr}T00:00:00`)
+            .lte("created_at", `${hastaStr}T23:59:59`)
         ),
       ]);
 
-      return {
-        corteDia: empresa.data?.corte_dia_semana ?? 1,
-        pagos: pagos || [],
-        movimientos: movimientos || [],
-        cortes: cortes || [],
-      };
+      return { pagos: pagos || [], movimientos: movimientos || [], cortes: cortes || [] };
     },
     enabled: !!empresaId,
     staleTime: 60_000,
   });
 
-  const weeks = useMemo(() => {
-    if (!data) return [];
-    const ranges = getWeekRanges(weeksBack, data.corteDia);
+  const result = useMemo(() => {
+    if (!data) return null;
 
-    return ranges.map(({ start, end, label }) => {
-      // Cobros (pagos recibidos)
-      let totalCobrado = 0;
-      let interesGanado = 0;
-      let moraGanada = 0;
-      let capitalRecuperado = 0;
+    let totalCobrado = 0, interesGanado = 0, moraGanada = 0, capitalRecuperado = 0;
+    for (const p of data.pagos) {
+      totalCobrado += Number(p.monto_recibido || 0);
+      interesGanado += Number(p.aplicado_interes || 0);
+      moraGanada += Number(p.aplicado_mora || 0);
+      capitalRecuperado += Number(p.aplicado_capital || 0);
+    }
 
-      for (const p of data.pagos) {
-        if (dateInRange(p.fecha_pago, start, end)) {
-          totalCobrado += Number(p.monto_recibido || 0);
-          interesGanado += Number(p.aplicado_interes || 0);
-          moraGanada += Number(p.aplicado_mora || 0);
-          capitalRecuperado += Number(p.aplicado_capital || 0);
-        }
+    // Gastos from movimientos (salidas que NO son desembolso, comisión, retiro)
+    const gastosDetalle: { concepto: string; monto: number; fecha: string }[] = [];
+    let totalGastos = 0;
+
+    // Comisiones from movimientos
+    const comisionesDetalle: { concepto: string; monto: number; fecha: string }[] = [];
+    let totalComisiones = 0;
+
+    for (const m of data.movimientos) {
+      if (m.tipo !== "salida") continue;
+      const monto = Number(m.monto || 0);
+      const concepto = (m.concepto || "").toLowerCase();
+      const fecha = m.created_at ? format(new Date(m.created_at), "dd/MM/yyyy") : "";
+
+      if (concepto.includes("comisión") || concepto.includes("comision") || concepto.includes("liquidación") || concepto.includes("liquidacion")) {
+        comisionesDetalle.push({ concepto: m.concepto || "Comisión", monto, fecha });
+        totalComisiones += monto;
+      } else if (concepto.includes("desembolso") || concepto.includes("préstamo") || concepto.includes("prestamo")) {
+        // No contar desembolsos
+      } else if (concepto.includes("retiro") || concepto.includes("transferencia")) {
+        // No contar retiros
+      } else {
+        gastosDetalle.push({ concepto: m.concepto || "Gasto", monto, fecha });
+        totalGastos += monto;
       }
+    }
 
-      // Movimientos de caja
-      let desembolsos = 0;
-      let gastos = 0;
-      let depositos = 0;
-      let retiros = 0;
-
-      for (const m of data.movimientos) {
-        if (!dateInRange(m.created_at, start, end)) continue;
-        const monto = Number(m.monto || 0);
-        const concepto = (m.concepto || "").toLowerCase();
-
-        if (m.tipo === "entrada") {
-          if (concepto.includes("depósito") || concepto.includes("deposito") || concepto.includes("transferencia entrada")) {
-            depositos += monto;
-          }
-          // Pagos de cobro ya se cuentan en pagos table
-        } else {
-          // salida
-          if (concepto.includes("desembolso") || concepto.includes("préstamo") || concepto.includes("prestamo")) {
-            desembolsos += monto;
-          } else if (concepto.includes("comisión") || concepto.includes("comision") || concepto.includes("liquidación")) {
-            // comisiones se cuentan aparte
-          } else if (concepto.includes("retiro") || concepto.includes("transferencia salida")) {
-            retiros += monto;
-          } else {
-            gastos += monto;
-          }
-        }
+    // Also add comisiones from cortes table
+    for (const c of data.cortes) {
+      const monto = Number(c.monto_comision || 0);
+      if (monto > 0) {
+        comisionesDetalle.push({
+          concepto: "Comisión cobrador",
+          monto,
+          fecha: c.created_at ? format(new Date(c.created_at), "dd/MM/yyyy") : "",
+        });
+        totalComisiones += monto;
       }
+    }
 
-      // Comisiones de cortes
-      let comisiones = 0;
-      for (const c of data.cortes) {
-        if (dateInRange(c.created_at, start, end)) {
-          comisiones += Number(c.monto_comision || 0);
-        }
-      }
+    const gananciaReal = interesGanado + moraGanada - totalComisiones - totalGastos;
 
-      // Also count comisiones from movimientos_caja
-      for (const m of data.movimientos) {
-        if (!dateInRange(m.created_at, start, end)) continue;
-        const concepto = (m.concepto || "").toLowerCase();
-        if (m.tipo === "salida" && (concepto.includes("comisión") || concepto.includes("comision") || concepto.includes("liquidación"))) {
-          comisiones += Number(m.monto || 0);
-        }
-      }
+    return {
+      totalCobrado, interesGanado, moraGanada, capitalRecuperado,
+      totalGastos, totalComisiones, gananciaReal,
+      gastosDetalle: gastosDetalle.sort((a, b) => b.monto - a.monto),
+      comisionesDetalle: comisionesDetalle.sort((a, b) => b.monto - a.monto),
+    };
+  }, [data]);
 
-      // Flujo de efectivo = Cobros + Depósitos - Retiros - Gastos - Comisiones
-      const flujoEfectivo = totalCobrado + depositos - retiros - gastos - comisiones;
-
-      // Ganancia real = Interés + Mora - Comisiones - Gastos - Desembolsos
-      const gananciaReal = interesGanado + moraGanada - comisiones - gastos - desembolsos;
-
-      return {
-        label,
-        startDate: format(start, "yyyy-MM-dd"),
-        endDate: format(end, "yyyy-MM-dd"),
-        totalCobrado,
-        capitalRecuperado,
-        interesGanado,
-        moraGanada,
-        desembolsos,
-        gastos,
-        comisiones,
-        depositos,
-        retiros,
-        flujoEfectivo,
-        gananciaReal,
-      };
-    });
-  }, [data, weeksBack]);
-
-  const handleExport = (type: "pdf" | "csv", tab: "flujo" | "ganancia") => {
-    const columns = tab === "flujo"
-      ? [
-          { header: "Semana", key: "label" },
-          { header: "Cobros", key: "totalCobrado", format: "money" as const },
-          { header: "Depósitos", key: "depositos", format: "money" as const },
-          { header: "Retiros", key: "retiros", format: "money" as const },
-          { header: "Gastos", key: "gastos", format: "money" as const },
-          { header: "Comisiones", key: "comisiones", format: "money" as const },
-          { header: "Flujo Neto", key: "flujoEfectivo", format: "money" as const },
-        ]
-      : [
-          { header: "Semana", key: "label" },
-          { header: "Interés", key: "interesGanado", format: "money" as const },
-          { header: "Mora", key: "moraGanada", format: "money" as const },
-          { header: "Comisiones", key: "comisiones", format: "money" as const },
-          { header: "Gastos", key: "gastos", format: "money" as const },
-          { header: "Desembolsos", key: "desembolsos", format: "money" as const },
-          { header: "Ganancia Real", key: "gananciaReal", format: "money" as const },
-        ];
-
-    const title = tab === "flujo" ? "Flujo de Efectivo Semanal" : "Ganancia Real Semanal";
-    const opts = { title, columns, rows: weeks };
+  const handleExport = (type: "pdf" | "csv") => {
+    if (!result) return;
+    const rows = [
+      { concepto: "Interés cobrado", monto: result.interesGanado },
+      { concepto: "Mora cobrada", monto: result.moraGanada },
+      { concepto: "(-) Comisiones", monto: -result.totalComisiones },
+      { concepto: "(-) Gastos", monto: -result.totalGastos },
+      { concepto: "= GANANCIA REAL", monto: result.gananciaReal },
+    ];
+    const opts = {
+      title: "Ganancia Real",
+      columns: [
+        { header: "Concepto", key: "concepto" },
+        { header: "Monto", key: "monto", format: "money" as const },
+      ],
+      rows,
+      dateRange: { from: format(desde, "dd/MM/yyyy"), to: format(hasta, "dd/MM/yyyy") },
+    };
     type === "pdf" ? exportToPDF(opts) : exportToCSV(opts);
   };
 
@@ -215,80 +146,79 @@ export default function ReporteSemanalPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <CalendarDays className="h-6 w-6 text-primary" />
-          Reporte Semanal
+          Reporte de Ganancia
         </h1>
-        <p className="text-muted-foreground text-sm">Flujo de efectivo y ganancia real semana a semana</p>
+        <p className="text-muted-foreground text-sm">Interés + Mora − Comisiones − Gastos = Ganancia Real</p>
+      </div>
+
+      {/* Date pickers */}
+      <div className="flex flex-wrap items-end gap-3">
+        <DatePicker label="Desde" date={desde} onChange={setDesde} />
+        <DatePicker label="Hasta" date={hasta} onChange={setHasta} />
+        <div className="flex gap-1">
+          <Button variant="outline" size="sm" onClick={() => handleExport("pdf")}>
+            <Download className="h-3.5 w-3.5 mr-1" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport("csv")}>
+            <Download className="h-3.5 w-3.5 mr-1" /> CSV
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
-      ) : weeks.length > 0 && (
+      ) : result && (
         <>
-          {/* KPIs — current week */}
+          {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KPICard label="Cobrado esta semana" value={$$(weeks[0].totalCobrado)} icon={<DollarSign className="h-4 w-4" />} />
-            <KPICard label="Ganancia real" value={$$(weeks[0].gananciaReal)} icon={<TrendingUp className="h-4 w-4" />} positive={weeks[0].gananciaReal >= 0} />
-            <KPICard label="Flujo de efectivo" value={$$(weeks[0].flujoEfectivo)} icon={<Wallet className="h-4 w-4" />} positive={weeks[0].flujoEfectivo >= 0} />
-            <KPICard label="Desembolsado" value={$$(weeks[0].desembolsos)} icon={<ArrowDownRight className="h-4 w-4" />} />
+            <KPICard label="Total cobrado" value={$$(result.totalCobrado)} icon={<DollarSign className="h-4 w-4" />} />
+            <KPICard label="Ganancia real" value={$$(result.gananciaReal)} icon={<TrendingUp className="h-4 w-4" />} positive={result.gananciaReal >= 0} />
+            <KPICard label="(-) Comisiones" value={$$(result.totalComisiones)} icon={<Percent className="h-4 w-4" />} />
+            <KPICard label="(-) Gastos" value={$$(result.totalGastos)} icon={<Receipt className="h-4 w-4" />} />
           </div>
 
-          <Tabs defaultValue="ganancia">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <TabsList>
-                <TabsTrigger value="ganancia">Ganancia Real</TabsTrigger>
-                <TabsTrigger value="flujo">Flujo de Efectivo</TabsTrigger>
-              </TabsList>
-              <div className="flex gap-1">
-                <Button variant="outline" size="sm" onClick={() => handleExport("pdf", "ganancia")}>
-                  <Download className="h-3.5 w-3.5 mr-1" /> PDF
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleExport("csv", "ganancia")}>
-                  <Download className="h-3.5 w-3.5 mr-1" /> CSV
-                </Button>
-              </div>
+          {/* Resumen */}
+          <Card className="overflow-hidden">
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Concepto</TableHead>
+                    <TableHead className="text-xs text-right">Monto</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <SummaryRow label="Interés cobrado" value={result.interesGanado} variant="income" />
+                  <SummaryRow label="Mora cobrada" value={result.moraGanada} variant="income" />
+                  <SummaryRow label="(-) Comisiones" value={result.totalComisiones} variant="expense" />
+                  <SummaryRow label="(-) Gastos" value={result.totalGastos} variant="expense" />
+                  <TableRow className="bg-primary/5 font-bold">
+                    <TableCell className="text-sm font-bold">= Ganancia Real</TableCell>
+                    <TableCell className={cn("text-sm text-right font-bold", result.gananciaReal >= 0 ? "text-success" : "text-destructive")}>
+                      {$$(result.gananciaReal)}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
+          </Card>
 
-            <TabsContent value="ganancia" className="mt-3">
-              <WeeklyTable
-                weeks={weeks}
-                columns={["Semana", "Interés", "Mora", "(-) Comisiones", "(-) Gastos", "(-) Desembolsos", "= Ganancia Real"]}
-                accessor={(w) => [
-                  w.label,
-                  $$(w.interesGanado),
-                  $$(w.moraGanada),
-                  $$(w.comisiones),
-                  $$(w.gastos),
-                  $$(w.desembolsos),
-                  $$(w.gananciaReal),
-                ]}
-                highlightLast
-              />
-            </TabsContent>
+          {/* Detalle de comisiones */}
+          {result.comisionesDetalle.length > 0 && (
+            <DetailSection title="Detalle de Comisiones" items={result.comisionesDetalle} total={result.totalComisiones} />
+          )}
 
-            <TabsContent value="flujo" className="mt-3">
-              <WeeklyTable
-                weeks={weeks}
-                columns={["Semana", "Cobros", "Depósitos", "(-) Retiros", "(-) Gastos", "(-) Comisiones", "= Flujo Neto"]}
-                accessor={(w) => [
-                  w.label,
-                  $$(w.totalCobrado),
-                  $$(w.depositos),
-                  $$(w.retiros),
-                  $$(w.gastos),
-                  $$(w.comisiones),
-                  $$(w.flujoEfectivo),
-                ]}
-                highlightLast
-              />
-            </TabsContent>
-          </Tabs>
+          {/* Detalle de gastos */}
+          {result.gastosDetalle.length > 0 && (
+            <DetailSection title="Detalle de Gastos" items={result.gastosDetalle} total={result.totalGastos} />
+          )}
         </>
       )}
     </div>
   );
 }
 
-/* ──────────────────── sub-components ──────────────────── */
+/* ──────────────── sub-components ──────────────── */
 
 function KPICard({ label, value, icon, positive }: { label: string; value: string; icon: React.ReactNode; positive?: boolean }) {
   return (
@@ -304,67 +234,89 @@ function KPICard({ label, value, icon, positive }: { label: string; value: strin
   );
 }
 
-interface WeekRow {
-  label: string;
-  [key: string]: any;
+function SummaryRow({ label, value, variant }: { label: string; value: number; variant: "income" | "expense" }) {
+  return (
+    <TableRow>
+      <TableCell className="text-sm">{label}</TableCell>
+      <TableCell className={cn("text-sm text-right font-medium", variant === "income" ? "text-success" : "text-destructive")}>
+        {variant === "expense" ? `- ${$$(value)}` : $$(value)}
+      </TableCell>
+    </TableRow>
+  );
 }
 
-function WeeklyTable({ weeks, columns, accessor, highlightLast }: {
-  weeks: WeekRow[];
-  columns: string[];
-  accessor: (w: any) => string[];
-  highlightLast?: boolean;
-}) {
+function DetailSection({ title, items, total }: { title: string; items: { concepto: string; monto: number; fecha: string }[]; total: number }) {
   return (
-    <>
+    <div>
+      <h3 className="text-sm font-semibold mb-2">{title}</h3>
       {/* Mobile */}
-      <div className="md:hidden space-y-2">
-        {weeks.map((w, i) => {
-          const row = accessor(w);
-          return (
-            <div key={i} className={cn("bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]", i === 0 && "ring-2 ring-primary/20")}>
-              <p className="font-semibold text-[13px] mb-1.5">{row[0]}</p>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-                {columns.slice(1).map((col, j) => (
-                  <div key={col} className="flex justify-between">
-                    <span className="text-muted-foreground">{col}</span>
-                    <span className={cn("font-medium", j === columns.length - 2 && "text-primary font-bold")}>{row[j + 1]}</span>
-                  </div>
-                ))}
-              </div>
+      <div className="md:hidden space-y-1.5">
+        {items.map((item, i) => (
+          <div key={i} className="bg-card rounded-lg border border-border p-2.5 flex justify-between items-center">
+            <div>
+              <p className="text-[12px] font-medium truncate max-w-[200px]">{item.concepto}</p>
+              <p className="text-[10px] text-muted-foreground">{item.fecha}</p>
             </div>
-          );
-        })}
+            <span className="text-[12px] font-semibold text-destructive">- {$$(item.monto)}</span>
+          </div>
+        ))}
+        <div className="flex justify-between px-2.5 pt-1 text-[12px] font-bold border-t">
+          <span>Total</span>
+          <span className="text-destructive">- {$$(total)}</span>
+        </div>
       </div>
-
       {/* Desktop */}
       <Card className="hidden md:block">
         <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                {columns.map((col, i) => (
-                  <TableHead key={col} className={cn("text-xs", i > 0 && "text-right")}>{col}</TableHead>
-                ))}
+                <TableHead className="text-xs">Concepto</TableHead>
+                <TableHead className="text-xs">Fecha</TableHead>
+                <TableHead className="text-xs text-right">Monto</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {weeks.map((w, i) => {
-                const row = accessor(w);
-                return (
-                  <TableRow key={i} className={cn(i === 0 && "bg-primary/5 font-medium")}>
-                    {row.map((cell, j) => (
-                      <TableCell key={j} className={cn("text-sm", j > 0 && "text-right", j === 0 && "font-medium", j === row.length - 1 && "font-bold text-primary")}>
-                        {cell}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })}
+              {items.map((item, i) => (
+                <TableRow key={i}>
+                  <TableCell className="text-sm">{item.concepto}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{item.fecha}</TableCell>
+                  <TableCell className="text-sm text-right text-destructive">- {$$(item.monto)}</TableCell>
+                </TableRow>
+              ))}
+              <TableRow className="bg-muted/50 font-bold">
+                <TableCell className="text-sm font-bold" colSpan={2}>Total</TableCell>
+                <TableCell className="text-sm text-right font-bold text-destructive">- {$$(total)}</TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </div>
       </Card>
-    </>
+    </div>
+  );
+}
+
+function DatePicker({ label, date, onChange }: { label: string; date: Date; onChange: (d: Date) => void }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="w-[150px] justify-start text-left font-normal">
+            <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
+            {format(date, "dd/MM/yyyy")}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={(d) => d && onChange(d)}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
