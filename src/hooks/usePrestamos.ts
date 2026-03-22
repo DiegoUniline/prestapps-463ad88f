@@ -144,22 +144,29 @@ async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const amortByPrestamo: Record<string, { saldo: number; saldoCapital: number; saldoInteres: number; mora: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number }> = {};
+  const amortByPrestamo: Record<string, { saldo: number; saldoCapital: number; saldoInteres: number; mora: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number; proximoVencimiento: string | null }> = {};
 
   for (const a of amortData) {
     if (!amortByPrestamo[a.prestamo_id]) {
-      amortByPrestamo[a.prestamo_id] = { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0 };
+      amortByPrestamo[a.prestamo_id] = { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0, proximoVencimiento: null };
     }
-    amortByPrestamo[a.prestamo_id].saldo += Number(a.saldo_total || 0);
-    amortByPrestamo[a.prestamo_id].saldoCapital += Number(a.saldo_capital || 0);
-    amortByPrestamo[a.prestamo_id].saldoInteres += Number(a.saldo_interes || 0);
-    amortByPrestamo[a.prestamo_id].mora += Number(a.saldo_mora || 0);
-    if (a.status === "Pagada") amortByPrestamo[a.prestamo_id].pagadas += 1;
+    const entry = amortByPrestamo[a.prestamo_id];
+    entry.saldo += Number(a.saldo_total || 0);
+    entry.saldoCapital += Number(a.saldo_capital || 0);
+    entry.saldoInteres += Number(a.saldo_interes || 0);
+    entry.mora += Number(a.saldo_mora || 0);
+    if (a.status === "Pagada") entry.pagadas += 1;
+    // Track next pending installment
+    if (Number(a.saldo_total || 0) > 0 && a.fecha_vencimiento >= today) {
+      if (!entry.proximoVencimiento || a.fecha_vencimiento < entry.proximoVencimiento) {
+        entry.proximoVencimiento = a.fecha_vencimiento;
+      }
+    }
     if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
-      amortByPrestamo[a.prestamo_id].tieneAtraso = true;
+      entry.tieneAtraso = true;
       const diffDays = Math.floor((new Date(today).getTime() - new Date(a.fecha_vencimiento).getTime()) / 86400000);
-      if (diffDays > amortByPrestamo[a.prestamo_id].diasAtraso) {
-        amortByPrestamo[a.prestamo_id].diasAtraso = diffDays;
+      if (diffDays > entry.diasAtraso) {
+        entry.diasAtraso = diffDays;
       }
     }
   }
