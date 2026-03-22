@@ -96,7 +96,7 @@ function useClienteInfo(clienteId: string | undefined) {
       return data;
     },
     enabled: !!clienteId,
-    staleTime: 30_000,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
