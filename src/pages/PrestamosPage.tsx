@@ -391,7 +391,7 @@ export default function PrestamosPage() {
   const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   // Grouping
-  const [groupBy, setGroupBy] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = usePersistedGroupBy("prestamos");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const groupByOptions = [
     { key: "estado", label: "Estado" },

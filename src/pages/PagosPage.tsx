@@ -183,7 +183,7 @@ export default function PagosPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
 
   // Grouping
-  const [groupBy, setGroupBy] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = usePersistedGroupBy("pagos");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const groupByOptions = [
     { key: "anulado", label: "Estado del pago" },

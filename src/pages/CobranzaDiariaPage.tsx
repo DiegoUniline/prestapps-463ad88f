@@ -326,7 +326,7 @@ export default function CobranzaDiariaPage() {
   const [showKpis, setShowKpis] = useState(false);
 
   // Grouping
-  const [groupByKey, setGroupByKey] = useState<string | null>(null);
+  const [groupByKey, setGroupByKey] = usePersistedGroupBy("cobranza");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const groupByOptions = [
     { key: "ruta", label: "Ruta" },
