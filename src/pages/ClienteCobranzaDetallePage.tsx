@@ -219,7 +219,7 @@ function usePagosCliente(clienteId: string | undefined) {
       return (pagos || []).map((p: any) => ({ ...p, idPrestamo: nameMap[p.prestamo_id] || "—" }));
     },
     enabled: !!clienteId,
-    staleTime: 15_000,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
