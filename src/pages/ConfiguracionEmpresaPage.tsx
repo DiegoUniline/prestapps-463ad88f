@@ -95,6 +95,7 @@ function DatosGeneralesTab() {
           telefono: form.telefono || null,
           direccion: form.direccion || null,
           dias_gracia: form.dias_gracia,
+          dias_por_vencer: form.dias_por_vencer,
           lada_pais: form.lada_pais || "52",
           moneda_simbolo: form.moneda_simbolo || "$",
           moneda_codigo: form.moneda_codigo || "USD",
