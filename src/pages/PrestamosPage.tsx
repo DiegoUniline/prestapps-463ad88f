@@ -559,18 +559,21 @@ export default function PrestamosPage() {
     else setSelectedRows(new Set(filtered.map((p) => p.id)));
   };
 
-  const totalPrestamos = prestamos.length;
-  const montoColocado = prestamos.reduce((s, p) => s + p.montoSolicitado, 0);
-  const porCobrar = prestamos.reduce((s, p) => s + p.saldo, 0);
-  const morosos = prestamos.filter((p) => p.mora > 0);
-  const totalMora = morosos.reduce((s, p) => s + p.mora, 0);
+  const kpis = useMemo(() => {
+    const source = tabFiltered;
+    const totalPrestamos = source.length;
+    const montoColocado = source.reduce((s, p) => s + p.montoSolicitado, 0);
+    const porCobrar = source.reduce((s, p) => s + p.saldo, 0);
+    const morosos = source.filter((p) => p.mora > 0);
+    const totalMora = morosos.reduce((s, p) => s + p.mora, 0);
 
-  const kpis = [
-    { label: "Total Préstamos", value: String(totalPrestamos), icon: FileText, accent: "text-primary" },
-    { label: "Monto Colocado", value: $$(montoColocado), icon: DollarSign, accent: "text-success" },
-    { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning" },
-    { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
-  ];
+    return [
+      { label: "Total Préstamos", value: String(totalPrestamos), icon: FileText, accent: "text-primary" },
+      { label: "Monto Colocado", value: $$(montoColocado), icon: DollarSign, accent: "text-success" },
+      { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning" },
+      { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
+    ];
+  }, [tabFiltered]);
 
   const tabCounts = useMemo(() => {
     const today = new Date();
