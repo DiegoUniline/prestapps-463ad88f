@@ -17,7 +17,7 @@ import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
 import { useAtendidos } from "@/hooks/useAtendidos";
