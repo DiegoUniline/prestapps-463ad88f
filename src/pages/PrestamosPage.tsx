@@ -174,6 +174,28 @@ const ALL_COLUMNS: ColumnDef[] = [
     },
   },
   {
+    key: "proximoVencimiento", label: "Próx. Venc.", sortKey: "proximoVencimiento" as any, defaultVisible: true,
+    render: (p) => p.proximoVencimiento
+      ? <span className="text-[12px] text-muted-foreground whitespace-nowrap">{fmtDate(p.proximoVencimiento)}</span>
+      : <span className="text-muted-foreground text-[12px]">—</span>,
+  },
+  {
+    key: "diasParaVencer", label: "Días p/ Vencer", sortKey: "diasParaVencer" as any, defaultVisible: true,
+    render: (p) => {
+      if (!p.proximoVencimiento || p.estado === "Liquidado" || p.estado === "Cancelado") {
+        return <span className="text-muted-foreground text-[12px]">—</span>;
+      }
+      const diff = Math.ceil((new Date(p.proximoVencimiento + "T12:00:00").getTime() - new Date().getTime()) / 86400000);
+      if (diff < 0) return <span className="text-muted-foreground text-[12px]">—</span>;
+      const color = diff <= 2 ? "bg-destructive text-destructive-foreground" : diff <= 7 ? "bg-warning text-warning-foreground" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+      return (
+        <span className={cn("inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold min-w-[32px]", color)}>
+          {diff}d
+        </span>
+      );
+    },
+  },
+  {
     key: "estado", label: "Estado", sortKey: "estado", defaultVisible: true,
     render: (p) => (
       <span className={cn(
