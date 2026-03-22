@@ -153,6 +153,7 @@ const App = () => (
               <Route path="/alertas" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><AlertasPage /></LazyPage></RoleGuard>} />
               <Route path="/renovacion" element={<RoleGuard allowed={["admin"]}><LazyPage><RenovacionPage /></LazyPage></RoleGuard>} />
               <Route path="/rentabilidad" element={<RoleGuard allowed={["admin"]}><LazyPage><RentabilidadPage /></LazyPage></RoleGuard>} />
+              <Route path="/reporte-semanal" element={<RoleGuard allowed={["admin"]}><LazyPage><ReporteSemanalPage /></LazyPage></RoleGuard>} />
               <Route path="/auditoria" element={<RoleGuard allowed={["admin"]}><LazyPage><AuditoriaPage /></LazyPage></RoleGuard>} />
               <Route path="/productividad" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><ProductividadPage /></LazyPage></RoleGuard>} />
               <Route path="/mi-suscripcion" element={<RoleGuard allowed={["admin"]}><LazyPage><MiSuscripcionPage /></LazyPage></RoleGuard>} />
