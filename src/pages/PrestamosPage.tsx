@@ -399,7 +399,7 @@ export default function PrestamosPage() {
   const [search, setSearch] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   // Derive activeTab from URL param or default
-  const activeTab = vistaParam === "liquidados" ? "liquidados"
+  const activeTab: string = vistaParam === "liquidados" ? "liquidados"
     : vistaParam === "atrasados" ? "atrasados"
     : vistaParam === "por_vencer" ? "por_vencer"
     : "todos";
