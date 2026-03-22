@@ -361,6 +361,8 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
 // ── Main page ─────────────────────────────────────────────────────
 export default function PrestamosPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const vistaParam = searchParams.get("vista"); // liquidados | atrasados | por_vencer
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { role, rutaIds, cobradorId } = useCurrentUserRole();
@@ -371,6 +373,22 @@ export default function PrestamosPage() {
   const { prestamoIds: atendidoIds, color: atendidoColor } = useAtendidos(empresaId);
   const { data: rutasRaw = [] } = useRutasOptions(empresaId);
 
+  // Fetch dias_por_vencer from empresa
+  const { data: empresaData } = useQuery({
+    queryKey: ["empresa-dias-vencer", empresaId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("empresas")
+        .select("dias_por_vencer")
+        .eq("id", empresaId)
+        .single();
+      return data as { dias_por_vencer: number } | null;
+    },
+    enabled: !!empresaId,
+    staleTime: 1000 * 60 * 10,
+  });
+  const diasPorVencer = empresaData?.dias_por_vencer ?? 7;
+
   const cajasOpts = cajasRaw.map((c) => c.nombre);
   const rutasOpts = rutasRaw.map((r) => r.nombre);
 
@@ -379,7 +397,15 @@ export default function PrestamosPage() {
 
   const [search, setSearch] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState("todos");
+  // Derive activeTab from URL param or default
+  const activeTab = vistaParam === "liquidados" ? "liquidados"
+    : vistaParam === "atrasados" ? "atrasados"
+    : vistaParam === "por_vencer" ? "por_vencer"
+    : "todos";
+  const setActiveTab = (tab: string) => {
+    if (tab === "todos") navigate("/prestamos", { replace: true });
+    else navigate(`/prestamos?vista=${tab}`, { replace: true });
+  };
 
   const [selEstado, setSelEstado] = useState<Set<string>>(new Set());
   const [selCaja, setSelCaja] = useState<Set<string>>(new Set());
