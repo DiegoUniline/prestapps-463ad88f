@@ -274,9 +274,6 @@ export default function EmpresasPage() {
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
-                </TableRow>
               ) : (
                 empresas.map((e) => {
                   const admins = adminMap[e.id] || [];
