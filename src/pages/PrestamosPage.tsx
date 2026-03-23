@@ -261,12 +261,16 @@ function useColumnVisibility(userId: string | undefined) {
 function MultiFilterDropdown({ label, options, selected, onChange }: {
   label: string; options: string[]; selected: Set<string>; onChange: (s: Set<string>) => void;
 }) {
+  const [search, setSearch] = React.useState("");
   const count = selected.size;
   const toggle = (v: string) => {
     const next = new Set(selected);
     next.has(v) ? next.delete(v) : next.add(v);
     onChange(next);
   };
+  const filtered = search.trim()
+    ? options.filter((o) => o.toLowerCase().includes(search.toLowerCase()))
+    : options;
 
   return (
     <Popover>
@@ -285,19 +289,35 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
           <ChevronDown className="h-3 w-3 opacity-60" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-48 p-2" align="start">
-        <div className="space-y-0.5">
-          {options.map((opt) => (
+      <PopoverContent className="w-52 p-0" align="start">
+        {options.length > 5 && (
+          <div className="flex items-center border-b px-3 py-2">
+            <Search className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar..."
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+        )}
+        <div className="max-h-[220px] overflow-y-auto p-2 space-y-0.5">
+          {filtered.length === 0 && (
+            <p className="py-3 text-center text-sm text-muted-foreground">Sin resultados</p>
+          )}
+          {filtered.map((opt) => (
             <label key={opt} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-[13px]">
               <Checkbox checked={selected.has(opt)} onCheckedChange={() => toggle(opt)} />
-              <span>{opt}</span>
+              <span className="truncate">{opt}</span>
             </label>
           ))}
         </div>
         {count > 0 && (
-          <Button variant="ghost" size="sm" className="w-full mt-1.5 h-7 text-xs" onClick={() => onChange(new Set())}>
-            Limpiar
-          </Button>
+          <div className="border-t p-2">
+            <Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => onChange(new Set())}>
+              Limpiar
+            </Button>
+          </div>
         )}
       </PopoverContent>
     </Popover>
