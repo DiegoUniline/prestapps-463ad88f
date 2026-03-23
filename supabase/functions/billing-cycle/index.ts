@@ -219,15 +219,13 @@ serve(async (req) => {
           if (isStripeBilled) {
             // Stripe will auto-charge — friendly heads-up
             await notifyEmpresaAdmins(supabase, sub.empresa_id,
-              `¡Hola! 👋\n\n` +
-              `Te informamos que hoy se generó tu factura de *${mesNombre}* para *${empresaNombre}*.\n\n` +
-              `📋 *Factura:* ${facNum}\n` +
-              `💰 *Monto:* ${formatMXN(total)} MXN\n` +
-              `📦 *Plan:* ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n\n` +
-              `💳 El cobro se procesará automáticamente a tu tarjeta registrada.\n\n` +
-              `Si tu pago no se procesa, tienes *${DIAS_GRACIA} días de gracia* antes de que se suspenda el servicio.\n\n` +
-              `¿Necesitas actualizar tu método de pago? Hazlo desde *Mi Suscripción* en la app. 📱\n\n` +
-              `Gracias por ser parte de *PrestApps*. 🚀`,
+              `Hola 👋 *${empresaNombre}*\n\n` +
+              `Gracias por usar *PrestApps*. Hemos generado tu factura del mes de *${mesNombre}*.\n\n` +
+              `🧾 *${facNum}*\n` +
+              `💵 *${formatMXN(total)} MXN* · ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n\n` +
+              `💳 Se cobrará automáticamente a tu tarjeta.\n` +
+              `Si el cobro falla, cuentas con *${DIAS_GRACIA} días* antes de que se pause tu servicio.\n\n` +
+              `¿Necesitas cambiar tu tarjeta? Entra a *Mi Suscripción* en la app. 📱`,
               "factura_generada",
             );
           } else {
