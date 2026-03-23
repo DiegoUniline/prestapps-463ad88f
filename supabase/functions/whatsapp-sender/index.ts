@@ -145,8 +145,8 @@ Deno.serve(async (req) => {
         .single();
 
       if (!template) {
-        return new Response(JSON.stringify({ error: "No hay plantilla configurada" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ success: false, error: `No hay plantilla configurada para "${templateTipo}". Configúrala en la pestaña Plantillas.` }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
