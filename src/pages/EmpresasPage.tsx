@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { fmtDate } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
@@ -100,11 +101,11 @@ export default function EmpresasPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("suscripciones")
-        .select("empresa_id, estado, num_usuarios, plan_id, planes(nombre, precio_base_mes)")
+        .select("empresa_id, estado, num_usuarios, plan_id, fecha_inicio, fecha_vencimiento, planes(nombre, precio_base_mes)")
         .neq("estado", "cancelada")
         .order("creado_en", { ascending: false });
       if (error) throw error;
-      const map: Record<string, { estado: string; num_usuarios: number; plan_nombre: string; precio: number }> = {};
+      const map: Record<string, { estado: string; num_usuarios: number; plan_nombre: string; precio: number; fecha_inicio: string | null; fecha_vencimiento: string | null }> = {};
       for (const s of data || []) {
         if (!map[s.empresa_id]) {
           map[s.empresa_id] = {
@@ -112,6 +113,8 @@ export default function EmpresasPage() {
             num_usuarios: s.num_usuarios,
             plan_nombre: (s.planes as any)?.nombre || "Manual",
             precio: (s.planes as any)?.precio_base_mes || 0,
+            fecha_inicio: s.fecha_inicio,
+            fecha_vencimiento: s.fecha_vencimiento,
           };
         }
       }
@@ -254,6 +257,8 @@ export default function EmpresasPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Usuarios</TableHead>
+                <TableHead>Alta</TableHead>
+                <TableHead>Vencimiento</TableHead>
                 <TableHead>RUC / NIT</TableHead>
                 <TableHead>Administrador</TableHead>
                 <TableHead>Estado</TableHead>
@@ -263,11 +268,11 @@ export default function EmpresasPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
                 </TableRow>
               ) : empresas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
                 </TableRow>
               ) : (
                 empresas.map((e) => {
@@ -310,6 +315,14 @@ export default function EmpresasPage() {
                         ) : (
                           <span>{userCount} <span className="text-muted-foreground text-xs">(sin plan)</span></span>
                         )}
+                      </TableCell>
+                      <TableCell className="text-xs">{fmtDate(e.created_at)}</TableCell>
+                      <TableCell className="text-xs">
+                        {sub?.fecha_vencimiento ? (
+                          <span className={new Date(sub.fecha_vencimiento) < new Date() ? "text-destructive font-semibold" : ""}>
+                            {fmtDate(sub.fecha_vencimiento)}
+                          </span>
+                        ) : "—"}
                       </TableCell>
                       <TableCell>{e.ruc || "—"}</TableCell>
                       <TableCell>
