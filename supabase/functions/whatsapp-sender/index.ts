@@ -176,24 +176,48 @@ Deno.serve(async (req) => {
 
       const { data: cuotas } = await query;
       let sent = 0, errors = 0;
-      const detalles: { cliente: string; telefono: string; cuota: string; prestamo: string; status: string; error?: string }[] = [];
+      const detalles: { cliente: string; telefono: string; cuotas_detalle: string; monto_total: string; num_cuotas: number; status: string; error?: string }[] = [];
 
+      // Group cuotas by client (using cliente_id from prestamo)
+      const clienteMap = new Map<string, { cliente: any; cuotasList: any[] }>();
       for (const cuota of (cuotas || [])) {
         const prestamo = (cuota as any).prestamos;
         const cliente = prestamo?.clientes;
+        const clienteKey = prestamo?.cliente_id || cuota.prestamo_id;
+        if (!clienteMap.has(clienteKey)) {
+          clienteMap.set(clienteKey, { cliente, cuotasList: [] });
+        }
+        clienteMap.get(clienteKey)!.cuotasList.push({ ...cuota, prestamo });
+      }
+
+      for (const [, { cliente, cuotasList }] of clienteMap) {
         if (!cliente?.telefono) {
-          detalles.push({ cliente: cliente?.nombre_completo || "Sin nombre", telefono: "Sin teléfono", cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: "omitido", error: "Sin teléfono registrado" });
+          const cuotasResumen = cuotasList.map(c => `#${c.num_cuota}`).join(", ");
+          const montoTotal = cuotasList.reduce((sum: number, c: any) => sum + (c.saldo_total || 0), 0);
+          detalles.push({ cliente: cliente?.nombre_completo || "Sin nombre", telefono: "Sin teléfono", cuotas_detalle: cuotasResumen, monto_total: montoTotal.toFixed(2), num_cuotas: cuotasList.length, status: "omitido", error: "Sin teléfono registrado" });
           continue;
         }
 
+        // Build cuotas detail lines for the message
+        const montoTotal = cuotasList.reduce((sum: number, c: any) => sum + (c.saldo_total || 0), 0);
+        const cuotasNums = cuotasList.map(c => `#${c.num_cuota}`).join(", ");
+        const cuotasDetalle = cuotasList.map(c => {
+          const fecha = c.fecha_vencimiento ? c.fecha_vencimiento.split("-").reverse().join("/") : "";
+          return `• Cuota #${c.num_cuota} — ${fecha} — $${(c.saldo_total || 0).toFixed(2)}`;
+        }).join("\n");
+
+        const firstPrestamo = cuotasList[0]?.prestamo;
         const vars = {
           cliente: cliente.nombre_completo,
           telefono: cliente.telefono,
-          cuota: String(cuota.num_cuota),
-          total_cuotas: String(prestamo.num_cuotas),
-          monto_cuota: cuota.saldo_total?.toFixed(2) || "0.00",
-          fecha_vencimiento: cuota.fecha_vencimiento ? cuota.fecha_vencimiento.split("-").reverse().join("/") : "",
-          monto_prestamo: prestamo.monto_solicitado?.toFixed(2) || "0.00",
+          cuota: cuotasNums,
+          num_cuotas_vencidas: String(cuotasList.length),
+          total_cuotas: String(firstPrestamo?.num_cuotas || ""),
+          monto_cuota: montoTotal.toFixed(2),
+          monto_total: montoTotal.toFixed(2),
+          fecha_vencimiento: cuotasList[0]?.fecha_vencimiento ? cuotasList[0].fecha_vencimiento.split("-").reverse().join("/") : "",
+          monto_prestamo: firstPrestamo?.monto_solicitado?.toFixed(2) || "0.00",
+          detalle_cuotas: cuotasDetalle,
         };
 
         const message = replaceVariables(template.mensaje, vars);
@@ -213,23 +237,24 @@ Deno.serve(async (req) => {
             mensaje: message,
             status: result.success ? "enviado" : "error",
             error_detalle: result.error || null,
-            referencia_id: cuota.prestamo_id,
+            referencia_id: cuotasList[0]?.prestamo_id || null,
           });
 
           if (result.success) {
             sent++;
-            await supabase.from("amortizacion").update({ avisado: true }).eq("id", cuota.id);
+            const cuotaIds = cuotasList.map((c: any) => c.id);
+            await supabase.from("amortizacion").update({ avisado: true }).in("id", cuotaIds);
           } else {
             errors++;
           }
-          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: result.success ? "enviado" : "error", error: result.error || undefined });
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuotas_detalle: cuotasNums, monto_total: montoTotal.toFixed(2), num_cuotas: cuotasList.length, status: result.success ? "enviado" : "error", error: result.error || undefined });
         } catch (e: any) {
           errors++;
-          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: "error", error: e.message });
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuotas_detalle: cuotasNums, monto_total: montoTotal.toFixed(2), num_cuotas: cuotasList.length, status: "error", error: e.message });
         }
       }
 
-      return new Response(JSON.stringify({ success: true, sent, errors, total: (cuotas || []).length, detalles }), {
+      return new Response(JSON.stringify({ success: true, sent, errors, total: clienteMap.size, detalles }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
