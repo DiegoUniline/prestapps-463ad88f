@@ -181,8 +181,10 @@ export default function PagosPage() {
   const [regDesde, setRegDesde] = usePersistedDate("pagos", "regDesde");
   const [regHasta, setRegHasta] = usePersistedDate("pagos", "regHasta");
 
-  const [sortKey, setSortKey] = usePersistedString("pagos", "sortKey") as unknown as [SortKey | null, (v: any) => void];
-  const [sortDir, setSortDir] = usePersistedString("pagos", "sortDir") as unknown as ["asc" | "desc" | null, (v: any) => void];
+  const [sortKeyRaw, setSortKey] = usePersistedString("pagos", "sortKey");
+  const [sortDirRaw, setSortDir] = usePersistedString("pagos", "sortDir");
+  const sortKey = (sortKeyRaw || null) as SortKey | null;
+  const sortDir = (sortDirRaw || null) as "asc" | "desc" | null;
 
   // Grouping
   const [groupBy, setGroupBy] = usePersistedGroupBy("pagos");

@@ -437,8 +437,10 @@ export default function PrestamosPage() {
   const [regDesde, setRegDesde] = usePersistedDate("prestamos", "regDesde");
   const [regHasta, setRegHasta] = usePersistedDate("prestamos", "regHasta");
 
-  const [sortKey, setSortKey] = usePersistedString("prestamos", "sortKey") as unknown as [SortKey | null, (v: any) => void];
-  const [sortDir, setSortDir] = usePersistedString("prestamos", "sortDir") as unknown as ["asc" | "desc" | null, (v: any) => void];
+  const [sortKeyRaw, setSortKey] = usePersistedString("prestamos", "sortKey");
+  const [sortDirRaw, setSortDir] = usePersistedString("prestamos", "sortDir");
+  const sortKey = (sortKeyRaw || null) as SortKey | null;
+  const sortDir = (sortDirRaw || null) as "asc" | "desc" | null;
   const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   // Grouping
