@@ -267,6 +267,7 @@ export default function EmpresasPage() {
                 <TableHead>Usuarios</TableHead>
                 <TableHead>Alta</TableHead>
                 <TableHead>Vencimiento</TableHead>
+                <TableHead>Lada</TableHead>
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Correo Admin</TableHead>
                 <TableHead>Estado</TableHead>
