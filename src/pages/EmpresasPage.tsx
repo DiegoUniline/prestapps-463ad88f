@@ -100,11 +100,11 @@ export default function EmpresasPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("suscripciones")
-        .select("empresa_id, estado, num_usuarios, plan_id, planes(nombre, precio_base_mes)")
+        .select("empresa_id, estado, num_usuarios, plan_id, fecha_inicio, fecha_vencimiento, planes(nombre, precio_base_mes)")
         .neq("estado", "cancelada")
         .order("creado_en", { ascending: false });
       if (error) throw error;
-      const map: Record<string, { estado: string; num_usuarios: number; plan_nombre: string; precio: number }> = {};
+      const map: Record<string, { estado: string; num_usuarios: number; plan_nombre: string; precio: number; fecha_inicio: string | null; fecha_vencimiento: string | null }> = {};
       for (const s of data || []) {
         if (!map[s.empresa_id]) {
           map[s.empresa_id] = {
@@ -112,6 +112,8 @@ export default function EmpresasPage() {
             num_usuarios: s.num_usuarios,
             plan_nombre: (s.planes as any)?.nombre || "Manual",
             precio: (s.planes as any)?.precio_base_mes || 0,
+            fecha_inicio: s.fecha_inicio,
+            fecha_vencimiento: s.fecha_vencimiento,
           };
         }
       }
