@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
 
       const { data: cuotas } = await query;
       let sent = 0, errors = 0;
-      const detalles: { cliente: string; telefono: string; cuota: string; status: string; error?: string }[] = [];
+      const detalles: { cliente: string; telefono: string; cuota: string; prestamo: string; status: string; error?: string }[] = [];
 
       for (const cuota of (cuotas || [])) {
         const prestamo = (cuota as any).prestamos;
