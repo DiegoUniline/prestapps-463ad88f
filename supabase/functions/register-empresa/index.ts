@@ -27,7 +27,7 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { email, password, nombre_completo, nombre_empresa, telefono } = await req.json();
+    const { email, password, nombre_completo, nombre_empresa, telefono, lada_pais } = await req.json();
 
     if (!email || !password || !nombre_completo || !nombre_empresa) {
       throw new Error("Faltan campos requeridos: email, password, nombre_completo, nombre_empresa");
