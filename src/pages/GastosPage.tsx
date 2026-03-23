@@ -337,16 +337,13 @@ export default function GastosPage() {
             </div>
             <div>
               <Label>Categoría *</Label>
-              <Select value={categoria} onValueChange={setCategoria}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIAS_GASTO.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={CATEGORIAS_GASTO.map((c) => ({ value: c, label: c }))}
+                value={categoria}
+                onValueChange={setCategoria}
+                placeholder="Seleccionar categoría"
+                searchPlaceholder="Buscar categoría..."
+              />
             </div>
             <div>
               <Label>Concepto *</Label>
