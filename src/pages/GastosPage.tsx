@@ -13,7 +13,7 @@ import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Receipt, Wallet, TrendingDown, Loader2, Filter } from "lucide-react";
+import { Plus, Search, Receipt, TrendingDown, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { $$ } from "@/lib/utils";
