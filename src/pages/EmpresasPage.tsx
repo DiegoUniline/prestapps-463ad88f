@@ -277,11 +277,11 @@ export default function EmpresasPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
-                </TableRow>
-              ) : empresas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
+                   <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
+                 </TableRow>
+               ) : empresas.length === 0 ? (
+                 <TableRow>
+                   <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
                 </TableRow>
               ) : (
                 empresas.map((e) => {
