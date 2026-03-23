@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
           detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: result.success ? "enviado" : "error", error: result.error || undefined });
         } catch (e: any) {
           errors++;
-          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, status: "error", error: e.message });
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: "error", error: e.message });
         }
       }
 
