@@ -13,10 +13,12 @@ import { Eye, EyeOff } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   MessageSquare, Settings, FileText, Send, Clock, AlertTriangle,
-  CheckCircle2, XCircle, Loader2, Info, RefreshCw,
+  CheckCircle2, XCircle, Loader2, Info, RefreshCw, Ban,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
