@@ -212,7 +212,7 @@ export default function WhatsAppConfigPage() {
     sent: number;
     errors: number;
     total: number;
-    detalles: { cliente: string; telefono: string; cuota: string; prestamo: string; status: string; error?: string }[];
+    detalles: { cliente: string; telefono: string; cuotas_detalle: string; monto_total: string; num_cuotas: number; status: string; error?: string }[];
   }>({ open: false, type: "", sent: 0, errors: 0, total: 0, detalles: [] });
 
   const sendReminders = async (type: "dia_antes" | "vencido") => {
