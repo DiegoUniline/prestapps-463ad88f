@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
           )
         `)
         .eq("empresa_id", empresa_id)
-        .in("status", ["Pendiente", "Parcial"]);
+        .in("status", ["Pendiente", "Parcial", "Vencida"]);
 
       if (reminder_type === "dia_antes") {
         const tomorrow = new Date();
