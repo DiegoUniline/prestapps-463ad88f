@@ -360,15 +360,15 @@ serve(async (req) => {
           .single();
 
         await notifyEmpresaAdmins(supabase, sub.empresa_id,
-          `¡Hola! ⚠️\n\n` +
-          `Lamentamos informarte que la suscripción de *${empData?.nombre || "tu empresa"}* ha sido *suspendida* porque no recibimos tu pago dentro del periodo de gracia.\n\n` +
-          `🔒 Tu acceso a los módulos operativos ha sido restringido temporalmente.\n\n` +
-          `Para reactivar tu cuenta de inmediato:\n` +
-          `1️⃣ Abre la app y ve a *Mi Suscripción*\n` +
-          `2️⃣ Actualiza tu método de pago\n` +
-          `3️⃣ Tu acceso se restaurará al instante ✅\n\n` +
-          `Tus datos están seguros y no se perderán. 🔐\n\n` +
-          `¿Tienes problemas? Responde a este mensaje y te ayudamos. 💬`,
+          `⚠️ *${empData?.nombre || "tu empresa"}* — Servicio pausado\n\n` +
+          `No recibimos tu pago a tiempo y tu cuenta ha sido suspendida temporalmente.\n\n` +
+          `🔒 Los módulos operativos están restringidos hasta que regularices tu pago.\n\n` +
+          `Para reactivar al instante:\n` +
+          `1️⃣ Abre la app → *Mi Suscripción*\n` +
+          `2️⃣ Registra o actualiza tu método de pago\n` +
+          `3️⃣ Tu acceso se restaura de inmediato ✅\n\n` +
+          `Tus datos están seguros, no se perderá nada. 🔐\n\n` +
+          `¿Necesitas ayuda? Responde aquí y te apoyamos. 💬`,
           "suscripcion_suspendida",
         );
       } else {
