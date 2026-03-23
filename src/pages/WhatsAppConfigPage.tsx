@@ -191,11 +191,31 @@ export default function WhatsAppConfigPage() {
       const { data, error } = await supabase.functions.invoke("whatsapp-sender", {
         body: { action: "send-reminder", empresa_id: empresaId, reminder_type: type },
       });
-      if (error) throw error;
+      if (error) {
+        // Check if it's the "no template" error
+        try {
+          const parsed = JSON.parse(error.message || "{}");
+          if (parsed?.error?.includes("plantilla")) {
+            toast.error(
+              `Para enviar avisos de "${type === "dia_antes" ? "día antes" : "vencidos"}" necesitas crear una plantilla. Ve a la pestaña "Plantillas" y agrega una de tipo "${type === "dia_antes" ? "aviso_dia_antes" : "aviso_vencido"}".`,
+              { duration: 8000 }
+            );
+            return;
+          }
+        } catch {}
+        throw error;
+      }
+      if (data?.error?.includes("plantilla")) {
+        toast.error(
+          `Para enviar avisos de "${type === "dia_antes" ? "día antes" : "vencidos"}" necesitas crear una plantilla. Ve a la pestaña "Plantillas" y agrega una de tipo "${type === "dia_antes" ? "aviso_dia_antes" : "aviso_vencido"}".`,
+          { duration: 8000 }
+        );
+        return;
+      }
       toast.success(`Enviados: ${data.sent}, Errores: ${data.errors}`);
       refetchLogs();
     } catch (e: any) {
-      toast.error("Error: " + e.message);
+      toast.error("Error al enviar avisos: " + (e.message || "Intenta de nuevo"));
     } finally {
       setSendingReminder(null);
     }
