@@ -62,6 +62,7 @@ serve(async (req) => {
         max_usuarios: 3,
         activa: true,
         telefono: telefono || null,
+        lada_pais: lada_pais || "52",
       })
       .select()
       .single();
