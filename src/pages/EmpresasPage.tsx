@@ -26,6 +26,13 @@ const PLAN_CONFIG: Record<string, { label: string; maxUsers: number; price: stri
   enterprise: { label: "Enterprise", maxUsers: 999, price: "$1,999/mes", icon: <Crown className="h-3.5 w-3.5" /> },
 };
 
+const LADA_FLAGS: Record<string, string> = {
+  "52": "🇲🇽", "1": "🇺🇸", "502": "🇬🇹", "503": "🇸🇻", "504": "🇭🇳",
+  "505": "🇳🇮", "506": "🇨🇷", "507": "🇵🇦", "51": "🇵🇪", "57": "🇨🇴",
+  "56": "🇨🇱", "54": "🇦🇷", "593": "🇪🇨", "591": "🇧🇴", "595": "🇵🇾",
+  "598": "🇺🇾", "58": "🇻🇪", "809": "🇩🇴", "34": "🇪🇸",
+};
+
 interface Empresa {
   id: string;
   nombre: string;
@@ -37,6 +44,7 @@ interface Empresa {
   created_at: string | null;
   plan: string;
   max_usuarios: number;
+  lada_pais: string;
 }
 
 interface EmpresaForm {
