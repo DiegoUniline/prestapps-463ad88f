@@ -257,6 +257,8 @@ export default function EmpresasPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Plan</TableHead>
                 <TableHead>Usuarios</TableHead>
+                <TableHead>Alta</TableHead>
+                <TableHead>Vencimiento</TableHead>
                 <TableHead>RUC / NIT</TableHead>
                 <TableHead>Administrador</TableHead>
                 <TableHead>Estado</TableHead>
