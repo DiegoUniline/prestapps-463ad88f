@@ -333,11 +333,10 @@ export default function EmpresasPage() {
                           </span>
                         ) : "—"}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {e.telefono ? (
-                          <span>{LADA_FLAGS[e.lada_pais] || "🌐"} +{e.lada_pais} {e.telefono.replace(/^\+?\d{1,3}/, "")}</span>
-                        ) : "—"}
+                      <TableCell className="text-xs text-center">
+                        {LADA_FLAGS[e.lada_pais] || "🌐"} +{e.lada_pais}
                       </TableCell>
+                      <TableCell className="text-xs">{e.telefono || "—"}</TableCell>
                       <TableCell>
                         {admins.length > 0 ? (
                           <div className="space-y-0.5">
