@@ -206,6 +206,14 @@ export default function WhatsAppConfigPage() {
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [showToken, setShowToken] = useState(false);
   const [editingToken, setEditingToken] = useState(false);
+  const [reminderResults, setReminderResults] = useState<{
+    open: boolean;
+    type: string;
+    sent: number;
+    errors: number;
+    total: number;
+    detalles: { cliente: string; telefono: string; cuota: string; status: string; error?: string }[];
+  }>({ open: false, type: "", sent: 0, errors: 0, total: 0, detalles: [] });
 
   const sendReminders = async (type: "dia_antes" | "vencido") => {
     setSendingReminder(type);
@@ -214,7 +222,6 @@ export default function WhatsAppConfigPage() {
         body: { action: "send-reminder", empresa_id: empresaId, reminder_type: type },
       });
       if (error) {
-        // Check if it's the "no template" error
         try {
           const parsed = JSON.parse(error.message || "{}");
           if (parsed?.error?.includes("plantilla")) {
@@ -234,7 +241,15 @@ export default function WhatsAppConfigPage() {
         );
         return;
       }
-      toast.success(`Enviados: ${data.sent}, Errores: ${data.errors}`);
+      // Show results dialog
+      setReminderResults({
+        open: true,
+        type: type === "dia_antes" ? "Día antes" : "Vencidos",
+        sent: data.sent || 0,
+        errors: data.errors || 0,
+        total: data.total || 0,
+        detalles: data.detalles || [],
+      });
       refetchLogs();
     } catch (e: any) {
       toast.error("Error al enviar avisos: " + (e.message || "Intenta de nuevo"));
