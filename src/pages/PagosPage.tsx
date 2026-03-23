@@ -135,19 +135,17 @@ function MultiFilterDropdown({ label, options, selected, onChange }: {
           <ChevronDown className="h-3 w-3 opacity-60" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-52 p-0" align="start">
-        {options.length > 5 && (
-          <div className="flex items-center border-b px-3 py-2">
-            <Search className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-        )}
-        <div className="max-h-[220px] overflow-y-auto p-2 space-y-0.5">
+      <PopoverContent className="w-56 p-0 overflow-hidden" align="start">
+        <div className="flex items-center border-b px-3 py-2">
+          <Search className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar..."
+            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          />
+        </div>
+        <div className="max-h-[200px] overflow-y-auto p-2 space-y-0.5">
           {filtered.length === 0 && (
             <p className="py-3 text-center text-sm text-muted-foreground">Sin resultados</p>
           )}
