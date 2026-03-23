@@ -71,8 +71,8 @@ const ALL_COLUMNS: ColumnDef[] = [
       <div className="flex items-center gap-2">
         <div className="relative shrink-0">
           <div className="w-7 h-7 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-            {p.fotoCliente ? (
-              <img src={p.fotoCliente} alt={p.cliente} className="w-full h-full object-cover" />
+            {p.clienteFoto ? (
+              <img src={p.clienteFoto} alt={p.cliente} className="w-full h-full object-cover" />
             ) : (
               <span className="text-[10px] font-semibold text-muted-foreground">
                 {p.cliente?.charAt(0)?.toUpperCase()}
