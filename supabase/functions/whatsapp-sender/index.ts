@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
         const prestamo = (cuota as any).prestamos;
         const cliente = prestamo?.clientes;
         if (!cliente?.telefono) {
-          detalles.push({ cliente: cliente?.nombre_completo || "Sin nombre", telefono: "Sin teléfono", cuota: `#${cuota.num_cuota}`, status: "omitido", error: "Sin teléfono registrado" });
+          detalles.push({ cliente: cliente?.nombre_completo || "Sin nombre", telefono: "Sin teléfono", cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: "omitido", error: "Sin teléfono registrado" });
           continue;
         }
 
