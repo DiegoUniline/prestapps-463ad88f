@@ -67,26 +67,15 @@ const ALL_COLUMNS: ColumnDef[] = [
   },
   {
     key: "cliente", label: "Cliente", sortKey: "cliente", defaultVisible: true,
-    render: (p, { setLightboxPhoto, atendidoIds, atendidoColor }) => (
+    render: (p, { atendidoIds, atendidoColor }) => (
       <div className="flex items-center gap-2">
-        <div className="relative">
-          <Avatar
-            className={cn("h-7 w-7 shrink-0", p.clienteFoto && "cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all")}
-            onClick={(e) => { if (p.clienteFoto) { e.stopPropagation(); setLightboxPhoto({ src: p.clienteFoto, alt: p.cliente }); } }}
-          >
-            {p.clienteFoto ? <AvatarImage src={p.clienteFoto} alt={p.cliente} /> : null}
-            <AvatarFallback className="text-[10px] font-semibold bg-primary/10 text-primary">
-              {p.cliente.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          {atendidoIds?.has(p.id) && (
-            <span
-              className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card animate-pulse"
-              style={{ backgroundColor: atendidoColor || "#22c55e" }}
-              title="Atendido esta semana"
-            />
-          )}
-        </div>
+        {atendidoIds?.has(p.id) && (
+          <span
+            className="w-3 h-3 shrink-0 rounded-full animate-pulse shadow-sm"
+            style={{ backgroundColor: atendidoColor || "#22c55e" }}
+            title="Atendido esta semana"
+          />
+        )}
         <div className="min-w-0">
           <span className="font-medium text-[13px] whitespace-nowrap">{p.cliente}</span>
           {p.ultimoPagoFecha && (
