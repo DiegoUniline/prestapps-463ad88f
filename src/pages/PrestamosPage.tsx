@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { usePersistedString, usePersistedSet, usePersistedDate } from "@/hooks/usePersistedFilters";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
