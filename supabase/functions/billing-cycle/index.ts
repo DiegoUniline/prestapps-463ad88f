@@ -231,15 +231,13 @@ serve(async (req) => {
           } else {
             // Manual / no-stripe — let them know they need to pay
             await notifyEmpresaAdmins(supabase, sub.empresa_id,
-              `¡Hola! 👋\n\n` +
-              `Se ha generado tu factura de *${mesNombre}* para *${empresaNombre}*.\n\n` +
-              `📋 *Factura:* ${facNum}\n` +
-              `💰 *Monto:* ${formatMXN(total)} MXN\n` +
-              `📦 *Plan:* ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n` +
-              `📅 *Fecha límite:* ${formatDate(fechaVencimiento)}\n\n` +
-              `Tienes *${DIAS_GRACIA} días de gracia* para realizar tu pago sin interrupción del servicio.\n\n` +
-              `Ingresa a *Mi Suscripción* en la app para registrar tu método de pago. 📱\n\n` +
-              `¡Gracias por confiar en *PrestApps*! 🚀`,
+              `Hola 👋 *${empresaNombre}*\n\n` +
+              `Gracias por usar *PrestApps*. Tu factura de *${mesNombre}* ya está lista.\n\n` +
+              `🧾 *${facNum}*\n` +
+              `💵 *${formatMXN(total)} MXN* · ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n` +
+              `📅 Fecha límite: *${formatDate(fechaVencimiento)}*\n\n` +
+              `Tienes *${DIAS_GRACIA} días* para pagar sin que se interrumpa tu servicio.\n\n` +
+              `👉 Entra a *Mi Suscripción* en la app para completar tu pago. 📱`,
               "factura_generada",
             );
           }
