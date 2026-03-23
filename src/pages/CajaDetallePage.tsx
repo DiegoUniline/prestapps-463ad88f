@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -657,10 +657,14 @@ export default function CajaDetallePage() {
           <div className="px-5 space-y-3 pb-4">
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
-              <Select value={cajaDestinoId} onValueChange={setCajaDestinoId}>
-                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar destino" /></SelectTrigger>
-                <SelectContent>{allCajas.filter(c => c.id !== id).map(c => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(Number(c.saldo_actual || 0))}</SelectItem>)}</SelectContent>
-              </Select>
+              <SearchableSelect
+                options={allCajas.filter(c => c.id !== id).map(c => ({ value: c.id, label: c.nombre, subtitle: $$(Number(c.saldo_actual || 0)) }))}
+                value={cajaDestinoId}
+                onValueChange={setCajaDestinoId}
+                placeholder="Seleccionar destino"
+                searchPlaceholder="Buscar caja..."
+                triggerClassName="mt-1"
+              />
             </div>
             <div><Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Monto ($)</Label><Input type="number" step="0.01" min="0" placeholder="0.00" value={monto} onChange={e => setMonto(e.target.value)} className="mt-1 h-9 text-[13px]" /></div>
             <div><Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Concepto</Label><Textarea value={concepto} onChange={e => setConcepto(e.target.value)} placeholder="Transferencia" className="mt-1 text-[13px] min-h-[60px]" /></div>

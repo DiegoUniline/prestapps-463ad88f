@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Receipt, Wallet, TrendingDown, Loader2, Filter } from "lucide-react";
+import { Plus, Search, Receipt, TrendingDown, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { $$ } from "@/lib/utils";
@@ -233,18 +233,14 @@ export default function GastosPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar gasto..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-          <SelectTrigger className="w-40">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todas</SelectItem>
-            {CATEGORIAS_GASTO.map((c) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          options={[{ value: "todos", label: "Todas" }, ...CATEGORIAS_GASTO.map((c) => ({ value: c, label: c }))]}
+          value={filtroCategoria}
+          onValueChange={setFiltroCategoria}
+          placeholder="Categoría"
+          searchPlaceholder="Buscar categoría..."
+          triggerClassName="w-40"
+        />
       </div>
 
       {/* Table / Cards */}
@@ -331,34 +327,23 @@ export default function GastosPage() {
           <div className="space-y-4">
             <div>
               <Label>Caja de origen *</Label>
-              <Select value={cajaId} onValueChange={setCajaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar caja" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cajas.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <div className="flex items-center justify-between w-full gap-4">
-                        <span>{c.nombre}</span>
-                        <span className="text-xs text-muted-foreground">{$$(Number(c.saldo_actual || 0))}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={cajas.map((c) => ({ value: c.id, label: c.nombre, subtitle: $$(Number(c.saldo_actual || 0)) }))}
+                value={cajaId}
+                onValueChange={setCajaId}
+                placeholder="Seleccionar caja"
+                searchPlaceholder="Buscar caja..."
+              />
             </div>
             <div>
               <Label>Categoría *</Label>
-              <Select value={categoria} onValueChange={setCategoria}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIAS_GASTO.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={CATEGORIAS_GASTO.map((c) => ({ value: c, label: c }))}
+                value={categoria}
+                onValueChange={setCategoria}
+                placeholder="Seleccionar categoría"
+                searchPlaceholder="Buscar categoría..."
+              />
             </div>
             <div>
               <Label>Concepto *</Label>

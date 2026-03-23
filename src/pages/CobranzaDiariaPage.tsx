@@ -6,7 +6,7 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -760,30 +760,35 @@ export default function CobranzaDiariaPage() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
         </div>
-        <Select value={filtroRuta} onValueChange={setFiltroRuta}>
-          <SelectTrigger className="w-[160px] h-8 text-[13px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas las rutas</SelectItem>
-            {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filtroCobrador} onValueChange={setFiltroCobrador}>
-          <SelectTrigger className="w-[160px] h-8 text-[13px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos los cobradores</SelectItem>
-            {cobradoresUnicos.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-          <SelectTrigger className="w-[150px] h-8 text-[13px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="pendientes">Pendientes</SelectItem>
-            <SelectItem value="cobradas">Cobradas</SelectItem>
-            <SelectItem value="vencidas">Vencidas</SelectItem>
-            <SelectItem value="prometidas">Prometidas</SelectItem>
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          options={[{ value: "todas", label: "Todas las rutas" }, ...rutas.map((r) => ({ value: r.id, label: r.nombre }))]}
+          value={filtroRuta}
+          onValueChange={setFiltroRuta}
+          placeholder="Ruta"
+          searchPlaceholder="Buscar ruta..."
+          triggerClassName="w-[160px] h-8 text-[13px]"
+        />
+        <SearchableSelect
+          options={[{ value: "todos", label: "Todos los cobradores" }, ...cobradoresUnicos.map((c) => ({ value: c.id, label: c.nombre }))]}
+          value={filtroCobrador}
+          onValueChange={setFiltroCobrador}
+          placeholder="Cobrador"
+          searchPlaceholder="Buscar cobrador..."
+          triggerClassName="w-[160px] h-8 text-[13px]"
+        />
+        <SearchableSelect
+          options={[
+            { value: "todos", label: "Todos" },
+            { value: "pendientes", label: "Pendientes" },
+            { value: "cobradas", label: "Cobradas" },
+            { value: "vencidas", label: "Vencidas" },
+            { value: "prometidas", label: "Prometidas" },
+          ]}
+          value={filtroEstado}
+          onValueChange={setFiltroEstado}
+          placeholder="Estado"
+          triggerClassName="w-[150px] h-8 text-[13px]"
+        />
         <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground cursor-pointer select-none">
           <input type="checkbox" checked={showVencidas} onChange={(e) => setShowVencidas(e.target.checked)} className="rounded border-border" />
           Incluir vencidas
@@ -796,22 +801,26 @@ export default function CobranzaDiariaPage() {
           <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Select value={filtroRuta} onValueChange={setFiltroRuta}>
-            <SelectTrigger className="h-8 text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas rutas</SelectItem>
-              {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-            <SelectTrigger className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="pendientes">Pendientes</SelectItem>
-              <SelectItem value="cobradas">Cobradas</SelectItem>
-              <SelectItem value="vencidas">Vencidas</SelectItem>
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={[{ value: "todas", label: "Todas rutas" }, ...rutas.map((r) => ({ value: r.id, label: r.nombre }))]}
+            value={filtroRuta}
+            onValueChange={setFiltroRuta}
+            placeholder="Ruta"
+            searchPlaceholder="Buscar ruta..."
+            triggerClassName="h-8 text-[12px]"
+          />
+          <SearchableSelect
+            options={[
+              { value: "todos", label: "Todos" },
+              { value: "pendientes", label: "Pendientes" },
+              { value: "cobradas", label: "Cobradas" },
+              { value: "vencidas", label: "Vencidas" },
+            ]}
+            value={filtroEstado}
+            onValueChange={setFiltroEstado}
+            placeholder="Estado"
+            triggerClassName="h-8 text-[12px]"
+          />
         </div>
       </div>
 

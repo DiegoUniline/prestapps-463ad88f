@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Loader2, Pencil } from "lucide-react";
 import { $$ } from "@/lib/utils";
 
@@ -357,37 +357,37 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Método de Pago</Label>
-              <Select value={metodo} onValueChange={setMetodo}>
-                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {metodosPago.map((m) => (
-                    <SelectItem key={m.id} value={m.nombre}>{m.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={metodosPago.map((m) => ({ value: m.nombre, label: m.nombre }))}
+                value={metodo}
+                onValueChange={setMetodo}
+                placeholder="Seleccionar..."
+                searchPlaceholder="Buscar método..."
+                triggerClassName="mt-1"
+              />
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja</Label>
-              <Select value={cajaId} onValueChange={setCajaId}>
-                <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {cajas.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
+                value={cajaId}
+                onValueChange={setCajaId}
+                placeholder="Seleccionar..."
+                searchPlaceholder="Buscar caja..."
+                triggerClassName="mt-1"
+              />
             </div>
             {isAdmin && (
               <div>
                 <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Cobrador</Label>
-                <Select value={cobradorId} onValueChange={setCobradorId}>
-                  <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Sin asignar" /></SelectTrigger>
-                  <SelectContent>
-                    {cobradores.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={cobradores.map((c) => ({ value: c.id, label: c.nombre_completo }))}
+                  value={cobradorId}
+                  onValueChange={setCobradorId}
+                  placeholder="Sin asignar"
+                  searchPlaceholder="Buscar cobrador..."
+                  triggerClassName="mt-1"
+                />
               </div>
             )}
           </div>
