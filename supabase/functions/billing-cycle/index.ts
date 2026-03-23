@@ -219,29 +219,25 @@ serve(async (req) => {
           if (isStripeBilled) {
             // Stripe will auto-charge — friendly heads-up
             await notifyEmpresaAdmins(supabase, sub.empresa_id,
-              `¡Hola! 👋\n\n` +
-              `Te informamos que hoy se generó tu factura de *${mesNombre}* para *${empresaNombre}*.\n\n` +
-              `📋 *Factura:* ${facNum}\n` +
-              `💰 *Monto:* ${formatMXN(total)} MXN\n` +
-              `📦 *Plan:* ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n\n` +
-              `💳 El cobro se procesará automáticamente a tu tarjeta registrada.\n\n` +
-              `Si tu pago no se procesa, tienes *${DIAS_GRACIA} días de gracia* antes de que se suspenda el servicio.\n\n` +
-              `¿Necesitas actualizar tu método de pago? Hazlo desde *Mi Suscripción* en la app. 📱\n\n` +
-              `Gracias por ser parte de *PrestApps*. 🚀`,
+              `Hola 👋 *${empresaNombre}*\n\n` +
+              `Gracias por usar *PrestApps*. Hemos generado tu factura del mes de *${mesNombre}*.\n\n` +
+              `🧾 *${facNum}*\n` +
+              `💵 *${formatMXN(total)} MXN* · ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n\n` +
+              `💳 Se cobrará automáticamente a tu tarjeta.\n` +
+              `Si el cobro falla, cuentas con *${DIAS_GRACIA} días* antes de que se pause tu servicio.\n\n` +
+              `¿Necesitas cambiar tu tarjeta? Entra a *Mi Suscripción* en la app. 📱`,
               "factura_generada",
             );
           } else {
             // Manual / no-stripe — let them know they need to pay
             await notifyEmpresaAdmins(supabase, sub.empresa_id,
-              `¡Hola! 👋\n\n` +
-              `Se ha generado tu factura de *${mesNombre}* para *${empresaNombre}*.\n\n` +
-              `📋 *Factura:* ${facNum}\n` +
-              `💰 *Monto:* ${formatMXN(total)} MXN\n` +
-              `📦 *Plan:* ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n` +
-              `📅 *Fecha límite:* ${formatDate(fechaVencimiento)}\n\n` +
-              `Tienes *${DIAS_GRACIA} días de gracia* para realizar tu pago sin interrupción del servicio.\n\n` +
-              `Ingresa a *Mi Suscripción* en la app para registrar tu método de pago. 📱\n\n` +
-              `¡Gracias por confiar en *PrestApps*! 🚀`,
+              `Hola 👋 *${empresaNombre}*\n\n` +
+              `Gracias por usar *PrestApps*. Tu factura de *${mesNombre}* ya está lista.\n\n` +
+              `🧾 *${facNum}*\n` +
+              `💵 *${formatMXN(total)} MXN* · ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n` +
+              `📅 Fecha límite: *${formatDate(fechaVencimiento)}*\n\n` +
+              `Tienes *${DIAS_GRACIA} días* para pagar sin que se interrumpa tu servicio.\n\n` +
+              `👉 Entra a *Mi Suscripción* en la app para completar tu pago. 📱`,
               "factura_generada",
             );
           }
@@ -293,12 +289,11 @@ serve(async (req) => {
 
                   // WA: Payment successful
                   await notifyEmpresaAdmins(supabase, sub.empresa_id,
-                    `¡Hola! 🎉\n\n` +
-                    `Tu pago de *${mesNombre}* para *${empresaNombre}* se procesó exitosamente.\n\n` +
-                    `✅ *Monto cobrado:* ${formatMXN(total)} MXN\n` +
-                    `🧾 *Factura:* ${facNum}\n` +
-                    `📅 *Próximo cobro:* ${formatDate(nextMonth)}\n\n` +
-                    `¡Gracias por confiar en *PrestApps*! Sigue creciendo tu negocio. 🚀`,
+                    `✅ *${empresaNombre}* — Pago confirmado\n\n` +
+                    `Tu pago de *${formatMXN(total)} MXN* del mes de *${mesNombre}* se procesó correctamente.\n\n` +
+                    `🧾 ${facNum}\n` +
+                    `📅 Próximo cobro: *${formatDate(nextMonth)}*\n\n` +
+                    `¡Sigue creciendo tu negocio con *PrestApps*! 💪`,
                     "pago_exitoso",
                   );
                 } else {
@@ -365,15 +360,15 @@ serve(async (req) => {
           .single();
 
         await notifyEmpresaAdmins(supabase, sub.empresa_id,
-          `¡Hola! ⚠️\n\n` +
-          `Lamentamos informarte que la suscripción de *${empData?.nombre || "tu empresa"}* ha sido *suspendida* porque no recibimos tu pago dentro del periodo de gracia.\n\n` +
-          `🔒 Tu acceso a los módulos operativos ha sido restringido temporalmente.\n\n` +
-          `Para reactivar tu cuenta de inmediato:\n` +
-          `1️⃣ Abre la app y ve a *Mi Suscripción*\n` +
-          `2️⃣ Actualiza tu método de pago\n` +
-          `3️⃣ Tu acceso se restaurará al instante ✅\n\n` +
-          `Tus datos están seguros y no se perderán. 🔐\n\n` +
-          `¿Tienes problemas? Responde a este mensaje y te ayudamos. 💬`,
+          `⚠️ *${empData?.nombre || "tu empresa"}* — Servicio pausado\n\n` +
+          `No recibimos tu pago a tiempo y tu cuenta ha sido suspendida temporalmente.\n\n` +
+          `🔒 Los módulos operativos están restringidos hasta que regularices tu pago.\n\n` +
+          `Para reactivar al instante:\n` +
+          `1️⃣ Abre la app → *Mi Suscripción*\n` +
+          `2️⃣ Registra o actualiza tu método de pago\n` +
+          `3️⃣ Tu acceso se restaura de inmediato ✅\n\n` +
+          `Tus datos están seguros, no se perderá nada. 🔐\n\n` +
+          `¿Necesitas ayuda? Responde aquí y te apoyamos. 💬`,
           "suscripcion_suspendida",
         );
       } else {
@@ -389,10 +384,9 @@ serve(async (req) => {
             .single();
 
           await notifyEmpresaAdmins(supabase, sub.empresa_id,
-            `¡Hola! 👋\n\n` +
-            `Te recordamos que el pago de suscripción de *${empData?.nombre || "tu empresa"}* aún está pendiente.\n\n` +
-            `⏳ Te ${daysLeft === 1 ? "queda *1 día*" : `quedan *${daysLeft} días*`} de gracia antes de que se suspenda tu servicio.\n\n` +
-            `💳 Actualiza tu método de pago desde *Mi Suscripción* para evitar interrupciones.\n\n` +
+            `⏳ *${empData?.nombre || "tu empresa"}* — Pago pendiente\n\n` +
+            `Tu suscripción sigue sin pagarse. Te ${daysLeft === 1 ? "queda *1 día*" : `quedan *${daysLeft} días*`} antes de que pausemos tu servicio.\n\n` +
+            `👉 Entra a *Mi Suscripción* en la app y resuelve tu pago hoy.\n\n` +
             `¡Estamos para ayudarte! 🙏`,
             "recordatorio_gracia",
           );
@@ -537,30 +531,27 @@ serve(async (req) => {
 
         if (esTrial) {
           mensaje =
-            `¡Hola! 👋\n\n` +
-            `Tu periodo de prueba gratuito de *PrestApps* para *${empresaNombre}* vence *mañana ${fechaVenc}*. ⏰\n\n` +
-            `🎯 ¡No pierdas todo lo que has avanzado!\n\n` +
-            `Para seguir usando la plataforma sin interrupción, activa tu plan ahora:\n\n` +
-            `📦 *Plan:* ${planNombre}\n` +
-            (precio ? `💰 *Desde:* ${precio} MXN/mes\n\n` : "\n") +
+            `👋 *${empresaNombre}*\n\n` +
+            `Tu prueba gratuita de *PrestApps* termina *mañana ${fechaVenc}*. ⏰\n\n` +
+            `🎯 No pierdas el avance que llevas — activa tu plan y sigue operando sin pausa.\n\n` +
+            `📦 ${planNombre}\n` +
+            (precio ? `💵 Desde *${precio} MXN/mes*\n\n` : "\n") +
             (checkoutUrl
-              ? `👉 *Paga aquí y renueva al instante:*\n${checkoutUrl}\n\n`
-              : `👉 Ingresa a *Mi Suscripción* en la app para elegir tu plan.\n\n`) +
-            `Tu información está segura 🔐 y lista para que sigas creciendo tu negocio.\n\n` +
-            `¡Gracias por probar *PrestApps*! 🚀`;
+              ? `👉 Paga aquí y renueva al instante:\n${checkoutUrl}\n\n`
+              : `👉 Entra a *Mi Suscripción* en la app para activar tu plan.\n\n`) +
+            `Tu información está segura 🔐 y lista para seguir trabajando.`;
         } else {
           mensaje =
-            `¡Hola! 👋\n\n` +
-            `Te recordamos que tu suscripción de *${empresaNombre}* vence *mañana ${fechaVenc}*. ⏰\n\n` +
-            `📦 *Plan:* ${planNombre}\n` +
-            (precio ? `💰 *Monto:* ${precio} MXN/mes\n\n` : "\n") +
-            `Para que no se interrumpa tu servicio, renueva ahora:\n\n` +
+            `👋 *${empresaNombre}*\n\n` +
+            `Tu suscripción de *PrestApps* vence *mañana ${fechaVenc}*. ⏰\n\n` +
+            `📦 ${planNombre}\n` +
+            (precio ? `💵 *${precio} MXN/mes*\n\n` : "\n") +
+            `Renueva hoy para que tu servicio no se interrumpa:\n\n` +
             (checkoutUrl
-              ? `👉 *Paga aquí con un clic:*\n${checkoutUrl}\n\n`
-              : `👉 Ingresa a *Mi Suscripción* en la app para renovar.\n\n`) +
-            `Al pagar, tu plan se renueva automáticamente a partir del día siguiente. ✅\n\n` +
-            `Tus datos están seguros y listos para seguir trabajando. 🔐\n\n` +
-            `¡Gracias por confiar en *PrestApps*! 🚀`;
+              ? `👉 Paga con un clic:\n${checkoutUrl}\n\n`
+              : `👉 Entra a *Mi Suscripción* en la app para renovar.\n\n`) +
+            `Al pagar, tu plan se activa de inmediato. ✅\n` +
+            `Tus datos están seguros. 🔐`;
         }
 
         await notifyEmpresaAdmins(supabase, sub.empresa_id, mensaje, "recordatorio_vencimiento");
