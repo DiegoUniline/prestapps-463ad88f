@@ -157,7 +157,8 @@ Deno.serve(async (req) => {
           id, num_cuota, fecha_vencimiento, saldo_total, capital_interes,
           prestamo_id, empresa_id,
           prestamos!inner(id, cliente_id, num_cuotas, monto_solicitado,
-            clientes!inner(nombre_completo, telefono)
+        clientes!inner(nombre_completo, telefono),
+            id_prestamo
           )
         `)
         .eq("empresa_id", empresa_id)
