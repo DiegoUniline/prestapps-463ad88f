@@ -572,19 +572,20 @@ export default function WhatsAppConfigPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs">Cliente</TableHead>
-                      <TableHead className="text-xs">Préstamo</TableHead>
-                      <TableHead className="text-xs">Teléfono</TableHead>
-                      <TableHead className="text-xs">Cuota</TableHead>
+                      <TableHead className="text-xs">Cuotas</TableHead>
+                      <TableHead className="text-xs text-right">Monto Total</TableHead>
                       <TableHead className="text-xs text-center">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {reminderResults.detalles.map((d, i) => (
                       <TableRow key={i}>
-                        <TableCell className="text-xs font-medium">{d.cliente}</TableCell>
-                        <TableCell className="text-xs font-mono">{d.prestamo}</TableCell>
-                        <TableCell className="text-xs font-mono">{d.telefono}</TableCell>
-                        <TableCell className="text-xs">{d.cuota}</TableCell>
+                        <TableCell>
+                          <div className="text-xs font-medium">{d.cliente}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">{d.telefono}</div>
+                        </TableCell>
+                        <TableCell className="text-xs">{d.cuotas_detalle} <span className="text-muted-foreground">({d.num_cuotas})</span></TableCell>
+                        <TableCell className="text-xs font-semibold text-right">${d.monto_total}</TableCell>
                         <TableCell className="text-center">
                           {d.status === "enviado" ? (
                             <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
