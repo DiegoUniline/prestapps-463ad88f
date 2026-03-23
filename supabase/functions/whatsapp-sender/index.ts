@@ -157,7 +157,8 @@ Deno.serve(async (req) => {
           id, num_cuota, fecha_vencimiento, saldo_total, capital_interes,
           prestamo_id, empresa_id,
           prestamos!inner(id, cliente_id, num_cuotas, monto_solicitado,
-            clientes!inner(nombre_completo, telefono)
+        clientes!inner(nombre_completo, telefono),
+            id_prestamo
           )
         `)
         .eq("empresa_id", empresa_id)
@@ -175,13 +176,13 @@ Deno.serve(async (req) => {
 
       const { data: cuotas } = await query;
       let sent = 0, errors = 0;
-      const detalles: { cliente: string; telefono: string; cuota: string; status: string; error?: string }[] = [];
+      const detalles: { cliente: string; telefono: string; cuota: string; prestamo: string; status: string; error?: string }[] = [];
 
       for (const cuota of (cuotas || [])) {
         const prestamo = (cuota as any).prestamos;
         const cliente = prestamo?.clientes;
         if (!cliente?.telefono) {
-          detalles.push({ cliente: cliente?.nombre_completo || "Sin nombre", telefono: "Sin teléfono", cuota: `#${cuota.num_cuota}`, status: "omitido", error: "Sin teléfono registrado" });
+          detalles.push({ cliente: cliente?.nombre_completo || "Sin nombre", telefono: "Sin teléfono", cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: "omitido", error: "Sin teléfono registrado" });
           continue;
         }
 
@@ -221,10 +222,10 @@ Deno.serve(async (req) => {
           } else {
             errors++;
           }
-          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, status: result.success ? "enviado" : "error", error: result.error || undefined });
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: result.success ? "enviado" : "error", error: result.error || undefined });
         } catch (e: any) {
           errors++;
-          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, status: "error", error: e.message });
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, prestamo: prestamo?.id_prestamo || "—", status: "error", error: e.message });
         }
       }
 

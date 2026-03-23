@@ -212,7 +212,7 @@ export default function WhatsAppConfigPage() {
     sent: number;
     errors: number;
     total: number;
-    detalles: { cliente: string; telefono: string; cuota: string; status: string; error?: string }[];
+    detalles: { cliente: string; telefono: string; cuota: string; prestamo: string; status: string; error?: string }[];
   }>({ open: false, type: "", sent: 0, errors: 0, total: 0, detalles: [] });
 
   const sendReminders = async (type: "dia_antes" | "vencido") => {
@@ -572,6 +572,7 @@ export default function WhatsAppConfigPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs">Cliente</TableHead>
+                      <TableHead className="text-xs">Préstamo</TableHead>
                       <TableHead className="text-xs">Teléfono</TableHead>
                       <TableHead className="text-xs">Cuota</TableHead>
                       <TableHead className="text-xs text-center">Estado</TableHead>
@@ -581,6 +582,7 @@ export default function WhatsAppConfigPage() {
                     {reminderResults.detalles.map((d, i) => (
                       <TableRow key={i}>
                         <TableCell className="text-xs font-medium">{d.cliente}</TableCell>
+                        <TableCell className="text-xs font-mono">{d.prestamo}</TableCell>
                         <TableCell className="text-xs font-mono">{d.telefono}</TableCell>
                         <TableCell className="text-xs">{d.cuota}</TableCell>
                         <TableCell className="text-center">
