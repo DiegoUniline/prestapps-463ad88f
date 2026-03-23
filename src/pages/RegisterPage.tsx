@@ -1,13 +1,36 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Eye, EyeOff, Building2, User, Mail, Lock, Phone, Sparkles } from "lucide-react";
 import logoFull from "@/assets/logo-full.png";
+
+const COUNTRY_CODES: { code: string; label: string; flag: string; digits: number[] }[] = [
+  { code: "52", label: "México", flag: "🇲🇽", digits: [10] },
+  { code: "1", label: "EE.UU. / Canadá", flag: "🇺🇸", digits: [10] },
+  { code: "502", label: "Guatemala", flag: "🇬🇹", digits: [8] },
+  { code: "503", label: "El Salvador", flag: "🇸🇻", digits: [8] },
+  { code: "504", label: "Honduras", flag: "🇭🇳", digits: [8] },
+  { code: "505", label: "Nicaragua", flag: "🇳🇮", digits: [8] },
+  { code: "506", label: "Costa Rica", flag: "🇨🇷", digits: [8] },
+  { code: "507", label: "Panamá", flag: "🇵🇦", digits: [7, 8] },
+  { code: "51", label: "Perú", flag: "🇵🇪", digits: [9] },
+  { code: "57", label: "Colombia", flag: "🇨🇴", digits: [10] },
+  { code: "56", label: "Chile", flag: "🇨🇱", digits: [9] },
+  { code: "54", label: "Argentina", flag: "🇦🇷", digits: [10] },
+  { code: "593", label: "Ecuador", flag: "🇪🇨", digits: [9, 10] },
+  { code: "591", label: "Bolivia", flag: "🇧🇴", digits: [8] },
+  { code: "595", label: "Paraguay", flag: "🇵🇾", digits: [9] },
+  { code: "598", label: "Uruguay", flag: "🇺🇾", digits: [8, 9] },
+  { code: "58", label: "Venezuela", flag: "🇻🇪", digits: [10] },
+  { code: "809", label: "Rep. Dominicana", flag: "🇩🇴", digits: [10] },
+  { code: "34", label: "España", flag: "🇪🇸", digits: [9] },
+];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -17,9 +40,19 @@ export default function RegisterPage() {
     password: "",
     nombre_empresa: "",
     telefono: "",
+    lada_pais: "52",
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const selectedCountry = useMemo(
+    () => COUNTRY_CODES.find((c) => c.code === form.lada_pais) || COUNTRY_CODES[0],
+    [form.lada_pais]
+  );
+
+  const phoneDigitsOnly = form.telefono.replace(/\D/g, "");
+  const isPhoneValid = !form.telefono.trim() || selectedCountry.digits.includes(phoneDigitsOnly.length);
+  const expectedDigits = selectedCountry.digits.join(" ó ");
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,9 +67,13 @@ export default function RegisterPage() {
       return;
     }
 
+    if (form.telefono.trim() && !isPhoneValid) {
+      toast.error(`El teléfono para ${selectedCountry.label} debe tener ${expectedDigits} dígitos`);
+      return;
+    }
+
     setLoading(true);
     try {
-      // Call register-empresa edge function
       const { data, error } = await supabase.functions.invoke("register-empresa", {
         body: {
           email: form.email.trim().toLowerCase(),
@@ -44,6 +81,7 @@ export default function RegisterPage() {
           nombre_completo: form.nombre_completo.trim(),
           nombre_empresa: form.nombre_empresa.trim(),
           telefono: form.telefono.trim() || null,
+          lada_pais: form.lada_pais,
         },
       });
 
@@ -52,7 +90,6 @@ export default function RegisterPage() {
 
       toast.success("¡Cuenta creada exitosamente! Iniciando sesión...");
 
-      // Auto-login
       const { error: loginError } = await supabase.auth.signInWithPassword({
         email: form.email.trim().toLowerCase(),
         password: form.password,
@@ -143,17 +180,40 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono (opcional)</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="telefono"
-                    value={form.telefono}
-                    onChange={(e) => update("telefono", e.target.value)}
-                    placeholder="+52 55 1234 5678"
-                    className="pl-10"
-                  />
+                <Label>País y teléfono (opcional)</Label>
+                <div className="flex gap-2">
+                  <Select value={form.lada_pais} onValueChange={(v) => update("lada_pais", v)}>
+                    <SelectTrigger className="w-[160px] shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRY_CODES.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          <span className="flex items-center gap-1.5">
+                            <span>{c.flag}</span>
+                            <span>+{c.code}</span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="relative flex-1">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="telefono"
+                      value={form.telefono}
+                      onChange={(e) => update("telefono", e.target.value)}
+                      placeholder={`${expectedDigits} dígitos`}
+                      className="pl-10"
+                      inputMode="tel"
+                    />
+                  </div>
                 </div>
+                {form.telefono.trim() && !isPhoneValid && (
+                  <p className="text-xs text-destructive">
+                    {selectedCountry.flag} {selectedCountry.label} requiere {expectedDigits} dígitos (tienes {phoneDigitsOnly.length})
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
