@@ -801,22 +801,26 @@ export default function CobranzaDiariaPage() {
           <Input placeholder="Buscar cliente..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-8 text-[13px]" />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Select value={filtroRuta} onValueChange={setFiltroRuta}>
-            <SelectTrigger className="h-8 text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas rutas</SelectItem>
-              {rutas.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-            <SelectTrigger className="h-8 text-[12px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="pendientes">Pendientes</SelectItem>
-              <SelectItem value="cobradas">Cobradas</SelectItem>
-              <SelectItem value="vencidas">Vencidas</SelectItem>
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            options={[{ value: "todas", label: "Todas rutas" }, ...rutas.map((r) => ({ value: r.id, label: r.nombre }))]}
+            value={filtroRuta}
+            onValueChange={setFiltroRuta}
+            placeholder="Ruta"
+            searchPlaceholder="Buscar ruta..."
+            triggerClassName="h-8 text-[12px]"
+          />
+          <SearchableSelect
+            options={[
+              { value: "todos", label: "Todos" },
+              { value: "pendientes", label: "Pendientes" },
+              { value: "cobradas", label: "Cobradas" },
+              { value: "vencidas", label: "Vencidas" },
+            ]}
+            value={filtroEstado}
+            onValueChange={setFiltroEstado}
+            placeholder="Estado"
+            triggerClassName="h-8 text-[12px]"
+          />
         </div>
       </div>
 
