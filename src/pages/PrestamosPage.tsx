@@ -418,7 +418,7 @@ export default function PrestamosPage() {
   const colVis = useColumnVisibility(user?.id);
   const visibleColumns = useMemo(() => ALL_COLUMNS.filter(c => colVis.visible.has(c.key)), [colVis.visible]);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistedString("prestamos", "search");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   // Derive activeTab from URL param or default
   const activeTab: string = vistaParam === "liquidados" ? "liquidados"
@@ -430,14 +430,14 @@ export default function PrestamosPage() {
     else navigate(`/prestamos?vista=${tab}`, { replace: true });
   };
 
-  const [selEstado, setSelEstado] = useState<Set<string>>(new Set());
-  const [selCaja, setSelCaja] = useState<Set<string>>(new Set());
-  const [selRuta, setSelRuta] = useState<Set<string>>(new Set());
-  const [regDesde, setRegDesde] = useState<Date>();
-  const [regHasta, setRegHasta] = useState<Date>();
+  const [selEstado, setSelEstado] = usePersistedSet("prestamos", "selEstado");
+  const [selCaja, setSelCaja] = usePersistedSet("prestamos", "selCaja");
+  const [selRuta, setSelRuta] = usePersistedSet("prestamos", "selRuta");
+  const [regDesde, setRegDesde] = usePersistedDate("prestamos", "regDesde");
+  const [regHasta, setRegHasta] = usePersistedDate("prestamos", "regHasta");
 
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
+  const [sortKey, setSortKey] = usePersistedString("prestamos", "sortKey") as unknown as [SortKey | null, (v: any) => void];
+  const [sortDir, setSortDir] = usePersistedString("prestamos", "sortDir") as unknown as ["asc" | "desc" | null, (v: any) => void];
   const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   // Grouping
