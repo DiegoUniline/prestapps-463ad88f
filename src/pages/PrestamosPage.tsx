@@ -69,13 +69,24 @@ const ALL_COLUMNS: ColumnDef[] = [
     key: "cliente", label: "Cliente", sortKey: "cliente", defaultVisible: true,
     render: (p, { atendidoIds, atendidoColor }) => (
       <div className="flex items-center gap-2">
-        {atendidoIds?.has(p.id) && (
-          <span
-            className="w-3 h-3 shrink-0 rounded-full animate-pulse shadow-sm"
-            style={{ backgroundColor: atendidoColor || "#22c55e" }}
-            title="Atendido esta semana"
-          />
-        )}
+        <div className="relative shrink-0">
+          <div className="w-7 h-7 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+            {p.fotoCliente ? (
+              <img src={p.fotoCliente} alt={p.cliente} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[10px] font-semibold text-muted-foreground">
+                {p.cliente?.charAt(0)?.toUpperCase()}
+              </span>
+            )}
+          </div>
+          {atendidoIds?.has(p.id) && (
+            <span
+              className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card animate-pulse"
+              style={{ backgroundColor: atendidoColor || "#22c55e" }}
+              title="Atendido esta semana"
+            />
+          )}
+        </div>
         <div className="min-w-0">
           <span className="font-medium text-[13px] whitespace-nowrap">{p.cliente}</span>
           {p.ultimoPagoFecha && (
