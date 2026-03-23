@@ -289,12 +289,11 @@ serve(async (req) => {
 
                   // WA: Payment successful
                   await notifyEmpresaAdmins(supabase, sub.empresa_id,
-                    `¡Hola! 🎉\n\n` +
-                    `Tu pago de *${mesNombre}* para *${empresaNombre}* se procesó exitosamente.\n\n` +
-                    `✅ *Monto cobrado:* ${formatMXN(total)} MXN\n` +
-                    `🧾 *Factura:* ${facNum}\n` +
-                    `📅 *Próximo cobro:* ${formatDate(nextMonth)}\n\n` +
-                    `¡Gracias por confiar en *PrestApps*! Sigue creciendo tu negocio. 🚀`,
+                    `✅ *${empresaNombre}* — Pago confirmado\n\n` +
+                    `Tu pago de *${formatMXN(total)} MXN* del mes de *${mesNombre}* se procesó correctamente.\n\n` +
+                    `🧾 ${facNum}\n` +
+                    `📅 Próximo cobro: *${formatDate(nextMonth)}*\n\n` +
+                    `¡Sigue creciendo tu negocio con *PrestApps*! 💪`,
                     "pago_exitoso",
                   );
                 } else {
