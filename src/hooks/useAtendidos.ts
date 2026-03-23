@@ -5,6 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
  * Computes the current week range [start, end] based on corte_dia_semana (0=Sun..6=Sat).
  * The week starts on the configured day and ends the day before the next cycle.
  */
+function toLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function getCurrentWeekRange(corteDia: number): { start: string; end: string } {
   const today = new Date();
   const todayDay = today.getDay(); // 0=Sun
@@ -17,8 +24,8 @@ function getCurrentWeekRange(corteDia: number): { start: string; end: string } {
   end.setDate(start.getDate() + 6);
   end.setHours(23, 59, 59, 999);
   return {
-    start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
+    start: toLocalDate(start),
+    end: toLocalDate(end),
   };
 }
 
