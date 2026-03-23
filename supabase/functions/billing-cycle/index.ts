@@ -531,30 +531,27 @@ serve(async (req) => {
 
         if (esTrial) {
           mensaje =
-            `¡Hola! 👋\n\n` +
-            `Tu periodo de prueba gratuito de *PrestApps* para *${empresaNombre}* vence *mañana ${fechaVenc}*. ⏰\n\n` +
-            `🎯 ¡No pierdas todo lo que has avanzado!\n\n` +
-            `Para seguir usando la plataforma sin interrupción, activa tu plan ahora:\n\n` +
-            `📦 *Plan:* ${planNombre}\n` +
-            (precio ? `💰 *Desde:* ${precio} MXN/mes\n\n` : "\n") +
+            `👋 *${empresaNombre}*\n\n` +
+            `Tu prueba gratuita de *PrestApps* termina *mañana ${fechaVenc}*. ⏰\n\n` +
+            `🎯 No pierdas el avance que llevas — activa tu plan y sigue operando sin pausa.\n\n` +
+            `📦 ${planNombre}\n` +
+            (precio ? `💵 Desde *${precio} MXN/mes*\n\n` : "\n") +
             (checkoutUrl
-              ? `👉 *Paga aquí y renueva al instante:*\n${checkoutUrl}\n\n`
-              : `👉 Ingresa a *Mi Suscripción* en la app para elegir tu plan.\n\n`) +
-            `Tu información está segura 🔐 y lista para que sigas creciendo tu negocio.\n\n` +
-            `¡Gracias por probar *PrestApps*! 🚀`;
+              ? `👉 Paga aquí y renueva al instante:\n${checkoutUrl}\n\n`
+              : `👉 Entra a *Mi Suscripción* en la app para activar tu plan.\n\n`) +
+            `Tu información está segura 🔐 y lista para seguir trabajando.`;
         } else {
           mensaje =
-            `¡Hola! 👋\n\n` +
-            `Te recordamos que tu suscripción de *${empresaNombre}* vence *mañana ${fechaVenc}*. ⏰\n\n` +
-            `📦 *Plan:* ${planNombre}\n` +
-            (precio ? `💰 *Monto:* ${precio} MXN/mes\n\n` : "\n") +
-            `Para que no se interrumpa tu servicio, renueva ahora:\n\n` +
+            `👋 *${empresaNombre}*\n\n` +
+            `Tu suscripción de *PrestApps* vence *mañana ${fechaVenc}*. ⏰\n\n` +
+            `📦 ${planNombre}\n` +
+            (precio ? `💵 *${precio} MXN/mes*\n\n` : "\n") +
+            `Renueva hoy para que tu servicio no se interrumpa:\n\n` +
             (checkoutUrl
-              ? `👉 *Paga aquí con un clic:*\n${checkoutUrl}\n\n`
-              : `👉 Ingresa a *Mi Suscripción* en la app para renovar.\n\n`) +
-            `Al pagar, tu plan se renueva automáticamente a partir del día siguiente. ✅\n\n` +
-            `Tus datos están seguros y listos para seguir trabajando. 🔐\n\n` +
-            `¡Gracias por confiar en *PrestApps*! 🚀`;
+              ? `👉 Paga con un clic:\n${checkoutUrl}\n\n`
+              : `👉 Entra a *Mi Suscripción* en la app para renovar.\n\n`) +
+            `Al pagar, tu plan se activa de inmediato. ✅\n` +
+            `Tus datos están seguros. 🔐`;
         }
 
         await notifyEmpresaAdmins(supabase, sub.empresa_id, mensaje, "recordatorio_vencimiento");
