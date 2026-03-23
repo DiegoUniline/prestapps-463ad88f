@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
           cuota: String(cuota.num_cuota),
           total_cuotas: String(prestamo.num_cuotas),
           monto_cuota: cuota.saldo_total?.toFixed(2) || "0.00",
-          fecha_vencimiento: cuota.fecha_vencimiento,
+          fecha_vencimiento: cuota.fecha_vencimiento ? cuota.fecha_vencimiento.split("-").reverse().join("/") : "",
           monto_prestamo: prestamo.monto_solicitado?.toFixed(2) || "0.00",
         };
 
