@@ -316,6 +316,14 @@ export default function EmpresasPage() {
                           <span>{userCount} <span className="text-muted-foreground text-xs">(sin plan)</span></span>
                         )}
                       </TableCell>
+                      <TableCell className="text-xs">{fmtDate(e.created_at)}</TableCell>
+                      <TableCell className="text-xs">
+                        {sub?.fecha_vencimiento ? (
+                          <span className={new Date(sub.fecha_vencimiento) < new Date() ? "text-destructive font-semibold" : ""}>
+                            {fmtDate(sub.fecha_vencimiento)}
+                          </span>
+                        ) : "—"}
+                      </TableCell>
                       <TableCell>{e.ruc || "—"}</TableCell>
                       <TableCell>
                         {admins.length > 0 ? (
