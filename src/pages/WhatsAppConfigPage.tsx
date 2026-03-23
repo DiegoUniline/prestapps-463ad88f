@@ -553,7 +553,7 @@ export default function WhatsAppConfigPage() {
             <div className="rounded-lg border p-3 text-center">
               <MessageSquare className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
               <p className="text-lg font-bold">{reminderResults.total}</p>
-              <p className="text-[10px] text-muted-foreground">Total cuotas</p>
+              <p className="text-[10px] text-muted-foreground">Total clientes</p>
             </div>
           </div>
 
