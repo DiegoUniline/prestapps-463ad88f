@@ -327,21 +327,13 @@ export default function GastosPage() {
           <div className="space-y-4">
             <div>
               <Label>Caja de origen *</Label>
-              <Select value={cajaId} onValueChange={setCajaId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar caja" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cajas.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <div className="flex items-center justify-between w-full gap-4">
-                        <span>{c.nombre}</span>
-                        <span className="text-xs text-muted-foreground">{$$(Number(c.saldo_actual || 0))}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={cajas.map((c) => ({ value: c.id, label: c.nombre, subtitle: $$(Number(c.saldo_actual || 0)) }))}
+                value={cajaId}
+                onValueChange={setCajaId}
+                placeholder="Seleccionar caja"
+                searchPlaceholder="Buscar caja..."
+              />
             </div>
             <div>
               <Label>Categoría *</Label>
