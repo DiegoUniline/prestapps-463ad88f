@@ -2133,6 +2133,10 @@ export type Database = {
         Returns: undefined
       }
       recalcular_mora: { Args: { p_prestamo_id: string }; Returns: undefined }
+      revertir_pago: {
+        Args: { p_motivo: string; p_pago_id: string; p_user_id?: string }
+        Returns: undefined
+      }
       switch_empresa: { Args: { p_empresa_id: string }; Returns: undefined }
     }
     Enums: {
