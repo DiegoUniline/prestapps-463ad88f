@@ -384,10 +384,9 @@ serve(async (req) => {
             .single();
 
           await notifyEmpresaAdmins(supabase, sub.empresa_id,
-            `¡Hola! 👋\n\n` +
-            `Te recordamos que el pago de suscripción de *${empData?.nombre || "tu empresa"}* aún está pendiente.\n\n` +
-            `⏳ Te ${daysLeft === 1 ? "queda *1 día*" : `quedan *${daysLeft} días*`} de gracia antes de que se suspenda tu servicio.\n\n` +
-            `💳 Actualiza tu método de pago desde *Mi Suscripción* para evitar interrupciones.\n\n` +
+            `⏳ *${empData?.nombre || "tu empresa"}* — Pago pendiente\n\n` +
+            `Tu suscripción sigue sin pagarse. Te ${daysLeft === 1 ? "queda *1 día*" : `quedan *${daysLeft} días*`} antes de que pausemos tu servicio.\n\n` +
+            `👉 Entra a *Mi Suscripción* en la app y resuelve tu pago hoy.\n\n` +
             `¡Estamos para ayudarte! 🙏`,
             "recordatorio_gracia",
           );
