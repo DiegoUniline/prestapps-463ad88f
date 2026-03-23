@@ -267,6 +267,7 @@ export default function EmpresasPage() {
                 <TableHead>Usuarios</TableHead>
                 <TableHead>Alta</TableHead>
                 <TableHead>Vencimiento</TableHead>
+                <TableHead>Lada</TableHead>
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Correo Admin</TableHead>
                 <TableHead>Estado</TableHead>
@@ -276,11 +277,11 @@ export default function EmpresasPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
-                </TableRow>
-              ) : empresas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
+                   <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Cargando...</TableCell>
+                 </TableRow>
+               ) : empresas.length === 0 ? (
+                 <TableRow>
+                   <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
                 </TableRow>
               ) : (
                 empresas.map((e) => {
@@ -332,11 +333,10 @@ export default function EmpresasPage() {
                           </span>
                         ) : "—"}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {e.telefono ? (
-                          <span>{LADA_FLAGS[e.lada_pais] || "🌐"} +{e.lada_pais} {e.telefono.replace(/^\+?\d{1,3}/, "")}</span>
-                        ) : "—"}
+                      <TableCell className="text-xs text-center">
+                        {LADA_FLAGS[e.lada_pais] || "🌐"} +{e.lada_pais}
                       </TableCell>
+                      <TableCell className="text-xs">{e.telefono || "—"}</TableCell>
                       <TableCell>
                         {admins.length > 0 ? (
                           <div className="space-y-0.5">
