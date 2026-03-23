@@ -13,10 +13,12 @@ import { Eye, EyeOff } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   MessageSquare, Settings, FileText, Send, Clock, AlertTriangle,
-  CheckCircle2, XCircle, Loader2, Info, RefreshCw,
+  CheckCircle2, XCircle, Loader2, Info, RefreshCw, Ban,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -204,6 +206,14 @@ export default function WhatsAppConfigPage() {
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [showToken, setShowToken] = useState(false);
   const [editingToken, setEditingToken] = useState(false);
+  const [reminderResults, setReminderResults] = useState<{
+    open: boolean;
+    type: string;
+    sent: number;
+    errors: number;
+    total: number;
+    detalles: { cliente: string; telefono: string; cuota: string; status: string; error?: string }[];
+  }>({ open: false, type: "", sent: 0, errors: 0, total: 0, detalles: [] });
 
   const sendReminders = async (type: "dia_antes" | "vencido") => {
     setSendingReminder(type);
@@ -212,7 +222,6 @@ export default function WhatsAppConfigPage() {
         body: { action: "send-reminder", empresa_id: empresaId, reminder_type: type },
       });
       if (error) {
-        // Check if it's the "no template" error
         try {
           const parsed = JSON.parse(error.message || "{}");
           if (parsed?.error?.includes("plantilla")) {
@@ -232,7 +241,15 @@ export default function WhatsAppConfigPage() {
         );
         return;
       }
-      toast.success(`Enviados: ${data.sent}, Errores: ${data.errors}`);
+      // Show results dialog
+      setReminderResults({
+        open: true,
+        type: type === "dia_antes" ? "Día antes" : "Vencidos",
+        sent: data.sent || 0,
+        errors: data.errors || 0,
+        total: data.total || 0,
+        detalles: data.detalles || [],
+      });
       refetchLogs();
     } catch (e: any) {
       toast.error("Error al enviar avisos: " + (e.message || "Intenta de nuevo"));
@@ -510,6 +527,87 @@ export default function WhatsAppConfigPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* ── Reminder Results Dialog ── */}
+      <Dialog open={reminderResults.open} onOpenChange={(v) => setReminderResults((r) => ({ ...r, open: v }))}>
+        <DialogContent className="sm:max-w-[540px]">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <Send className="h-4 w-4 text-primary" />
+              Resultado de Avisos — {reminderResults.type}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 p-3 text-center">
+              <CheckCircle2 className="h-5 w-5 mx-auto mb-1 text-green-600" />
+              <p className="text-lg font-bold text-green-700 dark:text-green-400">{reminderResults.sent}</p>
+              <p className="text-[10px] text-muted-foreground">Enviados</p>
+            </div>
+            <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
+              <XCircle className="h-5 w-5 mx-auto mb-1 text-red-500" />
+              <p className="text-lg font-bold text-red-600 dark:text-red-400">{reminderResults.errors}</p>
+              <p className="text-[10px] text-muted-foreground">Errores</p>
+            </div>
+            <div className="rounded-lg border p-3 text-center">
+              <MessageSquare className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-lg font-bold">{reminderResults.total}</p>
+              <p className="text-[10px] text-muted-foreground">Total cuotas</p>
+            </div>
+          </div>
+
+          {reminderResults.total === 0 && (
+            <div className="text-center py-4 text-sm text-muted-foreground">
+              <Info className="h-6 w-6 mx-auto mb-2 opacity-40" />
+              No se encontraron cuotas que notificar
+            </div>
+          )}
+
+          {/* Detail table */}
+          {reminderResults.detalles.length > 0 && (
+            <ScrollArea className="max-h-[300px]">
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Cliente</TableHead>
+                      <TableHead className="text-xs">Teléfono</TableHead>
+                      <TableHead className="text-xs">Cuota</TableHead>
+                      <TableHead className="text-xs text-center">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reminderResults.detalles.map((d, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs font-medium">{d.cliente}</TableCell>
+                        <TableCell className="text-xs font-mono">{d.telefono}</TableCell>
+                        <TableCell className="text-xs">{d.cuota}</TableCell>
+                        <TableCell className="text-center">
+                          {d.status === "enviado" ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 mx-auto" />
+                          ) : d.status === "omitido" ? (
+                            <Ban className="h-4 w-4 text-yellow-500 mx-auto" />
+                          ) : (
+                            <div className="flex flex-col items-center">
+                              <XCircle className="h-4 w-4 text-destructive" />
+                              {d.error && <span className="text-[9px] text-destructive mt-0.5 max-w-[120px] truncate">{d.error}</span>}
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </ScrollArea>
+          )}
+
+          <Button variant="outline" className="w-full" onClick={() => setReminderResults((r) => ({ ...r, open: false }))}>
+            Cerrar
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -175,11 +175,15 @@ Deno.serve(async (req) => {
 
       const { data: cuotas } = await query;
       let sent = 0, errors = 0;
+      const detalles: { cliente: string; telefono: string; cuota: string; status: string; error?: string }[] = [];
 
       for (const cuota of (cuotas || [])) {
         const prestamo = (cuota as any).prestamos;
         const cliente = prestamo?.clientes;
-        if (!cliente?.telefono) continue;
+        if (!cliente?.telefono) {
+          detalles.push({ cliente: cliente?.nombre_completo || "Sin nombre", telefono: "Sin teléfono", cuota: `#${cuota.num_cuota}`, status: "omitido", error: "Sin teléfono registrado" });
+          continue;
+        }
 
         const vars = {
           cliente: cliente.nombre_completo,
@@ -192,8 +196,8 @@ Deno.serve(async (req) => {
         };
 
         const message = replaceVariables(template.mensaje, vars);
-
         const normalizedPhone = normalizePhone(cliente.telefono, ladaPais);
+
         try {
           const result = await sendWhatsApp(config.api_url, config.api_token, {
             action: "send-text",
@@ -211,19 +215,20 @@ Deno.serve(async (req) => {
             referencia_id: cuota.prestamo_id,
           });
 
-          if (result.success) sent++;
-          else errors++;
-
-          // Mark as notified
           if (result.success) {
+            sent++;
             await supabase.from("amortizacion").update({ avisado: true }).eq("id", cuota.id);
+          } else {
+            errors++;
           }
-        } catch {
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, status: result.success ? "enviado" : "error", error: result.error || undefined });
+        } catch (e: any) {
           errors++;
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuota: `#${cuota.num_cuota}`, status: "error", error: e.message });
         }
       }
 
-      return new Response(JSON.stringify({ success: true, sent, errors, total: (cuotas || []).length }), {
+      return new Response(JSON.stringify({ success: true, sent, errors, total: (cuotas || []).length, detalles }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
