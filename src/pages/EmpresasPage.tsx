@@ -259,8 +259,8 @@ export default function EmpresasPage() {
                 <TableHead>Usuarios</TableHead>
                 <TableHead>Alta</TableHead>
                 <TableHead>Vencimiento</TableHead>
-                <TableHead>RUC / NIT</TableHead>
-                <TableHead>Administrador</TableHead>
+                <TableHead>Teléfono</TableHead>
+                <TableHead>Correo Admin</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="w-16"></TableHead>
               </TableRow>
@@ -324,14 +324,15 @@ export default function EmpresasPage() {
                           </span>
                         ) : "—"}
                       </TableCell>
-                      <TableCell>{e.ruc || "—"}</TableCell>
+                      <TableCell className="text-xs">{e.telefono || "—"}</TableCell>
                       <TableCell>
                         {admins.length > 0 ? (
                           <div className="space-y-0.5">
                             {admins.map((a, i) => (
-                              <div key={i} className="text-sm">
+                              <div key={i} className="text-xs">
                                 <span className="font-medium">{a.nombre}</span>
-                                <span className="text-muted-foreground ml-1 text-xs">({a.email})</span>
+                                <br />
+                                <span className="text-muted-foreground">{a.email}</span>
                               </div>
                             ))}
                           </div>
