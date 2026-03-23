@@ -137,6 +137,26 @@ export default function WhatsAppConfigPage() {
       const { data } = await (supabase.from as any)("whatsapp_templates")
         .select("id, empresa_id, tipo, nombre, mensaje, activo, created_at")
         .eq("empresa_id", empresaId);
+      
+      // Auto-seed default templates if none exist
+      if (!data || data.length === 0) {
+        const defaults = TEMPLATE_TYPES.map((t) => ({
+          empresa_id: empresaId,
+          tipo: t.tipo,
+          nombre: t.nombre,
+          mensaje: t.default,
+          activo: true,
+        }));
+        const { data: inserted, error } = await (supabase.from as any)("whatsapp_templates")
+          .insert(defaults)
+          .select("id, empresa_id, tipo, nombre, mensaje, activo, created_at");
+        if (error) {
+          console.error("Error seeding templates:", error);
+          return [];
+        }
+        return (inserted || []) as any[];
+      }
+      
       return (data || []) as any[];
     },
   });
