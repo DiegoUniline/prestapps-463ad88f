@@ -233,18 +233,14 @@ export default function GastosPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar gasto..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-          <SelectTrigger className="w-40">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todas</SelectItem>
-            {CATEGORIAS_GASTO.map((c) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          options={[{ value: "todos", label: "Todas" }, ...CATEGORIAS_GASTO.map((c) => ({ value: c, label: c }))]}
+          value={filtroCategoria}
+          onValueChange={setFiltroCategoria}
+          placeholder="Categoría"
+          searchPlaceholder="Buscar categoría..."
+          triggerClassName="w-40"
+        />
       </div>
 
       {/* Table / Cards */}
