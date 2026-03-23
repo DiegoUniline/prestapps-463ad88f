@@ -26,6 +26,13 @@ const PLAN_CONFIG: Record<string, { label: string; maxUsers: number; price: stri
   enterprise: { label: "Enterprise", maxUsers: 999, price: "$1,999/mes", icon: <Crown className="h-3.5 w-3.5" /> },
 };
 
+const LADA_FLAGS: Record<string, string> = {
+  "52": "🇲🇽", "1": "🇺🇸", "502": "🇬🇹", "503": "🇸🇻", "504": "🇭🇳",
+  "505": "🇳🇮", "506": "🇨🇷", "507": "🇵🇦", "51": "🇵🇪", "57": "🇨🇴",
+  "56": "🇨🇱", "54": "🇦🇷", "593": "🇪🇨", "591": "🇧🇴", "595": "🇵🇾",
+  "598": "🇺🇾", "58": "🇻🇪", "809": "🇩🇴", "34": "🇪🇸",
+};
+
 interface Empresa {
   id: string;
   nombre: string;
@@ -37,6 +44,7 @@ interface Empresa {
   created_at: string | null;
   plan: string;
   max_usuarios: number;
+  lada_pais: string;
 }
 
 interface EmpresaForm {
@@ -70,7 +78,7 @@ export default function EmpresasPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("empresas")
-        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, created_at, plan, max_usuarios")
+        .select("id, nombre, ruc, telefono, direccion, logo_url, activa, created_at, plan, max_usuarios, lada_pais")
         .order("nombre");
       if (error) throw error;
       return (data as unknown) as Empresa[];
@@ -324,7 +332,11 @@ export default function EmpresasPage() {
                           </span>
                         ) : "—"}
                       </TableCell>
-                      <TableCell className="text-xs">{e.telefono || "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {e.telefono ? (
+                          <span>{LADA_FLAGS[e.lada_pais] || "🌐"} +{e.lada_pais} {e.telefono.replace(/^\+?\d{1,3}/, "")}</span>
+                        ) : "—"}
+                      </TableCell>
                       <TableCell>
                         {admins.length > 0 ? (
                           <div className="space-y-0.5">
