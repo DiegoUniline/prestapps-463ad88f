@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { usePersistedString, usePersistedSet, usePersistedDate } from "@/hooks/usePersistedFilters";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
@@ -173,15 +174,17 @@ export default function PagosPage() {
   const cajasOpts = cajasRaw.map((c) => c.nombre);
   const rutasOpts = rutasRaw.map((r) => r.nombre);
 
-  const [search, setSearch] = useState("");
-  const [selMetodo, setSelMetodo] = useState<Set<string>>(new Set());
-  const [selCaja, setSelCaja] = useState<Set<string>>(new Set());
-  const [selRuta, setSelRuta] = useState<Set<string>>(new Set());
-  const [regDesde, setRegDesde] = useState<Date>();
-  const [regHasta, setRegHasta] = useState<Date>();
+  const [search, setSearch] = usePersistedString("pagos", "search");
+  const [selMetodo, setSelMetodo] = usePersistedSet("pagos", "selMetodo");
+  const [selCaja, setSelCaja] = usePersistedSet("pagos", "selCaja");
+  const [selRuta, setSelRuta] = usePersistedSet("pagos", "selRuta");
+  const [regDesde, setRegDesde] = usePersistedDate("pagos", "regDesde");
+  const [regHasta, setRegHasta] = usePersistedDate("pagos", "regHasta");
 
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
+  const [sortKeyRaw, setSortKey] = usePersistedString("pagos", "sortKey");
+  const [sortDirRaw, setSortDir] = usePersistedString("pagos", "sortDir");
+  const sortKey = (sortKeyRaw || null) as SortKey | null;
+  const sortDir = (sortDirRaw || null) as "asc" | "desc" | null;
 
   // Grouping
   const [groupBy, setGroupBy] = usePersistedGroupBy("pagos");

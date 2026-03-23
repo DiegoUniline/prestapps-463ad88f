@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { usePersistedString, usePersistedSet, usePersistedDate } from "@/hooks/usePersistedFilters";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
@@ -418,7 +419,7 @@ export default function PrestamosPage() {
   const colVis = useColumnVisibility(user?.id);
   const visibleColumns = useMemo(() => ALL_COLUMNS.filter(c => colVis.visible.has(c.key)), [colVis.visible]);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistedString("prestamos", "search");
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   // Derive activeTab from URL param or default
   const activeTab: string = vistaParam === "liquidados" ? "liquidados"
@@ -430,14 +431,16 @@ export default function PrestamosPage() {
     else navigate(`/prestamos?vista=${tab}`, { replace: true });
   };
 
-  const [selEstado, setSelEstado] = useState<Set<string>>(new Set());
-  const [selCaja, setSelCaja] = useState<Set<string>>(new Set());
-  const [selRuta, setSelRuta] = useState<Set<string>>(new Set());
-  const [regDesde, setRegDesde] = useState<Date>();
-  const [regHasta, setRegHasta] = useState<Date>();
+  const [selEstado, setSelEstado] = usePersistedSet("prestamos", "selEstado");
+  const [selCaja, setSelCaja] = usePersistedSet("prestamos", "selCaja");
+  const [selRuta, setSelRuta] = usePersistedSet("prestamos", "selRuta");
+  const [regDesde, setRegDesde] = usePersistedDate("prestamos", "regDesde");
+  const [regHasta, setRegHasta] = usePersistedDate("prestamos", "regHasta");
 
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc" | null>(null);
+  const [sortKeyRaw, setSortKey] = usePersistedString("prestamos", "sortKey");
+  const [sortDirRaw, setSortDir] = usePersistedString("prestamos", "sortDir");
+  const sortKey = (sortKeyRaw || null) as SortKey | null;
+  const sortDir = (sortDirRaw || null) as "asc" | "desc" | null;
   const [lightboxPhoto, setLightboxPhoto] = useState<{ src: string; alt: string } | null>(null);
 
   // Grouping
