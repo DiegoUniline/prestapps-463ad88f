@@ -209,15 +209,18 @@ function useDailyReport(empresaId: string, cobradorId: string | null) {
       }
 
       // Expected today
-      const cuotasExpected = (cuotasHoy || []).map((c: any) => ({
-        id: c.id,
-        num_cuota: c.num_cuota,
-        monto: Number(c.capital_interes || 0),
-        saldo: Number(c.saldo_total || 0),
-        status: c.status,
-        id_prestamo: c.prestamos?.id_prestamo || "—",
-        cliente: c.prestamos?.clientes?.nombre_completo || "—",
-      }));
+      const cuotasExpected = (cuotasHoy || []).map((c: any) => {
+        const pr = cobPrestamoMap[c.prestamo_id];
+        return {
+          id: c.id,
+          num_cuota: c.num_cuota,
+          monto: Number(c.capital_interes || 0),
+          saldo: Number(c.saldo_total || 0),
+          status: c.status,
+          id_prestamo: pr?.id_prestamo || "—",
+          cliente: pr?.clientes?.nombre_completo || "—",
+        };
+      });
       const totalEsperado = cuotasExpected.reduce((s, c) => s + c.monto, 0);
 
       // Unique clients visited (from pagos + visitas)
