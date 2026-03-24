@@ -1181,7 +1181,7 @@ export default function PrestamoDetallePage() {
         rutaId={prestamo.ruta_id}
         cobradorId={prestamo.cobrador_id}
         montoInicial={selectedCuota ? Number(selectedCuota.saldo_total || 0) : (() => {
-          const primera = cuotas?.find((c: any) => c.status !== "Pagada");
+          const primera = amort.find((c) => c.status !== "Pagada");
           return primera ? Number(primera.saldo_total || 0) : undefined;
         })()}
       />
