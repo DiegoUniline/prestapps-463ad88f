@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { toast } from "sonner";
