@@ -72,13 +72,13 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
         .eq("empresa_id", empresaId));
 
       // 3. Pagos in period & previous
-      const { data: pagos } = await supabase
+      const pagos = await fetchAllRows(supabase
         .from("pagos")
         .select("id, cobrador_id, registrado_por, monto_recibido, created_at, prestamo_id, fecha_pago")
         .eq("empresa_id", empresaId)
         .eq("anulado", false)
         .gte("fecha_pago", prevDesde)
-        .lte("fecha_pago", hastaStr);
+        .lte("fecha_pago", hastaStr));
 
       // 4. Amortizacion for mora
       const prestamoIds = (prestamos || [])
