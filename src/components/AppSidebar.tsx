@@ -5,6 +5,7 @@ import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole, type AppRole } from "@/hooks/useCurrentUserRole";
 import { usePermisosRead, type PermisoModule } from "@/hooks/usePermisos";
+import { fetchPrestamos } from "@/hooks/usePrestamos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuthStore } from "@/stores/authStore";
 import { isSuperAdmin } from "@/components/SuperAdminGuard";

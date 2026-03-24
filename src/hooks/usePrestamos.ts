@@ -33,13 +33,13 @@ export interface PrestamoListItem {
   proximoVencimiento: string | null;
 }
 
-interface FetchFilters {
+export interface FetchFilters {
   rutaIds?: string[];
   cobradorId?: string | null;
   empresaId?: string;
 }
 
-async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[]> {
+export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[]> {
   // Fetch dias_gracia for the empresa
   let diasGracia = 0;
   if (filters?.empresaId) {
