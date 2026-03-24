@@ -581,7 +581,7 @@ export default function PrestamosPage() {
   };
 
   const kpis = useMemo(() => {
-    const source = tabFiltered;
+    const source = filtered;
     const totalPrestamos = source.length;
     const montoColocado = source.reduce((s, p) => s + p.montoSolicitado, 0);
     const porCobrar = source.reduce((s, p) => s + p.saldo, 0);
@@ -594,7 +594,7 @@ export default function PrestamosPage() {
       { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning" },
       { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
     ];
-  }, [tabFiltered]);
+  }, [filtered]);
 
   const tabCounts = useMemo(() => {
     const today = new Date();
