@@ -318,9 +318,11 @@ export default function ClientesPage() {
             </div>
           </div>
 
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar cliente..." value={searchEC} onChange={(e) => setSearchEC(e.target.value)} className="pl-9" />
+          <div className="bg-card border border-border rounded-lg p-4">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar cliente..." value={searchEC} onChange={(e) => setSearchEC(e.target.value)} className="pl-9" />
+            </div>
           </div>
 
           {loadingEC ? (
