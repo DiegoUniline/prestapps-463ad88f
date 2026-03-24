@@ -224,6 +224,8 @@ export function usePrestamos(filters?: FetchFilters) {
     queryKey: ["prestamos-list-v2", filters?.rutaIds, filters?.cobradorId, filters?.empresaId],
     queryFn: () => fetchPrestamos(filters),
     staleTime: 1000 * 60 * 5, // 5 min — use global default
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
   return result;
 }
