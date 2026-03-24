@@ -148,11 +148,12 @@ function useCajaFlujoReal(cajaId: string) {
         const monto = Number(m.monto || 0);
         const lower = (m.concepto || "").toLowerCase();
         const isTransfer = lower.includes("transferencia");
-        const isGasto = lower.includes("gasto") || lower.includes("[");
-        const isComision = lower.includes("comisión") || lower.includes("comision") || lower.includes("corte");
+        // "Gasto cobrador" = comisión automática, NO gasto manual del usuario
+        const isComision = lower.includes("comisión") || lower.includes("comision") || lower.includes("corte") || lower.includes("gasto cobrador");
+        const isGasto = !isComision && (lower.includes("[") || lower.startsWith("gasto"));
         if (isTransfer) { if (m.tipo === "entrada") transferenciasIn += monto; else transferenciasOut += monto; }
-        else if (isGasto) gastos += monto;
         else if (isComision) comisiones += monto;
+        else if (isGasto) gastos += monto;
         else if (m.tipo === "entrada") depositos += monto;
         else retiros += monto;
       }
