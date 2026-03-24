@@ -519,6 +519,13 @@ export default function CajaDetallePage() {
                     </div>
                   </div>
                 ))}
+                <div className="px-4 py-3 bg-muted/50 border-t-2 border-border flex items-center justify-between font-bold text-[13px]">
+                  <span>Totales</span>
+                  <div className="flex gap-4">
+                    <span className="text-success">+{$$(manualRows.filter(r => r.tipo === "entrada").reduce((s, r) => s + r.monto, 0))}</span>
+                    <span className="text-destructive">-{$$(manualRows.filter(r => r.tipo === "salida").reduce((s, r) => s + r.monto, 0))}</span>
+                  </div>
+                </div>
               </div>
 
               {/* Desktop */}
@@ -547,6 +554,16 @@ export default function CajaDetallePage() {
                         <TableCell className="text-right text-[13px] px-3 font-semibold">{$$(r.balance)}</TableCell>
                       </TableRow>
                     ))}
+                    <TableRow className="bg-muted/50 border-t-2 border-border font-bold">
+                      <TableCell className="px-3 text-[12px]" colSpan={3}>Totales</TableCell>
+                      <TableCell className="text-right text-[13px] px-3 text-success font-bold">
+                        {$$(manualRows.filter(r => r.tipo === "entrada").reduce((s, r) => s + r.monto, 0))}
+                      </TableCell>
+                      <TableCell className="text-right text-[13px] px-3 text-destructive font-bold">
+                        {$$(manualRows.filter(r => r.tipo === "salida").reduce((s, r) => s + r.monto, 0))}
+                      </TableCell>
+                      <TableCell className="text-right text-[13px] px-3 font-bold">{manualRows.length > 0 ? $$(manualRows[0].balance) : "$0"}</TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
               </div>
