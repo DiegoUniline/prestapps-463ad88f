@@ -247,6 +247,13 @@ export default function CajaDetallePage() {
     return rows.map(r => { balance += r.tipo === "entrada" ? r.monto : -r.monto; return { ...r, balance }; }).reverse();
   }, [rows]);
 
+  // Manual movements only (depósitos, retiros, transferencias)
+  const manualRows = useMemo(() => {
+    const filtered = rows.filter(r => MANUAL_CATEGORIES.has(r.categoria));
+    let balance = 0;
+    return filtered.map(r => { balance += r.tipo === "entrada" ? r.monto : -r.monto; return { ...r, balance }; }).reverse();
+  }, [rows]);
+
   const filteredKardex = useMemo(() => {
     if (kardexFilter === "Todos") return withBalance;
     return withBalance.filter(r => r.categoria === kardexFilter);
