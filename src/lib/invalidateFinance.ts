@@ -28,6 +28,7 @@ export function invalidateFinanceQueries(
 
   // Préstamos
   queryClient.invalidateQueries({ queryKey: ["prestamos-list"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["prestamos-list-v2"], refetchType: "all" });
 
   // Gastos & comisiones
   queryClient.invalidateQueries({ queryKey: ["gastos"], refetchType: "all" });
