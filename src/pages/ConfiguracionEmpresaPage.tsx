@@ -24,6 +24,7 @@ import {
 } from "@/hooks/useEmpresaConfig";
 import { setCurrencySymbol } from "@/lib/utils";
 import { useEmpresaStore } from "@/stores/empresaStore";
+import { PurgeDataSection } from "@/components/PurgeDataSection";
 
 const MONEDAS = [
   { codigo: "USD", simbolo: "$", nombre: "Dólar estadounidense (USD)" },
