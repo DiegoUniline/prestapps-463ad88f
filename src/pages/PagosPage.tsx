@@ -293,17 +293,20 @@ export default function PagosPage() {
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [filtered, groupBy]);
 
-  const totalPagos = pagos.length;
-  const totalRecaudado = pagos.reduce((s, p) => s + p.montoRecibido, 0);
-  const totalMora = pagos.reduce((s, p) => s + p.aplicadoMora, 0);
-  const totalCapital = pagos.reduce((s, p) => s + p.aplicadoCapital, 0);
+  const kpis = useMemo(() => {
+    const source = filtered;
+    const totalPagos = source.length;
+    const totalRecaudado = source.reduce((s, p) => s + p.montoRecibido, 0);
+    const totalMora = source.reduce((s, p) => s + p.aplicadoMora, 0);
+    const totalCapital = source.reduce((s, p) => s + p.aplicadoCapital, 0);
 
-  const kpis = [
-    { label: "Total Pagos", value: String(totalPagos), icon: Hash, accent: "text-primary" },
-    { label: "Total Recaudado", value: $$(totalRecaudado), icon: DollarSign, accent: "text-success" },
-    { label: "Aplicado a Capital", value: $$(totalCapital), icon: TrendingUp, accent: "text-[hsl(217,91%,60%)]" },
-    { label: "Aplicado a Mora", value: $$(totalMora), icon: HandCoins, accent: "text-destructive" },
-  ];
+    return [
+      { label: "Total Pagos", value: String(totalPagos), icon: Hash, accent: "text-primary" },
+      { label: "Total Recaudado", value: $$(totalRecaudado), icon: DollarSign, accent: "text-success" },
+      { label: "Aplicado a Capital", value: $$(totalCapital), icon: TrendingUp, accent: "text-[hsl(217,91%,60%)]" },
+      { label: "Aplicado a Mora", value: $$(totalMora), icon: HandCoins, accent: "text-destructive" },
+    ];
+  }, [filtered]);
 
   // ── Action handlers ──────────────────────────────────────────────
   const buildReceiptCaption = (p: PagoListItem) =>
