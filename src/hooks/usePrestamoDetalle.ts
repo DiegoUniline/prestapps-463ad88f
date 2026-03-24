@@ -46,7 +46,9 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
 }
 
 export function useAmortizacion(prestamoId: string | undefined) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  const amortizacionQuery = useQuery({
     queryKey: ["amortizacion", prestamoId],
     queryFn: async () => {
       if (!prestamoId) return [];
@@ -71,7 +73,20 @@ export function useAmortizacion(prestamoId: string | undefined) {
     },
     enabled: !!prestamoId,
     staleTime: 1000 * 60 * 2,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!prestamoId || !amortizacionQuery.dataUpdatedAt) return;
+
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["prestamos-list-v2"] }),
+      queryClient.invalidateQueries({ queryKey: ["prestamos-list"] }),
+    ]);
+  }, [prestamoId, amortizacionQuery.dataUpdatedAt, queryClient]);
+
+  return amortizacionQuery;
 }
 
 export function usePagos(prestamoId: string | undefined) {
