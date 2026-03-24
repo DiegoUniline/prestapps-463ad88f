@@ -224,7 +224,7 @@ export default function ComisionesPage() {
           .maybeSingle();
 
         const desde = lastCorte?.created_at || undefined;
-        const cobros = await fetchCobros(cobrador.id, desde);
+        const cobros = await fetchCobros(cobrador.id, empresaId, desde);
         const total = cobros.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
         const comision = total * (cobrador.porcentaje_comision / 100);
 

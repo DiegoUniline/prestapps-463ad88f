@@ -11,14 +11,15 @@ export function invalidateFinanceQueries(
   queryClient: QueryClient,
   opts?: { prestamoId?: string }
 ) {
-  // Cajas & kardex
+  // Cajas & kardex (all 4 keys + related)
   queryClient.invalidateQueries({ queryKey: ["cajas-all"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["cajas-page"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["cajas-options"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["prestamos-by-caja"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["kardex-all"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["caja-kardex"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["caja-detalle"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["movimientos-all"], refetchType: "all" });
-  queryClient.invalidateQueries({ queryKey: ["prestamos-by-caja"], refetchType: "all" });
 
   // Cobradores & liquidaciones
   queryClient.invalidateQueries({ queryKey: ["cobradores"], refetchType: "all" });
