@@ -66,10 +66,10 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
         .eq("empresa_id", empresaId);
 
       // 2. Prestamos activos per cobrador
-      const { data: prestamos } = await supabase
+      const prestamos = await fetchAllRows(supabase
         .from("prestamos")
         .select("id, cobrador_id, generado_por, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
-        .eq("empresa_id", empresaId);
+        .eq("empresa_id", empresaId));
 
       // 3. Pagos in period & previous
       const { data: pagos } = await supabase
