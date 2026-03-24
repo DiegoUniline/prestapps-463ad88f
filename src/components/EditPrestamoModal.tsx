@@ -38,6 +38,7 @@ interface EditPrestamoModalProps {
 
 export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, cobradores }: EditPrestamoModalProps) {
   const queryClient = useQueryClient();
+  const { empresaId } = useEmpresa();
   const [saving, setSaving] = useState(false);
 
   const [tasaInteres, setTasaInteres] = useState("");
@@ -68,6 +69,8 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
   const handleSave = async () => {
     setSaving(true);
     try {
+      const cajaChanged = (cajaId || null) !== (prestamo.caja_id || null);
+
       const updates: Record<string, any> = {
         tasa_interes: tasaInteres ? parseFloat(tasaInteres) : null,
         tipo_mora: tipoMora as any,
@@ -86,6 +89,37 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
         .eq("id", prestamo.id);
 
       if (error) throw error;
+
+      // If caja changed, move the desembolso in movimientos_caja
+      if (cajaChanged) {
+        const folio = prestamo.id_prestamo || prestamo.id.slice(0, 8);
+        const montoDesembolso = prestamo.monto_solicitado || 0;
+
+        if (montoDesembolso > 0) {
+          // Reverse from old caja (entrada to cancel the salida)
+          if (prestamo.caja_id) {
+            await supabase.from("movimientos_caja").insert({
+              caja_id: prestamo.caja_id,
+              tipo: "entrada" as const,
+              monto: montoDesembolso,
+              prestamo_id: prestamo.id,
+              concepto: `Corrección desembolso ${folio} — salida de caja anterior`,
+              empresa_id: empresaId,
+            });
+          }
+          // Re-enter on new caja (salida = desembolso)
+          if (cajaId) {
+            await supabase.from("movimientos_caja").insert({
+              caja_id: cajaId,
+              tipo: "salida" as const,
+              monto: montoDesembolso,
+              prestamo_id: prestamo.id,
+              concepto: `Corrección desembolso ${folio} — cambio de caja`,
+              empresa_id: empresaId,
+            });
+          }
+        }
+      }
 
       invalidateFinanceQueries(queryClient, { prestamoId: prestamo.id });
 
