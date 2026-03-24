@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export function usePrestamoDetalle(prestamoId: string | undefined) {
@@ -46,16 +45,10 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
 }
 
 export function useAmortizacion(prestamoId: string | undefined) {
-  const queryClient = useQueryClient();
-
-  const amortizacionQuery = useQuery({
+  return useQuery({
     queryKey: ["amortizacion", prestamoId],
     queryFn: async () => {
       if (!prestamoId) return [];
-
-      // Fire-and-forget mora recalc — don't block the UI read
-      (supabase.rpc as any)("recalcular_mora", { p_prestamo_id: prestamoId }).catch(() => {});
-
       const { data, error } = await supabase
         .from("amortizacion")
         .select(`
@@ -76,17 +69,6 @@ export function useAmortizacion(prestamoId: string | undefined) {
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
-
-  useEffect(() => {
-    if (!prestamoId || !amortizacionQuery.dataUpdatedAt) return;
-
-    void Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["prestamos-list-v2"] }),
-      queryClient.invalidateQueries({ queryKey: ["prestamos-list"] }),
-    ]);
-  }, [prestamoId, amortizacionQuery.dataUpdatedAt, queryClient]);
-
-  return amortizacionQuery;
 }
 
 export function usePagos(prestamoId: string | undefined) {
