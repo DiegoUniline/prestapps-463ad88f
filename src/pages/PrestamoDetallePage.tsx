@@ -1252,6 +1252,10 @@ export default function PrestamoDetallePage() {
         prestamoId={prestamo.id}
         clienteNombre={cliente?.nombre_completo || "—"}
         saldoPendiente={saldoPendiente}
+        cajaId={prestamo.caja_id}
+        montoDesembolso={Number(prestamo.monto_solicitado || 0)}
+        empresaId={empresaId}
+        folioId={prestamo.id_prestamo}
       />
 
       {/* Reestructurar Modal */}
