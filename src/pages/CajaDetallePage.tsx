@@ -140,6 +140,7 @@ function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string 
 }
 
 const KARDEX_CATEGORIES = ["Todos", "Pagos", "Desembolsos", "Anulaciones", "Gastos", "Comisiones", "Depósitos", "Retiros", "Transferencias"] as const;
+const MANUAL_CATEGORIES = new Set(["Depósitos", "Retiros", "Transferencias"]);
 
 function useCajaKardex(cajaId: string) {
   return useQuery({
