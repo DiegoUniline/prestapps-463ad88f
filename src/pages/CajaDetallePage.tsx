@@ -147,6 +147,8 @@ function useCajaFlujoReal(cajaId: string) {
       for (const m of manuales || []) {
         const monto = Number(m.monto || 0);
         const lower = (m.concepto || "").toLowerCase();
+        // Skip automatic correction movements (caja reassignment)
+        if (lower.includes("corrección") || lower.includes("correccion") || lower.includes("movido a caja")) continue;
         const isTransfer = lower.includes("transferencia");
         // "Gasto cobrador" = comisión automática, NO gasto manual del usuario
         const isComision = lower.includes("comisión") || lower.includes("comision") || lower.includes("corte") || lower.includes("gasto cobrador");
