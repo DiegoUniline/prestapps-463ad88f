@@ -33,7 +33,7 @@ function useClientePrestamos(clienteId: string | undefined) {
       if (error) throw error;
       const ids = (prestamos || []).map((p) => p.id);
       if (ids.length === 0) return [];
-      const { data: amort } = await supabase.from("amortizacion").select("prestamo_id, saldo_total, saldo_mora, status").in("prestamo_id", ids);
+      const amort = await fetchAllRows(supabase.from("amortizacion").select("prestamo_id, saldo_total, saldo_mora, status").in("prestamo_id", ids));
       const amortMap: Record<string, { saldo: number; mora: number; pagadas: number; total: number }> = {};
       for (const a of amort || []) {
         if (!amortMap[a.prestamo_id]) amortMap[a.prestamo_id] = { saldo: 0, mora: 0, pagadas: 0, total: 0 };
