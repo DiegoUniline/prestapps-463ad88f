@@ -1221,6 +1221,9 @@ export default function ConfiguracionEmpresaPage() {
         <TabsContent value="stripe">
           <StripeConnectTab />
         </TabsContent>
+        <TabsContent value="peligro">
+          <PurgeDataSection />
+        </TabsContent>
       </Tabs>
     </div>
   );
