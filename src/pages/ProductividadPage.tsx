@@ -102,12 +102,12 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
         .lte("created_at", `${hastaStr}T23:59:59`));
 
       // 6. All visitas ever for "last visit" tracking
-      const { data: allVisitas } = await supabase
+      const allVisitas = await fetchAllRows(supabase
         .from("crm_gestiones")
         .select("cliente_id, created_at, registrado_por")
         .eq("empresa_id", empresaId)
         .eq("tipo_gestion", "Visita")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }));
 
       // 7. Clientes for name mapping
       const { data: clientes } = await supabase
