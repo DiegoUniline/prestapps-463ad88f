@@ -5,6 +5,7 @@ import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
