@@ -170,7 +170,7 @@ export default function ClientesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="bg-card border border-border rounded-lg p-4 flex items-center justify-between">
         <h1 className="text-xl md:text-2xl font-bold">Clientes</h1>
         <div className="flex items-center gap-2">
           <ClientesBulkImportExport />
@@ -196,7 +196,7 @@ export default function ClientesPage() {
 
         {/* ── Tab: Listado ──────────────────────────────────── */}
         <TabsContent value="listado" className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="bg-card border border-border rounded-lg p-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
             <div className="relative flex-1 sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
