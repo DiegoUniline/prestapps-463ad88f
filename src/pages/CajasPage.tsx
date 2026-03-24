@@ -53,28 +53,20 @@ function useKardex() {
     queryKey: ["kardex-all"],
     queryFn: async () => {
       // 1) Movimientos de caja
-      const { data: movs, error: movErr } = await supabase
+      const movs = await fetchAllRows(supabase
         .from("movimientos_caja")
         .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (movErr) throw movErr;
+        .order("created_at", { ascending: false }));
 
-      // 2) Pagos (cobros)
-      const { data: pagos, error: pagErr } = await supabase
+      const pagos = await fetchAllRows(supabase
         .from("pagos")
         .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (pagErr) throw pagErr;
+        .order("created_at", { ascending: false }));
 
-      // 3) Préstamos (desembolsos) — siempre mostrar como salida
-      const { data: prestamos, error: preErr } = await supabase
+      const prestamos = await fetchAllRows(supabase
         .from("prestamos")
         .select("id, monto_solicitado, created_at, fecha_registro, caja_id, cajas ( nombre ), clientes ( nombre_completo )")
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (preErr) throw preErr;
+        .order("created_at", { ascending: false }));
 
       const entries: KardexEntry[] = [];
 
