@@ -303,97 +303,96 @@ export default function ClientesPage() {
           </TabsContent>
 
         {/* ── Tab: Estados de Cuenta ────────────────────────── */}
-        <TabsContent value="estados" className="space-y-4">
-          {/* KPIs */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="border rounded-lg p-3 md:p-4 bg-card">
-              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Deuda Total</p>
-              <p className="text-xl md:text-2xl font-bold mt-1">{$$(totalDeuda)}</p>
+          <TabsContent value="estados" className="space-y-4">
+            {/* KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="border rounded-lg p-3 md:p-4">
+                <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Deuda Total</p>
+                <p className="text-xl md:text-2xl font-bold mt-1">{$$(totalDeuda)}</p>
+              </div>
+              <div className="border rounded-lg p-3 md:p-4">
+                <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Saldo Moroso</p>
+                <p className="text-xl md:text-2xl font-bold mt-1 text-destructive">{$$(totalMoroso)}</p>
+              </div>
+              <div className="border rounded-lg p-3 md:p-4">
+                <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Cuotas Vencidas</p>
+                <p className="text-xl md:text-2xl font-bold mt-1">{totalVencidas}</p>
+              </div>
             </div>
-            <div className="border rounded-lg p-3 md:p-4 bg-card">
-              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Saldo Moroso</p>
-              <p className="text-xl md:text-2xl font-bold mt-1 text-destructive">{$$(totalMoroso)}</p>
-            </div>
-            <div className="border rounded-lg p-3 md:p-4 bg-card">
-              <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Cuotas Vencidas</p>
-              <p className="text-xl md:text-2xl font-bold mt-1">{totalVencidas}</p>
-            </div>
-          </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar cliente..." value={searchEC} onChange={(e) => setSearchEC(e.target.value)} className="pl-9" />
             </div>
-          </div>
 
-          {loadingEC ? (
-            <div className="space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-            </div>
-          ) : (
-            <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-table-header hover:bg-table-header border-b">
-                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">ID</TableHead>
-                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cliente</TableHead>
-                    <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Saldo Total</TableHead>
-                    <TableHead className="text-center text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cuotas Vencidas</TableHead>
-                    <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Saldo Moroso</TableHead>
-                    <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cobrador</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEstados.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-[13px]">
-                        No hay estados de cuenta
-                      </TableCell>
+            {loadingEC ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-table-header hover:bg-table-header border-b">
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">ID</TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cliente</TableHead>
+                      <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Saldo Total</TableHead>
+                      <TableHead className="text-center text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cuotas Vencidas</TableHead>
+                      <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Saldo Moroso</TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5">Cobrador</TableHead>
                     </TableRow>
-                  ) : (
-                    <>
-                      {filteredEstados.map((ec) => (
-                        <TableRow
-                          key={ec.cliente_id}
-                          className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors"
-                          onClick={() => navigate(`/clientes/${ec.cliente_id}`)}
-                        >
-                          <TableCell className="font-mono text-[12px] px-3">{ec.id_cliente}</TableCell>
-                          <TableCell className="font-medium text-[13px] px-3">{ec.nombre_completo}</TableCell>
-                          <TableCell className="text-right font-semibold text-[13px] px-3">{$$(ec.saldo_total)}</TableCell>
-                          <TableCell className="text-center px-3">
-                            {ec.cuotas_vencidas > 0 ? (
-                              <Badge variant="destructive">{ec.cuotas_vencidas}</Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-[13px]">0</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right px-3">
-                            <span className={ec.saldo_moroso > 0 ? "text-destructive font-semibold text-[13px]" : "text-muted-foreground text-[13px]"}>
-                              {$$(ec.saldo_moroso)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-[13px] px-3">{ec.cobrador_nombre || "—"}</TableCell>
-                        </TableRow>
-                      ))}
-                      {filteredEstados.length > 0 && (
-                        <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
-                          <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={2}>Totales ({filteredEstados.length})</TableCell>
-                          <TableCell className="text-right font-bold text-[13px] px-3">{$$(totalDeuda)}</TableCell>
-                          <TableCell className="text-center font-bold text-[13px] px-3">{totalVencidas}</TableCell>
-                          <TableCell className="text-right font-bold text-destructive text-[13px] px-3">{$$(totalMoroso)}</TableCell>
-                          <TableCell className="px-3" />
-                        </TableRow>
-                      )}
-                    </>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEstados.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-[13px]">
+                          No hay estados de cuenta
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      <>
+                        {filteredEstados.map((ec) => (
+                          <TableRow
+                            key={ec.cliente_id}
+                            className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors"
+                            onClick={() => navigate(`/clientes/${ec.cliente_id}`)}
+                          >
+                            <TableCell className="font-mono text-[12px] px-3">{ec.id_cliente}</TableCell>
+                            <TableCell className="font-medium text-[13px] px-3">{ec.nombre_completo}</TableCell>
+                            <TableCell className="text-right font-semibold text-[13px] px-3">{$$(ec.saldo_total)}</TableCell>
+                            <TableCell className="text-center px-3">
+                              {ec.cuotas_vencidas > 0 ? (
+                                <Badge variant="destructive">{ec.cuotas_vencidas}</Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-[13px]">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right px-3">
+                              <span className={ec.saldo_moroso > 0 ? "text-destructive font-semibold text-[13px]" : "text-muted-foreground text-[13px]"}>
+                                {$$(ec.saldo_moroso)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-[13px] px-3">{ec.cobrador_nombre || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                        {filteredEstados.length > 0 && (
+                          <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                            <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={2}>Totales ({filteredEstados.length})</TableCell>
+                            <TableCell className="text-right font-bold text-[13px] px-3">{$$(totalDeuda)}</TableCell>
+                            <TableCell className="text-center font-bold text-[13px] px-3">{totalVencidas}</TableCell>
+                            <TableCell className="text-right font-bold text-destructive text-[13px] px-3">{$$(totalMoroso)}</TableCell>
+                            <TableCell className="px-3" />
+                          </TableRow>
+                        )}
+                      </>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
