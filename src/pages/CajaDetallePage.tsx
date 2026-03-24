@@ -322,16 +322,10 @@ export default function CajaDetallePage() {
   }, [rows]);
 
   const flujoData = useMemo(() => {
-    const entradas: Record<string, number> = {};
-    const salidas: Record<string, number> = {};
-    let totalEntradas = 0, totalSalidas = 0;
-    for (const r of rows) {
-      if (r.tipo === "entrada") { entradas[r.categoria] = (entradas[r.categoria] || 0) + r.monto; totalEntradas += r.monto; }
-      else { salidas[r.categoria] = (salidas[r.categoria] || 0) + r.monto; totalSalidas += r.monto; }
-    }
-    const saldoInicial = saldoActual - totalEntradas + totalSalidas;
-    return { entradas, salidas, totalEntradas, totalSalidas, saldoInicial, flujoNeto: totalEntradas - totalSalidas };
-  }, [rows, saldoActual]);
+    if (!flujoReal) return { entradas: {} as Record<string, number>, salidas: {} as Record<string, number>, totalEntradas: 0, totalSalidas: 0, saldoInicial: saldoActual, flujoNeto: 0 };
+    const saldoInicial = saldoActual - flujoReal.flujoNeto;
+    return { ...flujoReal, saldoInicial };
+  }, [flujoReal, saldoActual]);
 
   // Pie chart data for entradas/salidas composition
   const pieEntradas = useMemo(() => Object.entries(flujoData.entradas).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value), [flujoData]);
