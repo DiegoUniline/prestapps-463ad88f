@@ -132,7 +132,7 @@ export function LiquidarModal({ open, onOpenChange, prestamoId, cuotasPendientes
         aplicado_mora: Math.round(totalMoraAplicada * 100) / 100,
         aplicado_interes: Math.round(totalInteresAplicado * 100) / 100,
         aplicado_capital: Math.round(totals.capital * 100) / 100,
-        metodo_pago: "Efectivo" as any,
+        metodo_pago: "Efectivo",
         caja_id: cajaId,
         ruta_id: rutaId || null,
         cobrador_id: cobradorId || null,
