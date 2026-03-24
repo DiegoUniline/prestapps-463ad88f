@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { toast } from "sonner";
@@ -57,15 +58,17 @@ function useCajaStats(cajaId: string) {
 
       const ids = prestamos.map(p => p.id);
       const prestamoMap = new Map(prestamos.map((p) => [p.id, p]));
-      const { data: amortData } = await supabase
-        .from("amortizacion")
-        .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes, mora_pagada, status, fecha_vencimiento")
-        .in("prestamo_id", ids);
+      const amortData = await fetchAllRows(
+        supabase
+          .from("amortizacion")
+          .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes, mora_pagada, status, fecha_vencimiento")
+          .in("prestamo_id", ids)
+      );
 
       const today = new Date().toISOString().slice(0, 10);
       const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
 
-      for (const a of amortData || []) {
+      for (const a of amortData) {
         const p = prestamoMap.get(a.prestamo_id);
         if (!prestamoAgg[a.prestamo_id]) {
           prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, capital: 0, interes: 0, tieneAtraso: false };
