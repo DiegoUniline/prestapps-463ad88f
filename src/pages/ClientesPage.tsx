@@ -391,7 +391,6 @@ export default function ClientesPage() {
             )}
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }
