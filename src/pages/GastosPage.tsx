@@ -161,8 +161,6 @@ export default function GastosPage() {
     return gastos.filter((g) => {
       const matchSearch = !search || g.concepto.toLowerCase().includes(search.toLowerCase()) || g.caja.toLowerCase().includes(search.toLowerCase());
       const matchCat = filtroCategoria === "todos" || g.categoria === filtroCategoria;
-      // Exclude desembolsos from gastos view
-      if (g.categoria === "Desembolso") return false;
       return matchSearch && matchCat;
     });
   }, [gastos, search, filtroCategoria]);
