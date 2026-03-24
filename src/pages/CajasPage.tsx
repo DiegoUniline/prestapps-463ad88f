@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCajaSaldoReal } from "@/hooks/useCajaSaldoReal";
-import CajaKardexSheet from "@/components/CajaKardexSheet";
+
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,12 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, TrendingDown, Loader2, FileText, AlertTriangle, PiggyBank, BarChart3, CalendarIcon, X, LayoutGrid, List, MoreHorizontal, Eye } from "lucide-react";
+import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { cn, $$, fmtDate } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
 // ── Data hooks ────────────────────────────────────────────────────
 function useCajas(empresaId: string) {
   return useQuery({
@@ -35,123 +32,6 @@ function useCajas(empresaId: string) {
   });
 }
 
-interface KardexEntry {
-  id: string;
-  fecha: string;
-  tipo: "entrada" | "salida";
-  categoria: string; // Cobro, Desembolso, Depósito, Retiro, Transferencia
-  concepto: string;
-  cliente: string;
-  prestamo: string;
-  caja: string;
-  cajaId: string;
-  usuario: string;
-  monto: number;
-}
-
-function useKardex() {
-  return useQuery({
-    queryKey: ["kardex-all"],
-    queryFn: async () => {
-      // 1) Movimientos de caja
-      const movs = await fetchAllRows(supabase
-        .from("movimientos_caja")
-        .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
-        .order("created_at", { ascending: false }));
-
-      const pagos = await fetchAllRows(supabase
-        .from("pagos")
-        .select("*, cajas ( nombre ), prestamos ( id, clientes ( nombre_completo ) )")
-        .order("created_at", { ascending: false }));
-
-      const prestamos = await fetchAllRows(supabase
-        .from("prestamos")
-        .select("id, monto_solicitado, created_at, fecha_registro, caja_id, cajas ( nombre ), clientes ( nombre_completo )")
-        .order("created_at", { ascending: false }));
-
-      const entries: KardexEntry[] = [];
-
-      // Track movimiento prestamo_ids to avoid duplicates
-      const movPrestamoIds = new Set((movs || []).filter(m => m.prestamo_id).map(m => m.prestamo_id));
-
-      // Map movimientos
-      for (const m of movs || []) {
-        const prestamo = m.prestamos as any;
-        const cliente = prestamo?.clientes as any;
-        const concepto = m.concepto || "";
-        let categoria = m.tipo === "entrada" ? "Depósito" : "Retiro";
-        if (concepto.toLowerCase().includes("transferencia")) categoria = "Transferencia";
-        if (concepto.toLowerCase().includes("desembolso") || concepto.toLowerCase().includes("préstamo")) {
-          categoria = m.tipo === "salida" ? "Desembolso" : "Cobro";
-        }
-        if (concepto.toLowerCase().includes("pago")) categoria = "Cobro";
-
-        entries.push({
-          id: `mov-${m.id}`,
-          fecha: m.created_at || "",
-          tipo: m.tipo as "entrada" | "salida",
-          categoria,
-          concepto: concepto || (m.tipo === "entrada" ? "Depósito" : "Retiro"),
-          cliente: cliente?.nombre_completo || "",
-          prestamo: prestamo?.id ? `PRE-${prestamo.id.slice(0, 8)}` : "",
-          caja: (m.cajas as any)?.nombre || "—",
-          cajaId: m.caja_id,
-          usuario: "",
-          monto: Number(m.monto || 0),
-        });
-      }
-
-      // Map pagos as cobros — skip if already in movimientos
-      const pagoPrestamoAmounts = new Set<string>();
-      for (const p of pagos || []) {
-        const prestamo = p.prestamos as any;
-        const cliente = prestamo?.clientes as any;
-        const key = `${p.prestamo_id}-${Number(p.monto_recibido).toFixed(2)}-${p.created_at}`;
-        if (pagoPrestamoAmounts.has(key)) continue;
-        pagoPrestamoAmounts.add(key);
-
-        entries.push({
-          id: `pago-${p.id}`,
-          fecha: p.created_at || "",
-          tipo: "entrada",
-          categoria: "Cobro",
-          concepto: `Cobro cuota — ${$$(Number(p.monto_recibido))}`,
-          cliente: cliente?.nombre_completo || "",
-          prestamo: prestamo?.id ? `PRE-${prestamo.id.slice(0, 8)}` : "",
-          caja: (p.cajas as any)?.nombre || "—",
-          cajaId: p.caja_id || "",
-          usuario: "",
-          monto: Number(p.monto_recibido || 0),
-        });
-      }
-
-      // Map préstamos as desembolsos — skip if already tracked via movimientos_caja
-      for (const pr of prestamos || []) {
-        if (movPrestamoIds.has(pr.id)) continue; // already has a movimiento
-        const cliente = (pr as any).clientes as any;
-        const caja = (pr as any).cajas as any;
-
-        entries.push({
-          id: `pre-${pr.id}`,
-          fecha: pr.created_at || pr.fecha_registro || "",
-          tipo: "salida",
-          categoria: "Desembolso",
-          concepto: `Desembolso préstamo — ${$$(Number(pr.monto_solicitado))}`,
-          cliente: cliente?.nombre_completo || "",
-          prestamo: `PRE-${pr.id.slice(0, 8)}`,
-          caja: caja?.nombre || "—",
-          cajaId: pr.caja_id || "",
-          usuario: "",
-          monto: Number(pr.monto_solicitado || 0),
-        });
-      }
-
-      // Sort by date descending
-      entries.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-      return entries;
-    },
-  });
-}
 
 // Stats from prestamos + amortizacion per caja
 function usePrestamosByCaja(empresaId?: string) {
@@ -254,7 +134,7 @@ export default function CajasPage() {
   const cajaIds = useMemo(() => cajas.map(c => c.id), [cajas]);
   const { data: saldosReales } = useCajaSaldoReal(cajaIds);
   const getSaldo = (cajaId: string) => saldosReales?.[cajaId] ?? Number(cajas.find(c => c.id === cajaId)?.saldo_actual || 0);
-  const { data: kardex = [] } = useKardex();
+  
   const { data: prestamoStats } = usePrestamosByCaja(empresaId);
   const g = prestamoStats?.global || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
   const byCaja = prestamoStats?.byCaja || {};
@@ -268,14 +148,7 @@ export default function CajasPage() {
   const [descCaja, setDescCaja] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const [selectedCaja, setSelectedCaja] = useState<string | null>(null);
   const [cajasView, setCajasView] = useState<"table" | "cards">("table");
-  const [kardexCaja, setKardexCaja] = useState<{ id: string; nombre: string; saldo: number } | null>(null);
-
-  // Kardex filters
-  const [selCategoria, setSelCategoria] = useState<Set<string>>(new Set());
-  const [kardexDesde, setKardexDesde] = useState<Date>();
-  const [kardexHasta, setKardexHasta] = useState<Date>();
 
   const resetModal = () => {
     setModal(null); setCajaId(""); setCajaDestinoId(""); setMonto(""); setConcepto("");
@@ -356,8 +229,6 @@ export default function CajasPage() {
 
   // ── KPIs ────────────────────────────────────────────────────────
   const totalSaldo = cajas.reduce((s, c) => s + getSaldo(c.id), 0);
-  const entradas = kardex.filter((m) => m.tipo === "entrada").reduce((s, m) => s + m.monto, 0);
-  const salidas = kardex.filter((m) => m.tipo === "salida").reduce((s, m) => s + m.monto, 0);
 
   const kpis = [
     { label: "Saldo en Cajas", value: $$(totalSaldo), icon: Wallet, accent: "text-primary" },
@@ -366,26 +237,8 @@ export default function CajasPage() {
     { label: "Por Cobrar", value: $$(g.porCobrar), icon: TrendingUp, accent: "text-warning" },
     { label: "Ganancia Proyectada", value: $$(g.gananciaProyectada), icon: PiggyBank, accent: "text-success" },
     { label: `En Mora (${g.enMora})`, value: $$(g.moraTotal), icon: AlertTriangle, accent: "text-destructive" },
-    { label: "Entradas", value: $$(entradas), icon: ArrowDownLeft, accent: "text-success" },
-    { label: "Salidas", value: $$(salidas), icon: ArrowUpRight, accent: "text-destructive" },
   ];
 
-  // Filter kardex
-  const filteredMov = kardex.filter((m) => {
-    if (selectedCaja && m.cajaId !== selectedCaja) return false;
-    if (selCategoria.size > 0 && !selCategoria.has(m.categoria)) return false;
-    if (kardexDesde && new Date(m.fecha) < kardexDesde) return false;
-    if (kardexHasta) {
-      const hasta = new Date(kardexHasta);
-      hasta.setHours(23, 59, 59, 999);
-      if (new Date(m.fecha) > hasta) return false;
-    }
-    return true;
-  });
-
-  const kardexCategories = ["Cobro", "Desembolso", "Depósito", "Retiro", "Transferencia"];
-  const totalKardexFilters = selCategoria.size + (kardexDesde ? 1 : 0) + (kardexHasta ? 1 : 0);
-  const clearKardexFilters = () => { setSelCategoria(new Set()); setKardexDesde(undefined); setKardexHasta(undefined); };
 
   return (
     <div className="space-y-5">
@@ -450,7 +303,7 @@ export default function CajasPage() {
                 return (
                   <TableRow
                     key={c.id}
-                    className={cn("cursor-pointer", selectedCaja === c.id && "bg-[hsl(var(--table-selected))]")}
+                    className="cursor-pointer hover:bg-table-hover"
                     onClick={() => navigate(`/cajas/${c.id}`)}
                   >
                     <TableCell>
@@ -507,7 +360,7 @@ export default function CajasPage() {
                 key={c.id}
                 className={cn(
                   "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
-                  selectedCaja === c.id ? "border-primary ring-1 ring-primary/30" : "border-border"
+                  "border-border"
                 )}
                 onClick={() => navigate(`/cajas/${c.id}`)}
               >
@@ -570,154 +423,6 @@ export default function CajasPage() {
           })}
         </div>
       )}
-
-      {/* Kardex table */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-[14px] font-semibold">
-            Kardex {selectedCaja ? `— ${cajas.find(c => c.id === selectedCaja)?.nombre}` : "— Todos los movimientos"}
-          </h2>
-          <div className="flex items-center gap-1">
-            {selectedCaja && (
-              <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setSelectedCaja(null)}>
-                Ver todos
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Kardex filter bar */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          {/* Categoría dropdown */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn(
-                "h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-border hover:bg-primary/5",
-                selCategoria.size > 0 && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
-              )}>
-                Categoría
-                {selCategoria.size > 0 && (
-                  <span className="ml-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary-foreground/20 text-[10px] font-bold px-1">
-                    {selCategoria.size}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-2" align="start">
-              <div className="space-y-0.5">
-                {kardexCategories.map((cat) => (
-                  <label key={cat} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-[13px]">
-                    <Checkbox checked={selCategoria.has(cat)} onCheckedChange={() => {
-                      const next = new Set(selCategoria);
-                      next.has(cat) ? next.delete(cat) : next.add(cat);
-                      setSelCategoria(next);
-                    }} />
-                    <span>{cat}</span>
-                  </label>
-                ))}
-              </div>
-              {selCategoria.size > 0 && (
-                <Button variant="ghost" size="sm" className="w-full mt-1.5 h-7 text-xs" onClick={() => setSelCategoria(new Set())}>Limpiar</Button>
-              )}
-            </PopoverContent>
-          </Popover>
-
-          {/* Fecha Desde */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn(
-                "h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-border hover:bg-primary/5",
-                kardexDesde && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
-              )}>
-                <CalendarIcon className="h-3 w-3" />
-                {kardexDesde ? fmtDate(kardexDesde) : "Desde"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={kardexDesde} onSelect={setKardexDesde} className="p-3 pointer-events-auto" />
-              {kardexDesde && <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => setKardexDesde(undefined)}>Limpiar</Button></div>}
-            </PopoverContent>
-          </Popover>
-
-          {/* Fecha Hasta */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={cn(
-                "h-8 gap-1.5 text-[13px] font-medium whitespace-nowrap bg-secondary border-border hover:bg-primary/5",
-                kardexHasta && "bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground"
-              )}>
-                <CalendarIcon className="h-3 w-3" />
-                {kardexHasta ? fmtDate(kardexHasta) : "Hasta"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={kardexHasta} onSelect={setKardexHasta} className="p-3 pointer-events-auto" />
-              {kardexHasta && <div className="p-2 border-t"><Button variant="ghost" size="sm" className="w-full h-7 text-xs" onClick={() => setKardexHasta(undefined)}>Limpiar</Button></div>}
-            </PopoverContent>
-          </Popover>
-
-          <div className="flex-1" />
-          <p className="text-[12px] text-muted-foreground">{filteredMov.length} movimiento{filteredMov.length !== 1 ? "s" : ""}</p>
-          {totalKardexFilters > 0 && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground hover:text-foreground" onClick={clearKardexFilters}>
-              <X className="h-3 w-3 mr-1" />Limpiar
-            </Button>
-          )}
-        </div>
-        <div className="bg-card rounded-lg border border-border overflow-x-auto shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-table-header hover:bg-table-header border-b">
-                {["", "Fecha", "Categoría", "Concepto", "Cliente", "Préstamo", "Caja"].map((h) => (
-                  <TableHead key={h} className="text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">{h}</TableHead>
-                ))}
-                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">Entrada</TableHead>
-                <TableHead className="text-right text-[11px] uppercase tracking-wider font-semibold text-table-header-foreground px-3 py-2.5 whitespace-nowrap">Salida</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMov.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-[13px]">Sin movimientos</TableCell></TableRow>
-              ) : filteredMov.map((m) => {
-                const catColors: Record<string, string> = {
-                  Cobro: "bg-success/10 text-success",
-                  Desembolso: "bg-[hsl(217,91%,60%)]/10 text-[hsl(217,91%,60%)]",
-                  "Depósito": "bg-primary/10 text-primary",
-                  Retiro: "bg-destructive/10 text-destructive",
-                  Transferencia: "bg-warning/10 text-warning",
-                };
-                return (
-                  <TableRow key={m.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
-                    <TableCell className="px-3 w-10">
-                      <div className={cn("h-6 w-6 rounded-full flex items-center justify-center", m.tipo === "entrada" ? "bg-success/10" : "bg-destructive/10")}>
-                        {m.tipo === "entrada" ? <ArrowDownLeft className="h-3 w-3 text-success" /> : <ArrowUpRight className="h-3 w-3 text-destructive" />}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">
-                      {m.fecha ? format(new Date(m.fecha), "dd/MM/yyyy HH:mm") : "—"}
-                    </TableCell>
-                    <TableCell className="px-3">
-                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium", catColors[m.categoria] || "bg-muted text-muted-foreground")}>
-                        {m.categoria}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-[13px] px-3 max-w-[200px] truncate">{m.concepto}</TableCell>
-                    <TableCell className="text-[13px] px-3 whitespace-nowrap">{m.cliente || <span className="text-muted-foreground/40">—</span>}</TableCell>
-                    <TableCell className="text-[12px] text-muted-foreground px-3 font-mono">{m.prestamo || <span className="text-muted-foreground/40">—</span>}</TableCell>
-                    <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{m.caja}</TableCell>
-                    <TableCell className="text-right font-medium text-[13px] px-3 text-success">
-                      {m.tipo === "entrada" ? `+${$$(m.monto)}` : ""}
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-[13px] px-3 text-destructive">
-                      {m.tipo === "salida" ? `-${$$(m.monto)}` : ""}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
 
       {/* ── MODALS ─────────────────────────────────────────────── */}
 
@@ -861,14 +566,6 @@ export default function CajasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Kardex Sheet */}
-      <CajaKardexSheet
-        open={!!kardexCaja}
-        onOpenChange={(v) => !v && setKardexCaja(null)}
-        cajaId={kardexCaja?.id || ""}
-        cajaNombre={kardexCaja?.nombre || ""}
-        saldoActual={kardexCaja?.saldo || 0}
-      />
       </div>
   );
 }
