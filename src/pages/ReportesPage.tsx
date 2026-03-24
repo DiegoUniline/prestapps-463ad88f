@@ -156,13 +156,13 @@ export default function ReportesPage() {
   const { data: pagosRaw = [] } = useQuery({
     queryKey: ["rpt-pagos", empresaId, fromStr, toStr],
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAllRows(supabase
         .from("pagos")
         .select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, metodo_pago, created_at, anulado, prestamo_id, cobrador_id, ruta_id, prestamos(id, clientes(nombre_completo)), rutas(nombre)")
         .eq("empresa_id", empresaId!)
         .gte("created_at", `${fromStr}T00:00:00`)
         .lte("created_at", `${toStr}T23:59:59`)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }));
       return data || [];
     },
     enabled: !!empresaId,
