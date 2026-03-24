@@ -223,10 +223,10 @@ function usePrestamosByCaja(empresaId?: string) {
         const totalPagar = Number(p.monto_total_pagar || 0);
         // Ganancia = interés original + mora cobrada + mora pendiente
         const ganancia = (totalPagar - monto) + agg.moraCobrada + agg.mora;
-        // Total a cobrar = monto_total_pagar + mora total (cobrada + pendiente)
-        const totalConMora = totalPagar + agg.moraCobrada + agg.mora;
-        // Por cobrar = saldo pendiente (ya incluye saldo_mora guardada) + diferencia dinámica de mora
-        const porCobrar = agg.saldo + Math.max(0, agg.mora - agg.moraGuardada);
+        // Por cobrar = saldo pendiente real (capital + interes + mora dinámica)
+        const saldoCapital = Number(agg.capital || 0);
+        const saldoInteres = Number(agg.interes || 0);
+        const porCobrar = saldoCapital + saldoInteres + agg.mora;
 
         if (isActive) {
           global.activos++; byCaja[cajaKey].activos++;
