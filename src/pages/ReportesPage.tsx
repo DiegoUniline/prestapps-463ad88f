@@ -362,6 +362,7 @@ export default function ReportesPage() {
 
   return (
     <div className="space-y-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Reportes</h1>
         <p className="text-muted-foreground text-sm">Reportes detallados con filtros y exportación</p>
@@ -457,6 +458,7 @@ export default function ReportesPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

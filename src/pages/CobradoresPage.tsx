@@ -251,6 +251,7 @@ export default function CobradoresPage() {
 
   return (
     <div className="space-y-5">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Cobradores</h1>
@@ -493,6 +494,7 @@ export default function CobradoresPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

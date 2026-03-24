@@ -361,6 +361,7 @@ function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta,
   regDesde, setRegDesde, regHasta, setRegHasta, clearAll }: any) {
   return (
     <div className="space-y-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Estado</p>
         {estadoOptions.map((o) => (
@@ -1038,6 +1039,7 @@ export default function PrestamosPage() {
       {lightboxPhoto && (
         <PhotoLightbox open={!!lightboxPhoto} onOpenChange={(o) => !o && setLightboxPhoto(null)} src={lightboxPhoto.src} alt={lightboxPhoto.alt} />
       )}
+      </div>
     </div>
   );
 }

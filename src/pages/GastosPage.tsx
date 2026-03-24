@@ -183,6 +183,7 @@ export default function GastosPage() {
 
   return (
     <div className="space-y-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Gastos</h1>
@@ -376,6 +377,7 @@ export default function GastosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

@@ -84,6 +84,7 @@ function UsuariosListPage() {
 
   return (
     <div className="space-y-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Usuarios</h1>
         <Button onClick={() => navigate("/usuarios/nuevo")}><Plus className="h-4 w-4 mr-2" />Nuevo</Button>
@@ -487,6 +488,7 @@ function UsuarioDetallePage() {
           </Card>
         </>
       )}
+      </div>
     </div>
   );
 }

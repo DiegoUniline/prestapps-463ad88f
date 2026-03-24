@@ -46,6 +46,7 @@ export default function PromesasPage() {
 
   return (
     <div className="space-y-5">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Promesas de Pago</h1>
       </div>
@@ -118,6 +119,7 @@ export default function PromesasPage() {
             ))}
           </TableBody>
         </Table>
+      </div>
       </div>
     </div>
   );

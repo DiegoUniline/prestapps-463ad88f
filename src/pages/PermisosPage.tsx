@@ -110,6 +110,7 @@ export default function PermisosPage() {
 
   return (
     <div className="space-y-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <PageHeader
         title="Permisos por Rol"
         description="Configura qué puede ver y hacer cada rol en el sistema"
@@ -209,6 +210,7 @@ export default function PermisosPage() {
           </TabsContent>
         ))}
       </Tabs>
+      </div>
     </div>
   );
 }

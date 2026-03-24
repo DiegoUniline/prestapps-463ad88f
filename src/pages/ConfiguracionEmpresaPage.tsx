@@ -612,6 +612,7 @@ function ContratoTab() {
 
   return (
     <div className="space-y-6">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-6">
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Secciones */}
         <Card>
@@ -1225,6 +1226,7 @@ export default function ConfiguracionEmpresaPage() {
           <PurgeDataSection />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

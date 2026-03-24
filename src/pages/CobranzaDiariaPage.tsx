@@ -658,6 +658,7 @@ export default function CobranzaDiariaPage() {
 
   return (
     <div className="space-y-4">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -1073,6 +1074,7 @@ export default function CobranzaDiariaPage() {
       {lightboxPhoto && (
         <PhotoLightbox open={!!lightboxPhoto} onOpenChange={(o) => !o && setLightboxPhoto(null)} src={lightboxPhoto.src} alt={lightboxPhoto.alt} />
       )}
+      </div>
     </div>
   );
 }

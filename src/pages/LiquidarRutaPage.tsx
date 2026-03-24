@@ -263,6 +263,7 @@ export default function LiquidarRutaPage() {
 
   return (
     <div className="space-y-5">
+      <div className="bg-card border border-border rounded-lg p-4 space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" />
@@ -493,6 +494,7 @@ export default function LiquidarRutaPage() {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
