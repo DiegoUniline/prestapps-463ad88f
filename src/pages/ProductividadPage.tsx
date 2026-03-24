@@ -110,10 +110,10 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
         .order("created_at", { ascending: false }));
 
       // 7. Clientes for name mapping
-      const { data: clientes } = await supabase
+      const clientes = await fetchAllRows(supabase
         .from("clientes")
         .select("id, nombre_completo")
-        .eq("empresa_id", empresaId);
+        .eq("empresa_id", empresaId));
 
       const clienteMap = new Map((clientes || []).map((c) => [c.id, c.nombre_completo]));
       const today = new Date().toISOString().slice(0, 10);
