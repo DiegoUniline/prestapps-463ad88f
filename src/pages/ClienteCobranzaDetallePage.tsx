@@ -128,7 +128,7 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
       }
 
       // ALL cuotas (pagadas + pendientes)
-      const { data: cuotas } = await supabase
+      const cuotas = await fetchAllRows(supabase
         .from("amortizacion")
         .select(`
           id, prestamo_id, num_cuota, capital_interes, saldo_total, saldo_mora,
@@ -136,7 +136,7 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
           fecha_vencimiento, fecha_pagada, status, dias_atraso
         `)
         .in("prestamo_id", prestamoIds)
-        .order("num_cuota", { ascending: true });
+        .order("num_cuota", { ascending: true }));
 
       const cuotasByPrestamo: Record<string, any[]> = {};
       for (const c of cuotas || []) {

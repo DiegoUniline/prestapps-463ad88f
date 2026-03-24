@@ -141,7 +141,7 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
 
   // Build último pago map (pagos already sorted desc by fecha_pago, keep first per prestamo)
   const ultimoPagoMap: Record<string, { fecha: string; monto: number }> = {};
-  for (const pg of (pagosRes.data || [])) {
+  for (const pg of pagosRes) {
     if (!ultimoPagoMap[pg.prestamo_id]) {
       ultimoPagoMap[pg.prestamo_id] = { fecha: pg.fecha_pago, monto: Number(pg.monto_recibido || 0) };
     }

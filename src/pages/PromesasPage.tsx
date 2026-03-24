@@ -11,12 +11,11 @@ function usePromesasAll(empresaId: string) {
   return useQuery({
     queryKey: ["promesas-all", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows(supabase
         .from("promesas_pago")
         .select(`*, prestamos!promesas_pago_prestamo_id_fkey ( clientes ( nombre_completo ) )`)
         .eq("empresa_id", empresaId)
-        .order("fecha_prometida", { ascending: true });
-      if (error) throw error;
+        .order("fecha_prometida", { ascending: true }));
       return data || [];
     },
   });

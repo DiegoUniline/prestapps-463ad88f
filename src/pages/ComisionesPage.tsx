@@ -112,8 +112,7 @@ async function fetchCobros(cobradorId: string, empresaId: string, desde?: string
   if (desde) query = query.gte("created_at", desde);
   if (hasta) query = query.lte("created_at", hasta);
 
-  const { data } = await query;
-  return data || [];
+  return await fetchAllRows(query);
 }
 
 // Fetch cobros for all cobradores in supervisor's rutas

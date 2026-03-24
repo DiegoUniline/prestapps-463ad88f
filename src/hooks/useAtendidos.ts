@@ -77,10 +77,10 @@ export function useAtendidos(empresaId?: string): AtendidosResult {
       const prestamoIdSet = new Set<string>();
       const clienteIdSet = new Set<string>();
 
-      for (const p of pagosRes.data || []) {
+      for (const p of pagosData) {
         prestamoIdSet.add(p.prestamo_id);
       }
-      for (const g of gestionesRes.data || []) {
+      for (const g of gestionesData) {
         prestamoIdSet.add(g.prestamo_id);
         if (g.cliente_id) clienteIdSet.add(g.cliente_id);
       }

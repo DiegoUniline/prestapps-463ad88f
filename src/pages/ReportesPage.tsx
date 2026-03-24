@@ -171,13 +171,13 @@ export default function ReportesPage() {
   const { data: cuotasRaw = [] } = useQuery({
     queryKey: ["rpt-cuotas", empresaId, fromStr, toStr],
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAllRows(supabase
         .from("amortizacion")
         .select("id, num_cuota, capital, interes, capital_interes, mora, capital_pagado, interes_pagado, mora_pagada, saldo_capital, saldo_interes, saldo_mora, saldo_total, status, fecha_vencimiento, dias_atraso, prestamo_id, prestamos(id, clientes(nombre_completo), rutas(nombre))")
         .eq("empresa_id", empresaId!)
         .gte("fecha_vencimiento", fromStr)
         .lte("fecha_vencimiento", toStr)
-        .order("fecha_vencimiento", { ascending: true });
+        .order("fecha_vencimiento", { ascending: true }));
       return data || [];
     },
     enabled: !!empresaId,
