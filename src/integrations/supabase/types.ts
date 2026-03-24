@@ -792,6 +792,7 @@ export type Database = {
           corte_dia_semana: number
           created_at: string | null
           dias_gracia: number
+          dias_por_vencer: number
           direccion: string | null
           id: string
           lada_pais: string
@@ -810,6 +811,7 @@ export type Database = {
           corte_dia_semana?: number
           created_at?: string | null
           dias_gracia?: number
+          dias_por_vencer?: number
           direccion?: string | null
           id?: string
           lada_pais?: string
@@ -828,6 +830,7 @@ export type Database = {
           corte_dia_semana?: number
           created_at?: string | null
           dias_gracia?: number
+          dias_por_vencer?: number
           direccion?: string | null
           id?: string
           lada_pais?: string

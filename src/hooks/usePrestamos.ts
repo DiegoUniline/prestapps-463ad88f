@@ -40,11 +40,6 @@ export interface FetchFilters {
 }
 
 export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoListItem[]> {
-  // Recalculate mora for all active loans so the list matches the detail view
-  if (filters?.empresaId) {
-    await (supabase.rpc as any)("recalcular_mora_empresa", { p_empresa_id: filters.empresaId }).catch(() => {});
-  }
-
   // Fetch dias_gracia for the empresa
   let diasGracia = 0;
   if (filters?.empresaId) {
