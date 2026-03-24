@@ -251,6 +251,9 @@ export default function CajasPage() {
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
   const { data: cajas = [], isLoading } = useCajas(empresaId);
+  const cajaIds = useMemo(() => cajas.map(c => c.id), [cajas]);
+  const { data: saldosReales } = useCajaSaldoReal(cajaIds);
+  const getSaldo = (cajaId: string) => saldosReales?.[cajaId] ?? Number(cajas.find(c => c.id === cajaId)?.saldo_actual || 0);
   const { data: kardex = [] } = useKardex();
   const { data: prestamoStats } = usePrestamosByCaja(empresaId);
   const g = prestamoStats?.global || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
