@@ -244,6 +244,7 @@ export default function CajaDetallePage() {
   const { data: rows = [], isLoading: loadingKardex } = useCajaKardex(id || "");
   const { data: allCajas = [] } = useAllCajas(empresaId);
   const { saldo: saldoReal } = useSingleCajaSaldoReal(id || "");
+  const { data: flujoReal } = useCajaFlujoReal(id || "");
 
   const [tab, setTab] = useState("resumen");
   const [modal, setModal] = useState<ModalType>(null);
@@ -273,6 +274,7 @@ export default function CajaDetallePage() {
     queryClient.invalidateQueries({ queryKey: ["caja-stats", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-kardex", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-saldo-real"] });
+    queryClient.invalidateQueries({ queryKey: ["caja-flujo-real", id] });
     resetModal();
   };
 
@@ -292,6 +294,7 @@ export default function CajaDetallePage() {
     queryClient.invalidateQueries({ queryKey: ["caja-detalle", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-kardex", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-saldo-real"] });
+    queryClient.invalidateQueries({ queryKey: ["caja-flujo-real", id] });
     resetModal();
   };
 
