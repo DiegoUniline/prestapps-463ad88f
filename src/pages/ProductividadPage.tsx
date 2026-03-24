@@ -94,12 +94,12 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
       }
 
       // 5. CRM gestiones (visits) in period
-      const { data: gestiones } = await supabase
+      const gestiones = await fetchAllRows(supabase
         .from("crm_gestiones")
         .select("id, registrado_por, tipo_gestion, cliente_id, created_at")
         .eq("empresa_id", empresaId)
         .gte("created_at", `${prevDesde}T00:00:00`)
-        .lte("created_at", `${hastaStr}T23:59:59`);
+        .lte("created_at", `${hastaStr}T23:59:59`));
 
       // 6. All visitas ever for "last visit" tracking
       const { data: allVisitas } = await supabase
