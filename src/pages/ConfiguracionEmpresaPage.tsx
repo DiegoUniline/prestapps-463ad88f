@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   Building2, Receipt, FileText, Upload, Save, Image as ImageIcon, Eye, Pencil, CreditCard, CalendarCheck, Send, FileDown, Phone, MessageSquare, Coins,
+  ShieldAlert,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StripeConnectTab } from "@/components/StripeConnectTab";
@@ -23,6 +24,7 @@ import {
 } from "@/hooks/useEmpresaConfig";
 import { setCurrencySymbol } from "@/lib/utils";
 import { useEmpresaStore } from "@/stores/empresaStore";
+import { PurgeDataSection } from "@/components/PurgeDataSection";
 
 const MONEDAS = [
   { codigo: "USD", simbolo: "$", nombre: "Dólar estadounidense (USD)" },
@@ -1196,6 +1198,9 @@ export default function ConfiguracionEmpresaPage() {
           <TabsTrigger value="stripe" className="gap-1.5">
             <CreditCard className="h-4 w-4" /> Stripe
           </TabsTrigger>
+          <TabsTrigger value="peligro" className="gap-1.5 text-destructive data-[state=active]:text-destructive">
+            <ShieldAlert className="h-4 w-4" /> Peligro
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
@@ -1215,6 +1220,9 @@ export default function ConfiguracionEmpresaPage() {
         </TabsContent>
         <TabsContent value="stripe">
           <StripeConnectTab />
+        </TabsContent>
+        <TabsContent value="peligro">
+          <PurgeDataSection />
         </TabsContent>
       </Tabs>
     </div>
