@@ -157,9 +157,9 @@ function useCajaFlujoReal(cajaId: string) {
         else retiros += monto;
       }
 
-      const { data: anulados } = await supabase
-        .from("pagos").select("monto_recibido").eq("caja_id", cajaId).eq("anulado", true);
-      const totalAnulaciones = (anulados || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+      // NOTE: Anulaciones are NOT counted as salidas because the anulado pagos
+      // are already excluded from cobros (entradas). Counting them as salida
+      // would double-subtract and break the balance.
 
       const entradas: Record<string, number> = {};
       const salidas: Record<string, number> = {};
@@ -171,10 +171,9 @@ function useCajaFlujoReal(cajaId: string) {
       if (transferenciasOut > 0) salidas["Transferencias"] = transferenciasOut;
       if (gastos > 0) salidas["Gastos"] = gastos;
       if (comisiones > 0) salidas["Comisiones"] = comisiones;
-      if (totalAnulaciones > 0) salidas["Anulaciones"] = totalAnulaciones;
 
       const totalEntradas = totalCobros + depositos + transferenciasIn;
-      const totalSalidas = totalDesembolsos + retiros + transferenciasOut + gastos + comisiones + totalAnulaciones;
+      const totalSalidas = totalDesembolsos + retiros + transferenciasOut + gastos + comisiones;
       return { entradas, salidas, totalEntradas, totalSalidas, flujoNeto: totalEntradas - totalSalidas };
     },
   });
