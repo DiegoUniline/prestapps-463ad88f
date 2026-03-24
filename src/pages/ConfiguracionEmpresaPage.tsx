@@ -1198,6 +1198,9 @@ export default function ConfiguracionEmpresaPage() {
           <TabsTrigger value="stripe" className="gap-1.5">
             <CreditCard className="h-4 w-4" /> Stripe
           </TabsTrigger>
+          <TabsTrigger value="peligro" className="gap-1.5 text-destructive data-[state=active]:text-destructive">
+            <ShieldAlert className="h-4 w-4" /> Peligro
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="datos">
