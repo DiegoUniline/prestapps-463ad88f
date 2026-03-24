@@ -183,10 +183,10 @@ function usePrestamosByCaja(empresaId?: string) {
       const today = new Date().toISOString().slice(0, 10);
 
       // Per-prestamo aggregation
-      const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; moraGuardada: number; tieneAtraso: boolean }> = {};
+      const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; moraGuardada: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
       for (const a of amortData || []) {
         const p = prestamoMap.get(a.prestamo_id);
-        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, moraGuardada: 0, tieneAtraso: false };
+        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, moraGuardada: 0, capital: 0, interes: 0, tieneAtraso: false };
 
         const saldoMoraGuardada = Number(a.saldo_mora || 0);
         const moraPagada = Number(a.mora_pagada || 0);
@@ -202,6 +202,8 @@ function usePrestamosByCaja(empresaId?: string) {
         }
 
         prestamoAgg[a.prestamo_id].saldo += Number(a.saldo_total || 0);
+        prestamoAgg[a.prestamo_id].capital += Number(a.saldo_capital || 0);
+        prestamoAgg[a.prestamo_id].interes += Number(a.saldo_interes || 0);
         prestamoAgg[a.prestamo_id].mora += moraPendiente;
         prestamoAgg[a.prestamo_id].moraCobrada += moraPagada;
         prestamoAgg[a.prestamo_id].moraGuardada += saldoMoraGuardada;
@@ -217,22 +219,20 @@ function usePrestamosByCaja(empresaId?: string) {
       for (const p of prestamos) {
         const cajaKey = p.caja_id || "sin-caja";
         if (!byCaja[cajaKey]) byCaja[cajaKey] = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
-        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, moraCobrada: 0, moraGuardada: 0, tieneAtraso: false };
+        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, moraCobrada: 0, moraGuardada: 0, capital: 0, interes: 0, tieneAtraso: false };
         const isActive = p.estado !== "Liquidado";
         const monto = Number(p.monto_solicitado || 0);
         const totalPagar = Number(p.monto_total_pagar || 0);
         // Ganancia = interés original + mora cobrada + mora pendiente
         const ganancia = (totalPagar - monto) + agg.moraCobrada + agg.mora;
-        // Total a cobrar = monto_total_pagar + mora total (cobrada + pendiente)
-        const totalConMora = totalPagar + agg.moraCobrada + agg.mora;
-        // Por cobrar = saldo pendiente (ya incluye saldo_mora guardada) + diferencia dinámica de mora
-        const porCobrar = agg.saldo + Math.max(0, agg.mora - agg.moraGuardada);
+        // Por cobrar = saldo pendiente real (capital + interes + mora dinámica)
+        const porCobrar = agg.capital + agg.interes + agg.mora;
 
         if (isActive) {
           global.activos++; byCaja[cajaKey].activos++;
         }
         global.colocado += monto; byCaja[cajaKey].colocado += monto;
-        global.totalPagar += totalConMora; byCaja[cajaKey].totalPagar += totalConMora;
+        global.totalPagar += porCobrar; byCaja[cajaKey].totalPagar += porCobrar;
         global.porCobrar += porCobrar; byCaja[cajaKey].porCobrar += porCobrar;
         global.gananciaProyectada += ganancia; byCaja[cajaKey].gananciaProyectada += ganancia;
         if (agg.tieneAtraso) {
