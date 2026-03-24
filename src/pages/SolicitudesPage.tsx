@@ -236,7 +236,6 @@ export default function SolicitudesPage() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-5">
       <PageHeader
         title="Solicitudes de Préstamo"
         actions={
@@ -480,7 +479,6 @@ export default function SolicitudesPage() {
         </DialogContent>
       </Dialog>
       </div>
-    </div>
   );
 }
 

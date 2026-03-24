@@ -247,7 +247,6 @@ export default function EmpresasPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
@@ -570,6 +569,5 @@ export default function EmpresasPage() {
         </DialogContent>
       </Dialog>
       </div>
-    </div>
   );
 }

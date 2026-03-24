@@ -300,7 +300,6 @@ export default function MiSuscripcionPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -908,7 +907,6 @@ function KpiCell({ label, value, icon, sub, subColor }: {
       <p className="text-base font-bold">{value}</p>
       {sub && <p className={cn("text-[11px]", subColor || "text-muted-foreground")}>{sub}</p>}
       </div>
-    </div>
   );
 }
 

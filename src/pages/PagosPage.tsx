@@ -443,7 +443,6 @@ export default function PagosPage() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Pagos</h1>
@@ -888,6 +887,5 @@ export default function PagosPage() {
         />
       )}
       </div>
-    </div>
   );
 }

@@ -82,7 +82,6 @@ function RutasListPage() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Rutas</h1>
         <Button size="sm" className="h-8 text-[13px]" onClick={() => navigate("/rutas/nuevo")}>
@@ -311,7 +310,6 @@ function RutaDetallePage() {
         </Card>
       )}
       </div>
-    </div>
   );
 }
 

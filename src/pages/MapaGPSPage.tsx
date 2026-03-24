@@ -149,7 +149,6 @@ export default function MapaGPSPage() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <MapPin className="h-5 w-5 text-primary" />
@@ -256,6 +255,5 @@ export default function MapaGPSPage() {
         </CardContent>
       </Card>
       </div>
-    </div>
   );
 }

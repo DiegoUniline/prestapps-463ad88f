@@ -330,7 +330,6 @@ export default function DashboardPage() {
   if (isLoading || !stats) {
     return (
       <div className="space-y-6">
-        <div className="bg-card border border-border rounded-lg p-4 space-y-6">
         <div><h1 className="text-xl font-semibold">Dashboard</h1><p className="text-muted-foreground text-[13px]">Cargando datos...</p></div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => <Card key={i}><CardContent className="pt-5 pb-4"><Skeleton className="h-16 w-full" /></CardContent></Card>)}
@@ -841,6 +840,5 @@ export default function DashboardPage() {
         </TabsContent>
       </Tabs>
         </div>
-    </div>
   );
 }

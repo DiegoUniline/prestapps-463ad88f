@@ -377,7 +377,6 @@ export default function ProductividadPage() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-semibold flex items-center gap-2">
@@ -604,6 +603,5 @@ export default function ProductividadPage() {
         </TabsContent>
       </Tabs>
       </div>
-    </div>
   );
 }

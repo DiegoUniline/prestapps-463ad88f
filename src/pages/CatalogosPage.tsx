@@ -535,7 +535,6 @@ function PlanesCuotasTab() {
 export default function CatalogosPage() {
   return (
     <div className="space-y-6">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Catálogos del Sistema</h1>
         <p className="text-muted-foreground text-sm mt-1">Administra los valores de referencia del sistema</p>
@@ -571,6 +570,5 @@ export default function CatalogosPage() {
         <TabsContent value="roles"><RolesTab /></TabsContent>
       </Tabs>
       </div>
-    </div>
   );
 }
