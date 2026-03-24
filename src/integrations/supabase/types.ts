@@ -1071,7 +1071,7 @@ export type Database = {
           gps_lat: number | null
           gps_lng: number | null
           id: string
-          metodo_pago: Database["public"]["Enums"]["metodo_pago"] | null
+          metodo_pago: string | null
           monto_recibido: number
           motivo_anulacion: string | null
           prestamo_id: string
@@ -1094,7 +1094,7 @@ export type Database = {
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
-          metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
+          metodo_pago?: string | null
           monto_recibido: number
           motivo_anulacion?: string | null
           prestamo_id: string
@@ -1117,7 +1117,7 @@ export type Database = {
           gps_lat?: number | null
           gps_lng?: number | null
           id?: string
-          metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null
+          metodo_pago?: string | null
           monto_recibido?: number
           motivo_anulacion?: string | null
           prestamo_id?: string
