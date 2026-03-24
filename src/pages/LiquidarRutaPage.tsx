@@ -13,12 +13,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Wallet, HandCoins, Receipt, CreditCard, Loader2, UserCheck,
-  ArrowDownToLine, MinusCircle, Plus, ClipboardList,
+  ArrowDownToLine, MinusCircle, ClipboardList, Users, DollarSign,
+  MapPin, Eye, ChevronRight, FileText, TrendingUp, AlertTriangle, CheckCircle2, Clock,
 } from "lucide-react";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { cn, $$ } from "@/lib/utils";
+
 interface Cobrador {
   id: string;
   nombre: string;
@@ -32,7 +37,6 @@ function useCobradores(empresaId: string) {
   return useQuery({
     queryKey: ["cobradores", empresaId],
     queryFn: async () => {
-      // Get users with cobrador role
       const { data: roles } = await supabase
         .from("user_roles")
         .select("user_id")
@@ -80,10 +84,9 @@ function useLiquidaciones(empresaId: string) {
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(50);
-      
+
       if (!data?.length) return [];
 
-      // Get cobrador names from profiles
       const cobIds = [...new Set(data.map((d: any) => d.cobrador_id).filter(Boolean))];
       let cobMap: Record<string, string> = {};
       if (cobIds.length) {
@@ -99,6 +102,136 @@ function useLiquidaciones(empresaId: string) {
   });
 }
 
+/** Daily report data for a specific cobrador */
+function useDailyReport(empresaId: string, cobradorId: string | null) {
+  return useQuery({
+    queryKey: ["daily-report", empresaId, cobradorId],
+    queryFn: async () => {
+      if (!cobradorId) return null;
+      const today = format(new Date(), "yyyy-MM-dd");
+
+      // 1) Pagos del día hechos por este cobrador
+      const { data: pagos } = await supabase
+        .from("pagos")
+        .select("id, monto_recibido, metodo_pago, prestamo_id, fecha_pago, anulado, aplicado_capital, aplicado_interes, aplicado_mora, created_at")
+        .eq("empresa_id", empresaId)
+        .eq("cobrador_id", cobradorId)
+        .eq("fecha_pago", today)
+        .eq("anulado", false)
+        .order("created_at", { ascending: true });
+
+      const pagosList = pagos || [];
+
+      // 2) Get unique prestamo_ids to fetch client info
+      const prestamoIds = [...new Set(pagosList.map((p) => p.prestamo_id))];
+      let prestamoClientes: Record<string, { cliente_nombre: string; id_prestamo: string; ruta_nombre: string }> = {};
+      if (prestamoIds.length) {
+        const { data: prestamos } = await supabase
+          .from("prestamos")
+          .select("id, id_prestamo, cliente_id, ruta_id, clientes ( nombre_completo ), rutas ( nombre )")
+          .in("id", prestamoIds);
+        for (const pr of (prestamos || []) as any[]) {
+          prestamoClientes[pr.id] = {
+            cliente_nombre: pr.clientes?.nombre_completo || "—",
+            id_prestamo: pr.id_prestamo || "—",
+            ruta_nombre: pr.rutas?.nombre || "—",
+          };
+        }
+      }
+
+      // 3) Visitas del día (from crm_gestiones)
+      const { data: visitas } = await supabase
+        .from("crm_gestiones")
+        .select("id, tipo_gestion, resultado, notas, cliente_id, created_at, clientes ( nombre_completo )")
+        .eq("empresa_id", empresaId)
+        .eq("registrado_por", cobradorId)
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`)
+        .order("created_at", { ascending: true });
+
+      // 4) Promesas registradas hoy
+      const { data: promesas } = await supabase
+        .from("promesas_pago")
+        .select("id, monto_prometido, fecha_prometida, prestamo_id, created_at")
+        .eq("empresa_id", empresaId)
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`);
+
+      // 5) Cuotas que debían cobrarse hoy para este cobrador (expected)
+      const { data: cuotasHoy } = await supabase
+        .from("amortizacion")
+        .select("id, num_cuota, capital_interes, saldo_total, status, prestamo_id, prestamos!inner ( cobrador_id, cliente_id, id_prestamo, clientes ( nombre_completo ) )")
+        .eq("fecha_vencimiento", today)
+        .eq("prestamos.cobrador_id" as any, cobradorId)
+        .eq("empresa_id", empresaId);
+
+      // 6) Gastos del cobrador hoy (from movimientos_caja)
+      const { data: movimientos } = await supabase
+        .from("movimientos_caja")
+        .select("id, monto, concepto, tipo, created_at")
+        .eq("empresa_id", empresaId)
+        .gte("created_at", `${today}T00:00:00`)
+        .lte("created_at", `${today}T23:59:59`)
+        .like("concepto", `%${cobradorId}%`);
+
+      // Build enriched pagos
+      const pagosEnriched = pagosList.map((p) => ({
+        ...p,
+        ...(prestamoClientes[p.prestamo_id] || { cliente_nombre: "—", id_prestamo: "—", ruta_nombre: "—" }),
+      }));
+
+      // Totals
+      const totalCobrado = pagosList.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+      const totalCapital = pagosList.reduce((s, p) => s + Number(p.aplicado_capital || 0), 0);
+      const totalInteres = pagosList.reduce((s, p) => s + Number(p.aplicado_interes || 0), 0);
+      const totalMora = pagosList.reduce((s, p) => s + Number(p.aplicado_mora || 0), 0);
+
+      // By payment method
+      const porMetodo: Record<string, number> = {};
+      for (const p of pagosList) {
+        const m = p.metodo_pago || "Efectivo";
+        porMetodo[m] = (porMetodo[m] || 0) + Number(p.monto_recibido || 0);
+      }
+
+      // Expected today
+      const cuotasExpected = (cuotasHoy || []).map((c: any) => ({
+        id: c.id,
+        num_cuota: c.num_cuota,
+        monto: Number(c.capital_interes || 0),
+        saldo: Number(c.saldo_total || 0),
+        status: c.status,
+        id_prestamo: c.prestamos?.id_prestamo || "—",
+        cliente: c.prestamos?.clientes?.nombre_completo || "—",
+      }));
+      const totalEsperado = cuotasExpected.reduce((s, c) => s + c.monto, 0);
+
+      // Unique clients visited (from pagos + visitas)
+      const clientesAtendidos = new Set<string>();
+      for (const p of pagosEnriched) clientesAtendidos.add(p.cliente_nombre);
+      for (const v of (visitas || []) as any[]) {
+        if (v.clientes?.nombre_completo) clientesAtendidos.add(v.clientes.nombre_completo);
+      }
+
+      return {
+        pagos: pagosEnriched,
+        visitas: visitas || [],
+        promesas: promesas || [],
+        cuotasExpected,
+        totalCobrado,
+        totalCapital,
+        totalInteres,
+        totalMora,
+        porMetodo,
+        totalEsperado,
+        clientesAtendidos: clientesAtendidos.size,
+        numPagos: pagosList.length,
+        numVisitas: (visitas || []).length,
+      };
+    },
+    enabled: !!cobradorId && !!empresaId,
+  });
+}
+
 type ModalType = "depositar" | "gasto" | "prestamo_entregado" | null;
 
 export default function LiquidarRutaPage() {
@@ -109,11 +242,14 @@ export default function LiquidarRutaPage() {
   const { data: liquidaciones = [] } = useLiquidaciones(empresaId);
 
   const [selectedCobrador, setSelectedCobrador] = useState<Cobrador | null>(null);
+  const [reportCobrador, setReportCobrador] = useState<Cobrador | null>(null);
   const [modal, setModal] = useState<ModalType>(null);
   const [monto, setMonto] = useState("");
   const [cajaId, setCajaId] = useState("");
   const [concepto, setConcepto] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const { data: dailyReport, isLoading: reportLoading } = useDailyReport(empresaId, reportCobrador?.id || null);
 
   const totalEfectivo = cobradores.reduce((s, c) => s + c.efectivo_en_mano, 0);
 
@@ -138,14 +274,10 @@ export default function LiquidarRutaPage() {
 
     setSaving(true);
     try {
-      // 1) Reduce cobrador efectivo in profiles
       await supabase.from("profiles")
         .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
         .eq("id", selectedCobrador.id);
 
-      // saldo_actual se sincroniza automáticamente via trigger
-
-      // 3) Register movimiento_caja
       await supabase.from("movimientos_caja").insert({
         caja_id: cajaId,
         tipo: "entrada" as any,
@@ -154,7 +286,6 @@ export default function LiquidarRutaPage() {
         empresa_id: empresaId,
       });
 
-      // 4) Register corte
       const comision = montoNum * (selectedCobrador.porcentaje_comision / 100);
       await supabase.from("cortes").insert({
         cobrador_id: selectedCobrador.id,
@@ -188,7 +319,6 @@ export default function LiquidarRutaPage() {
 
     setSaving(true);
     try {
-      // Reduce cobrador efectivo in profiles
       await supabase.from("profiles")
         .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
         .eq("id", selectedCobrador.id);
@@ -261,6 +391,10 @@ export default function LiquidarRutaPage() {
 
   const cfg = modal ? modalConfig[modal] : null;
 
+  const eficiencia = dailyReport && dailyReport.totalEsperado > 0
+    ? Math.round((dailyReport.totalCobrado / dailyReport.totalEsperado) * 100)
+    : 0;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -268,17 +402,18 @@ export default function LiquidarRutaPage() {
           <ClipboardList className="h-5 w-5 text-primary" />
           Liquidar Ruta
         </h1>
+        <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE d 'de' MMMM, yyyy", { locale: es })}</p>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <UserCheck className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Cobradores Activos</p>
+              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Cobradores</p>
               <p className="text-xl font-bold">{cobradores.length}</p>
             </div>
           </div>
@@ -289,7 +424,7 @@ export default function LiquidarRutaPage() {
               <Wallet className="h-5 w-5 text-destructive" />
             </div>
             <div>
-              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Total Efectivo en Calle</p>
+              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Efectivo en Calle</p>
               <p className="text-xl font-bold">{$$(totalEfectivo)}</p>
             </div>
           </div>
@@ -307,12 +442,23 @@ export default function LiquidarRutaPage() {
             </div>
           </div>
         </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Cobrado Hoy (Equipo)</p>
+              <p className="text-xl font-bold">{$$(cobradores.reduce((s, c) => s + c.efectivo_en_mano, 0))}</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
-      {/* Cobradores con saldo */}
+      {/* Cobradores — each one is a card with report + actions */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Cobradores con Efectivo</CardTitle>
+          <CardTitle className="text-base">Cobradores — Reporte del Día</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -323,45 +469,57 @@ export default function LiquidarRutaPage() {
           ) : cobradores.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">No hay cobradores activos</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-table-header">
-                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Cobrador</TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Efectivo en Mano</TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Comisión (%)</TableHead>
-                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-center">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cobradores.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="text-[13px] font-medium">{c.nombre}</TableCell>
-                    <TableCell className="text-right">
-                      <span className={cn(
-                        "text-[13px] font-semibold",
-                        c.efectivo_en_mano > 0 ? "text-destructive" : "text-muted-foreground"
-                      )}>
-                        {$$(c.efectivo_en_mano)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right text-[13px]">{c.porcentaje_comision}%</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-1.5">
-                        <Button size="sm" variant="default" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "depositar")}>
-                          <ArrowDownToLine className="h-3 w-3 mr-1" />Depositar
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "gasto")}>
-                          <MinusCircle className="h-3 w-3 mr-1" />Gasto
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "prestamo_entregado")}>
-                          <CreditCard className="h-3 w-3 mr-1" />Préstamo
-                        </Button>
+            <div className="divide-y divide-border">
+              {cobradores.map((c) => (
+                <div key={c.id} className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-bold text-primary">
+                          {c.nombre.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </span>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate">{c.nombre}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Efectivo: <span className={cn("font-semibold", c.efectivo_en_mano > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(c.efectivo_en_mano)}</span>
+                          {" · "}Comisión: {c.porcentaje_comision}%
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" onClick={() => setReportCobrador(reportCobrador?.id === c.id ? null : c)}>
+                        <Eye className="h-3 w-3 mr-1" />Reporte
+                      </Button>
+                      <Button size="sm" variant="default" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "depositar")}>
+                        <ArrowDownToLine className="h-3 w-3 mr-1" />Depositar
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "gasto")}>
+                        <MinusCircle className="h-3 w-3 mr-1" />Gasto
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "prestamo_entregado")}>
+                        <CreditCard className="h-3 w-3 mr-1" />Préstamo
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Inline daily report */}
+                  {reportCobrador?.id === c.id && (
+                    <div className="mt-4 border border-border rounded-lg overflow-hidden">
+                      {reportLoading ? (
+                        <div className="p-6 flex items-center justify-center">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : dailyReport ? (
+                        <DailyReportPanel report={dailyReport} cobrador={c} />
+                      ) : (
+                        <div className="p-6 text-center text-muted-foreground text-sm">Sin datos</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -493,6 +651,211 @@ export default function LiquidarRutaPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/* ─── Daily Report Panel ─── */
+
+interface DailyReportProps {
+  report: NonNullable<ReturnType<typeof useDailyReport>["data"]>;
+  cobrador: Cobrador;
+}
+
+function DailyReportPanel({ report, cobrador }: DailyReportProps) {
+  const eficiencia = report.totalEsperado > 0
+    ? Math.round((report.totalCobrado / report.totalEsperado) * 100)
+    : report.totalCobrado > 0 ? 100 : 0;
+
+  const efColor = eficiencia >= 100 ? "text-success" : eficiencia >= 70 ? "text-warning" : "text-destructive";
+  const efEmoji = eficiencia >= 100 ? "🎉" : eficiencia >= 70 ? "😊" : eficiencia >= 40 ? "😐" : "😟";
+
+  return (
+    <div>
+      {/* Summary KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-0 border-b border-border">
+        {[
+          { label: "Clientes Atendidos", value: String(report.clientesAtendidos), icon: Users, color: "text-primary" },
+          { label: "Cobros Realizados", value: String(report.numPagos), icon: HandCoins, color: "text-success" },
+          { label: "Total Cobrado", value: $$(report.totalCobrado), icon: DollarSign, color: "text-success" },
+          { label: "Esperado Hoy", value: $$(report.totalEsperado), icon: FileText, color: "text-foreground" },
+          { label: "Eficiencia", value: `${eficiencia}% ${efEmoji}`, icon: TrendingUp, color: efColor },
+        ].map((k, i) => (
+          <div key={i} className={cn("p-3 text-center", i < 4 && "border-r border-border last:border-r-0")}>
+            <k.icon className={cn("h-4 w-4 mx-auto mb-1", k.color)} />
+            <p className="text-[10px] uppercase text-muted-foreground tracking-wider">{k.label}</p>
+            <p className={cn("text-sm font-bold", k.color)}>{k.value}</p>
+          </div>
+        ))}
       </div>
+
+      {/* Efectivo esperado vs entregado */}
+      <div className="p-4 border-b border-border bg-secondary/30">
+        <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Conciliación de Efectivo</h4>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase">Total Cobrado</p>
+            <p className="text-sm font-bold text-success">{$$(report.totalCobrado)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase">Efectivo en Mano</p>
+            <p className="text-sm font-bold text-destructive">{$$(cobrador.efectivo_en_mano)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase">Diferencia</p>
+            <p className={cn("text-sm font-bold", cobrador.efectivo_en_mano === report.totalCobrado ? "text-success" : "text-warning")}>
+              {$$(cobrador.efectivo_en_mano - report.totalCobrado)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase">Por Método</p>
+            <div className="text-[11px] space-y-0.5">
+              {Object.entries(report.porMetodo).map(([m, v]) => (
+                <p key={m}><span className="text-muted-foreground">{m}:</span> <span className="font-semibold">{$$(v)}</span></p>
+              ))}
+              {Object.keys(report.porMetodo).length === 0 && <p className="text-muted-foreground">—</p>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs: Cobros | Esperado | Visitas */}
+      <Tabs defaultValue="cobros" className="w-full">
+        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-9 px-4">
+          <TabsTrigger value="cobros" className="text-[11px] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            Cobros ({report.numPagos})
+          </TabsTrigger>
+          <TabsTrigger value="esperado" className="text-[11px] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            Cuotas del Día ({report.cuotasExpected.length})
+          </TabsTrigger>
+          <TabsTrigger value="visitas" className="text-[11px] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            Gestiones ({report.numVisitas})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="cobros" className="mt-0">
+          {report.pagos.length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground text-xs">Sin cobros hoy</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-table-header">
+                  <TableHead className="text-[10px] uppercase">Hora</TableHead>
+                  <TableHead className="text-[10px] uppercase">Préstamo</TableHead>
+                  <TableHead className="text-[10px] uppercase">Cliente</TableHead>
+                  <TableHead className="text-[10px] uppercase text-right">Monto</TableHead>
+                  <TableHead className="text-[10px] uppercase">Método</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {report.pagos.map((p: any) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="text-[11px]">{format(new Date(p.created_at), "HH:mm")}</TableCell>
+                    <TableCell className="text-[11px] font-mono">{p.id_prestamo}</TableCell>
+                    <TableCell className="text-[11px] font-medium max-w-[120px] truncate">{p.cliente_nombre}</TableCell>
+                    <TableCell className="text-[11px] text-right font-semibold">{$$(p.monto_recibido)}</TableCell>
+                    <TableCell className="text-[11px]">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{p.metodo_pago || "Efectivo"}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-muted/50 font-semibold">
+                  <TableCell colSpan={3} className="text-[11px]">TOTAL</TableCell>
+                  <TableCell className="text-[11px] text-right">{$$(report.totalCobrado)}</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
+          {/* Desglose */}
+          {report.pagos.length > 0 && (
+            <div className="px-4 py-2 bg-muted/30 border-t border-border flex gap-4 text-[10px] text-muted-foreground">
+              <span>Capital: <strong className="text-foreground">{$$(report.totalCapital)}</strong></span>
+              <span>Interés: <strong className="text-foreground">{$$(report.totalInteres)}</strong></span>
+              <span>Mora: <strong className="text-foreground">{$$(report.totalMora)}</strong></span>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="esperado" className="mt-0">
+          {report.cuotasExpected.length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground text-xs">Sin cuotas programadas para hoy</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-table-header">
+                  <TableHead className="text-[10px] uppercase">Préstamo</TableHead>
+                  <TableHead className="text-[10px] uppercase">Cliente</TableHead>
+                  <TableHead className="text-[10px] uppercase text-center">Cuota</TableHead>
+                  <TableHead className="text-[10px] uppercase text-right">Monto</TableHead>
+                  <TableHead className="text-[10px] uppercase text-center">Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {report.cuotasExpected.map((c: any) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="text-[11px] font-mono">{c.id_prestamo}</TableCell>
+                    <TableCell className="text-[11px] font-medium max-w-[120px] truncate">{c.cliente}</TableCell>
+                    <TableCell className="text-[11px] text-center">#{c.num_cuota}</TableCell>
+                    <TableCell className="text-[11px] text-right font-semibold">{$$(c.monto)}</TableCell>
+                    <TableCell className="text-center">
+                      {c.status === "Pagada" ? (
+                        <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-success text-success-foreground">
+                          <CheckCircle2 className="h-3 w-3 mr-0.5" /> Pagada
+                        </Badge>
+                      ) : c.status === "Parcial" ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-warning border-warning">
+                          <Clock className="h-3 w-3 mr-0.5" /> Parcial
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-destructive border-destructive">
+                          <AlertTriangle className="h-3 w-3 mr-0.5" /> Pendiente
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-muted/50 font-semibold">
+                  <TableCell colSpan={3} className="text-[11px]">TOTAL ESPERADO</TableCell>
+                  <TableCell className="text-[11px] text-right">{$$(report.totalEsperado)}</TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="visitas" className="mt-0">
+          {report.visitas.length === 0 ? (
+            <div className="p-4 text-center text-muted-foreground text-xs">Sin gestiones registradas hoy</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-table-header">
+                  <TableHead className="text-[10px] uppercase">Hora</TableHead>
+                  <TableHead className="text-[10px] uppercase">Cliente</TableHead>
+                  <TableHead className="text-[10px] uppercase">Tipo</TableHead>
+                  <TableHead className="text-[10px] uppercase">Resultado</TableHead>
+                  <TableHead className="text-[10px] uppercase">Notas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {report.visitas.map((v: any) => (
+                  <TableRow key={v.id}>
+                    <TableCell className="text-[11px]">{format(new Date(v.created_at), "HH:mm")}</TableCell>
+                    <TableCell className="text-[11px] font-medium max-w-[100px] truncate">{v.clientes?.nombre_completo || "—"}</TableCell>
+                    <TableCell className="text-[11px]">{v.tipo_gestion}</TableCell>
+                    <TableCell className="text-[11px]">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{v.resultado}</Badge>
+                    </TableCell>
+                    <TableCell className="text-[11px] text-muted-foreground max-w-[100px] truncate">{v.notas || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
