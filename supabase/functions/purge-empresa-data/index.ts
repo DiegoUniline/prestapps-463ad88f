@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
 
     const empresaId = profile.empresa_id;
 
-    const { keepCatalogs, confirmCode } = await req.json();
+    const { keepCatalogs, keepClientes, confirmCode } = await req.json();
 
     // Validate confirmation code (must be "BORRAR-TODO" exactly)
     if (confirmCode !== "BORRAR-TODO") {
@@ -88,20 +88,30 @@ Deno.serve(async (req) => {
     // 10. Préstamos
     await adminClient.from("prestamos").delete().eq("empresa_id", empresaId);
 
-    // 11. Stripe payment methods
-    await adminClient.from("stripe_payment_methods").delete().eq("empresa_id", empresaId);
+    // 11. Stripe payment methods (linked to clientes)
+    if (!keepClientes) {
+      await adminClient.from("stripe_payment_methods").delete().eq("empresa_id", empresaId);
+    }
 
-    // 12. Clientes
-    await adminClient.from("clientes").delete().eq("empresa_id", empresaId);
+    // 12. Clientes (only if user chose to delete them)
+    if (!keepClientes) {
+      await adminClient.from("clientes").delete().eq("empresa_id", empresaId);
+    }
 
     // 13. Rutas
     await adminClient.from("rutas").delete().eq("empresa_id", empresaId);
 
-    // 14. Reset caja saldos (keep cajas but reset)
+    // 14. Reset caja saldos
     await adminClient.from("cajas").update({ saldo_actual: 0 }).eq("empresa_id", empresaId);
 
     // 15. Reset folios
     await adminClient.from("folios").update({ ultimo_folio: 0 }).eq("empresa_id", empresaId);
+
+    // 16. Reset efectivo_en_mano on ALL profiles of this empresa
+    await adminClient.from("profiles").update({ efectivo_en_mano: 0 }).eq("empresa_id", empresaId);
+
+    // 17. Reset cobradores efectivo_en_mano
+    await adminClient.from("cobradores").update({ efectivo_en_mano: 0 }).eq("empresa_id", empresaId);
 
     // 16. Catálogos (only if user chose to delete them too)
     if (!keepCatalogs) {
@@ -114,13 +124,15 @@ Deno.serve(async (req) => {
       await adminClient.from("cat_tipos_documento").delete().eq("empresa_id", empresaId);
     }
 
+    const parts = [];
+    if (keepClientes) parts.push("Clientes conservados.");
+    if (keepCatalogs) parts.push("Catálogos conservados.");
+    const msg = parts.length > 0
+      ? `Datos operativos eliminados. ${parts.join(" ")}`
+      : "Todos los datos eliminados.";
+
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: keepCatalogs
-          ? "Datos operativos eliminados. Catálogos conservados."
-          : "Todos los datos eliminados.",
-      }),
+      JSON.stringify({ success: true, message: msg }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err: any) {
