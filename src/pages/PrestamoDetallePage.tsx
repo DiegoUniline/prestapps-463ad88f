@@ -1252,6 +1252,10 @@ export default function PrestamoDetallePage() {
         prestamoId={prestamo.id}
         clienteNombre={cliente?.nombre_completo || "—"}
         saldoPendiente={saldoPendiente}
+        cajaId={prestamo.caja_id}
+        montoDesembolso={Number(prestamo.monto_solicitado || 0)}
+        empresaId={empresaId}
+        folioId={prestamo.id_prestamo}
       />
 
       {/* Reestructurar Modal */}
@@ -1281,6 +1285,8 @@ export default function PrestamoDetallePage() {
         onOpenChange={setEditarOpen}
         prestamo={{
           id: prestamo.id,
+          id_prestamo: prestamo.id_prestamo,
+          monto_solicitado: Number(prestamo.monto_solicitado || 0),
           tasa_interes: prestamo.tasa_interes ? Number(prestamo.tasa_interes) : null,
           tipo_mora: prestamo.tipo_mora,
           valor_mora: prestamo.valor_mora ? Number(prestamo.valor_mora) : null,
