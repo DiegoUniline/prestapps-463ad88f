@@ -26,6 +26,7 @@ import {
   PiggyBank, AlertTriangle, Loader2, BarChart3
 } from "lucide-react";
 import { useSingleCajaSaldoReal } from "@/hooks/useCajaSaldoReal";
+import { PrestamosTab, PagosTab, TransferenciasTab } from "@/components/CajaSourceTabs";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -348,12 +349,17 @@ export default function CajaDetallePage() {
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="resumen" className="text-[13px]">Resumen</TabsTrigger>
-          <TabsTrigger value="movimientos" className="text-[13px]">Movimientos</TabsTrigger>
-          <TabsTrigger value="kardex" className="text-[13px]">Kardex</TabsTrigger>
-          <TabsTrigger value="flujo" className="text-[13px]">Flujo de Efectivo</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="resumen" className="text-[13px]">Resumen</TabsTrigger>
+            <TabsTrigger value="prestamos" className="text-[13px]">Préstamos</TabsTrigger>
+            <TabsTrigger value="pagos" className="text-[13px]">Pagos</TabsTrigger>
+            <TabsTrigger value="transferencias" className="text-[13px]">Transferencias</TabsTrigger>
+            <TabsTrigger value="movimientos" className="text-[13px]">Movimientos</TabsTrigger>
+            <TabsTrigger value="kardex" className="text-[13px]">Kardex</TabsTrigger>
+            <TabsTrigger value="flujo" className="text-[13px]">Flujo</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* ── Resumen Tab ──────────────────────────────────────────── */}
         <TabsContent value="resumen" className="mt-4">
@@ -481,6 +487,11 @@ export default function CajaDetallePage() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* ── Source-based tabs ── */}
+        <TabsContent value="prestamos"><PrestamosTab cajaId={id!} /></TabsContent>
+        <TabsContent value="pagos"><PagosTab cajaId={id!} /></TabsContent>
+        <TabsContent value="transferencias"><TransferenciasTab cajaId={id!} /></TabsContent>
 
         {/* ── Movimientos Tab (solo depósitos, retiros, transferencias) ── */}
         <TabsContent value="movimientos" className="mt-4 space-y-3">
