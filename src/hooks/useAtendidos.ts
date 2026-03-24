@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 
 /**
  * Computes the current week range [start, end] based on corte_dia_semana (0=Sun..6=Sat).
