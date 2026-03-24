@@ -234,89 +234,42 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      // 1) Insert ONE pago row with aggregated totals
-      const totalMora = distribution.reduce((s, d) => s + d.mora, 0);
-      const totalInteres = distribution.reduce((s, d) => s + d.interes, 0);
-      const totalCapital = distribution.reduce((s, d) => s + d.capital, 0);
+      const effectiveCobradorId = selectedCobradorId || cobradorId || null;
+      const fechaPagoStr = format(fechaPago, "yyyy-MM-dd");
 
-      const { error: pagoErr } = await supabase.from("pagos").insert({
-        prestamo_id: prestamoId,
-        cuota_id: distribution[0]?.cuotaId || null,
-        monto_recibido: montoNum,
-        aplicado_mora: totalMora,
-        aplicado_interes: totalInteres,
-        aplicado_capital: totalCapital,
-        metodo_pago: metodo as any,
-        caja_id: cajaId,
-        ruta_id: rutaId || null,
-        cobrador_id: selectedCobradorId || cobradorId || null,
-        gps_lat: geo.lat,
-        gps_lng: geo.lng,
-        empresa_id: empresaId,
-        fecha_pago: format(fechaPago, "yyyy-MM-dd"),
-        registrado_por: user?.id || null,
-      } as any);
-      if (pagoErr) throw pagoErr;
+      // Build distribution JSONB for the RPC
+      const distJsonb = distribution.map((d) => ({
+        cuotaId: d.cuotaId,
+        mora: d.mora,
+        interes: d.interes,
+        capital: d.capital,
+      }));
 
-      // 2) Update amortizacion saldos for each cuota touched
-      for (const d of distribution) {
-        const cuota = cuotasPendientes.find((c) => c.id === d.cuotaId)!;
-        const newSaldoMora = Math.max(0, cuota.saldo_mora - d.mora);
-        const newSaldoInteres = Math.max(0, cuota.saldo_interes - d.interes);
-        const newSaldoCapital = Math.max(0, cuota.saldo_capital - d.capital);
-        const newSaldoTotal = newSaldoMora + newSaldoInteres + newSaldoCapital;
-        const fullPaid = newSaldoTotal < 0.01;
-
-        const updateData: Record<string, any> = {
-          mora_pagada: cuota.mora_pagada + d.mora,
-          interes_pagado: cuota.interes_pagado + d.interes,
-          capital_pagado: cuota.capital_pagado + d.capital,
-          saldo_mora: newSaldoMora,
-          saldo_interes: newSaldoInteres,
-          saldo_capital: newSaldoCapital,
-          saldo_total: newSaldoTotal,
-          status: fullPaid ? "Pagada" : "Parcial",
-        };
-        if (fullPaid) updateData.fecha_pagada = new Date().toISOString().slice(0, 10);
-        if (descuentoNum > 0) updateData.descuento_mora = descuentoNum;
-        const { error: amortErr } = await supabase.from("amortizacion").update(updateData).eq("id", d.cuotaId);
-        if (amortErr) throw amortErr;
+      // Apply descuento_mora on first cuota if applicable
+      if (descuentoNum > 0 && distribution.length > 0) {
+        await supabase
+          .from("amortizacion")
+          .update({ descuento_mora: descuentoNum } as any)
+          .eq("id", distribution[0].cuotaId);
       }
 
-      // 3) Insert movimiento_caja (entrada)
-      const { error: movErr } = await supabase.from("movimientos_caja").insert({
-        caja_id: cajaId,
-        tipo: "entrada",
-        monto: montoNum,
-        prestamo_id: prestamoId,
-        concepto: `Pago préstamo PRE-${prestamoId.slice(0, 8)}`,
-        empresa_id: empresaId,
+      // Single atomic RPC call: insert pago + update amortizacion + movimiento_caja + cobrador + estado
+      const { data: result, error: rpcErr } = await supabase.rpc("registrar_pago", {
+        p_prestamo_id: prestamoId,
+        p_empresa_id: empresaId,
+        p_caja_id: cajaId,
+        p_cobrador_id: effectiveCobradorId,
+        p_ruta_id: rutaId || null,
+        p_registrado_por: user?.id || null,
+        p_monto: montoNum,
+        p_metodo: metodo,
+        p_fecha_pago: fechaPagoStr,
+        p_gps_lat: geo.lat ?? null,
+        p_gps_lng: geo.lng ?? null,
+        p_distribution: distJsonb,
       });
-      if (movErr) throw movErr;
 
-      // saldo_actual se sincroniza automáticamente via trigger en movimientos_caja
-
-      // 5) Check if all cuotas are paid → update prestamo estado
-      const { data: remaining } = await supabase
-        .from("amortizacion")
-        .select("id")
-        .eq("prestamo_id", prestamoId)
-        .not("status", "eq", "Pagada");
-      
-      if (remaining && remaining.length === 0) {
-        await supabase.from("prestamos").update({ estado: "Liquidado" }).eq("id", prestamoId);
-      }
-
-      // 6) Increment cobrador efectivo_en_mano in profiles if cobrador is assigned
-      const effectiveCobradorId = selectedCobradorId || cobradorId;
-      if (effectiveCobradorId) {
-        const { data: cobData } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", effectiveCobradorId).single();
-        if (cobData) {
-          await supabase.from("profiles").update({
-            efectivo_en_mano: Number(cobData.efectivo_en_mano || 0) + montoNum,
-          }).eq("id", effectiveCobradorId);
-        }
-      }
+      if (rpcErr) throw rpcErr;
 
       // Invalidate all finance-related queries
       invalidateFinanceQueries(queryClient, { prestamoId });

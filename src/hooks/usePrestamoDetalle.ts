@@ -38,7 +38,7 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
       return prestamo ? { ...prestamo, cobro_automatico_stripe } : null;
     },
     enabled: !!prestamoId,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
@@ -65,7 +65,7 @@ export function useAmortizacion(prestamoId: string | undefined) {
       return data || [];
     },
     enabled: !!prestamoId,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
@@ -93,7 +93,7 @@ export function usePagos(prestamoId: string | undefined) {
       return data || [];
     },
     enabled: !!prestamoId,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -112,7 +112,7 @@ export function usePromesas(prestamoId: string | undefined) {
       return data || [];
     },
     enabled: !!prestamoId,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 5,
   });
 }
 

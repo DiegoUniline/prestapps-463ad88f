@@ -100,10 +100,12 @@ function useCajas(empresaId: string) {
 }
 
 // Fetch cobros in a period for a cobrador
-async function fetchCobros(cobradorId: string, desde?: string, hasta?: string) {
+async function fetchCobros(cobradorId: string, empresaId: string, desde?: string, hasta?: string) {
   let query = supabase
     .from("pagos")
-    .select("monto_recibido, created_at");
+    .select("monto_recibido, created_at")
+    .eq("empresa_id", empresaId)
+    .eq("anulado", false);
   
   query = query.eq("cobrador_id", cobradorId);
   if (desde) query = query.gte("created_at", desde);
@@ -222,7 +224,7 @@ export default function ComisionesPage() {
           .maybeSingle();
 
         const desde = lastCorte?.created_at || undefined;
-        const cobros = await fetchCobros(cobrador.id, desde);
+        const cobros = await fetchCobros(cobrador.id, empresaId, desde);
         const total = cobros.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
         const comision = total * (cobrador.porcentaje_comision / 100);
 

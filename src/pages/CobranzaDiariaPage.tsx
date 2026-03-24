@@ -165,6 +165,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       const { data: promesas } = await supabase
         .from("promesas_pago")
         .select("cuota_id")
+        .eq("empresa_id", empresaId)
         .eq("fecha_prometida", fecha)
         .eq("status", "Pendiente");
 
