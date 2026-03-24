@@ -126,6 +126,60 @@ function useCajaStats(cajaId: string) {
   });
 }
 
+// ── Source-based flujo (NOT from kardex) ──────────────────────
+function useCajaFlujoReal(cajaId: string) {
+  return useQuery({
+    queryKey: ["caja-flujo-real", cajaId],
+    enabled: !!cajaId,
+    queryFn: async () => {
+      const { data: pagos } = await supabase
+        .from("pagos").select("monto_recibido").eq("caja_id", cajaId).eq("anulado", false);
+      const totalCobros = (pagos || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+
+      const { data: prestamos } = await supabase
+        .from("prestamos").select("monto_solicitado").eq("caja_id", cajaId).not("estado", "eq", "Cancelado");
+      const totalDesembolsos = (prestamos || []).reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
+
+      const { data: manuales } = await supabase
+        .from("movimientos_caja").select("tipo, monto, concepto").eq("caja_id", cajaId).is("prestamo_id", null);
+
+      let depositos = 0, retiros = 0, transferenciasIn = 0, transferenciasOut = 0, gastos = 0, comisiones = 0;
+      for (const m of manuales || []) {
+        const monto = Number(m.monto || 0);
+        const lower = (m.concepto || "").toLowerCase();
+        const isTransfer = lower.includes("transferencia");
+        const isGasto = lower.includes("gasto") || lower.includes("[");
+        const isComision = lower.includes("comisión") || lower.includes("comision") || lower.includes("corte");
+        if (isTransfer) { if (m.tipo === "entrada") transferenciasIn += monto; else transferenciasOut += monto; }
+        else if (isGasto) gastos += monto;
+        else if (isComision) comisiones += monto;
+        else if (m.tipo === "entrada") depositos += monto;
+        else retiros += monto;
+      }
+
+      const { data: anulados } = await supabase
+        .from("pagos").select("monto_recibido").eq("caja_id", cajaId).eq("anulado", true);
+      const totalAnulaciones = (anulados || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+
+      const entradas: Record<string, number> = {};
+      const salidas: Record<string, number> = {};
+      if (totalCobros > 0) entradas["Cobros"] = totalCobros;
+      if (depositos > 0) entradas["Depósitos"] = depositos;
+      if (transferenciasIn > 0) entradas["Transferencias"] = transferenciasIn;
+      if (totalDesembolsos > 0) salidas["Desembolsos"] = totalDesembolsos;
+      if (retiros > 0) salidas["Retiros"] = retiros;
+      if (transferenciasOut > 0) salidas["Transferencias"] = transferenciasOut;
+      if (gastos > 0) salidas["Gastos"] = gastos;
+      if (comisiones > 0) salidas["Comisiones"] = comisiones;
+      if (totalAnulaciones > 0) salidas["Anulaciones"] = totalAnulaciones;
+
+      const totalEntradas = totalCobros + depositos + transferenciasIn;
+      const totalSalidas = totalDesembolsos + retiros + transferenciasOut + gastos + comisiones + totalAnulaciones;
+      return { entradas, salidas, totalEntradas, totalSalidas, flujoNeto: totalEntradas - totalSalidas };
+    },
+  });
+}
+
 interface KardexRow { id: string; fecha: string; tipo: "entrada" | "salida"; concepto: string; monto: number; categoria: string; }
 
 function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string {
@@ -149,7 +203,6 @@ function useCajaKardex(cajaId: string) {
     enabled: !!cajaId,
     queryFn: async () => {
       const movs = await fetchAllRows(supabase.from("movimientos_caja").select("id, created_at, tipo, monto, concepto").eq("caja_id", cajaId).order("created_at", { ascending: true }));
-
       const rows: KardexRow[] = [];
       for (const m of movs || []) {
         const concepto = m.concepto || (m.tipo === "entrada" ? "Depósito" : "Retiro");
