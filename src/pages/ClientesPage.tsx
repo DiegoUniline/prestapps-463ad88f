@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, Loader2, Users, FileText } from "lucide-react";
+import ClientesBulkImportExport from "@/components/ClientesBulkImportExport";
 import { useNavigate } from "react-router-dom";
 import { useClientes, useUpdateCliente } from "@/hooks/useClientes";
 import { useAtendidos } from "@/hooks/useAtendidos";
