@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, Loader2, Users, FileText } from "lucide-react";
+import ClientesBulkImportExport from "@/components/ClientesBulkImportExport";
 import { useNavigate } from "react-router-dom";
 import { useClientes, useUpdateCliente } from "@/hooks/useClientes";
 import { useAtendidos } from "@/hooks/useAtendidos";
@@ -171,11 +172,14 @@ export default function ClientesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl md:text-2xl font-bold">Clientes</h1>
-        <Button size="sm" className="h-8 text-[13px]" onClick={() => navigate("/clientes/nuevo")}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          <span className="hidden sm:inline">Nuevo Cliente</span>
-          <span className="sm:hidden">Nuevo</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <ClientesBulkImportExport />
+          <Button size="sm" className="h-8 text-[13px]" onClick={() => navigate("/clientes/nuevo")}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            <span className="hidden sm:inline">Nuevo Cliente</span>
+            <span className="sm:hidden">Nuevo</span>
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="listado" className="space-y-4">
