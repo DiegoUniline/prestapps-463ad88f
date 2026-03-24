@@ -162,7 +162,14 @@ export function PurgeDataSection() {
               <div className="text-[13px] space-y-1">
                 <div className="flex items-center gap-2">
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  <span>Préstamos, pagos, clientes — <strong className="text-destructive">ELIMINADOS</strong></span>
+                  <span>Préstamos, pagos, efectivo en mano — <strong className="text-destructive">ELIMINADOS/REINICIADOS</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {keepClientes ? (
+                    <><CheckCircle2 className="h-3.5 w-3.5 text-[hsl(142,72%,37%)]" /><span>Clientes — <strong className="text-[hsl(142,72%,37%)]">CONSERVADOS</strong></span></>
+                  ) : (
+                    <><Trash2 className="h-3.5 w-3.5 text-destructive" /><span>Clientes — <strong className="text-destructive">ELIMINADOS</strong></span></>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {keepCatalogs ? (
