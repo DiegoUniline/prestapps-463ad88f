@@ -188,6 +188,7 @@ export default function CajaDetallePage() {
   const { data: stats, isLoading: loadingStats } = useCajaStats(id || "");
   const { data: rows = [], isLoading: loadingKardex } = useCajaKardex(id || "");
   const { data: allCajas = [] } = useAllCajas(empresaId);
+  const { saldo: saldoReal } = useSingleCajaSaldoReal(id || "");
 
   const [tab, setTab] = useState("resumen");
   const [modal, setModal] = useState<ModalType>(null);
@@ -197,7 +198,7 @@ export default function CajaDetallePage() {
   const [cajaDestinoId, setCajaDestinoId] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const saldoActual = Number(caja?.saldo_actual || 0);
+  const saldoActual = saldoReal ?? Number(caja?.saldo_actual || 0);
   const invalidate = () => invalidateFinanceQueries(queryClient);
   const resetModal = () => { setModal(null); setMonto(""); setConcepto(""); setCajaDestinoId(""); };
 
