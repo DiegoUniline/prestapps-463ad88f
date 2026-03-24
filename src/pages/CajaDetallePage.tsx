@@ -58,10 +58,12 @@ function useCajaStats(cajaId: string) {
 
       const ids = prestamos.map(p => p.id);
       const prestamoMap = new Map(prestamos.map((p) => [p.id, p]));
-      const { data: amortData } = await supabase
-        .from("amortizacion")
-        .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes, mora_pagada, status, fecha_vencimiento")
-        .in("prestamo_id", ids);
+      const amortData = await fetchAllRows(
+        supabase
+          .from("amortizacion")
+          .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes, mora_pagada, status, fecha_vencimiento")
+          .in("prestamo_id", ids)
+      );
 
       const today = new Date().toISOString().slice(0, 10);
       const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
