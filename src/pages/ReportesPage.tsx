@@ -141,13 +141,13 @@ export default function ReportesPage() {
   const { data: prestamosRaw = [] } = useQuery({
     queryKey: ["rpt-prestamos", empresaId, fromStr, toStr],
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAllRows(supabase
         .from("prestamos")
         .select("id, monto_solicitado, monto_total_pagar, tasa_interes, num_cuotas, estado, frecuencia, modalidad, fecha_registro, fecha_primer_pago, gastos_legales, cliente_id, ruta_id, cobrador_id, clientes(nombre_completo), rutas(nombre)")
         .eq("empresa_id", empresaId!)
         .gte("fecha_registro", fromStr)
         .lte("fecha_registro", toStr)
-        .order("fecha_registro", { ascending: false });
+        .order("fecha_registro", { ascending: false }));
       return data || [];
     },
     enabled: !!empresaId,
