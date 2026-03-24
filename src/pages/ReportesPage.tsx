@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
