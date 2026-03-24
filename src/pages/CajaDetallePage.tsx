@@ -25,6 +25,7 @@ import {
   Wallet, DollarSign, FileText, TrendingUp, TrendingDown,
   PiggyBank, AlertTriangle, Loader2, BarChart3
 } from "lucide-react";
+import { useSingleCajaSaldoReal } from "@/hooks/useCajaSaldoReal";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
