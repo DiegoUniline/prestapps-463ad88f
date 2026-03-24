@@ -38,7 +38,7 @@ export type Database = {
           saldo_interes: number | null
           saldo_mora: number | null
           saldo_total: number | null
-          status: Database["public"]["Enums"]["cuota_status"] | null
+          status: string | null
         }
         Insert: {
           avisado?: boolean | null
@@ -63,7 +63,7 @@ export type Database = {
           saldo_interes?: number | null
           saldo_mora?: number | null
           saldo_total?: number | null
-          status?: Database["public"]["Enums"]["cuota_status"] | null
+          status?: string | null
         }
         Update: {
           avisado?: boolean | null
@@ -88,7 +88,7 @@ export type Database = {
           saldo_interes?: number | null
           saldo_mora?: number | null
           saldo_total?: number | null
-          status?: Database["public"]["Enums"]["cuota_status"] | null
+          status?: string | null
         }
         Relationships: [
           {

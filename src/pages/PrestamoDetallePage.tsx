@@ -1180,7 +1180,10 @@ export default function PrestamoDetallePage() {
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
         rutaId={prestamo.ruta_id}
         cobradorId={prestamo.cobrador_id}
-        montoInicial={selectedCuota ? Number(selectedCuota.saldo_total || 0) : undefined}
+        montoInicial={selectedCuota ? Number(selectedCuota.saldo_total || 0) : (() => {
+          const primera = amort.find((c) => c.status !== "Pagada");
+          return primera ? Number(primera.saldo_total || 0) : undefined;
+        })()}
       />
 
       {/* Liquidar Modal */}

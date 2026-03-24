@@ -97,12 +97,16 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
     setMetodo(metodosPago[0].nombre);
   }
 
-  // Sync selectedCobradorId when prop changes
-  if (open && cobradorId && !selectedCobradorId) {
-    setSelectedCobradorId(cobradorId);
+  // Sync selectedCobradorId: prefer prop, fallback to current user
+  if (open && !initialized) {
+    if (cobradorId) {
+      setSelectedCobradorId(cobradorId);
+    } else if (user?.id) {
+      setSelectedCobradorId(user.id);
+    }
   }
-  if (!open && selectedCobradorId !== (cobradorId || "")) {
-    setSelectedCobradorId(cobradorId || "");
+  if (!open && selectedCobradorId !== (cobradorId || user?.id || "")) {
+    setSelectedCobradorId(cobradorId || user?.id || "");
   }
 
   // Pre-fill monto when modal opens with montoInicial
