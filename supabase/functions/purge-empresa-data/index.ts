@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
 
     const empresaId = profile.empresa_id;
 
-    const { keepCatalogs, confirmCode } = await req.json();
+    const { keepCatalogs, keepClientes, confirmCode } = await req.json();
 
     // Validate confirmation code (must be "BORRAR-TODO" exactly)
     if (confirmCode !== "BORRAR-TODO") {
