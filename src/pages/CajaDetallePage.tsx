@@ -140,6 +140,7 @@ function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string 
 }
 
 const KARDEX_CATEGORIES = ["Todos", "Pagos", "Desembolsos", "Anulaciones", "Gastos", "Comisiones", "Depósitos", "Retiros", "Transferencias"] as const;
+const MANUAL_CATEGORIES = new Set(["Depósitos", "Retiros", "Transferencias"]);
 
 function useCajaKardex(cajaId: string) {
   return useQuery({
@@ -246,6 +247,13 @@ export default function CajaDetallePage() {
     return rows.map(r => { balance += r.tipo === "entrada" ? r.monto : -r.monto; return { ...r, balance }; }).reverse();
   }, [rows]);
 
+  // Manual movements only (depósitos, retiros, transferencias)
+  const manualRows = useMemo(() => {
+    const filtered = rows.filter(r => MANUAL_CATEGORIES.has(r.categoria));
+    let balance = 0;
+    return filtered.map(r => { balance += r.tipo === "entrada" ? r.monto : -r.monto; return { ...r, balance }; }).reverse();
+  }, [rows]);
+
   const filteredKardex = useMemo(() => {
     if (kardexFilter === "Todos") return withBalance;
     return withBalance.filter(r => r.categoria === kardexFilter);
@@ -342,6 +350,7 @@ export default function CajaDetallePage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="resumen" className="text-[13px]">Resumen</TabsTrigger>
+          <TabsTrigger value="movimientos" className="text-[13px]">Movimientos</TabsTrigger>
           <TabsTrigger value="kardex" className="text-[13px]">Kardex</TabsTrigger>
           <TabsTrigger value="flujo" className="text-[13px]">Flujo de Efectivo</TabsTrigger>
         </TabsList>
@@ -471,6 +480,78 @@ export default function CajaDetallePage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* ── Movimientos Tab (solo depósitos, retiros, transferencias) ── */}
+        <TabsContent value="movimientos" className="mt-4 space-y-3">
+          {loadingKardex ? (
+            <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : manualRows.length === 0 ? (
+            <p className="text-center py-12 text-muted-foreground text-sm">Sin depósitos, retiros ni transferencias</p>
+          ) : (
+            <>
+              <div className="flex items-center gap-4 text-[12px] px-1">
+                <span className="text-muted-foreground">{manualRows.length} movimientos</span>
+                <span className="text-success font-medium">
+                  +{$$(manualRows.filter(r => r.tipo === "entrada").reduce((s, r) => s + r.monto, 0))}
+                </span>
+                <span className="text-destructive font-medium">
+                  -{$$(manualRows.filter(r => r.tipo === "salida").reduce((s, r) => s + r.monto, 0))}
+                </span>
+              </div>
+
+              {/* Mobile */}
+              <div className="md:hidden divide-y divide-border bg-card rounded-lg border">
+                {manualRows.map(r => (
+                  <div key={r.id} className="px-4 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-medium truncate">{r.concepto}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{r.categoria}</span>
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={cn("text-[13px] font-semibold", r.tipo === "entrada" ? "text-success" : "text-destructive")}>{r.tipo === "entrada" ? "+" : "-"}{$$(r.monto)}</p>
+                        <p className="text-[11px] text-muted-foreground">{$$(r.balance)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop */}
+              <div className="hidden md:block bg-card rounded-lg border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3">Fecha</TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3">Concepto</TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3">Tipo</TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3 text-right">Entrada</TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3 text-right">Salida</TableHead>
+                      <TableHead className="text-[11px] uppercase tracking-wider font-semibold px-3 text-right">Saldo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {manualRows.map(r => (
+                      <TableRow key={r.id} className="border-b border-border/50">
+                        <TableCell className="text-[12px] px-3 whitespace-nowrap">{r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}</TableCell>
+                        <TableCell className="text-[13px] px-3 max-w-[250px] truncate">{r.concepto}</TableCell>
+                        <TableCell className="text-[12px] px-3">
+                          <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">{r.categoria}</span>
+                        </TableCell>
+                        <TableCell className="text-right text-[13px] px-3 text-success font-medium">{r.tipo === "entrada" ? $$(r.monto) : ""}</TableCell>
+                        <TableCell className="text-right text-[13px] px-3 text-destructive font-medium">{r.tipo === "salida" ? $$(r.monto) : ""}</TableCell>
+                        <TableCell className="text-right text-[13px] px-3 font-semibold">{$$(r.balance)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </TabsContent>
 
         {/* ── Kardex Tab ──────────────────────────────────────────── */}
