@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,9 +47,7 @@ export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteN
         saldo_total: 0,
       }).eq("prestamo_id", prestamoId).not("status", "eq", "Pagada");
 
-      queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", prestamoId] });
-      queryClient.invalidateQueries({ queryKey: ["amortizacion", prestamoId] });
-      queryClient.invalidateQueries({ queryKey: ["prestamos"] });
+      invalidateFinanceQueries(queryClient, { prestamoId });
 
       toast.success("Préstamo cancelado correctamente");
       onOpenChange(false);

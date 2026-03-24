@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -83,11 +84,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
 
       if (error) throw error;
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", prestamo.id] }),
-        queryClient.invalidateQueries({ queryKey: ["prestamos-list-v2"] }),
-        queryClient.invalidateQueries({ queryKey: ["prestamos-list"] }),
-      ]);
+      invalidateFinanceQueries(queryClient, { prestamoId: prestamo.id });
 
       toast.success("Préstamo actualizado correctamente");
       onOpenChange(false);

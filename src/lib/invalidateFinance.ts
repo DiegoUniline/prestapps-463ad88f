@@ -36,7 +36,9 @@ export function invalidateFinanceQueries(
 
   // Pagos globales
   queryClient.invalidateQueries({ queryKey: ["pagos-all"], refetchType: "all" });
-  queryClient.invalidateQueries({ queryKey: ["cobros-diarios"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["cobranza-diaria"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["cobrador-cobranza"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["cobranza-cuentas"], refetchType: "all" });
 
   // Per-prestamo if provided
   if (opts?.prestamoId) {
