@@ -14,6 +14,7 @@ import { ArrowLeft, Pencil, Save, X, Trash2, MapPin, Loader2, User, Briefcase, U
 import { useCliente, useCreateCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useClientes";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { toast } from "sonner";
 import type { ClienteInsert } from "@/types/cliente";
 import { $$ } from "@/lib/utils";
