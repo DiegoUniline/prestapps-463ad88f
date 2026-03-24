@@ -87,15 +87,10 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
 
       let amortData: any[] = [];
       if (prestamoIds.length > 0) {
-        // Batch in chunks of 500
-        for (let i = 0; i < prestamoIds.length; i += 500) {
-          const chunk = prestamoIds.slice(i, i + 500);
-          const { data } = await supabase
-            .from("amortizacion")
-            .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
-            .in("prestamo_id", chunk);
-          if (data) amortData = amortData.concat(data);
-        }
+        amortData = await fetchAllRows(supabase
+          .from("amortizacion")
+          .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
+          .in("prestamo_id", prestamoIds));
       }
 
       // 5. CRM gestiones (visits) in period
