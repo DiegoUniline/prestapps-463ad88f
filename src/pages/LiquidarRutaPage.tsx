@@ -158,12 +158,27 @@ function useDailyReport(empresaId: string, cobradorId: string | null) {
         .lte("created_at", `${today}T23:59:59`);
 
       // 5) Cuotas que debían cobrarse hoy para este cobrador (expected)
-      const { data: cuotasHoy } = await supabase
-        .from("amortizacion")
-        .select("id, num_cuota, capital_interes, saldo_total, status, prestamo_id, prestamos!inner ( cobrador_id, cliente_id, id_prestamo, clientes ( nombre_completo ) )")
-        .eq("fecha_vencimiento", today)
-        .eq("prestamos.cobrador_id" as any, cobradorId)
-        .eq("empresa_id", empresaId);
+      // First get prestamo IDs for this cobrador
+      const { data: cobPrestamos } = await supabase
+        .from("prestamos")
+        .select("id, id_prestamo, cliente_id, clientes ( nombre_completo )")
+        .eq("cobrador_id", cobradorId)
+        .eq("empresa_id", empresaId)
+        .in("estado", ["Activo", "Vencido"]);
+
+      const cobPrestamoIds = (cobPrestamos || []).map((p: any) => p.id);
+      let cuotasHoy: any[] = [];
+      if (cobPrestamoIds.length) {
+        const { data } = await supabase
+          .from("amortizacion")
+          .select("id, num_cuota, capital_interes, saldo_total, status, prestamo_id")
+          .eq("fecha_vencimiento", today)
+          .eq("empresa_id", empresaId)
+          .in("prestamo_id", cobPrestamoIds);
+        cuotasHoy = data || [];
+      }
+      const cobPrestamoMap: Record<string, any> = {};
+      for (const p of (cobPrestamos || []) as any[]) cobPrestamoMap[p.id] = p;
 
       // 6) Gastos del cobrador hoy (from movimientos_caja)
       const { data: movimientos } = await supabase
