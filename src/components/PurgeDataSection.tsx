@@ -21,12 +21,14 @@ export function PurgeDataSection() {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [keepCatalogs, setKeepCatalogs] = useState(true);
+  const [keepClientes, setKeepClientes] = useState(true);
   const [inputCode, setInputCode] = useState("");
   const [purging, setPurging] = useState(false);
 
   const reset = () => {
     setStep(1);
     setKeepCatalogs(true);
+    setKeepClientes(true);
     setInputCode("");
     setPurging(false);
   };
@@ -44,7 +46,7 @@ export function PurgeDataSection() {
     setPurging(true);
     try {
       const { data, error } = await supabase.functions.invoke("purge-empresa-data", {
-        body: { keepCatalogs, confirmCode: inputCode },
+        body: { keepCatalogs, keepClientes, confirmCode: inputCode },
       });
 
       if (error) throw error;
@@ -102,9 +104,9 @@ export function PurgeDataSection() {
                 <ul className="list-disc list-inside text-muted-foreground text-[13px] space-y-0.5">
                   <li>Todos los préstamos y amortizaciones</li>
                   <li>Todos los pagos y movimientos de caja</li>
-                  <li>Todos los clientes</li>
                   <li>Promesas, solicitudes, gestiones CRM</li>
                   <li>Rutas, cortes, folios (se reinician)</li>
+                  <li>Efectivo en mano de cobradores (se reinicia a $0)</li>
                   <li>Logs de WhatsApp y Stripe</li>
                 </ul>
               </div>
@@ -120,6 +122,16 @@ export function PurgeDataSection() {
               </div>
 
               <Separator />
+
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div>
+                  <p className="text-[13px] font-medium">¿Conservar clientes?</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Mantener la base de datos de clientes registrados
+                  </p>
+                </div>
+                <Switch checked={keepClientes} onCheckedChange={setKeepClientes} />
+              </div>
 
               <div className="flex items-center justify-between p-3 rounded-lg border">
                 <div>
