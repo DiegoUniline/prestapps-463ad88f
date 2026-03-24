@@ -43,15 +43,18 @@ function useGastos(empresaId: string) {
         .eq("empresa_id", empresaId)
         .eq("tipo", "salida")
         .order("created_at", { ascending: false }));
-      return (data || []).map((m: any) => ({
-        id: m.id,
-        fecha: m.created_at,
-        concepto: m.concepto || "",
-        monto: Number(m.monto || 0),
-        caja: (m.cajas as any)?.nombre || "—",
-        cajaId: m.caja_id,
-        categoria: extractCategoria(m.concepto || ""),
-      }));
+      // Only show manually registered gastos (those with [Categoria] tag)
+      return (data || [])
+        .filter((m: any) => /^\[.+?\]/.test(m.concepto || ""))
+        .map((m: any) => ({
+          id: m.id,
+          fecha: m.created_at,
+          concepto: m.concepto || "",
+          monto: Number(m.monto || 0),
+          caja: (m.cajas as any)?.nombre || "—",
+          cajaId: m.caja_id,
+          categoria: extractCategoria(m.concepto || ""),
+        }));
     },
   });
 }
