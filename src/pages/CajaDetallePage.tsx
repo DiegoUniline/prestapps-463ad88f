@@ -217,6 +217,7 @@ export default function CajaDetallePage() {
     queryClient.invalidateQueries({ queryKey: ["caja-detalle", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-stats", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-kardex", id] });
+    queryClient.invalidateQueries({ queryKey: ["caja-saldo-real"] });
     resetModal();
   };
 
