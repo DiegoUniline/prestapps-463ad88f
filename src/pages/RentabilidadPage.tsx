@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -20,11 +21,11 @@ export default function RentabilidadPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["rentabilidad", empresaId],
     queryFn: async () => {
-      const [{ data: prestamos }, { data: pagos }, { data: rutas }, { data: profiles }] = await Promise.all([
-        supabase.from("prestamos").select("id, monto_solicitado, monto_total_pagar, tasa_interes, gastos_legales, estado, ruta_id, cobrador_id, cliente_id, clientes(nombre_completo)")
-          .eq("empresa_id", empresaId).in("estado", ["Activo", "Al día", "Vencido", "Liquidado"]),
-        supabase.from("pagos").select("id, prestamo_id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, anulado")
-          .eq("empresa_id", empresaId).eq("anulado", false),
+      const [prestamos, pagos, { data: rutas }, { data: profiles }] = await Promise.all([
+        fetchAllRows(supabase.from("prestamos").select("id, monto_solicitado, monto_total_pagar, tasa_interes, gastos_legales, estado, ruta_id, cobrador_id, cliente_id, clientes(nombre_completo)")
+          .eq("empresa_id", empresaId).in("estado", ["Activo", "Al día", "Vencido", "Liquidado"])),
+        fetchAllRows(supabase.from("pagos").select("id, prestamo_id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, anulado")
+          .eq("empresa_id", empresaId).eq("anulado", false)),
         supabase.from("rutas").select("id, nombre").eq("empresa_id", empresaId),
         supabase.from("profiles").select("id, nombre_completo").eq("empresa_id", empresaId),
       ]);
