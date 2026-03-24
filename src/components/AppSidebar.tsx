@@ -5,6 +5,7 @@ import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole, type AppRole } from "@/hooks/useCurrentUserRole";
 import { usePermisosRead, type PermisoModule } from "@/hooks/usePermisos";
+import { fetchPrestamos } from "@/hooks/usePrestamos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuthStore } from "@/stores/authStore";
 import { isSuperAdmin } from "@/components/SuperAdminGuard";
@@ -139,15 +140,8 @@ export function AppSidebar() {
   useEffect(() => {
     if (!empresaId) return;
     queryClient.prefetchQuery({
-      queryKey: ["prestamos-list", undefined, undefined, empresaId],
-      queryFn: async () => {
-        const { data: prestamos } = await supabase
-          .from("prestamos")
-          .select("id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id, clientes(id, nombre_completo), cajas(nombre), rutas(nombre, cobrador_id)")
-          .eq("empresa_id", empresaId)
-          .order("created_at", { ascending: false });
-        return prestamos || [];
-      },
+      queryKey: ["prestamos-list-v2", undefined, undefined, empresaId],
+      queryFn: () => fetchPrestamos({ empresaId }),
       staleTime: 1000 * 60 * 5,
     });
     queryClient.prefetchQuery({
