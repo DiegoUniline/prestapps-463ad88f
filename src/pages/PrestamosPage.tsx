@@ -988,25 +988,46 @@ export default function PrestamosPage() {
                   ))}
                 </TableRow>
               </>
-            ) : filtered.map((p) => (
-              <TableRow
-                key={p.id}
-                className={cn(
-                  "cursor-pointer border-b border-border/50 transition-colors group",
-                  selectedRows.has(p.id) ? "bg-table-selected" : "hover:bg-table-hover"
-                )}
-                onClick={() => navigate(`/prestamos/${p.id}`)}
-              >
-                <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
-                  <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
-                </TableCell>
-                {visibleColumns.map((col) => (
-                  <TableCell key={col.key} className={cn("px-3", col.className)}>
-                    {col.render(p, { setLightboxPhoto, atendidoIds, atendidoColor })}
-                  </TableCell>
+            ) : (
+              <>
+                {filtered.map((p) => (
+                  <TableRow
+                    key={p.id}
+                    className={cn(
+                      "cursor-pointer border-b border-border/50 transition-colors group",
+                      selectedRows.has(p.id) ? "bg-table-selected" : "hover:bg-table-hover"
+                    )}
+                    onClick={() => navigate(`/prestamos/${p.id}`)}
+                  >
+                    <TableCell className="px-3 w-10" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox checked={selectedRows.has(p.id)} onCheckedChange={() => toggleRow(p.id)} />
+                    </TableCell>
+                    {visibleColumns.map((col) => (
+                      <TableCell key={col.key} className={cn("px-3", col.className)}>
+                        {col.render(p, { setLightboxPhoto, atendidoIds, atendidoColor })}
+                      </TableCell>
+                    ))}
+                  </TableRow>
                 ))}
-              </TableRow>
-            ))}
+                {filtered.length > 0 && (
+                  <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                    <TableCell className="px-3" />
+                    {visibleColumns.map((col) => (
+                      <TableCell key={col.key} className={cn("px-3 text-[12px]", col.className)}>
+                        {col.key === "montoSolicitado" ? $$(filtered.reduce((s, p) => s + p.montoSolicitado, 0)) :
+                         col.key === "montoPagar" ? $$(filtered.reduce((s, p) => s + p.montoPagar, 0)) :
+                         col.key === "saldo" ? $$(filtered.reduce((s, p) => s + p.saldo, 0)) :
+                         col.key === "saldoCapital" ? $$(filtered.reduce((s, p) => s + p.saldoCapital, 0)) :
+                         col.key === "saldoInteres" ? $$(filtered.reduce((s, p) => s + p.saldoInteres, 0)) :
+                         col.key === "mora" ? $$(filtered.reduce((s, p) => s + p.mora, 0)) :
+                         col.key === "codigoInterno" ? <span className="font-bold text-[11px] uppercase text-muted-foreground">Totales</span> :
+                         ""}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                )}
+              </>
+            )}
           </TableBody>
         </Table>
       </div>

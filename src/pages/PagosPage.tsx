@@ -762,7 +762,21 @@ export default function PagosPage() {
                   <TableCell colSpan={4} />
                 </TableRow>
               </>
-            ) : filtered.map(renderRow)}
+            ) : (
+              <>
+                {filtered.map(renderRow)}
+                {filtered.length > 0 && (
+                  <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                    <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={3}>Totales</TableCell>
+                    <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.montoRecibido, 0))}</TableCell>
+                    <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoMora, 0))}</TableCell>
+                    <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoInteres, 0))}</TableCell>
+                    <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoCapital, 0))}</TableCell>
+                    <TableCell colSpan={4} />
+                  </TableRow>
+                )}
+              </>
+            )}
           </TableBody>
         </Table>
       </div>
