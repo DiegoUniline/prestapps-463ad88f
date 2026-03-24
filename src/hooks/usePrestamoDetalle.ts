@@ -53,8 +53,8 @@ export function useAmortizacion(prestamoId: string | undefined) {
     queryFn: async () => {
       if (!prestamoId) return [];
 
-      // Fire-and-forget mora recalc — don't block the UI
-      (supabase.rpc as any)("recalcular_mora", { p_prestamo_id: prestamoId }).then(() => {});
+      // Recalculate mora before reading — ensures fresh values
+      await (supabase.rpc as any)("recalcular_mora", { p_prestamo_id: prestamoId }).catch(() => {});
 
       const { data, error } = await supabase
         .from("amortizacion")
