@@ -488,6 +488,11 @@ export default function CajaDetallePage() {
           </div>
         </TabsContent>
 
+        {/* ── Source-based tabs ── */}
+        <TabsContent value="prestamos"><PrestamosTab cajaId={id!} /></TabsContent>
+        <TabsContent value="pagos"><PagosTab cajaId={id!} /></TabsContent>
+        <TabsContent value="transferencias"><TransferenciasTab cajaId={id!} /></TabsContent>
+
         {/* ── Movimientos Tab (solo depósitos, retiros, transferencias) ── */}
         <TabsContent value="movimientos" className="mt-4 space-y-3">
           {loadingKardex ? (
