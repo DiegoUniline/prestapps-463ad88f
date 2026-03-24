@@ -344,30 +344,41 @@ export default function ClientesPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredEstados.map((ec) => (
-                      <TableRow
-                        key={ec.cliente_id}
-                        className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors"
-                        onClick={() => navigate(`/clientes/${ec.cliente_id}`)}
-                      >
-                        <TableCell className="font-mono text-[12px] px-3">{ec.id_cliente}</TableCell>
-                        <TableCell className="font-medium text-[13px] px-3">{ec.nombre_completo}</TableCell>
-                        <TableCell className="text-right font-semibold text-[13px] px-3">{$$(ec.saldo_total)}</TableCell>
-                        <TableCell className="text-center px-3">
-                          {ec.cuotas_vencidas > 0 ? (
-                            <Badge variant="destructive">{ec.cuotas_vencidas}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-[13px]">0</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right px-3">
-                          <span className={ec.saldo_moroso > 0 ? "text-destructive font-semibold text-[13px]" : "text-muted-foreground text-[13px]"}>
-                            {$$(ec.saldo_moroso)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-[13px] px-3">{ec.cobrador_nombre || "—"}</TableCell>
-                      </TableRow>
-                    ))
+                    <>
+                      {filteredEstados.map((ec) => (
+                        <TableRow
+                          key={ec.cliente_id}
+                          className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors"
+                          onClick={() => navigate(`/clientes/${ec.cliente_id}`)}
+                        >
+                          <TableCell className="font-mono text-[12px] px-3">{ec.id_cliente}</TableCell>
+                          <TableCell className="font-medium text-[13px] px-3">{ec.nombre_completo}</TableCell>
+                          <TableCell className="text-right font-semibold text-[13px] px-3">{$$(ec.saldo_total)}</TableCell>
+                          <TableCell className="text-center px-3">
+                            {ec.cuotas_vencidas > 0 ? (
+                              <Badge variant="destructive">{ec.cuotas_vencidas}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-[13px]">0</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right px-3">
+                            <span className={ec.saldo_moroso > 0 ? "text-destructive font-semibold text-[13px]" : "text-muted-foreground text-[13px]"}>
+                              {$$(ec.saldo_moroso)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-[13px] px-3">{ec.cobrador_nombre || "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredEstados.length > 0 && (
+                        <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                          <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={2}>Totales ({filteredEstados.length})</TableCell>
+                          <TableCell className="text-right font-bold text-[13px] px-3">{$$(totalDeuda)}</TableCell>
+                          <TableCell className="text-center font-bold text-[13px] px-3">{totalVencidas}</TableCell>
+                          <TableCell className="text-right font-bold text-destructive text-[13px] px-3">{$$(totalMoroso)}</TableCell>
+                          <TableCell className="px-3" />
+                        </TableRow>
+                      )}
+                    </>
                   )}
                 </TableBody>
               </Table>

@@ -291,23 +291,33 @@ export default function GastosPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((g) => (
-                    <TableRow key={g.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
-                      <TableCell className="text-[13px] px-3">
-                        {format(new Date(g.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
-                      </TableCell>
-                      <TableCell className="px-3">
-                        <Badge variant="outline" className="text-[11px]">{g.categoria}</Badge>
-                      </TableCell>
-                      <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
-                        {g.concepto.replace(/\[.*?\]\s*/, "")}
-                      </TableCell>
-                      <TableCell className="text-[13px] px-3">{g.caja}</TableCell>
-                      <TableCell className="text-right font-semibold text-destructive text-[13px] px-3">
-                        -{$$(g.monto)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  <>
+                    {filtered.map((g) => (
+                      <TableRow key={g.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
+                        <TableCell className="text-[13px] px-3">
+                          {format(new Date(g.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
+                        </TableCell>
+                        <TableCell className="px-3">
+                          <Badge variant="outline" className="text-[11px]">{g.categoria}</Badge>
+                        </TableCell>
+                        <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
+                          {g.concepto.replace(/\[.*?\]\s*/, "")}
+                        </TableCell>
+                        <TableCell className="text-[13px] px-3">{g.caja}</TableCell>
+                        <TableCell className="text-right font-semibold text-destructive text-[13px] px-3">
+                          -{$$(g.monto)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filtered.length > 0 && (
+                      <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
+                        <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={4}>Totales</TableCell>
+                        <TableCell className="text-right font-bold text-destructive text-[13px] px-3">
+                          -{$$(filtered.reduce((s, g) => s + g.monto, 0))}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 )}
               </TableBody>
             </Table>
