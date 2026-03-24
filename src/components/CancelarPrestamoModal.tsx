@@ -15,9 +15,13 @@ interface CancelarPrestamoModalProps {
   prestamoId: string;
   clienteNombre: string;
   saldoPendiente: number;
+  cajaId?: string | null;
+  montoDesembolso?: number;
+  empresaId?: string;
+  folioId?: string;
 }
 
-export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteNombre, saldoPendiente }: CancelarPrestamoModalProps) {
+export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteNombre, saldoPendiente, cajaId, montoDesembolso, empresaId, folioId }: CancelarPrestamoModalProps) {
   const queryClient = useQueryClient();
   const [motivo, setMotivo] = useState("");
   const [saving, setSaving] = useState(false);
@@ -47,6 +51,19 @@ export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteN
         saldo_total: 0,
       }).eq("prestamo_id", prestamoId).not("status", "eq", "Pagada");
 
+      // Reintegrate desembolso to the caja
+      if (cajaId && montoDesembolso && montoDesembolso > 0 && empresaId) {
+        const folio = folioId || prestamoId.slice(0, 8);
+        await supabase.from("movimientos_caja").insert({
+          caja_id: cajaId,
+          tipo: "entrada" as const,
+          monto: montoDesembolso,
+          prestamo_id: prestamoId,
+          concepto: `Cancelación préstamo ${folio} — reintegro desembolso`,
+          empresa_id: empresaId,
+        });
+      }
+
       invalidateFinanceQueries(queryClient, { prestamoId });
 
       toast.success("Préstamo cancelado correctamente");
@@ -68,6 +85,9 @@ export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteN
             Está a punto de cancelar el préstamo de <strong>{clienteNombre}</strong>.
             {saldoPendiente > 0 && (
               <> Saldo pendiente: <strong className="text-destructive">{$$(saldoPendiente)}</strong>. Este saldo se perderá.</>
+            )}
+            {cajaId && montoDesembolso && montoDesembolso > 0 && (
+              <> El desembolso de <strong>{$$(montoDesembolso)}</strong> será reintegrado a la caja.</>
             )}
           </AlertDialogDescription>
         </AlertDialogHeader>
