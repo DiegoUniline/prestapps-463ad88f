@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -65,19 +66,19 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
         .eq("empresa_id", empresaId);
 
       // 2. Prestamos activos per cobrador
-      const { data: prestamos } = await supabase
+      const prestamos = await fetchAllRows(supabase
         .from("prestamos")
         .select("id, cobrador_id, generado_por, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
-        .eq("empresa_id", empresaId);
+        .eq("empresa_id", empresaId));
 
       // 3. Pagos in period & previous
-      const { data: pagos } = await supabase
+      const pagos = await fetchAllRows(supabase
         .from("pagos")
         .select("id, cobrador_id, registrado_por, monto_recibido, created_at, prestamo_id, fecha_pago")
         .eq("empresa_id", empresaId)
         .eq("anulado", false)
         .gte("fecha_pago", prevDesde)
-        .lte("fecha_pago", hastaStr);
+        .lte("fecha_pago", hastaStr));
 
       // 4. Amortizacion for mora
       const prestamoIds = (prestamos || [])
@@ -86,38 +87,33 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
 
       let amortData: any[] = [];
       if (prestamoIds.length > 0) {
-        // Batch in chunks of 500
-        for (let i = 0; i < prestamoIds.length; i += 500) {
-          const chunk = prestamoIds.slice(i, i + 500);
-          const { data } = await supabase
-            .from("amortizacion")
-            .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
-            .in("prestamo_id", chunk);
-          if (data) amortData = amortData.concat(data);
-        }
+        amortData = await fetchAllRows(supabase
+          .from("amortizacion")
+          .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
+          .in("prestamo_id", prestamoIds));
       }
 
       // 5. CRM gestiones (visits) in period
-      const { data: gestiones } = await supabase
+      const gestiones = await fetchAllRows(supabase
         .from("crm_gestiones")
         .select("id, registrado_por, tipo_gestion, cliente_id, created_at")
         .eq("empresa_id", empresaId)
         .gte("created_at", `${prevDesde}T00:00:00`)
-        .lte("created_at", `${hastaStr}T23:59:59`);
+        .lte("created_at", `${hastaStr}T23:59:59`));
 
       // 6. All visitas ever for "last visit" tracking
-      const { data: allVisitas } = await supabase
+      const allVisitas = await fetchAllRows(supabase
         .from("crm_gestiones")
         .select("cliente_id, created_at, registrado_por")
         .eq("empresa_id", empresaId)
         .eq("tipo_gestion", "Visita")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }));
 
       // 7. Clientes for name mapping
-      const { data: clientes } = await supabase
+      const clientes = await fetchAllRows(supabase
         .from("clientes")
         .select("id, nombre_completo")
-        .eq("empresa_id", empresaId);
+        .eq("empresa_id", empresaId));
 
       const clienteMap = new Map((clientes || []).map((c) => [c.id, c.nombre_completo]));
       const today = new Date().toISOString().slice(0, 10);

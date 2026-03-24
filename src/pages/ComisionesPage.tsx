@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -111,8 +112,7 @@ async function fetchCobros(cobradorId: string, empresaId: string, desde?: string
   if (desde) query = query.gte("created_at", desde);
   if (hasta) query = query.lte("created_at", hasta);
 
-  const { data } = await query;
-  return data || [];
+  return await fetchAllRows(query);
 }
 
 // Fetch cobros for all cobradores in supervisor's rutas

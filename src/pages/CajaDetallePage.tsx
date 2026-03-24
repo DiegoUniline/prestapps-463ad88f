@@ -145,7 +145,7 @@ function useCajaKardex(cajaId: string) {
     queryKey: ["caja-kardex", cajaId],
     enabled: !!cajaId,
     queryFn: async () => {
-      const { data: movs } = await supabase.from("movimientos_caja").select("id, created_at, tipo, monto, concepto").eq("caja_id", cajaId).order("created_at", { ascending: true });
+      const movs = await fetchAllRows(supabase.from("movimientos_caja").select("id, created_at, tipo, monto, concepto").eq("caja_id", cajaId).order("created_at", { ascending: true }));
 
       const rows: KardexRow[] = [];
       for (const m of movs || []) {

@@ -118,12 +118,14 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
     cobradorIds.length > 0
       ? supabase.from("profiles").select("id, nombre_completo").in("id", cobradorIds)
       : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from("pagos")
-      .select("prestamo_id, fecha_pago, monto_recibido")
-      .in("prestamo_id", prestamoIds)
-      .eq("anulado", false)
-      .order("fecha_pago", { ascending: false }),
+    fetchAllRows<any>(
+      supabase
+        .from("pagos")
+        .select("prestamo_id, fecha_pago, monto_recibido")
+        .in("prestamo_id", prestamoIds)
+        .eq("anulado", false)
+        .order("fecha_pago", { ascending: false })
+    ),
   ]);
 
   const clientesData = clientesRes.error ? [] : clientesRes.data || [];
@@ -139,7 +141,7 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
 
   // Build último pago map (pagos already sorted desc by fecha_pago, keep first per prestamo)
   const ultimoPagoMap: Record<string, { fecha: string; monto: number }> = {};
-  for (const pg of (pagosRes.data || [])) {
+  for (const pg of pagosRes) {
     if (!ultimoPagoMap[pg.prestamo_id]) {
       ultimoPagoMap[pg.prestamo_id] = { fecha: pg.fecha_pago, monto: Number(pg.monto_recibido || 0) };
     }

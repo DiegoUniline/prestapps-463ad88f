@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -36,14 +37,12 @@ function useGastos(empresaId: string) {
   return useQuery({
     queryKey: ["gastos", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const data = await fetchAllRows(supabase
         .from("movimientos_caja")
         .select("*, cajas ( nombre )")
         .eq("empresa_id", empresaId)
         .eq("tipo", "salida")
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
+        .order("created_at", { ascending: false }));
       return (data || []).map((m: any) => ({
         id: m.id,
         fecha: m.created_at,

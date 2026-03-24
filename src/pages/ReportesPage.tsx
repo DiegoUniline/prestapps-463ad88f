@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -140,13 +141,13 @@ export default function ReportesPage() {
   const { data: prestamosRaw = [] } = useQuery({
     queryKey: ["rpt-prestamos", empresaId, fromStr, toStr],
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAllRows(supabase
         .from("prestamos")
         .select("id, monto_solicitado, monto_total_pagar, tasa_interes, num_cuotas, estado, frecuencia, modalidad, fecha_registro, fecha_primer_pago, gastos_legales, cliente_id, ruta_id, cobrador_id, clientes(nombre_completo), rutas(nombre)")
         .eq("empresa_id", empresaId!)
         .gte("fecha_registro", fromStr)
         .lte("fecha_registro", toStr)
-        .order("fecha_registro", { ascending: false });
+        .order("fecha_registro", { ascending: false }));
       return data || [];
     },
     enabled: !!empresaId,
@@ -155,13 +156,13 @@ export default function ReportesPage() {
   const { data: pagosRaw = [] } = useQuery({
     queryKey: ["rpt-pagos", empresaId, fromStr, toStr],
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAllRows(supabase
         .from("pagos")
         .select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, metodo_pago, created_at, anulado, prestamo_id, cobrador_id, ruta_id, prestamos(id, clientes(nombre_completo)), rutas(nombre)")
         .eq("empresa_id", empresaId!)
         .gte("created_at", `${fromStr}T00:00:00`)
         .lte("created_at", `${toStr}T23:59:59`)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }));
       return data || [];
     },
     enabled: !!empresaId,
@@ -170,13 +171,13 @@ export default function ReportesPage() {
   const { data: cuotasRaw = [] } = useQuery({
     queryKey: ["rpt-cuotas", empresaId, fromStr, toStr],
     queryFn: async () => {
-      const { data } = await supabase
+      const data = await fetchAllRows(supabase
         .from("amortizacion")
         .select("id, num_cuota, capital, interes, capital_interes, mora, capital_pagado, interes_pagado, mora_pagada, saldo_capital, saldo_interes, saldo_mora, saldo_total, status, fecha_vencimiento, dias_atraso, prestamo_id, prestamos(id, clientes(nombre_completo), rutas(nombre))")
         .eq("empresa_id", empresaId!)
         .gte("fecha_vencimiento", fromStr)
         .lte("fecha_vencimiento", toStr)
-        .order("fecha_vencimiento", { ascending: true });
+        .order("fecha_vencimiento", { ascending: true }));
       return data || [];
     },
     enabled: !!empresaId,
