@@ -101,6 +101,14 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
 
       // 2) Handle caja balance via movimientos_caja (let trigger manage saldo_actual)
       if (montoChanged || cajaChanged) {
+        // Get human-readable loan ID for concepto
+        const { data: prestamoData } = await supabase
+          .from("prestamos")
+          .select("id_prestamo")
+          .eq("id", pago.prestamo_id)
+          .single();
+        const folio = prestamoData?.id_prestamo || pago.prestamo_id.slice(0, 8);
+
         // Reverse original: insert salida on old caja
         if (pago.caja_id) {
           await supabase.from("movimientos_caja").insert({
@@ -108,7 +116,7 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
             tipo: "salida" as const,
             monto: montoOriginal,
             prestamo_id: pago.prestamo_id,
-            concepto: `Reversión edición pago`,
+            concepto: `Corrección pago ${folio} — salida de caja anterior`,
             empresa_id: empresaId,
           });
         }
@@ -118,7 +126,9 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
           tipo: "entrada" as const,
           monto: nuevoMonto,
           prestamo_id: pago.prestamo_id,
-          concepto: `Re-entrada edición pago`,
+          concepto: cajaChanged && !montoChanged
+            ? `Corrección pago ${folio} — cambio de caja`
+            : `Corrección pago ${folio} — monto actualizado`,
           empresa_id: empresaId,
         });
       }
