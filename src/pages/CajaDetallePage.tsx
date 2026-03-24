@@ -25,6 +25,7 @@ import {
   Wallet, DollarSign, FileText, TrendingUp, TrendingDown,
   PiggyBank, AlertTriangle, Loader2, BarChart3
 } from "lucide-react";
+import { useSingleCajaSaldoReal } from "@/hooks/useCajaSaldoReal";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -187,6 +188,7 @@ export default function CajaDetallePage() {
   const { data: stats, isLoading: loadingStats } = useCajaStats(id || "");
   const { data: rows = [], isLoading: loadingKardex } = useCajaKardex(id || "");
   const { data: allCajas = [] } = useAllCajas(empresaId);
+  const { saldo: saldoReal } = useSingleCajaSaldoReal(id || "");
 
   const [tab, setTab] = useState("resumen");
   const [modal, setModal] = useState<ModalType>(null);
@@ -196,7 +198,7 @@ export default function CajaDetallePage() {
   const [cajaDestinoId, setCajaDestinoId] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const saldoActual = Number(caja?.saldo_actual || 0);
+  const saldoActual = saldoReal ?? Number(caja?.saldo_actual || 0);
   const invalidate = () => invalidateFinanceQueries(queryClient);
   const resetModal = () => { setModal(null); setMonto(""); setConcepto(""); setCajaDestinoId(""); };
 
@@ -215,6 +217,7 @@ export default function CajaDetallePage() {
     queryClient.invalidateQueries({ queryKey: ["caja-detalle", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-stats", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-kardex", id] });
+    queryClient.invalidateQueries({ queryKey: ["caja-saldo-real"] });
     resetModal();
   };
 
@@ -233,6 +236,7 @@ export default function CajaDetallePage() {
     invalidate();
     queryClient.invalidateQueries({ queryKey: ["caja-detalle", id] });
     queryClient.invalidateQueries({ queryKey: ["caja-kardex", id] });
+    queryClient.invalidateQueries({ queryKey: ["caja-saldo-real"] });
     resetModal();
   };
 

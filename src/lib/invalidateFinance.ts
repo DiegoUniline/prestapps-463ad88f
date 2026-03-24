@@ -20,6 +20,8 @@ export function invalidateFinanceQueries(
   queryClient.invalidateQueries({ queryKey: ["caja-kardex"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["caja-detalle"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["movimientos-all"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["caja-saldo-real"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["caja-stats"], refetchType: "all" });
 
   // Cobradores & liquidaciones
   queryClient.invalidateQueries({ queryKey: ["cobradores"], refetchType: "all" });

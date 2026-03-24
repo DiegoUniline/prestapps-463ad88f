@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCajaSaldoReal } from "@/hooks/useCajaSaldoReal";
 import CajaKardexSheet from "@/components/CajaKardexSheet";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -250,6 +251,9 @@ export default function CajasPage() {
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
   const { data: cajas = [], isLoading } = useCajas(empresaId);
+  const cajaIds = useMemo(() => cajas.map(c => c.id), [cajas]);
+  const { data: saldosReales } = useCajaSaldoReal(cajaIds);
+  const getSaldo = (cajaId: string) => saldosReales?.[cajaId] ?? Number(cajas.find(c => c.id === cajaId)?.saldo_actual || 0);
   const { data: kardex = [] } = useKardex();
   const { data: prestamoStats } = usePrestamosByCaja(empresaId);
   const g = prestamoStats?.global || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
@@ -304,7 +308,7 @@ export default function CajasPage() {
     setSaving(true);
 
     const caja = cajas.find((c) => c.id === cajaId);
-    if (tipo === "salida" && caja && (Number(caja.saldo_actual) || 0) < m) {
+    if (tipo === "salida" && caja && getSaldo(caja.id) < m) {
       toast.error("Saldo insuficiente");
       setSaving(false);
       return;
@@ -331,7 +335,7 @@ export default function CajasPage() {
     setSaving(true);
 
     const origen = cajas.find((c) => c.id === cajaId);
-    if (origen && (Number(origen.saldo_actual) || 0) < m) {
+    if (origen && getSaldo(origen.id) < m) {
       toast.error("Saldo insuficiente en caja origen");
       setSaving(false);
       return;
@@ -351,7 +355,7 @@ export default function CajasPage() {
   };
 
   // ── KPIs ────────────────────────────────────────────────────────
-  const totalSaldo = cajas.reduce((s, c) => s + Number(c.saldo_actual || 0), 0);
+  const totalSaldo = cajas.reduce((s, c) => s + getSaldo(c.id), 0);
   const entradas = kardex.filter((m) => m.tipo === "entrada").reduce((s, m) => s + m.monto, 0);
   const salidas = kardex.filter((m) => m.tipo === "salida").reduce((s, m) => s + m.monto, 0);
 
@@ -455,7 +459,7 @@ export default function CajasPage() {
                         {c.descripcion && <p className="text-[11px] text-muted-foreground">{c.descripcion}</p>}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-semibold text-[13px]">{$$(Number(c.saldo_actual || 0))}</TableCell>
+                    <TableCell className="text-right font-semibold text-[13px]">{$$(getSaldo(c.id))}</TableCell>
                     <TableCell className="text-right text-[13px]">{cs.activos}</TableCell>
                     <TableCell className="text-right text-[13px]">{$$(cs.colocado)}</TableCell>
                     <TableCell className="text-right text-[13px]">{$$(cs.porCobrar)}</TableCell>
@@ -533,7 +537,7 @@ export default function CajasPage() {
                     </DropdownMenu>
                   </div>
                 </div>
-                <p className="text-2xl font-bold mt-1">{$$(Number(c.saldo_actual || 0))}</p>
+                <p className="text-2xl font-bold mt-1">{$$(getSaldo(c.id))}</p>
                 {c.descripcion && <p className="text-[12px] text-muted-foreground mt-0.5">{c.descripcion}</p>}
                 <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50">
                   <div>
@@ -730,7 +734,7 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(Number(c.saldo_actual || 0))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -765,7 +769,7 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(Number(c.saldo_actual || 0))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -800,14 +804,14 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Origen</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar origen" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(Number(c.saldo_actual || 0))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
               <Select value={cajaDestinoId} onValueChange={setCajaDestinoId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar destino" /></SelectTrigger>
-                <SelectContent>{cajas.filter(c => c.id !== cajaId).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(Number(c.saldo_actual || 0))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c => c.id !== cajaId).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
