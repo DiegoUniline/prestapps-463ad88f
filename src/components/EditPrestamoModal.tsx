@@ -84,11 +84,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
 
       if (error) throw error;
 
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", prestamo.id] }),
-        queryClient.invalidateQueries({ queryKey: ["prestamos-list-v2"] }),
-        queryClient.invalidateQueries({ queryKey: ["prestamos-list"] }),
-      ]);
+      invalidateFinanceQueries(queryClient, { prestamoId: prestamo.id });
 
       toast.success("Préstamo actualizado correctamente");
       onOpenChange(false);

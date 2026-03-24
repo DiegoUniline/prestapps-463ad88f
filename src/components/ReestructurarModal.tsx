@@ -165,8 +165,7 @@ export function ReestructurarModal({
       const { error: amortErr } = await supabase.from("amortizacion").insert(cuotaRows as any);
       if (amortErr) throw amortErr;
 
-      queryClient.invalidateQueries({ queryKey: ["prestamo-detalle"] });
-      queryClient.invalidateQueries({ queryKey: ["prestamos"] });
+      invalidateFinanceQueries(queryClient, { prestamoId });
 
       toast.success("Préstamo reestructurado exitosamente");
       onOpenChange(false);
