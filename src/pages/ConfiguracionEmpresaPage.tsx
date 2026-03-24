@@ -1225,7 +1225,6 @@ export default function ConfiguracionEmpresaPage() {
           <PurgeDataSection />
         </TabsContent>
       </Tabs>
-      </div>
     </div>
   );
 }
