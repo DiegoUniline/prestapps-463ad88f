@@ -58,20 +58,20 @@ export function useAtendidos(empresaId?: string): AtendidosResult {
       const { start, end } = getCurrentWeekRange(corteDia);
 
       // 2. Fetch pagos and gestiones in parallel within week range
-      const [pagosRes, gestionesRes] = await Promise.all([
-        supabase
+      const [pagosData, gestionesData] = await Promise.all([
+        fetchAllRows(supabase
           .from("pagos")
           .select("prestamo_id")
           .eq("empresa_id", empresaId)
           .eq("anulado", false)
           .gte("fecha_pago", start)
-          .lte("fecha_pago", end),
-        supabase
+          .lte("fecha_pago", end)),
+        fetchAllRows(supabase
           .from("crm_gestiones")
           .select("prestamo_id, cliente_id")
           .eq("empresa_id", empresaId)
           .gte("created_at", `${start}T00:00:00`)
-          .lte("created_at", `${end}T23:59:59`),
+          .lte("created_at", `${end}T23:59:59`)),
       ]);
 
       const prestamoIdSet = new Set<string>();
