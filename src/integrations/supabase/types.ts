@@ -2140,6 +2140,23 @@ export type Database = {
         Args: { p_empresa_id: string }
         Returns: undefined
       }
+      registrar_pago: {
+        Args: {
+          p_caja_id: string
+          p_cobrador_id: string
+          p_distribution?: Json
+          p_empresa_id: string
+          p_fecha_pago: string
+          p_gps_lat?: number
+          p_gps_lng?: number
+          p_metodo: string
+          p_monto: number
+          p_prestamo_id: string
+          p_registrado_por: string
+          p_ruta_id: string
+        }
+        Returns: Json
+      }
       revertir_pago: {
         Args: { p_motivo: string; p_pago_id: string; p_user_id?: string }
         Returns: undefined

@@ -103,6 +103,8 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
         .from("amortizacion")
         .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento")
         .in("prestamo_id", prestamoIds)
+        .order("prestamo_id", { ascending: true })
+        .order("num_cuota", { ascending: true })
     ),
     clienteIds.length > 0
       ? supabase.from("clientes").select("id, nombre_completo, foto_cliente").in("id", clienteIds)
