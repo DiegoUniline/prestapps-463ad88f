@@ -343,6 +343,7 @@ export default function CajaDetallePage() {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="resumen" className="text-[13px]">Resumen</TabsTrigger>
+          <TabsTrigger value="movimientos" className="text-[13px]">Movimientos</TabsTrigger>
           <TabsTrigger value="kardex" className="text-[13px]">Kardex</TabsTrigger>
           <TabsTrigger value="flujo" className="text-[13px]">Flujo de Efectivo</TabsTrigger>
         </TabsList>
