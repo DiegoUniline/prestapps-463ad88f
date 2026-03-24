@@ -119,6 +119,6 @@ export default function PromesasPage() {
           </TableBody>
         </Table>
       </div>
-    </div>
+      </div>
   );
 }

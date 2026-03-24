@@ -569,6 +569,6 @@ export default function CatalogosPage() {
         </TabsContent>
         <TabsContent value="roles"><RolesTab /></TabsContent>
       </Tabs>
-    </div>
+      </div>
   );
 }

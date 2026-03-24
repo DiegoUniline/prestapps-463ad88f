@@ -906,7 +906,7 @@ function KpiCell({ label, value, icon, sub, subColor }: {
       </p>
       <p className="text-base font-bold">{value}</p>
       {sub && <p className={cn("text-[11px]", subColor || "text-muted-foreground")}>{sub}</p>}
-    </div>
+      </div>
   );
 }
 

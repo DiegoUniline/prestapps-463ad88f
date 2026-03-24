@@ -869,6 +869,6 @@ export default function CajasPage() {
         cajaNombre={kardexCaja?.nombre || ""}
         saldoActual={kardexCaja?.saldo || 0}
       />
-    </div>
+      </div>
   );
 }

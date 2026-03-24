@@ -139,7 +139,7 @@ export default function RentabilidadPage() {
   }, [data]);
 
   return (
-    <div className="space-y-4">
+    <div className="bg-card border border-border rounded-lg p-4 space-y-4">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <PieChart className="h-6 w-6 text-primary" />

@@ -520,6 +520,6 @@ export default function CrmCobranzaPage() {
           clienteName={waPreview.prestamo.cliente.nombre_completo}
         />
       )}
-    </div>
+      </div>
   );
 }

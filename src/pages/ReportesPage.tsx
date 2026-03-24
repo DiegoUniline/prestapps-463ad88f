@@ -457,6 +457,6 @@ export default function ReportesPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
   );
 }

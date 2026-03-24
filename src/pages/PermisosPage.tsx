@@ -209,7 +209,7 @@ export default function PermisosPage() {
           </TabsContent>
         ))}
       </Tabs>
-    </div>
+      </div>
   );
 }
 

@@ -309,7 +309,7 @@ function RutaDetallePage() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
   );
 }
 

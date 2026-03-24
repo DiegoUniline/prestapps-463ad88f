@@ -271,6 +271,6 @@ export default function AuditoriaPage() {
           </Card>
         </>
       )}
-    </div>
+      </div>
   );
 }

@@ -839,6 +839,6 @@ export default function DashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+        </div>
   );
 }

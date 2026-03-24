@@ -552,6 +552,6 @@ export default function LeadScoringPage() {
         open={!!selectedCliente}
         onOpenChange={(open) => { if (!open) setSelectedCliente(null); }}
       />
-    </div>
+      </div>
   );
 }

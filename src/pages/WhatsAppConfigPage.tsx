@@ -611,6 +611,6 @@ export default function WhatsAppConfigPage() {
           </Button>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

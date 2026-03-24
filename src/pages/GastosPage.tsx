@@ -376,6 +376,6 @@ export default function GastosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

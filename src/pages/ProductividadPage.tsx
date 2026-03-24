@@ -602,6 +602,6 @@ export default function ProductividadPage() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
   );
 }

@@ -478,7 +478,7 @@ export default function SolicitudesPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }
 

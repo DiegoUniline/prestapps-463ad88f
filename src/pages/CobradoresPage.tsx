@@ -493,6 +493,6 @@ export default function CobradoresPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

@@ -595,6 +595,6 @@ export default function ComisionesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

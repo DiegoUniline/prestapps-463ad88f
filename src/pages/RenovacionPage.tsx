@@ -213,6 +213,6 @@ export default function RenovacionPage() {
           </Card>
         </>
       )}
-    </div>
+      </div>
   );
 }

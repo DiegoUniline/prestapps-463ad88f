@@ -487,7 +487,7 @@ function UsuarioDetallePage() {
           </Card>
         </>
       )}
-    </div>
+      </div>
   );
 }
 

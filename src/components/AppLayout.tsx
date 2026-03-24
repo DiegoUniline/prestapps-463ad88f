@@ -27,7 +27,9 @@ export default function AppLayout() {
           <SubscriptionBanner />
           <PullToRefresh>
             <main className="p-4 md:p-6 pb-24 md:pb-6">
-              <Outlet />
+              <div className="bg-card border border-border rounded-lg p-4 md:p-5">
+                <Outlet />
+              </div>
             </main>
           </PullToRefresh>
         </div>

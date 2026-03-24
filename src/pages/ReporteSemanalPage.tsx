@@ -319,6 +319,6 @@ function DatePicker({ label, date, onChange }: { label: string; date: Date; onCh
           />
         </PopoverContent>
       </Popover>
-    </div>
+      </div>
   );
 }

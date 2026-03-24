@@ -254,6 +254,6 @@ export default function MapaGPSPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
   );
 }

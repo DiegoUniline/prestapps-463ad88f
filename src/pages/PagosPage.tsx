@@ -886,6 +886,6 @@ export default function PagosPage() {
           clienteName={waPreview.pago.cliente}
         />
       )}
-    </div>
+      </div>
   );
 }

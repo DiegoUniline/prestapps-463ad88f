@@ -568,6 +568,6 @@ export default function EmpresasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

@@ -493,6 +493,6 @@ export default function LiquidarRutaPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
   );
 }

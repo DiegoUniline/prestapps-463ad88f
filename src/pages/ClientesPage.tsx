@@ -170,9 +170,8 @@ export default function ClientesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-card border border-border rounded-lg p-4 space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between">
           <h1 className="text-xl md:text-2xl font-bold">Clientes</h1>
           <div className="flex items-center gap-2">
             <ClientesBulkImportExport />
@@ -392,7 +391,6 @@ export default function ClientesPage() {
             )}
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }
