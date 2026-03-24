@@ -160,14 +160,16 @@ function useKardex() {
 }
 
 // Stats from prestamos + amortizacion per caja
-function usePrestamosByCaja() {
+function usePrestamosByCaja(empresaId?: string) {
   return useQuery({
-    queryKey: ["prestamos-by-caja"],
+    queryKey: ["prestamos-by-caja", empresaId],
     queryFn: async () => {
-      const { data: prestamos, error } = await supabase
+      let q = supabase
         .from("prestamos")
         .select("id, caja_id, monto_solicitado, monto_total_pagar, estado, tipo_mora, valor_mora")
         .not("estado", "in", '("Cancelado")');
+      if (empresaId) q = q.eq("empresa_id", empresaId);
+      const { data: prestamos, error } = await q;
       if (error) throw error;
       if (!prestamos || prestamos.length === 0) return { global: { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 }, byCaja: {} as Record<string, any> };
 
