@@ -118,12 +118,14 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
     cobradorIds.length > 0
       ? supabase.from("profiles").select("id, nombre_completo").in("id", cobradorIds)
       : Promise.resolve({ data: [], error: null }),
-    supabase
-      .from("pagos")
-      .select("prestamo_id, fecha_pago, monto_recibido")
-      .in("prestamo_id", prestamoIds)
-      .eq("anulado", false)
-      .order("fecha_pago", { ascending: false }),
+    fetchAllRows<any>(
+      supabase
+        .from("pagos")
+        .select("prestamo_id, fecha_pago, monto_recibido")
+        .in("prestamo_id", prestamoIds)
+        .eq("anulado", false)
+        .order("fecha_pago", { ascending: false })
+    ),
   ]);
 
   const clientesData = clientesRes.error ? [] : clientesRes.data || [];
