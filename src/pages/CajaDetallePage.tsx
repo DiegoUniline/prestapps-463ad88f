@@ -184,6 +184,7 @@ interface KardexRow { id: string; fecha: string; tipo: "entrada" | "salida"; con
 
 function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string {
   const lower = concepto.toLowerCase();
+  if (lower.includes("corrección") || lower.includes("correccion") || lower.includes("movido a caja")) return "Correcciones";
   if (lower.includes("anulación") || lower.includes("anulacion")) return "Anulaciones";
   if (lower.includes("pago") || lower.includes("cobro") || lower.includes("cuota")) return "Pagos";
   if (lower.includes("desembolso") || lower.includes("préstamo")) return "Desembolsos";
@@ -194,7 +195,7 @@ function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string 
   return "Retiros";
 }
 
-const KARDEX_CATEGORIES = ["Todos", "Pagos", "Desembolsos", "Anulaciones", "Gastos", "Comisiones", "Depósitos", "Retiros", "Transferencias"] as const;
+const KARDEX_CATEGORIES = ["Todos", "Pagos", "Desembolsos", "Anulaciones", "Correcciones", "Gastos", "Comisiones", "Depósitos", "Retiros", "Transferencias"] as const;
 const MANUAL_CATEGORIES = new Set(["Depósitos", "Retiros", "Transferencias"]);
 
 function useCajaKardex(cajaId: string) {
