@@ -22,6 +22,10 @@ export function invalidateFinanceQueries(
   queryClient.invalidateQueries({ queryKey: ["movimientos-all"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["caja-saldo-real"], refetchType: "all" });
   queryClient.invalidateQueries({ queryKey: ["caja-stats"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["caja-flujo-real"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["caja-prestamos-source"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["caja-pagos-source"], refetchType: "all" });
+  queryClient.invalidateQueries({ queryKey: ["caja-transferencias-source"], refetchType: "all" });
 
   // Cobradores & liquidaciones
   queryClient.invalidateQueries({ queryKey: ["cobradores"], refetchType: "all" });
