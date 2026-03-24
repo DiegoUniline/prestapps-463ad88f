@@ -187,7 +187,7 @@ function usePrestamosByCaja(empresaId?: string) {
 
       // Per-prestamo aggregation
       const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; moraGuardada: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
-      for (const a of amortData || []) {
+      for (const a of amortData) {
         const p = prestamoMap.get(a.prestamo_id);
         if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, moraGuardada: 0, capital: 0, interes: 0, tieneAtraso: false };
 
