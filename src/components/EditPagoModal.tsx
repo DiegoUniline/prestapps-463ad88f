@@ -92,7 +92,7 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
       // 1) Update the pago record metadata
       const updateData: Record<string, any> = {
         monto_recibido: nuevoMonto,
-        metodo_pago: metodo as any,
+        metodo_pago: metodo,
         caja_id: cajaId,
       };
       if (isAdmin && cobradorId) updateData.cobrador_id = cobradorId;
