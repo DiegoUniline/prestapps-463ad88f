@@ -19,6 +19,8 @@ interface EditPrestamoModalProps {
   onOpenChange: (open: boolean) => void;
   prestamo: {
     id: string;
+    id_prestamo?: string;
+    monto_solicitado?: number;
     tasa_interes: number | null;
     tipo_mora: string | null;
     valor_mora: number | null;
