@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useCajaSaldoReal } from "@/hooks/useCajaSaldoReal";
 import CajaKardexSheet from "@/components/CajaKardexSheet";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
