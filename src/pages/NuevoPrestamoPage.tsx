@@ -600,9 +600,11 @@ export default function NuevoPrestamoPage() {
                       key={d.value}
                       type="button"
                       onClick={() =>
-                        setDiasIgnorados((prev) =>
-                          active ? prev.filter((v) => v !== d.value) : [...prev, d.value]
-                        )
+                        setDiasIgnorados((prev) => {
+                          if (active) return prev.filter((v) => v !== d.value);
+                          if (prev.length >= 6) return prev; // al menos 1 día debe quedar
+                          return [...prev, d.value];
+                        })
                       }
                       className={cn(
                         "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
