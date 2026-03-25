@@ -525,7 +525,7 @@ export default function PrestamosPage() {
       if (selCaja.size > 0 && !selCaja.has(p.caja)) return false;
       if (selRuta.size > 0 && !selRuta.has(p.ruta)) return false;
       if (p.fechaRegistro) {
-        const reg = new Date(p.fechaRegistro);
+        const reg = parseLocalDate(p.fechaRegistro);
         if (regDesde && reg < regDesde) return false;
         if (regHasta && reg > regHasta) return false;
       }
@@ -555,7 +555,7 @@ export default function PrestamosPage() {
       else if (groupBy === "cobrador") key = p.cobrador;
       else if (groupBy === "tipoCuenta") key = p.tipoCuenta === "prestamo" ? "Préstamo" : p.tipoCuenta === "venta_seguro" ? "Seguro" : p.tipoCuenta === "venta_producto" ? "Producto" : "Servicio";
       else if (groupBy === "mesCreacion") {
-        const d = p.fechaRegistro ? new Date(p.fechaRegistro) : null;
+        const d = p.fechaRegistro ? parseLocalDate(p.fechaRegistro) : null;
         key = d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : "Sin fecha";
       } else key = "—";
       if (!groups[key]) groups[key] = [];
