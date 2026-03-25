@@ -89,6 +89,7 @@ export default function NuevoPrestamoPage() {
   const [notas, setNotas] = useState("");
   const [codigoInterno, setCodigoInterno] = useState("");
   const [tipoCuenta, setTipoCuenta] = useState<string>("prestamo");
+  const [diasIgnorados, setDiasIgnorados] = useState<number[]>([]);
 
   // Pre-fill codigoInterno with next PRE-XXXX
   useEffect(() => {
