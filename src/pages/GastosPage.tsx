@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Receipt, TrendingDown, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { $$, fmtDateTime } from "@/lib/utils";
+import { $$, fmtDateTime, parseLocalDate } from "@/lib/utils";
 const CATEGORIAS_GASTO = [
   "Oficina",
   "Transporte",
@@ -167,7 +167,7 @@ export default function GastosPage() {
 
   const totalGastos = filtered.reduce((s, g) => s + g.monto, 0);
   const gastosMes = filtered.filter((g) => {
-    const d = new Date(g.fecha);
+    const d = parseLocalDate(g.fecha);
     const now = new Date();
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
