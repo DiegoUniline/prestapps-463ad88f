@@ -5,7 +5,7 @@ import { fetchAllRows } from "@/lib/supabaseQuery";
 import { TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";

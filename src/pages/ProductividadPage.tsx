@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { format, subDays, differenceInDays, startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { es } from "date-fns/locale";
 import {

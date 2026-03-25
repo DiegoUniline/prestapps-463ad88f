@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { DollarSign, Calculator, Loader2, Percent, UserCheck, Wallet, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { $$ } from "@/lib/utils";
+import { $$, fmtDateTime } from "@/lib/utils";
 // ── Types & hooks ─────────────────────────────────────────────────
 interface Cobrador {
   id: string;

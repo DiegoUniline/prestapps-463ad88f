@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Search, UserCheck, Wallet, DollarSign, Percent, Scissors, ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDateTime } from "@/lib/utils";
 // ── Data hooks ────────────────────────────────────────────────────
 interface Cobrador {
   id: string;

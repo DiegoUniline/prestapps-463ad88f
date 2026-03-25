@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn, $$, parseLocalDate } from "@/lib/utils";
+import { cn, $$, parseLocalDate, fmtDateTime } from "@/lib/utils";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { fetchAllRows } from "@/lib/supabaseQuery";
 

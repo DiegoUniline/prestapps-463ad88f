@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { CalendarDays, TrendingUp, Download, DollarSign, CalendarIcon, ArrowDownRight, Percent, Receipt } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";

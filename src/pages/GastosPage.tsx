@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Receipt, TrendingDown, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { $$ } from "@/lib/utils";
+import { $$, fmtDateTime } from "@/lib/utils";
 const CATEGORIAS_GASTO = [
   "Oficina",
   "Transporte",

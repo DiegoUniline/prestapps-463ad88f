@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Wallet, ArrowDownLeft, ArrowUpRight, TrendingUp, TrendingDown } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 
 interface Props {
   open: boolean;

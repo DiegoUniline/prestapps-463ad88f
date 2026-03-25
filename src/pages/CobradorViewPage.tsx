@@ -8,7 +8,7 @@ import { useCan } from "@/hooks/usePermisos";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO, startOfDay, endOfDay, isToday, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate, fmtDateTime } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 
