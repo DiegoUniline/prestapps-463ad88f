@@ -187,7 +187,7 @@ export default function NuevoPrestamoPage() {
 
         rows.push({
           num: i + 1,
-          fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
+          fechaVencimiento: format(calcNextDate(baseDate, frecuencia as any, i, diasIgnorados), "dd/MM/yyyy"),
           capital,
           interes,
           cuota: cuotaVal,
@@ -206,7 +206,7 @@ export default function NuevoPrestamoPage() {
         saldo -= capitalPorCuota;
         return {
           num: i + 1,
-          fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
+          fechaVencimiento: format(calcNextDate(baseDate, frecuencia as any, i, diasIgnorados), "dd/MM/yyyy"),
           capital: Math.round(capitalPorCuota * 100) / 100,
           interes: Math.round(inter * 100) / 100,
           cuota: Math.round(cuotaVal * 100) / 100,
@@ -214,7 +214,7 @@ export default function NuevoPrestamoPage() {
         };
       });
     }
-  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago, montoTotalPagar]);
+  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago, montoTotalPagar, diasIgnorados]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -285,7 +285,7 @@ export default function NuevoPrestamoPage() {
             capital: c.capital,
             interes: c.interes,
             capital_interes: c.cuota,
-            fecha_vencimiento: format(calcNextDate(baseDate, frecuencia, c.num - 1), "yyyy-MM-dd"),
+            fecha_vencimiento: format(calcNextDate(baseDate, frecuencia as any, c.num - 1, diasIgnorados), "yyyy-MM-dd"),
             saldo_capital: yaPagada ? 0 : c.capital,
             saldo_interes: yaPagada ? 0 : c.interes,
             saldo_total: yaPagada ? 0 : c.cuota,
