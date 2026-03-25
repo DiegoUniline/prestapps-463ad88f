@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,17 +13,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Wallet, HandCoins, Receipt, CreditCard, Loader2, UserCheck,
-  ArrowDownToLine, MinusCircle, ClipboardList, Users, DollarSign,
-  MapPin, Eye, ChevronRight, FileText, TrendingUp, AlertTriangle, CheckCircle2, Clock,
+  Wallet, HandCoins, Loader2, UserCheck,
+  ArrowDownToLine, ClipboardList, Users, DollarSign,
+  CalendarIcon, CheckCircle2, AlertTriangle, Search, Lock
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, parseLocalDate } from "@/lib/utils";
+import { SearchableSelect } from "@/components/shared/SearchableSelect";
+import { fetchAllRows } from "@/lib/supabaseQuery";
+
+/* ─── Types ─── */
 
 interface Cobrador {
   id: string;
@@ -30,8 +35,23 @@ interface Cobrador {
   telefono: string | null;
   porcentaje_comision: number;
   efectivo_en_mano: number;
-  activo: boolean;
 }
+
+interface PagoNoLiquidado {
+  id: string;
+  prestamo_id: string;
+  id_prestamo: string;
+  cliente_nombre: string;
+  monto_recibido: number;
+  metodo_pago: string;
+  fecha_pago: string;
+  aplicado_capital: number;
+  aplicado_interes: number;
+  aplicado_mora: number;
+  created_at: string;
+}
+
+/* ─── Hooks ─── */
 
 function useCobradores(empresaId: string) {
   return useQuery({
@@ -42,23 +62,20 @@ function useCobradores(empresaId: string) {
         .select("user_id")
         .eq("role", "cobrador");
       if (!roles?.length) return [];
-
       const userIds = roles.map((r) => r.user_id);
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select("id, nombre_completo, telefono, porcentaje_comision, efectivo_en_mano, activo")
         .eq("empresa_id", empresaId)
         .eq("activo", true)
         .in("id", userIds)
         .order("nombre_completo");
-      if (error) throw error;
       return (data || []).map((p) => ({
         id: p.id,
         nombre: p.nombre_completo,
         telefono: p.telefono,
         porcentaje_comision: Number(p.porcentaje_comision || 0),
         efectivo_en_mano: Number(p.efectivo_en_mano || 0),
-        activo: p.activo,
       })) as Cobrador[];
     },
   });
@@ -74,9 +91,62 @@ function useCajas(empresaId: string) {
   });
 }
 
-function useLiquidaciones(empresaId: string) {
+/** Fetch pagos NOT yet settled (corte_id IS NULL) for a cobrador up to a date */
+function usePagosNoLiquidados(empresaId: string, cobradorId: string | null, fechaHasta: string | null) {
   return useQuery({
-    queryKey: ["liquidaciones", empresaId],
+    queryKey: ["pagos-no-liquidados", empresaId, cobradorId, fechaHasta],
+    queryFn: async (): Promise<PagoNoLiquidado[]> => {
+      if (!cobradorId || !fechaHasta) return [];
+
+      const pagos = await fetchAllRows<any>(
+        supabase
+          .from("pagos")
+          .select("id, prestamo_id, monto_recibido, metodo_pago, fecha_pago, aplicado_capital, aplicado_interes, aplicado_mora, created_at")
+          .eq("empresa_id", empresaId)
+          .eq("cobrador_id", cobradorId)
+          .eq("anulado", false)
+          .is("corte_id" as any, null)
+          .lte("fecha_pago", fechaHasta)
+          .order("fecha_pago", { ascending: true })
+      );
+
+      if (!pagos.length) return [];
+
+      const prestamoIds = [...new Set(pagos.map((p: any) => p.prestamo_id))];
+      const { data: prestamos } = await supabase
+        .from("prestamos")
+        .select("id, id_prestamo, cliente_id, clientes ( nombre_completo )")
+        .in("id", prestamoIds);
+
+      const prMap: Record<string, { id_prestamo: string; cliente: string }> = {};
+      for (const pr of (prestamos || []) as any[]) {
+        prMap[pr.id] = {
+          id_prestamo: pr.id_prestamo || pr.id.slice(0, 8),
+          cliente: pr.clientes?.nombre_completo || "—",
+        };
+      }
+
+      return pagos.map((p: any) => ({
+        id: p.id,
+        prestamo_id: p.prestamo_id,
+        id_prestamo: prMap[p.prestamo_id]?.id_prestamo || "—",
+        cliente_nombre: prMap[p.prestamo_id]?.cliente || "—",
+        monto_recibido: Number(p.monto_recibido || 0),
+        metodo_pago: p.metodo_pago || "Efectivo",
+        fecha_pago: p.fecha_pago,
+        aplicado_capital: Number(p.aplicado_capital || 0),
+        aplicado_interes: Number(p.aplicado_interes || 0),
+        aplicado_mora: Number(p.aplicado_mora || 0),
+        created_at: p.created_at,
+      }));
+    },
+    enabled: !!cobradorId && !!fechaHasta && !!empresaId,
+  });
+}
+
+function useHistorialCortes(empresaId: string) {
+  return useQuery({
+    queryKey: ["historial-cortes", empresaId],
     queryFn: async () => {
       const { data } = await supabase
         .from("cortes")
@@ -84,338 +154,133 @@ function useLiquidaciones(empresaId: string) {
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(50);
-
       if (!data?.length) return [];
 
       const cobIds = [...new Set(data.map((d: any) => d.cobrador_id).filter(Boolean))];
       let cobMap: Record<string, string> = {};
       if (cobIds.length) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, nombre_completo")
-          .in("id", cobIds);
+        const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
         for (const p of profiles || []) cobMap[p.id] = p.nombre_completo;
       }
-
       return data.map((l: any) => ({ ...l, cobrador_nombre: cobMap[l.cobrador_id] || "—" }));
     },
   });
 }
 
-/** Daily report data for a specific cobrador */
-function useDailyReport(empresaId: string, cobradorId: string | null) {
-  return useQuery({
-    queryKey: ["daily-report", empresaId, cobradorId],
-    queryFn: async () => {
-      if (!cobradorId) return null;
-      const today = format(new Date(), "yyyy-MM-dd");
-
-      // 1) Pagos del día hechos por este cobrador
-      const { data: pagos } = await supabase
-        .from("pagos")
-        .select("id, monto_recibido, metodo_pago, prestamo_id, fecha_pago, anulado, aplicado_capital, aplicado_interes, aplicado_mora, created_at")
-        .eq("empresa_id", empresaId)
-        .eq("cobrador_id", cobradorId)
-        .eq("fecha_pago", today)
-        .eq("anulado", false)
-        .order("created_at", { ascending: true });
-
-      const pagosList = pagos || [];
-
-      // 2) Get unique prestamo_ids to fetch client info
-      const prestamoIds = [...new Set(pagosList.map((p) => p.prestamo_id))];
-      let prestamoClientes: Record<string, { cliente_nombre: string; id_prestamo: string; ruta_nombre: string }> = {};
-      if (prestamoIds.length) {
-        const { data: prestamos } = await supabase
-          .from("prestamos")
-          .select("id, id_prestamo, cliente_id, ruta_id, clientes ( nombre_completo ), rutas ( nombre )")
-          .in("id", prestamoIds);
-        for (const pr of (prestamos || []) as any[]) {
-          prestamoClientes[pr.id] = {
-            cliente_nombre: pr.clientes?.nombre_completo || "—",
-            id_prestamo: pr.id_prestamo || "—",
-            ruta_nombre: pr.rutas?.nombre || "—",
-          };
-        }
-      }
-
-      // 3) Visitas del día (from crm_gestiones)
-      const { data: visitas } = await supabase
-        .from("crm_gestiones")
-        .select("id, tipo_gestion, resultado, notas, cliente_id, created_at, clientes ( nombre_completo )")
-        .eq("empresa_id", empresaId)
-        .eq("registrado_por", cobradorId)
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`)
-        .order("created_at", { ascending: true });
-
-      // 4) Promesas registradas hoy
-      const { data: promesas } = await supabase
-        .from("promesas_pago")
-        .select("id, monto_prometido, fecha_prometida, prestamo_id, created_at")
-        .eq("empresa_id", empresaId)
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`);
-
-      // 5) Cuotas que debían cobrarse hoy para este cobrador (expected)
-      // First get prestamo IDs for this cobrador
-      const { data: cobPrestamos } = await supabase
-        .from("prestamos")
-        .select("id, id_prestamo, cliente_id, clientes ( nombre_completo )")
-        .eq("cobrador_id", cobradorId)
-        .eq("empresa_id", empresaId)
-        .in("estado", ["Activo", "Vencido"]);
-
-      const cobPrestamoIds = (cobPrestamos || []).map((p: any) => p.id);
-      let cuotasHoy: any[] = [];
-      if (cobPrestamoIds.length) {
-        const { data } = await supabase
-          .from("amortizacion")
-          .select("id, num_cuota, capital_interes, saldo_total, status, prestamo_id")
-          .eq("fecha_vencimiento", today)
-          .eq("empresa_id", empresaId)
-          .in("prestamo_id", cobPrestamoIds);
-        cuotasHoy = data || [];
-      }
-      const cobPrestamoMap: Record<string, any> = {};
-      for (const p of (cobPrestamos || []) as any[]) cobPrestamoMap[p.id] = p;
-
-      // 6) Gastos del cobrador hoy (from movimientos_caja)
-      const { data: movimientos } = await supabase
-        .from("movimientos_caja")
-        .select("id, monto, concepto, tipo, created_at")
-        .eq("empresa_id", empresaId)
-        .gte("created_at", `${today}T00:00:00`)
-        .lte("created_at", `${today}T23:59:59`)
-        .like("concepto", `%${cobradorId}%`);
-
-      // Build enriched pagos
-      const pagosEnriched = pagosList.map((p) => ({
-        ...p,
-        ...(prestamoClientes[p.prestamo_id] || { cliente_nombre: "—", id_prestamo: "—", ruta_nombre: "—" }),
-      }));
-
-      // Totals
-      const totalCobrado = pagosList.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-      const totalCapital = pagosList.reduce((s, p) => s + Number(p.aplicado_capital || 0), 0);
-      const totalInteres = pagosList.reduce((s, p) => s + Number(p.aplicado_interes || 0), 0);
-      const totalMora = pagosList.reduce((s, p) => s + Number(p.aplicado_mora || 0), 0);
-
-      // By payment method
-      const porMetodo: Record<string, number> = {};
-      for (const p of pagosList) {
-        const m = p.metodo_pago || "Efectivo";
-        porMetodo[m] = (porMetodo[m] || 0) + Number(p.monto_recibido || 0);
-      }
-
-      // Expected today
-      const cuotasExpected = (cuotasHoy || []).map((c: any) => {
-        const pr = cobPrestamoMap[c.prestamo_id];
-        return {
-          id: c.id,
-          num_cuota: c.num_cuota,
-          monto: Number(c.capital_interes || 0),
-          saldo: Number(c.saldo_total || 0),
-          status: c.status,
-          id_prestamo: pr?.id_prestamo || "—",
-          cliente: pr?.clientes?.nombre_completo || "—",
-        };
-      });
-      const totalEsperado = cuotasExpected.reduce((s, c) => s + c.monto, 0);
-
-      // Unique clients visited (from pagos + visitas)
-      const clientesAtendidos = new Set<string>();
-      for (const p of pagosEnriched) clientesAtendidos.add(p.cliente_nombre);
-      for (const v of (visitas || []) as any[]) {
-        if (v.clientes?.nombre_completo) clientesAtendidos.add(v.clientes.nombre_completo);
-      }
-
-      return {
-        pagos: pagosEnriched,
-        visitas: visitas || [],
-        promesas: promesas || [],
-        cuotasExpected,
-        totalCobrado,
-        totalCapital,
-        totalInteres,
-        totalMora,
-        porMetodo,
-        totalEsperado,
-        clientesAtendidos: clientesAtendidos.size,
-        numPagos: pagosList.length,
-        numVisitas: (visitas || []).length,
-      };
-    },
-    enabled: !!cobradorId && !!empresaId,
-  });
-}
-
-type ModalType = "depositar" | "gasto" | "prestamo_entregado" | null;
+/* ─── Page ─── */
 
 export default function LiquidarRutaPage() {
   const { empresaId } = useEmpresa();
+  const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const { data: cobradores = [], isLoading } = useCobradores(empresaId);
   const { data: cajas = [] } = useCajas(empresaId);
-  const { data: liquidaciones = [] } = useLiquidaciones(empresaId);
+  const { data: historial = [] } = useHistorialCortes(empresaId);
 
-  const [selectedCobrador, setSelectedCobrador] = useState<Cobrador | null>(null);
-  const [reportCobrador, setReportCobrador] = useState<Cobrador | null>(null);
-  const [modal, setModal] = useState<ModalType>(null);
-  const [monto, setMonto] = useState("");
+  // Step-based flow
+  const [cobradorId, setCobradorId] = useState<string>("");
+  const [fechaHasta, setFechaHasta] = useState<Date | undefined>(new Date());
+  const [consulted, setConsulted] = useState(false);
+
+  const fechaStr = fechaHasta ? format(fechaHasta, "yyyy-MM-dd") : null;
+  const { data: pagosRaw = [], isLoading: loadingPagos, refetch: refetchPagos } = usePagosNoLiquidados(
+    empresaId, consulted ? cobradorId : null, consulted ? fechaStr : null
+  );
+
+  const cobrador = cobradores.find((c) => c.id === cobradorId);
+
+  // Summaries
+  const totals = useMemo(() => {
+    const total = pagosRaw.reduce((s, p) => s + p.monto_recibido, 0);
+    const capital = pagosRaw.reduce((s, p) => s + p.aplicado_capital, 0);
+    const interes = pagosRaw.reduce((s, p) => s + p.aplicado_interes, 0);
+    const mora = pagosRaw.reduce((s, p) => s + p.aplicado_mora, 0);
+    const porMetodo: Record<string, number> = {};
+    for (const p of pagosRaw) {
+      porMetodo[p.metodo_pago] = (porMetodo[p.metodo_pago] || 0) + p.monto_recibido;
+    }
+    const efectivo = porMetodo["Efectivo"] || 0;
+    const clientes = new Set(pagosRaw.map((p) => p.cliente_nombre)).size;
+    const prestamos = new Set(pagosRaw.map((p) => p.prestamo_id)).size;
+    return { total, capital, interes, mora, porMetodo, efectivo, clientes, prestamos };
+  }, [pagosRaw]);
+
+  // Liquidar state
   const [cajaId, setCajaId] = useState("");
-  const [concepto, setConcepto] = useState("");
+  const [showLiquidar, setShowLiquidar] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const { data: dailyReport, isLoading: reportLoading } = useDailyReport(empresaId, reportCobrador?.id || null);
-
-  const totalEfectivo = cobradores.reduce((s, c) => s + c.efectivo_en_mano, 0);
-
-  const resetModal = () => {
-    setModal(null);
-    setMonto("");
-    setCajaId(cajas[0]?.id || "");
-    setConcepto("");
+  const handleConsultar = () => {
+    if (!cobradorId) return toast.error("Selecciona un cobrador");
+    if (!fechaHasta) return toast.error("Selecciona una fecha");
+    setConsulted(true);
   };
 
-  const openModal = (cobrador: Cobrador, tipo: ModalType) => {
-    setSelectedCobrador(cobrador);
-    setCajaId(cajas[0]?.id || "");
-    setModal(tipo);
-  };
-
-  const handleDepositar = async () => {
-    if (!selectedCobrador || !cajaId) return;
-    const montoNum = parseFloat(monto) || 0;
-    if (montoNum <= 0) return toast.error("Ingresa un monto válido");
-    if (montoNum > selectedCobrador.efectivo_en_mano) return toast.error("El monto excede el efectivo en mano");
-
+  const handleLiquidar = async () => {
+    if (!cobrador || !cajaId || pagosRaw.length === 0) return;
     setSaving(true);
     try {
-      await supabase.from("profiles")
-        .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
-        .eq("id", selectedCobrador.id);
-
-      await supabase.from("movimientos_caja").insert({
+      // 1. Create corte record
+      const comision = totals.efectivo * (cobrador.porcentaje_comision / 100);
+      const { data: corte, error: corteErr } = await supabase.from("cortes").insert({
+        cobrador_id: cobrador.id,
         caja_id: cajaId,
-        tipo: "entrada" as any,
-        monto: montoNum,
-        concepto: `Depósito cobrador ${selectedCobrador.nombre}`,
-        empresa_id: empresaId,
-      });
-
-      const comision = montoNum * (selectedCobrador.porcentaje_comision / 100);
-      await supabase.from("cortes").insert({
-        cobrador_id: selectedCobrador.id,
-        caja_id: cajaId,
-        total_cobrado: montoNum,
-        monto_efectivo: selectedCobrador.efectivo_en_mano,
-        monto_depositado: montoNum,
+        total_cobrado: totals.total,
+        monto_efectivo: totals.efectivo,
+        monto_depositado: totals.efectivo,
         monto_comision: comision,
-        porcentaje_usado: selectedCobrador.porcentaje_comision,
+        porcentaje_usado: cobrador.porcentaje_comision,
         empresa_id: empresaId,
-        periodo_desde: new Date().toISOString(),
-        periodo_hasta: new Date().toISOString(),
-      });
+        periodo_hasta: fechaHasta!.toISOString(),
+      }).select("id").single();
 
-      invalidateFinanceQueries(queryClient);
-      toast.success(`Depósito de ${$$(montoNum)} registrado. Comisión: ${$$(comision)}`);
-      resetModal();
-    } catch (err: any) {
-      toast.error("Error: " + (err.message || err));
-    } finally {
-      setSaving(false);
-    }
-  };
+      if (corteErr) throw corteErr;
 
-  const handleGasto = async () => {
-    if (!selectedCobrador) return;
-    const montoNum = parseFloat(monto) || 0;
-    if (montoNum <= 0) return toast.error("Ingresa un monto válido");
-    if (montoNum > selectedCobrador.efectivo_en_mano) return toast.error("El monto excede el efectivo en mano");
-    if (!concepto.trim()) return toast.error("Ingresa un concepto");
+      // 2. Mark all pagos as settled
+      const pagoIds = pagosRaw.map((p) => p.id);
+      // Update in batches of 100
+      for (let i = 0; i < pagoIds.length; i += 100) {
+        const batch = pagoIds.slice(i, i + 100);
+        const { error } = await (supabase as any).from("pagos").update({ corte_id: corte.id }).in("id", batch);
+        if (error) throw error;
+      }
 
-    setSaving(true);
-    try {
-      await supabase.from("profiles")
-        .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
-        .eq("id", selectedCobrador.id);
+      // 3. Reset cobrador efectivo_en_mano (subtract what was settled as cash)
+      if (totals.efectivo > 0) {
+        await supabase.from("profiles")
+          .update({ efectivo_en_mano: Math.max(0, cobrador.efectivo_en_mano - totals.efectivo) })
+          .eq("id", cobrador.id);
 
-      const targetCaja = cajaId || cajas[0]?.id;
-      if (targetCaja) {
+        // Register caja movement
         await supabase.from("movimientos_caja").insert({
-          caja_id: targetCaja,
-          tipo: "salida" as any,
-          monto: montoNum,
-          concepto: `Gasto cobrador ${selectedCobrador.nombre}: ${concepto}`,
+          caja_id: cajaId,
+          tipo: "entrada" as any,
+          monto: totals.efectivo,
+          concepto: `Liquidación ruta ${cobrador.nombre} — ${pagosRaw.length} pagos hasta ${format(fechaHasta!, "dd/MM/yyyy")}`,
           empresa_id: empresaId,
+          registrado_por: user?.id || null,
         });
       }
 
       invalidateFinanceQueries(queryClient);
-      toast.success(`Gasto de ${$$(montoNum)} registrado para ${selectedCobrador.nombre}`);
-      resetModal();
+      queryClient.invalidateQueries({ queryKey: ["pagos-no-liquidados"] });
+      queryClient.invalidateQueries({ queryKey: ["historial-cortes"] });
+      queryClient.invalidateQueries({ queryKey: ["cobradores"] });
+
+      toast.success(`Ruta liquidada: ${pagosRaw.length} pagos cerrados (${$$(totals.total)}). Comisión: ${$$(comision)}`);
+      setShowLiquidar(false);
+      setConsulted(false);
     } catch (err: any) {
       toast.error("Error: " + (err.message || err));
     } finally {
       setSaving(false);
     }
   };
-
-  const handlePrestamoEntregado = async () => {
-    if (!selectedCobrador) return;
-    const montoNum = parseFloat(monto) || 0;
-    if (montoNum <= 0) return toast.error("Ingresa un monto válido");
-    if (montoNum > selectedCobrador.efectivo_en_mano) return toast.error("El monto excede el efectivo en mano");
-
-    setSaving(true);
-    try {
-      await supabase.from("profiles")
-        .update({ efectivo_en_mano: selectedCobrador.efectivo_en_mano - montoNum })
-        .eq("id", selectedCobrador.id);
-
-      const targetCaja = cajaId || cajas[0]?.id;
-      if (targetCaja) {
-        await supabase.from("movimientos_caja").insert({
-          caja_id: targetCaja,
-          tipo: "salida" as any,
-          monto: montoNum,
-          concepto: `Préstamo entregado en ruta por ${selectedCobrador.nombre}${concepto ? `: ${concepto}` : ""}`,
-          empresa_id: empresaId,
-        });
-      }
-
-      invalidateFinanceQueries(queryClient);
-      toast.success(`Préstamo entregado de ${$$(montoNum)} registrado`);
-      resetModal();
-    } catch (err: any) {
-      toast.error("Error: " + (err.message || err));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSubmit = () => {
-    if (modal === "depositar") handleDepositar();
-    else if (modal === "gasto") handleGasto();
-    else if (modal === "prestamo_entregado") handlePrestamoEntregado();
-  };
-
-  const modalConfig = {
-    depositar: { title: "Depositar a Caja", icon: ArrowDownToLine, showCaja: true, submitLabel: "Depositar", conceptoLabel: "" },
-    gasto: { title: "Registrar Gasto de Ruta", icon: MinusCircle, showCaja: false, submitLabel: "Registrar Gasto", conceptoLabel: "Concepto del gasto *" },
-    prestamo_entregado: { title: "Préstamo Entregado en Ruta", icon: CreditCard, showCaja: false, submitLabel: "Registrar", conceptoLabel: "Cliente / Referencia" },
-  };
-
-  const cfg = modal ? modalConfig[modal] : null;
-
-  const eficiencia = dailyReport && dailyReport.totalEsperado > 0
-    ? Math.round((dailyReport.totalCobrado / dailyReport.totalEsperado) * 100)
-    : 0;
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-semibold flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" />
           Liquidar Ruta
@@ -423,132 +288,237 @@ export default function LiquidarRutaPage() {
         <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE d 'de' MMMM, yyyy", { locale: es })}</p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <UserCheck className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Cobradores</p>
-              <p className="text-xl font-bold">{cobradores.length}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <Wallet className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Efectivo en Calle</p>
-              <p className="text-xl font-bold">{$$(totalEfectivo)}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
-              <Receipt className="h-5 w-5 text-accent-foreground" />
-            </div>
-            <div>
-              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Liquidaciones Hoy</p>
-              <p className="text-xl font-bold">
-                {liquidaciones.filter((l: any) => new Date(l.created_at).toDateString() === new Date().toDateString()).length}
-              </p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-success" />
-            </div>
-            <div>
-              <p className="text-[11px] uppercase text-muted-foreground tracking-wider">Cobrado Hoy (Equipo)</p>
-              <p className="text-xl font-bold">{$$(cobradores.reduce((s, c) => s + c.efectivo_en_mano, 0))}</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Cobradores — each one is a card with report + actions */}
+      {/* Step 1: Select cobrador + date */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Cobradores — Reporte del Día</CardTitle>
+          <CardTitle className="text-base">Consultar Pagos Pendientes de Liquidar</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-3">
-              <div className="h-10 bg-muted rounded animate-pulse" />
-              <div className="h-10 bg-muted rounded animate-pulse" />
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Cobrador</Label>
+              <SearchableSelect
+                options={cobradores.map((c) => ({ value: c.id, label: c.nombre }))}
+                value={cobradorId}
+                onValueChange={(v) => { setCobradorId(v); setConsulted(false); }}
+                placeholder="Seleccionar cobrador..."
+              />
             </div>
-          ) : cobradores.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">No hay cobradores activos</div>
-          ) : (
-            <div className="divide-y divide-border">
-              {cobradores.map((c) => (
-                <div key={c.id} className="p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="text-sm font-bold text-primary">
-                          {c.nombre.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold truncate">{c.nombre}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Efectivo: <span className={cn("font-semibold", c.efectivo_en_mano > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(c.efectivo_en_mano)}</span>
-                          {" · "}Comisión: {c.porcentaje_comision}%
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-                      <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" onClick={() => setReportCobrador(reportCobrador?.id === c.id ? null : c)}>
-                        <Eye className="h-3 w-3 mr-1" />Reporte
-                      </Button>
-                      <Button size="sm" variant="default" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "depositar")}>
-                        <ArrowDownToLine className="h-3 w-3 mr-1" />Depositar
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "gasto")}>
-                        <MinusCircle className="h-3 w-3 mr-1" />Gasto
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-[11px] px-2.5" disabled={c.efectivo_en_mano <= 0} onClick={() => openModal(c, "prestamo_entregado")}>
-                        <CreditCard className="h-3 w-3 mr-1" />Préstamo
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Inline daily report */}
-                  {reportCobrador?.id === c.id && (
-                    <div className="mt-4 border border-border rounded-lg overflow-hidden">
-                      {reportLoading ? (
-                        <div className="p-6 flex items-center justify-center">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
-                      ) : dailyReport ? (
-                        <DailyReportPanel report={dailyReport} cobrador={c} />
-                      ) : (
-                        <div className="p-6 text-center text-muted-foreground text-sm">Sin datos</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+            <div className="space-y-1.5">
+              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Fecha de Corte (hasta)</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9 text-[13px]", !fechaHasta && "text-muted-foreground")}>
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    {fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Seleccionar fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={fechaHasta}
+                    onSelect={(d) => { setFechaHasta(d); setConsulted(false); }}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-          )}
+            <Button onClick={handleConsultar} disabled={!cobradorId || !fechaHasta || loadingPagos} className="h-9">
+              {loadingPagos ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Search className="h-4 w-4 mr-1.5" />}
+              Consultar
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Historial de liquidaciones */}
+      {/* Step 2: Results */}
+      {consulted && (
+        <>
+          {loadingPagos ? (
+            <Card className="p-8 flex items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </Card>
+          ) : pagosRaw.length === 0 ? (
+            <Card className="p-8 text-center">
+              <CheckCircle2 className="h-10 w-10 mx-auto text-success mb-2" />
+              <p className="text-sm font-medium">Sin pagos pendientes de liquidar</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Todos los pagos de <strong>{cobrador?.nombre}</strong> hasta el <strong>{fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : ""}</strong> ya fueron liquidados.
+              </p>
+            </Card>
+          ) : (
+            <>
+              {/* Summary KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <Card className="p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <HandCoins className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Pagos</p>
+                      <p className="text-lg font-bold">{pagosRaw.length}</p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                      <DollarSign className="h-4 w-4 text-success" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Total Cobrado</p>
+                      <p className="text-lg font-bold text-success">{$$(totals.total)}</p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0">
+                      <Wallet className="h-4 w-4 text-destructive" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Efectivo</p>
+                      <p className="text-lg font-bold">{$$(totals.efectivo)}</p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
+                      <Users className="h-4 w-4 text-accent-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Clientes</p>
+                      <p className="text-lg font-bold">{totals.clientes}</p>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                      <UserCheck className="h-4 w-4 text-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Préstamos</p>
+                      <p className="text-lg font-bold">{totals.prestamos}</p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Desglose */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card className="p-4">
+                  <h3 className="text-xs font-semibold uppercase text-muted-foreground mb-3">Desglose de Cobros</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Capital:</span><span className="font-semibold">{$$(totals.capital)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Interés:</span><span className="font-semibold">{$$(totals.interes)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Mora:</span><span className="font-semibold">{$$(totals.mora)}</span></div>
+                    <Separator />
+                    <div className="flex justify-between font-bold"><span>Total:</span><span className="text-success">{$$(totals.total)}</span></div>
+                  </div>
+                </Card>
+                <Card className="p-4">
+                  <h3 className="text-xs font-semibold uppercase text-muted-foreground mb-3">Por Método de Pago</h3>
+                  <div className="space-y-2 text-sm">
+                    {Object.entries(totals.porMetodo).map(([metodo, monto]) => (
+                      <div key={metodo} className="flex justify-between">
+                        <span className="text-muted-foreground">{metodo}:</span>
+                        <span className="font-semibold">{$$(monto)}</span>
+                      </div>
+                    ))}
+                    {Object.keys(totals.porMetodo).length === 0 && <p className="text-muted-foreground text-xs">—</p>}
+                    <Separator />
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Efectivo en mano (sistema):</span>
+                      <span className="font-semibold text-destructive">{$$(cobrador?.efectivo_en_mano || 0)}</span>
+                    </div>
+                    {cobrador && totals.efectivo !== cobrador.efectivo_en_mano && (
+                      <div className="flex items-center gap-1.5 text-xs text-warning">
+                        <AlertTriangle className="h-3 w-3" />
+                        Diferencia: {$$(cobrador.efectivo_en_mano - totals.efectivo)}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              {/* Payment table */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">
+                    Detalle de Pagos ({pagosRaw.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-table-header">
+                          <TableHead className="text-[10px] uppercase tracking-wider font-semibold">Fecha</TableHead>
+                          <TableHead className="text-[10px] uppercase tracking-wider font-semibold">Préstamo</TableHead>
+                          <TableHead className="text-[10px] uppercase tracking-wider font-semibold">Cliente</TableHead>
+                          <TableHead className="text-[10px] uppercase tracking-wider font-semibold text-right">Monto</TableHead>
+                          <TableHead className="text-[10px] uppercase tracking-wider font-semibold text-right">Capital</TableHead>
+                          <TableHead className="text-[10px] uppercase tracking-wider font-semibold text-right">Interés</TableHead>
+                          <TableHead className="text-[10px] uppercase tracking-wider font-semibold text-right">Mora</TableHead>
+                          <TableHead className="text-[10px] uppercase tracking-wider font-semibold">Método</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pagosRaw.map((p) => (
+                          <TableRow key={p.id}>
+                            <TableCell className="text-[11px]">{format(parseLocalDate(p.fecha_pago), "dd/MM/yyyy")}</TableCell>
+                            <TableCell className="text-[11px] font-mono">{p.id_prestamo}</TableCell>
+                            <TableCell className="text-[12px] font-medium max-w-[140px] truncate">{p.cliente_nombre}</TableCell>
+                            <TableCell className="text-[12px] text-right font-semibold">{$$(p.monto_recibido)}</TableCell>
+                            <TableCell className="text-[11px] text-right">{$$(p.aplicado_capital)}</TableCell>
+                            <TableCell className="text-[11px] text-right">{$$(p.aplicado_interes)}</TableCell>
+                            <TableCell className="text-[11px] text-right">{$$(p.aplicado_mora)}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{p.metodo_pago}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-muted/50 font-semibold">
+                          <TableCell colSpan={3} className="text-[11px]">TOTAL</TableCell>
+                          <TableCell className="text-[12px] text-right">{$$(totals.total)}</TableCell>
+                          <TableCell className="text-[11px] text-right">{$$(totals.capital)}</TableCell>
+                          <TableCell className="text-[11px] text-right">{$$(totals.interes)}</TableCell>
+                          <TableCell className="text-[11px] text-right">{$$(totals.mora)}</TableCell>
+                          <TableCell />
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Liquidar button */}
+              <div className="flex justify-end">
+                <Button
+                  size="lg"
+                  onClick={() => { setCajaId(cajas[0]?.id || ""); setShowLiquidar(true); }}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Liquidar {pagosRaw.length} pagos — {$$(totals.total)}
+                </Button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* Historial */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Historial de Liquidaciones</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          {liquidaciones.length === 0 ? (
+          {historial.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">No hay liquidaciones registradas</div>
           ) : (
             <Table>
@@ -556,17 +526,19 @@ export default function LiquidarRutaPage() {
                 <TableRow className="bg-table-header">
                   <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Fecha</TableHead>
                   <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Cobrador</TableHead>
+                  <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Total Cobrado</TableHead>
                   <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Depositado</TableHead>
                   <TableHead className="text-[11px] uppercase tracking-wider font-semibold text-right">Comisión</TableHead>
                   <TableHead className="text-[11px] uppercase tracking-wider font-semibold">Caja</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {liquidaciones.map((l: any) => (
+                {historial.map((l: any) => (
                   <TableRow key={l.id}>
                     <TableCell className="text-[12px]">{format(new Date(l.created_at), "dd/MM/yyyy HH:mm")}</TableCell>
                     <TableCell className="text-[13px] font-medium">{l.cobrador_nombre || "—"}</TableCell>
-                    <TableCell className="text-right text-[13px] font-semibold">{$$(l.monto_depositado)}</TableCell>
+                    <TableCell className="text-right text-[13px] font-semibold">{$$(l.total_cobrado)}</TableCell>
+                    <TableCell className="text-right text-[13px]">{$$(l.monto_depositado)}</TableCell>
                     <TableCell className="text-right text-[13px]">{$$(l.monto_comision)}</TableCell>
                     <TableCell className="text-[12px]">{l.cajas?.nombre || "—"}</TableCell>
                   </TableRow>
@@ -577,303 +549,71 @@ export default function LiquidarRutaPage() {
         </CardContent>
       </Card>
 
-      {/* Modal for all actions */}
-      <Dialog open={!!modal} onOpenChange={(o) => !o && resetModal()}>
-        <DialogContent className="sm:max-w-[420px]">
-          {cfg && selectedCobrador && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base">
-                  <cfg.icon className="h-4 w-4 text-primary" />
-                  {cfg.title}
-                </DialogTitle>
-              </DialogHeader>
+      {/* Liquidar confirmation dialog */}
+      <Dialog open={showLiquidar} onOpenChange={setShowLiquidar}>
+        <DialogContent className="sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowDownToLine className="h-5 w-5 text-primary" />
+              Confirmar Liquidación
+            </DialogTitle>
+          </DialogHeader>
 
-              <div className="space-y-4">
-                <div className="bg-secondary rounded-lg px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] text-muted-foreground uppercase">Cobrador</p>
-                    <p className="font-semibold text-sm">{selectedCobrador.nombre}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[11px] text-muted-foreground uppercase">Efectivo en Mano</p>
-                    <p className="font-semibold text-sm text-destructive">{$$(selectedCobrador.efectivo_en_mano)}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Monto ($)</Label>
-                  <Input
-                    type="number" step="0.01" min="0" max={selectedCobrador.efectivo_en_mano}
-                    placeholder="0.00" value={monto} onChange={(e) => setMonto(e.target.value)}
-                    className="mt-1 h-9 text-[13px]" autoFocus
-                  />
-                  {modal === "depositar" && (
-                    <Button variant="link" className="text-[11px] p-0 h-auto mt-1"
-                      onClick={() => setMonto(selectedCobrador.efectivo_en_mano.toFixed(2))}>
-                      Depositar todo ({$$(selectedCobrador.efectivo_en_mano)})
-                    </Button>
-                  )}
-                </div>
-
-                {cfg.showCaja && (
-                  <div>
-                    <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
-                    <Select value={cajaId} onValueChange={setCajaId}>
-                      <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                      <SelectContent>
-                        {cajas.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {cfg.conceptoLabel && (
-                  <div>
-                    <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">{cfg.conceptoLabel}</Label>
-                    <Textarea value={concepto} onChange={(e) => setConcepto(e.target.value)}
-                      className="mt-1 text-[13px] min-h-[60px]"
-                      placeholder={modal === "gasto" ? "Ej: Gasolina, comida, taxi..." : "Ej: Cliente Juan Pérez, préstamo rápido..."} />
-                  </div>
-                )}
-
-                {modal === "depositar" && parseFloat(monto) > 0 && (
-                  <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5 text-[12px] space-y-1">
-                    <div className="flex justify-between">
-                      <span>Monto a depositar:</span>
-                      <span className="font-semibold">{$$(parseFloat(monto) || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Comisión ({selectedCobrador.porcentaje_comision}%):</span>
-                      <span className="font-semibold text-primary">
-                        {$$((parseFloat(monto) || 0) * selectedCobrador.porcentaje_comision / 100)}
-                      </span>
-                    </div>
-                    <Separator className="my-1" />
-                    <div className="flex justify-between font-semibold">
-                      <span>Saldo restante:</span>
-                      <span>{$$(selectedCobrador.efectivo_en_mano - (parseFloat(monto) || 0))}</span>
-                    </div>
-                  </div>
-                )}
+          <div className="space-y-4">
+            <div className="bg-secondary rounded-lg px-4 py-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Cobrador:</span>
+                <span className="font-semibold">{cobrador?.nombre}</span>
               </div>
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-muted-foreground">Corte hasta:</span>
+                <span className="font-semibold">{fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : ""}</span>
+              </div>
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-muted-foreground">Pagos a cerrar:</span>
+                <span className="font-semibold">{pagosRaw.length}</span>
+              </div>
+            </div>
 
-              <DialogFooter className="mt-4">
-                <Button variant="outline" size="sm" onClick={resetModal} disabled={saving}>Cancelar</Button>
-                <Button size="sm" onClick={handleSubmit} disabled={saving || !monto || parseFloat(monto) <= 0}>
-                  {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <cfg.icon className="h-3.5 w-3.5 mr-1.5" />}
-                  {saving ? "Procesando..." : cfg.submitLabel}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
+            <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total cobrado:</span>
+                <span className="font-bold text-lg text-success">{$$(totals.total)}</span>
+              </div>
+              <div className="flex justify-between text-sm mt-1">
+                <span className="text-muted-foreground">Efectivo a depositar:</span>
+                <span className="font-semibold">{$$(totals.efectivo)}</span>
+              </div>
+              {cobrador && cobrador.porcentaje_comision > 0 && (
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Comisión ({cobrador.porcentaje_comision}%):</span>
+                  <span className="font-semibold text-primary">
+                    {$$(totals.efectivo * cobrador.porcentaje_comision / 100)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino *</Label>
+              <SearchableSelect
+                options={cajas.map((c: any) => ({ value: c.id, label: c.nombre }))}
+                value={cajaId}
+                onValueChange={setCajaId}
+                placeholder="Seleccionar caja"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setShowLiquidar(false)} disabled={saving}>Cancelar</Button>
+            <Button onClick={handleLiquidar} disabled={saving || !cajaId}>
+              {saving ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Lock className="h-4 w-4 mr-1.5" />}
+              {saving ? "Procesando..." : "Liquidar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-/* ─── Daily Report Panel ─── */
-
-interface DailyReportProps {
-  report: NonNullable<ReturnType<typeof useDailyReport>["data"]>;
-  cobrador: Cobrador;
-}
-
-function DailyReportPanel({ report, cobrador }: DailyReportProps) {
-  const eficiencia = report.totalEsperado > 0
-    ? Math.round((report.totalCobrado / report.totalEsperado) * 100)
-    : report.totalCobrado > 0 ? 100 : 0;
-
-  const efColor = eficiencia >= 100 ? "text-success" : eficiencia >= 70 ? "text-warning" : "text-destructive";
-  const efEmoji = eficiencia >= 100 ? "🎉" : eficiencia >= 70 ? "😊" : eficiencia >= 40 ? "😐" : "😟";
-
-  return (
-    <div>
-      {/* Summary KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-0 border-b border-border">
-        {[
-          { label: "Clientes Atendidos", value: String(report.clientesAtendidos), icon: Users, color: "text-primary" },
-          { label: "Cobros Realizados", value: String(report.numPagos), icon: HandCoins, color: "text-success" },
-          { label: "Total Cobrado", value: $$(report.totalCobrado), icon: DollarSign, color: "text-success" },
-          { label: "Esperado Hoy", value: $$(report.totalEsperado), icon: FileText, color: "text-foreground" },
-          { label: "Eficiencia", value: `${eficiencia}% ${efEmoji}`, icon: TrendingUp, color: efColor },
-        ].map((k, i) => (
-          <div key={i} className={cn("p-3 text-center", i < 4 && "border-r border-border last:border-r-0")}>
-            <k.icon className={cn("h-4 w-4 mx-auto mb-1", k.color)} />
-            <p className="text-[10px] uppercase text-muted-foreground tracking-wider">{k.label}</p>
-            <p className={cn("text-sm font-bold", k.color)}>{k.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Efectivo esperado vs entregado */}
-      <div className="p-4 border-b border-border bg-secondary/30">
-        <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Conciliación de Efectivo</h4>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase">Total Cobrado</p>
-            <p className="text-sm font-bold text-success">{$$(report.totalCobrado)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase">Efectivo en Mano</p>
-            <p className="text-sm font-bold text-destructive">{$$(cobrador.efectivo_en_mano)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase">Diferencia</p>
-            <p className={cn("text-sm font-bold", cobrador.efectivo_en_mano === report.totalCobrado ? "text-success" : "text-warning")}>
-              {$$(cobrador.efectivo_en_mano - report.totalCobrado)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase">Por Método</p>
-            <div className="text-[11px] space-y-0.5">
-              {Object.entries(report.porMetodo).map(([m, v]) => (
-                <p key={m}><span className="text-muted-foreground">{m}:</span> <span className="font-semibold">{$$(v)}</span></p>
-              ))}
-              {Object.keys(report.porMetodo).length === 0 && <p className="text-muted-foreground">—</p>}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs: Cobros | Esperado | Visitas */}
-      <Tabs defaultValue="cobros" className="w-full">
-        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-9 px-4">
-          <TabsTrigger value="cobros" className="text-[11px] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-            Cobros ({report.numPagos})
-          </TabsTrigger>
-          <TabsTrigger value="esperado" className="text-[11px] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-            Cuotas del Día ({report.cuotasExpected.length})
-          </TabsTrigger>
-          <TabsTrigger value="visitas" className="text-[11px] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
-            Gestiones ({report.numVisitas})
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="cobros" className="mt-0">
-          {report.pagos.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-xs">Sin cobros hoy</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-table-header">
-                  <TableHead className="text-[10px] uppercase">Hora</TableHead>
-                  <TableHead className="text-[10px] uppercase">Préstamo</TableHead>
-                  <TableHead className="text-[10px] uppercase">Cliente</TableHead>
-                  <TableHead className="text-[10px] uppercase text-right">Monto</TableHead>
-                  <TableHead className="text-[10px] uppercase">Método</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.pagos.map((p: any) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="text-[11px]">{format(new Date(p.created_at), "HH:mm")}</TableCell>
-                    <TableCell className="text-[11px] font-mono">{p.id_prestamo}</TableCell>
-                    <TableCell className="text-[11px] font-medium max-w-[120px] truncate">{p.cliente_nombre}</TableCell>
-                    <TableCell className="text-[11px] text-right font-semibold">{$$(p.monto_recibido)}</TableCell>
-                    <TableCell className="text-[11px]">
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{p.metodo_pago || "Efectivo"}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell colSpan={3} className="text-[11px]">TOTAL</TableCell>
-                  <TableCell className="text-[11px] text-right">{$$(report.totalCobrado)}</TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableBody>
-            </Table>
-          )}
-          {/* Desglose */}
-          {report.pagos.length > 0 && (
-            <div className="px-4 py-2 bg-muted/30 border-t border-border flex gap-4 text-[10px] text-muted-foreground">
-              <span>Capital: <strong className="text-foreground">{$$(report.totalCapital)}</strong></span>
-              <span>Interés: <strong className="text-foreground">{$$(report.totalInteres)}</strong></span>
-              <span>Mora: <strong className="text-foreground">{$$(report.totalMora)}</strong></span>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="esperado" className="mt-0">
-          {report.cuotasExpected.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-xs">Sin cuotas programadas para hoy</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-table-header">
-                  <TableHead className="text-[10px] uppercase">Préstamo</TableHead>
-                  <TableHead className="text-[10px] uppercase">Cliente</TableHead>
-                  <TableHead className="text-[10px] uppercase text-center">Cuota</TableHead>
-                  <TableHead className="text-[10px] uppercase text-right">Monto</TableHead>
-                  <TableHead className="text-[10px] uppercase text-center">Estado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.cuotasExpected.map((c: any) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="text-[11px] font-mono">{c.id_prestamo}</TableCell>
-                    <TableCell className="text-[11px] font-medium max-w-[120px] truncate">{c.cliente}</TableCell>
-                    <TableCell className="text-[11px] text-center">#{c.num_cuota}</TableCell>
-                    <TableCell className="text-[11px] text-right font-semibold">{$$(c.monto)}</TableCell>
-                    <TableCell className="text-center">
-                      {c.status === "Pagada" ? (
-                        <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-success text-success-foreground">
-                          <CheckCircle2 className="h-3 w-3 mr-0.5" /> Pagada
-                        </Badge>
-                      ) : c.status === "Parcial" ? (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-warning border-warning">
-                          <Clock className="h-3 w-3 mr-0.5" /> Parcial
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-destructive border-destructive">
-                          <AlertTriangle className="h-3 w-3 mr-0.5" /> Pendiente
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell colSpan={3} className="text-[11px]">TOTAL ESPERADO</TableCell>
-                  <TableCell className="text-[11px] text-right">{$$(report.totalEsperado)}</TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableBody>
-            </Table>
-          )}
-        </TabsContent>
-
-        <TabsContent value="visitas" className="mt-0">
-          {report.visitas.length === 0 ? (
-            <div className="p-4 text-center text-muted-foreground text-xs">Sin gestiones registradas hoy</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-table-header">
-                  <TableHead className="text-[10px] uppercase">Hora</TableHead>
-                  <TableHead className="text-[10px] uppercase">Cliente</TableHead>
-                  <TableHead className="text-[10px] uppercase">Tipo</TableHead>
-                  <TableHead className="text-[10px] uppercase">Resultado</TableHead>
-                  <TableHead className="text-[10px] uppercase">Notas</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.visitas.map((v: any) => (
-                  <TableRow key={v.id}>
-                    <TableCell className="text-[11px]">{format(new Date(v.created_at), "HH:mm")}</TableCell>
-                    <TableCell className="text-[11px] font-medium max-w-[100px] truncate">{v.clientes?.nombre_completo || "—"}</TableCell>
-                    <TableCell className="text-[11px]">{v.tipo_gestion}</TableCell>
-                    <TableCell className="text-[11px]">
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{v.resultado}</Badge>
-                    </TableCell>
-                    <TableCell className="text-[11px] text-muted-foreground max-w-[100px] truncate">{v.notas || "—"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
