@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye } from "lucide-react";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, parseLocalDate } from "@/lib/utils";
 // ── Data hooks ────────────────────────────────────────────────────
 function useCajas(empresaId: string) {
   return useQuery({
