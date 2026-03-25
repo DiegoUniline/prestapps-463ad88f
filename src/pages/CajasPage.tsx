@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye } from "lucide-react";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, parseLocalDate } from "@/lib/utils";
 // ── Data hooks ────────────────────────────────────────────────────
 function useCajas(empresaId: string) {
   return useQuery({
@@ -68,7 +68,7 @@ function usePrestamosByCaja(empresaId?: string) {
 
         const hayAtraso = !!a.fecha_vencimiento && a.fecha_vencimiento < today;
         if (hayAtraso && Number(a.saldo_total || 0) > 0 && Number(p?.valor_mora || 0) > 0) {
-          const diasAtraso = Math.max(0, Math.floor((new Date(today).getTime() - new Date(a.fecha_vencimiento).getTime()) / 86400000));
+          const diasAtraso = Math.max(0, Math.floor((parseLocalDate(today).getTime() - parseLocalDate(a.fecha_vencimiento).getTime()) / 86400000));
           const baseMora = p?.tipo_mora === "porcentaje"
             ? Number(a.capital_interes || 0) * (Number(p?.valor_mora || 0) / 100) * diasAtraso
             : Number(p?.valor_mora || 0) * diasAtraso;

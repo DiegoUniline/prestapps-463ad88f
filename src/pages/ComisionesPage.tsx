@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { DollarSign, Calculator, Loader2, Percent, UserCheck, Wallet, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { $$ } from "@/lib/utils";
+import { $$, fmtDateTime } from "@/lib/utils";
 // ── Types & hooks ─────────────────────────────────────────────────
 interface Cobrador {
   id: string;
@@ -450,7 +450,7 @@ export default function ComisionesPage() {
                   <div className="flex items-start justify-between">
                     <div className="min-w-0">
                       <p className="text-[12px] font-medium truncate">{(h.concepto || "").replace(/\[.*?\]\s*/, "")}</p>
-                      <p className="text-[10px] text-muted-foreground">{format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: es })} · {(h.cajas as any)?.nombre || "—"}</p>
+                      <p className="text-[10px] text-muted-foreground">{fmtDateTime(h.created_at)} · {(h.cajas as any)?.nombre || "—"}</p>
                     </div>
                     <p className="font-semibold text-destructive text-[13px] shrink-0 ml-2">-{$$(Number(h.monto || 0))}</p>
                   </div>
@@ -480,7 +480,7 @@ export default function ComisionesPage() {
                     historial.map((h: any) => (
                       <TableRow key={h.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                         <TableCell className="text-[13px] px-3">
-                          {format(new Date(h.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
+                          {fmtDateTime(h.created_at)}
                         </TableCell>
                         <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
                           {(h.concepto || "").replace(/\[.*?\]\s*/, "")}

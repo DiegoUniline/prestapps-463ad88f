@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { ScrollText, Search, HandCoins, XCircle, CreditCard, CalendarCheck, MapPin, MessageSquare } from "lucide-react";
 interface AuditEntry {
   id: string;
@@ -221,7 +221,7 @@ export default function AuditoriaPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
                         <Badge variant="outline" className="text-[9px]">{e.accion}</Badge>
-                        <span className="text-[10px] text-muted-foreground">{e.fecha ? format(new Date(e.fecha), "dd/MM HH:mm", { locale: es }) : "—"}</span>
+                        <span className="text-[10px] text-muted-foreground">{e.fecha ? fmtDate(e.fecha, "dd/MM HH:mm") : "—"}</span>
                       </div>
                       <p className="text-[12px] mt-1 truncate">{e.descripcion}</p>
                       <p className="text-[10px] text-muted-foreground">por {e.usuario}</p>
@@ -252,7 +252,7 @@ export default function AuditoriaPage() {
                       <TableRow key={e.id}>
                         <TableCell className="px-3"><Icon className={cn("h-4 w-4", e.color)} /></TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {e.fecha ? format(new Date(e.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                          {e.fecha ? fmtDate(e.fecha, "dd/MM/yy HH:mm") : "—"}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-[10px]">{e.accion}</Badge>

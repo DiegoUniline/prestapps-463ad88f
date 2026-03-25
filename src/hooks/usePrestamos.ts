@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
+import { parseLocalDate } from "@/lib/utils";
 
 export interface PrestamoListItem {
   id: string;
@@ -168,7 +169,7 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
     }
     if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
       entry.tieneAtraso = true;
-      const diffDays = Math.floor((new Date(today).getTime() - new Date(a.fecha_vencimiento).getTime()) / 86400000);
+      const diffDays = Math.floor((parseLocalDate(today).getTime() - parseLocalDate(a.fecha_vencimiento).getTime()) / 86400000);
       if (diffDays > entry.diasAtraso) {
         entry.diasAtraso = diffDays;
       }

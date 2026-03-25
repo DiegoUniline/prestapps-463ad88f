@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
-import { $$, parseLocalDate } from "@/lib/utils";
+import { $$, parseLocalDate, fmtDate } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -277,7 +277,7 @@ export default function SolicitudesPage() {
                     <div className="flex items-start justify-between">
                       <div className="min-w-0">
                         <p className="font-semibold text-[13px] truncate">{s.clientes?.nombre_completo || "—"}</p>
-                        <p className="text-[11px] text-muted-foreground">{s.clientes?.id_cliente} · {s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</p>
+                        <p className="text-[11px] text-muted-foreground">{s.clientes?.id_cliente} · {s.created_at ? fmtDate(s.created_at) : "—"}</p>
                       </div>
                       <StatusBadge status={s.status} />
                     </div>
@@ -330,7 +330,7 @@ export default function SolicitudesPage() {
                         <TableCell className="text-right text-sm">{$$(Number(s.monto_solicitado))}</TableCell>
                         <TableCell className="text-center text-sm">{s.num_cuotas}</TableCell>
                         <TableCell className="text-sm capitalize">{s.frecuencia}</TableCell>
-                        <TableCell className="text-sm">{s.created_at ? format(new Date(s.created_at), "dd/MM/yyyy") : "—"}</TableCell>
+                        <TableCell className="text-sm">{s.created_at ? fmtDate(s.created_at) : "—"}</TableCell>
                         <TableCell>
                           <StatusBadge status={s.status} />
                         </TableCell>

@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Search, UserCheck, Wallet, DollarSign, Percent, Scissors, ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDateTime } from "@/lib/utils";
 // ── Data hooks ────────────────────────────────────────────────────
 interface Cobrador {
   id: string;
@@ -389,7 +389,7 @@ export default function CobradoresPage() {
             {cortes.map((ct: any) => (
               <div key={ct.id} className="bg-card rounded-lg border border-border p-3 text-[12px]">
                 <div className="flex justify-between items-start">
-                  <div><p className="font-medium text-[13px]">{ct.cobrador_nombre || "—"}</p><p className="text-muted-foreground">{ct.created_at ? format(new Date(ct.created_at), "dd/MM/yyyy HH:mm") : "—"}</p></div>
+                  <div><p className="font-medium text-[13px]">{ct.cobrador_nombre || "—"}</p><p className="text-muted-foreground">{ct.created_at ? fmtDateTime(ct.created_at) : "—"}</p></div>
                   <p className="font-semibold">{$$(Number(ct.monto_depositado))}</p>
                 </div>
                 <div className="flex justify-between mt-1.5 text-[11px]">
@@ -415,7 +415,7 @@ export default function CobradoresPage() {
               <TableBody>
                 {cortes.map((ct: any) => (
                   <TableRow key={ct.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
-                    <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{ct.created_at ? format(new Date(ct.created_at), "dd/MM/yyyy HH:mm") : "—"}</TableCell>
+                    <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{ct.created_at ? fmtDateTime(ct.created_at) : "—"}</TableCell>
                     <TableCell className="font-medium text-[13px] px-3">{ct.cobrador_nombre || "—"}</TableCell>
                     <TableCell className="text-[12px] text-muted-foreground px-3">{ct.cajas?.nombre || "—"}</TableCell>
                     <TableCell className="text-right text-[13px] px-3">{$$(Number(ct.total_cobrado))}</TableCell>

@@ -420,7 +420,7 @@ export default function PrestamoDetallePage() {
           metodo_pago: pg.metodo_pago || "Efectivo",
           saldo_restante: saldoPendiente,
           cuota_num: cuotaMatch?.num_cuota || (i + 1),
-          proxima_cuota: proximaCuota ? new Date(proximaCuota.fecha_vencimiento).toLocaleDateString("es-MX") : undefined,
+          proxima_cuota: proximaCuota ? fmtDate(proximaCuota.fecha_vencimiento) : undefined,
           monto_proxima: proximaCuota ? Number(proximaCuota.saldo_total || 0) : undefined,
         },
         empresa: {

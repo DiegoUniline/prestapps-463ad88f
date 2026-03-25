@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { format, parseISO, isPast, isToday as isTodayFn } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -755,7 +755,7 @@ export default function ClienteCobranzaDetallePage() {
                   .filter((p: any) => filtroPrestamo === "todos" || p.prestamo_id === filtroPrestamo)
                   .map((p: any) => (
                     <TableRow key={p.id} className={cn("text-xs", p.anulado && "opacity-40 line-through")}>
-                      <TableCell>{p.created_at ? format(new Date(p.created_at), "dd/MM/yy HH:mm") : "—"}</TableCell>
+                      <TableCell>{p.created_at ? fmtDate(p.created_at, "dd/MM/yy HH:mm") : "—"}</TableCell>
                       <TableCell className="font-medium">{p.idPrestamo}</TableCell>
                       <TableCell className="text-right font-medium">{$$(Number(p.monto_recibido))}</TableCell>
                       <TableCell className="text-right">{$$(Number(p.aplicado_capital || 0))}</TableCell>

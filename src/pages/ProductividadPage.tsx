@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { format, subDays, differenceInDays, startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -592,7 +592,7 @@ export default function ProductividadPage() {
                     <TableCell className="font-medium text-[13px]">{c.clienteNombre}</TableCell>
                     <TableCell className="text-[13px]">{c.asesor}</TableCell>
                     <TableCell className="text-right text-[13px]">
-                      {c.ultimaVisita ? format(new Date(c.ultimaVisita), "dd/MM/yyyy") : "—"}
+                      {c.ultimaVisita ? fmtDate(c.ultimaVisita) : "—"}
                     </TableCell>
                     <TableCell className="text-right">{staleBadge(c.diasSinVisita)}</TableCell>
                   </TableRow>

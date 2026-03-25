@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { $$ } from "@/lib/utils";
+import { $$, fmtDate, fmtDateTime } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
@@ -378,7 +378,7 @@ export default function CrmCobranzaPage() {
                                 {lastResultado?.label || lastGestion.resultado}
                               </span>
                               <p className="text-[10px] text-muted-foreground mt-0.5">
-                                {format(new Date(lastGestion.created_at), "dd/MM", { locale: es })}
+                                {fmtDate(lastGestion.created_at, "dd/MM")}
                               </p>
                             </div>
                           ) : (
@@ -487,7 +487,7 @@ export default function CrmCobranzaPage() {
                             </div>
                             {g.notas && <p className="text-muted-foreground mt-1">{g.notas}</p>}
                             <p className="text-[10px] text-muted-foreground mt-1">
-                              {g.created_at ? format(new Date(g.created_at), "dd/MM/yyyy HH:mm", { locale: es }) : ""}
+                              {g.created_at ? fmtDateTime(g.created_at) : ""}
                               {g.fecha_seguimiento ? ` • Seguimiento: ${g.fecha_seguimiento}` : ""}
                             </p>
                           </div>

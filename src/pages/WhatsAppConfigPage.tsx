@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { fmtDateTime } from "@/lib/utils";
 
 const TEMPLATE_TYPES = [
   {
@@ -503,7 +504,7 @@ export default function WhatsAppConfigPage() {
                       {logs.map((log: any) => (
                         <TableRow key={log.id}>
                           <TableCell className="text-xs whitespace-nowrap">
-                            {log.created_at ? format(new Date(log.created_at), "dd/MM/yyyy HH:mm", { locale: es }) : "---"}
+                            {log.created_at ? fmtDateTime(log.created_at) : "---"}
                           </TableCell>
                           <TableCell className="text-xs font-mono">{log.telefono}</TableCell>
                           <TableCell>

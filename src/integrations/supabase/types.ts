@@ -1064,6 +1064,7 @@ export type Database = {
           aplicado_mora: number | null
           caja_id: string | null
           cobrador_id: string | null
+          corte_id: string | null
           created_at: string | null
           cuota_id: string | null
           empresa_id: string | null
@@ -1087,6 +1088,7 @@ export type Database = {
           aplicado_mora?: number | null
           caja_id?: string | null
           cobrador_id?: string | null
+          corte_id?: string | null
           created_at?: string | null
           cuota_id?: string | null
           empresa_id?: string | null
@@ -1110,6 +1112,7 @@ export type Database = {
           aplicado_mora?: number | null
           caja_id?: string | null
           cobrador_id?: string | null
+          corte_id?: string | null
           created_at?: string | null
           cuota_id?: string | null
           empresa_id?: string | null
@@ -1130,6 +1133,13 @@ export type Database = {
             columns: ["caja_id"]
             isOneToOne: false
             referencedRelation: "cajas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagos_corte_id_fkey"
+            columns: ["corte_id"]
+            isOneToOne: false
+            referencedRelation: "cortes"
             referencedColumns: ["id"]
           },
           {

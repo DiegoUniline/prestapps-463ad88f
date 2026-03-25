@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
-import { $$ } from "@/lib/utils";
+import { $$, fmtDate, fmtDateTime } from "@/lib/utils";
 
 const GRAY: [number, number, number] = [107, 114, 128];
 const DARK: [number, number, number] = [17, 24, 39];
@@ -222,7 +222,7 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
       $$(c.capital),
       $$(c.interes),
       $$(c.capital_interes),
-      format(new Date(c.fecha_vencimiento), "dd/MM/yy"),
+      fmtDate(c.fecha_vencimiento, "dd/MM/yy"),
       c.dias_atraso > 0 ? c.dias_atraso : "—",
       c.mora > 0 ? $$(c.mora) : "—",
       $$(c.saldo_total),
@@ -255,7 +255,7 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
       body: [
         ...pagos.map((p, i) => [
           i + 1,
-          p.created_at ? format(new Date(p.created_at), "dd/MM/yyyy") : "—",
+          p.created_at ? fmtDate(p.created_at) : "—",
           $$(p.monto_recibido),
           p.aplicado_mora > 0 ? $$(p.aplicado_mora) : "—",
           p.aplicado_interes > 0 ? $$(p.aplicado_interes) : "—",
@@ -372,7 +372,7 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
     head: [["#", "F. Vencimiento", "Capital", "Interés", "Cuota"]],
     body: cuotas.map((c) => [
       c.num_cuota,
-      format(new Date(c.fecha_vencimiento), "dd/MM/yyyy"),
+      fmtDate(c.fecha_vencimiento),
       $$(c.capital),
       $$(c.interes),
       $$(c.capital_interes),
@@ -504,7 +504,7 @@ export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData
     doc.text(`Pago #${i + 1}`, margin, y);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...GRAY);
-    doc.text(p.created_at ? format(new Date(p.created_at), "dd/MM/yy HH:mm") : "—", ticketW - margin, y, { align: "right" });
+    doc.text(p.created_at ? fmtDate(p.created_at, "dd/MM/yy HH:mm") : "—", ticketW - margin, y, { align: "right" });
     y += 3.5;
 
     const rows = [

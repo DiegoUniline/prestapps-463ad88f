@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, fmtDate } from "@/lib/utils";
 import { CalendarDays, TrendingUp, Download, DollarSign, CalendarIcon, ArrowDownRight, Percent, Receipt } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
@@ -82,7 +82,7 @@ export default function ReporteSemanalPage() {
       if (m.tipo !== "salida") continue;
       const monto = Number(m.monto || 0);
       const concepto = (m.concepto || "").toLowerCase();
-      const fecha = m.created_at ? format(new Date(m.created_at), "dd/MM/yyyy") : "";
+      const fecha = m.created_at ? fmtDate(m.created_at) : "";
 
       if (concepto.includes("comisión") || concepto.includes("comision") || concepto.includes("liquidación") || concepto.includes("liquidacion")) {
         comisionesDetalle.push({ concepto: m.concepto || "Comisión", monto, fecha });
@@ -106,7 +106,7 @@ export default function ReporteSemanalPage() {
         comisionesDetalle.push({
           concepto: "Comisión cobrador",
           monto,
-          fecha: c.created_at ? format(new Date(c.created_at), "dd/MM/yyyy") : "",
+          fecha: c.created_at ? fmtDate(c.created_at) : "",
         });
         totalComisiones += monto;
       }

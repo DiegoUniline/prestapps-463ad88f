@@ -20,7 +20,7 @@ import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { cn, $$, fmtDate } from "@/lib/utils";
+import { cn, $$, fmtDate, parseLocalDate } from "@/lib/utils";
 import { usePrestamos, useCajasOptions, useRutasOptions, type PrestamoListItem } from "@/hooks/usePrestamos";
 import { useAtendidos } from "@/hooks/useAtendidos";
 
@@ -91,12 +91,7 @@ const ALL_COLUMNS: ColumnDef[] = [
           <span className="font-medium text-[13px] whitespace-nowrap">{p.cliente}</span>
           {p.ultimoPagoFecha && (
             <p className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
-              Últ. pago: {(() => {
-                const d = new Date(p.ultimoPagoFecha + "T12:00:00");
-                const dia = d.toLocaleDateString("es-MX", { weekday: "long" });
-                const fecha = d.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
-                return `${dia.charAt(0).toUpperCase() + dia.slice(1)} ${fecha}`;
-              })()} · {$$(p.ultimoPagoMonto ?? 0)}
+              Últ. pago: {fmtDate(p.ultimoPagoFecha, "EEEE dd/MM/yyyy")} · {$$(p.ultimoPagoMonto ?? 0)}
             </p>
           )}
         </div>
@@ -530,7 +525,7 @@ export default function PrestamosPage() {
       if (selCaja.size > 0 && !selCaja.has(p.caja)) return false;
       if (selRuta.size > 0 && !selRuta.has(p.ruta)) return false;
       if (p.fechaRegistro) {
-        const reg = new Date(p.fechaRegistro);
+        const reg = parseLocalDate(p.fechaRegistro);
         if (regDesde && reg < regDesde) return false;
         if (regHasta && reg > regHasta) return false;
       }
@@ -560,7 +555,7 @@ export default function PrestamosPage() {
       else if (groupBy === "cobrador") key = p.cobrador;
       else if (groupBy === "tipoCuenta") key = p.tipoCuenta === "prestamo" ? "Préstamo" : p.tipoCuenta === "venta_seguro" ? "Seguro" : p.tipoCuenta === "venta_producto" ? "Producto" : "Servicio";
       else if (groupBy === "mesCreacion") {
-        const d = p.fechaRegistro ? new Date(p.fechaRegistro) : null;
+        const d = p.fechaRegistro ? parseLocalDate(p.fechaRegistro) : null;
         key = d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : "Sin fecha";
       } else key = "—";
       if (!groups[key]) groups[key] = [];
@@ -783,12 +778,7 @@ export default function PrestamosPage() {
                     <p className="text-[11px] text-muted-foreground">{p.idPrestamo} · {fmtDate(p.fechaRegistro)}</p>
                     {p.ultimoPagoFecha && (
                       <p className="text-[10px] text-muted-foreground leading-tight">
-                        Últ. pago: {(() => {
-                          const dd = new Date(p.ultimoPagoFecha + "T12:00:00");
-                          const dia = dd.toLocaleDateString("es-MX", { weekday: "short" });
-                          const fecha = dd.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
-                          return `${dia.charAt(0).toUpperCase() + dia.slice(1)} ${fecha}`;
-                        })()} · {$$(p.ultimoPagoMonto ?? 0)}
+                        Últ. pago: {fmtDate(p.ultimoPagoFecha, "EEE dd/MM")} · {$$(p.ultimoPagoMonto ?? 0)}
                       </p>
                     )}
                   </div>
