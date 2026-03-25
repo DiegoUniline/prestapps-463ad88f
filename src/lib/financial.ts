@@ -89,7 +89,7 @@ export function calcularAmortizacion(
 
       rows.push({
         numCuota: i,
-        fechaVencimiento: calcNextDate(base, frecuencia, i - 1).toISOString().slice(0, 10),
+        fechaVencimiento: calcNextDate(base, frecuencia, i - 1, skipDays).toISOString().slice(0, 10),
         capital: cap.toDecimalPlaces(2).toNumber(),
         interes: int.toDecimalPlaces(2).toNumber(),
         capitalInteres: cuotaVal.toDecimalPlaces(2).toNumber(),
@@ -110,7 +110,7 @@ export function calcularAmortizacion(
 
       rows.push({
         numCuota: i,
-        fechaVencimiento: calcNextDate(base, frecuencia, i - 1).toISOString().slice(0, 10),
+        fechaVencimiento: calcNextDate(base, frecuencia, i - 1, skipDays).toISOString().slice(0, 10),
         capital: cap.toDecimalPlaces(2).toNumber(),
         interes: int.toDecimalPlaces(2).toNumber(),
         capitalInteres: cap.plus(int).toDecimalPlaces(2).toNumber(),
