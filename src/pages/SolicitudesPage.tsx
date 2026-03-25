@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
-import { $$ } from "@/lib/utils";
+import { $$, parseLocalDate } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
