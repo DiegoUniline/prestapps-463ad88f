@@ -47,8 +47,6 @@ export function calcularAmortizacion(
   monto: number, cuotas: number, tasa: number,
   modalidad: Modalidad, fechaPrimerPago: string, frecuencia: Frecuencia,
   cuotaRedondeada?: number, skipDays?: number[]
-): AmortizacionRow[] {
-): AmortizacionRow[] {
   const rows: AmortizacionRow[] = [];
   const base = parseLocalDate(fechaPrimerPago);
 
