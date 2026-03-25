@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
-import { $$ } from "@/lib/utils";
+import { $$, fmtDate } from "@/lib/utils";
 interface ExportColumn {
   header: string;
   key: string;
