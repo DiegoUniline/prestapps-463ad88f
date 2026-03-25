@@ -898,7 +898,7 @@ export default function CobradorViewPage() {
                         {perfil!.cortes.slice(0, 5).map((c: any) => (
                           <div key={c.id} className="flex items-center justify-between bg-secondary/50 rounded-md px-3 py-2">
                             <span className="text-xs text-muted-foreground">
-                              {format(new Date(c.created_at), "dd/MM/yyyy", { locale: es })}
+                              {fmtDate(c.created_at)}
                             </span>
                             <div className="text-right">
                               <span className="text-xs font-semibold text-primary">{$$(Number(c.monto_comision))}</span>
@@ -1198,7 +1198,7 @@ function PagoCard({ pago, onNavigate }: { pago: PagoHistorial; onNavigate: (path
               {pago.numCuota && <span className="text-[11px] text-muted-foreground">Cuota #{pago.numCuota}</span>}
               <span className="text-[11px] text-muted-foreground">{pago.metodoPago}</span>
               <span className="text-[11px] text-muted-foreground">
-                {format(new Date(pago.fechaPago), "dd/MM/yyyy HH:mm", { locale: es })}
+                {fmtDateTime(pago.fechaPago)}
               </span>
             </div>
           </div>

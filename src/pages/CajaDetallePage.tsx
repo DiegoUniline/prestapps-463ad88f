@@ -572,7 +572,7 @@ export default function CajaDetallePage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium truncate">{r.concepto}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                          {r.fecha ? fmtDate(r.fecha, "dd/MM/yy HH:mm") : "—"}
                           <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{r.categoria}</span>
                         </p>
                       </div>
@@ -608,7 +608,7 @@ export default function CajaDetallePage() {
                   <TableBody>
                     {manualRows.map(r => (
                       <TableRow key={r.id} className="border-b border-border/50">
-                        <TableCell className="text-[12px] px-3 whitespace-nowrap">{r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}</TableCell>
+                        <TableCell className="text-[12px] px-3 whitespace-nowrap">{r.fecha ? fmtDate(r.fecha, "dd/MM/yy HH:mm") : "—"}</TableCell>
                         <TableCell className="text-[13px] px-3 max-w-[250px] truncate">{r.concepto}</TableCell>
                         <TableCell className="text-[12px] px-3">
                           <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">{r.categoria}</span>
@@ -691,7 +691,7 @@ export default function CajaDetallePage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium truncate">{r.concepto}</p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                          {r.fecha ? fmtDate(r.fecha, "dd/MM/yy HH:mm") : "—"}
                           <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{r.categoria}</span>
                         </p>
                       </div>
@@ -720,7 +720,7 @@ export default function CajaDetallePage() {
                   <TableBody>
                     {filteredKardex.map(r => (
                       <TableRow key={r.id} className="border-b border-border/50">
-                        <TableCell className="text-[12px] px-3 whitespace-nowrap">{r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}</TableCell>
+                        <TableCell className="text-[12px] px-3 whitespace-nowrap">{r.fecha ? fmtDate(r.fecha, "dd/MM/yy HH:mm") : "—"}</TableCell>
                         <TableCell className="text-[13px] px-3 max-w-[250px] truncate">{r.concepto}</TableCell>
                         <TableCell className="text-[12px] px-3">
                           <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-medium">{r.categoria}</span>

@@ -221,7 +221,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
                         <div className="min-w-0 flex-1">
                           <p className="text-[13px] font-medium truncate">{r.concepto}</p>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
-                            {r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                            {r.fecha ? fmtDate(r.fecha, "dd/MM/yy HH:mm") : "—"}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
@@ -251,7 +251,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
                       {withBalance.map((r) => (
                         <TableRow key={r.id} className="border-b border-border/50">
                           <TableCell className="text-[12px] px-3 whitespace-nowrap">
-                            {r.fecha ? format(new Date(r.fecha), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                            {r.fecha ? fmtDate(r.fecha, "dd/MM/yy HH:mm") : "—"}
                           </TableCell>
                           <TableCell className="text-[13px] px-3 max-w-[250px] truncate">{r.concepto}</TableCell>
                           <TableCell className="text-right text-[13px] px-3 text-success font-medium">

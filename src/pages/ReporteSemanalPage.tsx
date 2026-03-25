@@ -82,7 +82,7 @@ export default function ReporteSemanalPage() {
       if (m.tipo !== "salida") continue;
       const monto = Number(m.monto || 0);
       const concepto = (m.concepto || "").toLowerCase();
-      const fecha = m.created_at ? format(new Date(m.created_at), "dd/MM/yyyy") : "";
+      const fecha = m.created_at ? fmtDate(m.created_at) : "";
 
       if (concepto.includes("comisión") || concepto.includes("comision") || concepto.includes("liquidación") || concepto.includes("liquidacion")) {
         comisionesDetalle.push({ concepto: m.concepto || "Comisión", monto, fecha });
@@ -106,7 +106,7 @@ export default function ReporteSemanalPage() {
         comisionesDetalle.push({
           concepto: "Comisión cobrador",
           monto,
-          fecha: c.created_at ? format(new Date(c.created_at), "dd/MM/yyyy") : "",
+          fecha: c.created_at ? fmtDate(c.created_at) : "",
         });
         totalComisiones += monto;
       }

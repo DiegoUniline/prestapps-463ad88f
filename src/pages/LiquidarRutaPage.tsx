@@ -535,7 +535,7 @@ export default function LiquidarRutaPage() {
               <TableBody>
                 {historial.map((l: any) => (
                   <TableRow key={l.id}>
-                    <TableCell className="text-[12px]">{format(new Date(l.created_at), "dd/MM/yyyy HH:mm")}</TableCell>
+                    <TableCell className="text-[12px]">{fmtDateTime(l.created_at)}</TableCell>
                     <TableCell className="text-[13px] font-medium">{l.cobrador_nombre || "—"}</TableCell>
                     <TableCell className="text-right text-[13px] font-semibold">{$$(l.total_cobrado)}</TableCell>
                     <TableCell className="text-right text-[13px]">{$$(l.monto_depositado)}</TableCell>

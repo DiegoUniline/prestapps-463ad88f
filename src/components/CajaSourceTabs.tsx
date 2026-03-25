@@ -59,7 +59,7 @@ export function PrestamosTab({ cajaId }: { cajaId: string }) {
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-medium">{p.id_prestamo}</p>
                 <p className="text-[11px] text-muted-foreground truncate">{(p.clientes as any)?.nombre_completo || "—"}</p>
-                <p className="text-[11px] text-muted-foreground">{p.created_at ? format(new Date(p.created_at), "dd/MM/yy", { locale: es }) : "—"}</p>
+                <p className="text-[11px] text-muted-foreground">{p.created_at ? fmtDate(p.created_at, "dd/MM/yy") : "—"}</p>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-[13px] font-semibold text-destructive">-{$$(Number(p.monto_solicitado || 0))}</p>
@@ -95,7 +95,7 @@ export function PrestamosTab({ cajaId }: { cajaId: string }) {
           <TableBody>
             {prestamos.map(p => (
               <TableRow key={p.id} className="border-b border-border/50 cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/prestamos/${p.id}`)}>
-                <TableCell className="text-[12px] px-3 whitespace-nowrap">{p.created_at ? format(new Date(p.created_at), "dd/MM/yy", { locale: es }) : "—"}</TableCell>
+                <TableCell className="text-[12px] px-3 whitespace-nowrap">{p.created_at ? fmtDate(p.created_at, "dd/MM/yy") : "—"}</TableCell>
                 <TableCell className="text-[13px] px-3 font-medium">{p.id_prestamo}</TableCell>
                 <TableCell className="text-[13px] px-3 max-w-[200px] truncate">{(p.clientes as any)?.nombre_completo || "—"}</TableCell>
                 <TableCell className="text-[12px] px-3">
@@ -175,7 +175,7 @@ export function PagosTab({ cajaId }: { cajaId: string }) {
                   <p className="text-[13px] font-medium">{prestamo?.id_prestamo || "—"}</p>
                   <p className="text-[11px] text-muted-foreground truncate">{prestamo?.clientes?.nombre_completo || "—"}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {p.fecha_pago ? format(new Date(p.fecha_pago), "dd/MM/yy", { locale: es }) : "—"}
+                    {p.fecha_pago ? fmtDate(p.fecha_pago, "dd/MM/yy") : "—"}
                     {p.metodo_pago && <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">{p.metodo_pago}</span>}
                   </p>
                 </div>
@@ -213,7 +213,7 @@ export function PagosTab({ cajaId }: { cajaId: string }) {
               const prestamo = p.prestamos as any;
               return (
                 <TableRow key={p.id} className={cn("border-b border-border/50", p.anulado && "opacity-50")}>
-                  <TableCell className="text-[12px] px-3 whitespace-nowrap">{p.fecha_pago ? format(new Date(p.fecha_pago), "dd/MM/yy", { locale: es }) : "—"}</TableCell>
+                  <TableCell className="text-[12px] px-3 whitespace-nowrap">{p.fecha_pago ? fmtDate(p.fecha_pago, "dd/MM/yy") : "—"}</TableCell>
                   <TableCell className="text-[13px] px-3 font-medium">{prestamo?.id_prestamo || "—"}</TableCell>
                   <TableCell className="text-[13px] px-3 max-w-[200px] truncate">{prestamo?.clientes?.nombre_completo || "—"}</TableCell>
                   <TableCell className="text-[12px] px-3">{p.metodo_pago || "—"}</TableCell>
@@ -292,7 +292,7 @@ export function TransferenciasTab({ cajaId }: { cajaId: string }) {
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-medium truncate">{r.concepto || "Transferencia"}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {r.created_at ? format(new Date(r.created_at), "dd/MM/yy HH:mm", { locale: es }) : "—"}
+                  {r.created_at ? fmtDate(r.created_at, "dd/MM/yy HH:mm") : "—"}
                 </p>
               </div>
               <p className={cn("text-[13px] font-semibold shrink-0", r.tipo === "entrada" ? "text-success" : "text-destructive")}>
@@ -326,7 +326,7 @@ export function TransferenciasTab({ cajaId }: { cajaId: string }) {
           <TableBody>
             {rows.map(r => (
               <TableRow key={r.id} className="border-b border-border/50">
-                <TableCell className="text-[12px] px-3 whitespace-nowrap">{r.created_at ? format(new Date(r.created_at), "dd/MM/yy HH:mm", { locale: es }) : "—"}</TableCell>
+                <TableCell className="text-[12px] px-3 whitespace-nowrap">{r.created_at ? fmtDate(r.created_at, "dd/MM/yy HH:mm") : "—"}</TableCell>
                 <TableCell className="text-[13px] px-3 max-w-[300px] truncate">{r.concepto || "Transferencia"}</TableCell>
                 <TableCell className="text-right text-[13px] px-3 text-success font-medium">{r.tipo === "entrada" ? $$(Number(r.monto || 0)) : ""}</TableCell>
                 <TableCell className="text-right text-[13px] px-3 text-destructive font-medium">{r.tipo === "salida" ? $$(Number(r.monto || 0)) : ""}</TableCell>

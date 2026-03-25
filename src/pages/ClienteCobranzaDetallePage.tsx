@@ -755,7 +755,7 @@ export default function ClienteCobranzaDetallePage() {
                   .filter((p: any) => filtroPrestamo === "todos" || p.prestamo_id === filtroPrestamo)
                   .map((p: any) => (
                     <TableRow key={p.id} className={cn("text-xs", p.anulado && "opacity-40 line-through")}>
-                      <TableCell>{p.created_at ? format(new Date(p.created_at), "dd/MM/yy HH:mm") : "—"}</TableCell>
+                      <TableCell>{p.created_at ? fmtDate(p.created_at, "dd/MM/yy HH:mm") : "—"}</TableCell>
                       <TableCell className="font-medium">{p.idPrestamo}</TableCell>
                       <TableCell className="text-right font-medium">{$$(Number(p.monto_recibido))}</TableCell>
                       <TableCell className="text-right">{$$(Number(p.aplicado_capital || 0))}</TableCell>

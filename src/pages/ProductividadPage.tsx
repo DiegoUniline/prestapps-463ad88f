@@ -592,7 +592,7 @@ export default function ProductividadPage() {
                     <TableCell className="font-medium text-[13px]">{c.clienteNombre}</TableCell>
                     <TableCell className="text-[13px]">{c.asesor}</TableCell>
                     <TableCell className="text-right text-[13px]">
-                      {c.ultimaVisita ? format(new Date(c.ultimaVisita), "dd/MM/yyyy") : "—"}
+                      {c.ultimaVisita ? fmtDate(c.ultimaVisita) : "—"}
                     </TableCell>
                     <TableCell className="text-right">{staleBadge(c.diasSinVisita)}</TableCell>
                   </TableRow>

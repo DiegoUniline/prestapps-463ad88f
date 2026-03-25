@@ -266,7 +266,7 @@ export default function GastosPage() {
                   </div>
                   <p className="font-semibold text-destructive text-[13px] shrink-0 ml-2">-{$$(g.monto)}</p>
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{format(new Date(g.fecha), "dd/MM/yyyy HH:mm", { locale: es })}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{fmtDateTime(g.fecha)}</p>
               </div>
             ))}
           </div>
@@ -295,7 +295,7 @@ export default function GastosPage() {
                     {filtered.map((g) => (
                       <TableRow key={g.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                         <TableCell className="text-[13px] px-3">
-                          {format(new Date(g.fecha), "dd/MM/yyyy HH:mm", { locale: es })}
+                          {fmtDateTime(g.fecha)}
                         </TableCell>
                         <TableCell className="px-3">
                           <Badge variant="outline" className="text-[11px]">{g.categoria}</Badge>
