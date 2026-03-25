@@ -91,12 +91,7 @@ const ALL_COLUMNS: ColumnDef[] = [
           <span className="font-medium text-[13px] whitespace-nowrap">{p.cliente}</span>
           {p.ultimoPagoFecha && (
             <p className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">
-              Últ. pago: {(() => {
-                const d = new Date(p.ultimoPagoFecha + "T12:00:00");
-                const dia = d.toLocaleDateString("es-MX", { weekday: "long" });
-                const fecha = d.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
-                return `${dia.charAt(0).toUpperCase() + dia.slice(1)} ${fecha}`;
-              })()} · {$$(p.ultimoPagoMonto ?? 0)}
+              Últ. pago: {fmtDate(p.ultimoPagoFecha, "EEEE dd/MM/yyyy")} · {$$(p.ultimoPagoMonto ?? 0)}
             </p>
           )}
         </div>
@@ -783,12 +778,7 @@ export default function PrestamosPage() {
                     <p className="text-[11px] text-muted-foreground">{p.idPrestamo} · {fmtDate(p.fechaRegistro)}</p>
                     {p.ultimoPagoFecha && (
                       <p className="text-[10px] text-muted-foreground leading-tight">
-                        Últ. pago: {(() => {
-                          const dd = new Date(p.ultimoPagoFecha + "T12:00:00");
-                          const dia = dd.toLocaleDateString("es-MX", { weekday: "short" });
-                          const fecha = dd.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
-                          return `${dia.charAt(0).toUpperCase() + dia.slice(1)} ${fecha}`;
-                        })()} · {$$(p.ultimoPagoMonto ?? 0)}
+                        Últ. pago: {fmtDate(p.ultimoPagoFecha, "EEE dd/MM")} · {$$(p.ultimoPagoMonto ?? 0)}
                       </p>
                     )}
                   </div>
