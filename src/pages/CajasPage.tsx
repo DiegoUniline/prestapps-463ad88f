@@ -68,7 +68,7 @@ function usePrestamosByCaja(empresaId?: string) {
 
         const hayAtraso = !!a.fecha_vencimiento && a.fecha_vencimiento < today;
         if (hayAtraso && Number(a.saldo_total || 0) > 0 && Number(p?.valor_mora || 0) > 0) {
-          const diasAtraso = Math.max(0, Math.floor((new Date(today).getTime() - new Date(a.fecha_vencimiento).getTime()) / 86400000));
+          const diasAtraso = Math.max(0, Math.floor((parseLocalDate(today).getTime() - parseLocalDate(a.fecha_vencimiento).getTime()) / 86400000));
           const baseMora = p?.tipo_mora === "porcentaje"
             ? Number(a.capital_interes || 0) * (Number(p?.valor_mora || 0) / 100) * diasAtraso
             : Number(p?.valor_mora || 0) * diasAtraso;

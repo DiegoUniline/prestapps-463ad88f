@@ -223,7 +223,7 @@ function useLeadScoring(empresaId: string) {
         for (const p of cliPrestamos) {
           const pCuotas = cuotasByPrestamo[p.id] || [];
           for (const c of pCuotas) {
-            const venc = new Date(c.fecha_vencimiento);
+            const venc = parseLocalDate(c.fecha_vencimiento);
             const diffDays = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
             const isFuture = diffDays < 0; // cuota hasn't reached due date yet
             const dias = Number(c.dias_atraso || 0);
