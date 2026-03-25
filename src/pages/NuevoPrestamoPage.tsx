@@ -587,6 +587,39 @@ export default function NuevoPrestamoPage() {
               </div>
             </div>
 
+            {/* Ignorar días */}
+            <div className="space-y-1.5">
+              <Label className="text-[13px] flex items-center gap-1.5">
+                <CalendarOff className="h-3.5 w-3.5" /> Ignorar días
+              </Label>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAY_LABELS.map((d) => {
+                  const active = diasIgnorados.includes(d.value);
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() =>
+                        setDiasIgnorados((prev) =>
+                          active ? prev.filter((v) => v !== d.value) : [...prev, d.value]
+                        )
+                      }
+                      className={cn(
+                        "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                      )}
+                    >
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Si una cuota cae en un día ignorado, se moverá al siguiente día hábil.
+              </p>
+            </div>
 
 
             {/* Carga inicial checkbox - only for prestamos */}
