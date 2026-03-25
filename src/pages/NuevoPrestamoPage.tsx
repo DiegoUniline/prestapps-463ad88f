@@ -19,7 +19,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, CalendarIcon, Save, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Save, AlertTriangle, CalendarOff } from "lucide-react";
+import { calcNextDate } from "@/lib/financial";
 import { format, addDays, addWeeks, addMonths, parse, isValid } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
@@ -49,15 +50,16 @@ interface CuotaPreview {
   saldo: number;
 }
 
-function calcNextDate(base: Date, frecuencia: string, n: number): Date {
-  switch (frecuencia) {
-    case "diario": return addDays(base, n);
-    case "semanal": return addWeeks(base, n);
-    case "quincenal": return addDays(base, n * 15);
-    case "mensual": return addMonths(base, n);
-    default: return addWeeks(base, n);
-  }
-}
+// Day names for skip days UI
+const DAY_LABELS = [
+  { value: 0, label: "Dom" },
+  { value: 1, label: "Lun" },
+  { value: 2, label: "Mar" },
+  { value: 3, label: "Mié" },
+  { value: 4, label: "Jue" },
+  { value: 5, label: "Vie" },
+  { value: 6, label: "Sáb" },
+];
 
 export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
@@ -87,6 +89,7 @@ export default function NuevoPrestamoPage() {
   const [notas, setNotas] = useState("");
   const [codigoInterno, setCodigoInterno] = useState("");
   const [tipoCuenta, setTipoCuenta] = useState<string>("prestamo");
+  const [diasIgnorados, setDiasIgnorados] = useState<number[]>([]);
 
   // Pre-fill codigoInterno with next PRE-XXXX
   useEffect(() => {
@@ -184,7 +187,7 @@ export default function NuevoPrestamoPage() {
 
         rows.push({
           num: i + 1,
-          fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
+          fechaVencimiento: format(calcNextDate(baseDate, frecuencia as any, i, diasIgnorados), "dd/MM/yyyy"),
           capital,
           interes,
           cuota: cuotaVal,
@@ -203,7 +206,7 @@ export default function NuevoPrestamoPage() {
         saldo -= capitalPorCuota;
         return {
           num: i + 1,
-          fechaVencimiento: format(calcNextDate(baseDate, frecuencia, i), "dd/MM/yyyy"),
+          fechaVencimiento: format(calcNextDate(baseDate, frecuencia as any, i, diasIgnorados), "dd/MM/yyyy"),
           capital: Math.round(capitalPorCuota * 100) / 100,
           interes: Math.round(inter * 100) / 100,
           cuota: Math.round(cuotaVal * 100) / 100,
@@ -211,7 +214,7 @@ export default function NuevoPrestamoPage() {
         };
       });
     }
-  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago, montoTotalPagar]);
+  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago, montoTotalPagar, diasIgnorados]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -282,7 +285,7 @@ export default function NuevoPrestamoPage() {
             capital: c.capital,
             interes: c.interes,
             capital_interes: c.cuota,
-            fecha_vencimiento: format(calcNextDate(baseDate, frecuencia, c.num - 1), "yyyy-MM-dd"),
+            fecha_vencimiento: format(calcNextDate(baseDate, frecuencia as any, c.num - 1, diasIgnorados), "yyyy-MM-dd"),
             saldo_capital: yaPagada ? 0 : c.capital,
             saldo_interes: yaPagada ? 0 : c.interes,
             saldo_total: yaPagada ? 0 : c.cuota,
@@ -584,6 +587,39 @@ export default function NuevoPrestamoPage() {
               </div>
             </div>
 
+            {/* Ignorar días */}
+            <div className="space-y-1.5">
+              <Label className="text-[13px] flex items-center gap-1.5">
+                <CalendarOff className="h-3.5 w-3.5" /> Ignorar días
+              </Label>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAY_LABELS.map((d) => {
+                  const active = diasIgnorados.includes(d.value);
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() =>
+                        setDiasIgnorados((prev) =>
+                          active ? prev.filter((v) => v !== d.value) : [...prev, d.value]
+                        )
+                      }
+                      className={cn(
+                        "px-2.5 py-1 rounded-md text-xs font-medium border transition-colors",
+                        active
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                      )}
+                    >
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Si una cuota cae en un día ignorado, se moverá al siguiente día hábil.
+              </p>
+            </div>
 
 
             {/* Carga inicial checkbox - only for prestamos */}

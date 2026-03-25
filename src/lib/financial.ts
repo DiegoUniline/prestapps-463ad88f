@@ -46,7 +46,7 @@ export function calcularCuotaFija(monto: number, cuotas: number, tasaPorcentaje:
 export function calcularAmortizacion(
   monto: number, cuotas: number, tasa: number,
   modalidad: Modalidad, fechaPrimerPago: string, frecuencia: Frecuencia,
-  cuotaRedondeada?: number
+  cuotaRedondeada?: number, skipDays?: number[]
 ): AmortizacionRow[] {
   const rows: AmortizacionRow[] = [];
   const base = parseLocalDate(fechaPrimerPago);
@@ -89,7 +89,7 @@ export function calcularAmortizacion(
 
       rows.push({
         numCuota: i,
-        fechaVencimiento: calcNextDate(base, frecuencia, i - 1).toISOString().slice(0, 10),
+        fechaVencimiento: calcNextDate(base, frecuencia, i - 1, skipDays).toISOString().slice(0, 10),
         capital: cap.toDecimalPlaces(2).toNumber(),
         interes: int.toDecimalPlaces(2).toNumber(),
         capitalInteres: cuotaVal.toDecimalPlaces(2).toNumber(),
@@ -110,7 +110,7 @@ export function calcularAmortizacion(
 
       rows.push({
         numCuota: i,
-        fechaVencimiento: calcNextDate(base, frecuencia, i - 1).toISOString().slice(0, 10),
+        fechaVencimiento: calcNextDate(base, frecuencia, i - 1, skipDays).toISOString().slice(0, 10),
         capital: cap.toDecimalPlaces(2).toNumber(),
         interes: int.toDecimalPlaces(2).toNumber(),
         capitalInteres: cap.plus(int).toDecimalPlaces(2).toNumber(),
@@ -188,14 +188,31 @@ export function redondearCuota(cuotaCalculada: number, cuotaDeseada: number, num
 }
 
 /**
- * Calculate next date based on frequency
+ * Adjust a date forward if it falls on a skipped weekday.
+ * skipDays is an array of JS weekday numbers (0=Sun, 1=Mon, ..., 6=Sat).
  */
-export function calcNextDate(base: Date, frecuencia: Frecuencia, n: number): Date {
-  switch (frecuencia) {
-    case "diario": return addDays(base, n);
-    case "semanal": return addWeeks(base, n);
-    case "quincenal": return addDays(base, n * 15);
-    case "mensual": return addMonths(base, n);
-    default: return addWeeks(base, n);
+export function adjustForSkipDays(date: Date, skipDays: number[]): Date {
+  if (!skipDays || skipDays.length === 0) return date;
+  let d = new Date(date);
+  let guard = 0;
+  while (skipDays.includes(d.getDay()) && guard < 7) {
+    d = addDays(d, 1);
+    guard++;
   }
+  return d;
+}
+
+/**
+ * Calculate next date based on frequency, optionally skipping certain weekdays
+ */
+export function calcNextDate(base: Date, frecuencia: Frecuencia, n: number, skipDays?: number[]): Date {
+  let d: Date;
+  switch (frecuencia) {
+    case "diario": d = addDays(base, n); break;
+    case "semanal": d = addWeeks(base, n); break;
+    case "quincenal": d = addDays(base, n * 15); break;
+    case "mensual": d = addMonths(base, n); break;
+    default: d = addWeeks(base, n);
+  }
+  return adjustForSkipDays(d, skipDays || []);
 }
