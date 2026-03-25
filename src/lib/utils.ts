@@ -1,7 +1,20 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format as fnsFormat } from "date-fns";
+import { format as fnsFormat, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+
+/**
+ * Parse a date string without timezone shift.
+ * "2026-05-16" → local May 16, not UTC which could shift to May 15.
+ */
+export function parseLocalDate(dateStr: string): Date {
+  // If it's a date-only string (yyyy-MM-dd), parse manually to avoid UTC interpretation
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return parseISO(dateStr);
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -37,7 +50,7 @@ export function fmtDate(
 ): string {
   if (!date) return "—";
   try {
-    const d = typeof date === "string" ? new Date(date) : date;
+    const d = typeof date === "string" ? parseLocalDate(date) : date;
     return fnsFormat(d, pattern, { locale: es });
   } catch {
     return "—";

@@ -1,5 +1,6 @@
 import Decimal from "decimal.js";
 import { addDays, addWeeks, addMonths } from "date-fns";
+import { parseLocalDate } from "@/lib/utils";
 
 // Configure Decimal for financial precision
 Decimal.set({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
@@ -48,7 +49,7 @@ export function calcularAmortizacion(
   cuotaRedondeada?: number
 ): AmortizacionRow[] {
   const rows: AmortizacionRow[] = [];
-  const base = new Date(fechaPrimerPago);
+  const base = parseLocalDate(fechaPrimerPago);
 
   if (modalidad === "fijo") {
     const m = new Decimal(monto);
@@ -164,8 +165,8 @@ export function aplicarWaterfall(
  * Calculate days overdue
  */
 export function calcularDiasAtraso(fechaVencimiento: string, fechaActual?: string): number {
-  const venc = new Date(fechaVencimiento);
-  const actual = fechaActual ? new Date(fechaActual) : new Date();
+  const venc = parseLocalDate(fechaVencimiento);
+  const actual = fechaActual ? parseLocalDate(fechaActual) : new Date();
   const diff = Math.floor((actual.getTime() - venc.getTime()) / (1000 * 60 * 60 * 24));
   return Math.max(0, diff);
 }

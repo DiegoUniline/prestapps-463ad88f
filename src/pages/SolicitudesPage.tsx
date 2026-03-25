@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
-import { $$ } from "@/lib/utils";
+import { $$, parseLocalDate } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -109,7 +109,7 @@ export default function SolicitudesPage() {
       if (error) throw error;
 
       // Generate amortization
-      const baseDate = sol.fecha_primer_pago ? new Date(sol.fecha_primer_pago) : new Date();
+      const baseDate = sol.fecha_primer_pago ? parseLocalDate(sol.fecha_primer_pago) : new Date();
 
       if (sol.modalidad === "fijo") {
         const totalInteres = montoTotalPagar - monto;
