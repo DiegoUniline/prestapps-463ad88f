@@ -19,7 +19,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, CalendarIcon, Save, AlertTriangle } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Save, AlertTriangle, CalendarOff } from "lucide-react";
+import { calcNextDate } from "@/lib/financial";
 import { format, addDays, addWeeks, addMonths, parse, isValid } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
@@ -49,15 +50,16 @@ interface CuotaPreview {
   saldo: number;
 }
 
-function calcNextDate(base: Date, frecuencia: string, n: number): Date {
-  switch (frecuencia) {
-    case "diario": return addDays(base, n);
-    case "semanal": return addWeeks(base, n);
-    case "quincenal": return addDays(base, n * 15);
-    case "mensual": return addMonths(base, n);
-    default: return addWeeks(base, n);
-  }
-}
+// Day names for skip days UI
+const DAY_LABELS = [
+  { value: 0, label: "Dom" },
+  { value: 1, label: "Lun" },
+  { value: 2, label: "Mar" },
+  { value: 3, label: "Mié" },
+  { value: 4, label: "Jue" },
+  { value: 5, label: "Vie" },
+  { value: 6, label: "Sáb" },
+];
 
 export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
