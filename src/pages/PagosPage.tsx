@@ -17,7 +17,7 @@ import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight as C
 import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
 import { format } from "date-fns";
-import { cn, $$, fmtDate } from "@/lib/utils";
+import { cn, $$, fmtDate, parseLocalDate } from "@/lib/utils";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 import { AnularPagoModal } from "@/components/AnularPagoModal";
 import { EditPagoModal } from "@/components/EditPagoModal";
@@ -257,7 +257,7 @@ export default function PagosPage() {
       if (selCaja.size > 0 && !selCaja.has(p.caja)) return false;
       if (selRuta.size > 0 && !selRuta.has(p.ruta)) return false;
       if (p.fecha) {
-        const d = new Date(p.fecha);
+        const d = parseLocalDate(p.fecha);
         if (regDesde && d < regDesde) return false;
         if (regHasta && d > regHasta) return false;
       }
@@ -284,7 +284,7 @@ export default function PagosPage() {
       else if (groupBy === "shortId") key = `${p.shortId} — ${p.cliente}`;
       else if (groupBy === "metodo") key = p.metodo;
       else if (groupBy === "mesPago") {
-        const d = p.fecha ? new Date(p.fecha) : null;
+        const d = p.fecha ? parseLocalDate(p.fecha) : null;
         key = d ? `${monthNames[d.getMonth()]} ${d.getFullYear()}` : "Sin fecha";
       } else key = "—";
       if (!groups[key]) groups[key] = [];
