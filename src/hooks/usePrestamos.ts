@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
+import { parseLocalDate } from "@/lib/utils";
 
 export interface PrestamoListItem {
   id: string;
