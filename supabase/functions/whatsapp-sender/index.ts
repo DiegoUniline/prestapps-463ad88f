@@ -134,7 +134,10 @@ Deno.serve(async (req) => {
     // ── send-reminder (batch reminders) ────────────────────
     if (action === "send-reminder") {
       const { reminder_type } = body; // 'dia_antes' or 'vencido'
-      
+
+      // Recalculate mora before querying so saldo_total includes current late fees
+      await supabase.rpc("recalcular_mora_empresa", { p_empresa_id: empresa_id });
+
       // Get template
       const templateTipo = reminder_type === "dia_antes" ? "aviso_dia_antes" : "aviso_vencido";
       const { data: template } = await supabase
