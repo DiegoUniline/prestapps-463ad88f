@@ -90,6 +90,9 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
 
       if (error) throw error;
 
+      // Recalculate amortization so new mora/interest values take effect
+      await supabase.rpc("rebuild_amortizacion", { p_prestamo_id: prestamo.id });
+
       // If caja changed, move the desembolso in movimientos_caja
       if (cajaChanged) {
         const folio = prestamo.id_prestamo || prestamo.id.slice(0, 8);
