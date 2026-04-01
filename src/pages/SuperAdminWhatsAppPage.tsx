@@ -140,32 +140,51 @@ export default function SuperAdminWhatsAppPage() {
     },
   });
 
-  // Fetch saved templates overrides
+  // Fetch saved templates overrides (untyped table)
   const { data: savedTemplates } = useQuery({
     queryKey: ["sa-system-templates"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("system_notification_templates")
-        .select("*");
-      return data || [];
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/system_notification_templates?select=*`,
+        {
+          headers: {
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+        }
+      );
+      return res.ok ? await res.json() : [];
     },
   });
 
   // Save template override
   const saveTemplate = useMutation({
     mutationFn: async ({ key, message }: { key: string; message: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = {
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${session?.access_token}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      };
+      const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/system_notification_templates`;
+
       const existing = savedTemplates?.find((t: any) => t.template_key === key);
       if (existing) {
-        const { error } = await supabase
-          .from("system_notification_templates")
-          .update({ message_template: message, updated_at: new Date().toISOString() })
-          .eq("id", existing.id);
-        if (error) throw error;
+        const res = await fetch(`${baseUrl}?id=eq.${existing.id}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ message_template: message, updated_at: new Date().toISOString() }),
+        });
+        if (!res.ok) throw new Error(await res.text());
       } else {
-        const { error } = await supabase
-          .from("system_notification_templates")
-          .insert({ template_key: key, message_template: message });
-        if (error) throw error;
+        const res = await fetch(baseUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ template_key: key, message_template: message }),
+        });
+        if (!res.ok) throw new Error(await res.text());
       }
     },
     onSuccess: () => {

@@ -142,6 +142,7 @@ const App = () => (
               <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><LazyPage><UsuariosPage /></LazyPage></RoleGuard>} />
               <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><LazyPage><UsuariosPage /></LazyPage></RoleGuard>} />
               <Route path="/empresas" element={<SuperAdminGuard><LazyPage><EmpresasPage /></LazyPage></SuperAdminGuard>} />
+              <Route path="/sa-whatsapp" element={<SuperAdminGuard><LazyPage><SuperAdminWhatsAppPage /></LazyPage></SuperAdminGuard>} />
               <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]}><LazyPage><WhatsAppConfigPage /></LazyPage></RoleGuard>} />
               <Route path="/crm" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><CrmCobranzaPage /></LazyPage></RoleGuard>} />
               <Route path="/scoring" element={<RoleGuard allowed={["admin", "supervisor"]}><LazyPage><LeadScoringPage /></LazyPage></RoleGuard>} />
