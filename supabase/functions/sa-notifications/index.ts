@@ -44,7 +44,7 @@ serve(async (req) => {
       const SYSTEM_TIPOS = [
         "factura_generada", "factura_generada_stripe", "pago_exitoso",
         "recordatorio_gracia", "suscripcion_suspendida",
-        "recordatorio_vencimiento", "alerta_pago", "test_factura",
+        "recordatorio_vencimiento", "alerta_pago", "alerta_cobro_fallido", "test_factura",
       ];
       const { data, error } = await supabase
         .from("whatsapp_log")

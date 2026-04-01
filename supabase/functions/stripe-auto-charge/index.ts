@@ -134,31 +134,7 @@ serve(async (req) => {
           status: paymentIntent.status,
         });
 
-        // Send WhatsApp notification
-        const { data: cliente } = await supabase
-          .from("clientes")
-          .select("telefono, nombre_completo")
-          .eq("id", prestamo.cliente_id)
-          .single();
-
-        if (cliente?.telefono) {
-          try {
-            const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-sender`;
-            await fetch(fnUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-              },
-              body: JSON.stringify({
-                action: "send-message",
-                empresa_id: prestamo.empresa_id,
-                phone: cliente.telefono,
-                message: `✅ Cobro automático: Se ha procesado $${monto.toFixed(2)} de la cuota #${cuota.num_cuota} del préstamo PRE-${prestamo.id.slice(0, 8)} a su tarjeta ${pm.brand} ****${pm.last4}. Gracias por su pago.`,
-              }),
-            });
-          } catch { /* silent */ }
-        }
+        // (WA notifications are sent by billing-notifications at 9AM)
 
         results.push({
           prestamo_id: prestamo.id,

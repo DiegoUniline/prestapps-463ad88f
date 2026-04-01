@@ -228,42 +228,7 @@ serve(async (req) => {
             logStep("Invoice created", { empresa_id: sub.empresa_id, total, isStripeBilled });
           }
 
-          // ── Get empresa name for WA messages ──
-          const { data: empresaData } = await supabase
-            .from("empresas")
-            .select("nombre")
-            .eq("id", sub.empresa_id)
-            .single();
-          const empresaNombre = empresaData?.nombre || "tu empresa";
-          const planNombre = plan?.nombre || "tu plan";
-          const mesNombre = now.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
-
-          // ── Send WhatsApp: Invoice generated notification ──
-          if (isStripeBilled) {
-            // Stripe will auto-charge — friendly heads-up
-            await notifyEmpresaAdmins(supabase, sub.empresa_id,
-              `Hola 👋 *${empresaNombre}*\n\n` +
-              `Gracias por usar *PrestApps*. Hemos generado tu factura del mes de *${mesNombre}*.\n\n` +
-              `🧾 *${facNum}*\n` +
-              `💵 *${formatMXN(total)} MXN* · ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n\n` +
-              `💳 Se cobrará automáticamente a tu tarjeta.\n` +
-              `Si el cobro falla, cuentas con *${DIAS_GRACIA} días* antes de que se pause tu servicio.\n\n` +
-              `¿Necesitas cambiar tu tarjeta? Entra a *Mi Suscripción* en la app. 📱`,
-              "factura_generada",
-            );
-          } else {
-            // Manual / no-stripe — let them know they need to pay
-            await notifyEmpresaAdmins(supabase, sub.empresa_id,
-              `Hola 👋 *${empresaNombre}*\n\n` +
-              `Gracias por usar *PrestApps*. Tu factura de *${mesNombre}* ya está lista.\n\n` +
-              `🧾 *${facNum}*\n` +
-              `💵 *${formatMXN(total)} MXN* · ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n` +
-              `📅 Fecha límite: *${formatDate(fechaVencimiento)}*\n\n` +
-              `Tienes *${DIAS_GRACIA} días* para pagar sin que se interrumpa tu servicio.\n\n` +
-              `👉 Entra a *Mi Suscripción* en la app para completar tu pago. 📱`,
-              "factura_generada",
-            );
-          }
+          // (WA notifications are sent by billing-notifications at 9AM)
 
           // ── For manual subs with Stripe customer — attempt charge ──
           if (!isStripeBilled && stripe && sub.stripe_customer_id) {
@@ -310,15 +275,7 @@ serve(async (req) => {
                   logStep("Manual sub charged successfully", { empresa_id: sub.empresa_id, amount: total });
                   results.push({ empresa_id: sub.empresa_id, action: "charged", amount: total });
 
-                  // WA: Payment successful
-                  await notifyEmpresaAdmins(supabase, sub.empresa_id,
-                    `✅ *${empresaNombre}* — Pago confirmado\n\n` +
-                    `Tu pago de *${formatMXN(total)} MXN* del mes de *${mesNombre}* se procesó correctamente.\n\n` +
-                    `🧾 ${facNum}\n` +
-                    `📅 Próximo cobro: *${formatDate(nextMonth)}*\n\n` +
-                    `¡Sigue creciendo tu negocio con *PrestApps*! 💪`,
-                    "pago_exitoso",
-                  );
+                  // (WA notification sent by billing-notifications at 9AM)
                 } else {
                   throw new Error(`PaymentIntent status: ${pi.status}`);
                 }
@@ -375,217 +332,15 @@ serve(async (req) => {
         logStep("Grace expired → suspendida", { empresa_id: sub.empresa_id, daysSinceGracia });
         results.push({ empresa_id: sub.empresa_id, action: "suspendida", daysSinceGracia });
 
-        // ── WA: Subscription suspended ──
-        const { data: empData } = await supabase
-          .from("empresas")
-          .select("nombre")
-          .eq("id", sub.empresa_id)
-          .single();
-
-        await notifyEmpresaAdmins(supabase, sub.empresa_id,
-          `⚠️ *${empData?.nombre || "tu empresa"}* — Servicio pausado\n\n` +
-          `No recibimos tu pago a tiempo y tu cuenta ha sido suspendida temporalmente.\n\n` +
-          `🔒 Los módulos operativos están restringidos hasta que regularices tu pago.\n\n` +
-          `Para reactivar al instante:\n` +
-          `1️⃣ Abre la app → *Mi Suscripción*\n` +
-          `2️⃣ Registra o actualiza tu método de pago\n` +
-          `3️⃣ Tu acceso se restaura de inmediato ✅\n\n` +
-          `Tus datos están seguros, no se perderá nada. 🔐\n\n` +
-          `¿Necesitas ayuda? Responde aquí y te apoyamos. 💬`,
-          "suscripcion_suspendida",
-        );
+        // (WA notification sent by billing-notifications at 9AM)
       } else {
         const daysLeft = DIAS_GRACIA - daysSinceGracia;
         logStep("Still in grace", { empresa_id: sub.empresa_id, daysLeft });
-
-        // ── WA: Daily grace reminder (only if >0 days passed) ──
-        if (daysSinceGracia > 0) {
-          const { data: empData } = await supabase
-            .from("empresas")
-            .select("nombre")
-            .eq("id", sub.empresa_id)
-            .single();
-
-          await notifyEmpresaAdmins(supabase, sub.empresa_id,
-            `⏳ *${empData?.nombre || "tu empresa"}* — Pago pendiente\n\n` +
-            `Tu suscripción sigue sin pagarse. Te ${daysLeft === 1 ? "queda *1 día*" : `quedan *${daysLeft} días*`} antes de que pausemos tu servicio.\n\n` +
-            `👉 Entra a *Mi Suscripción* en la app y resuelve tu pago hoy.\n\n` +
-            `¡Estamos para ayudarte! 🙏`,
-            "recordatorio_gracia",
-          );
-        }
+        // (WA notification sent by billing-notifications at 9AM)
       }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // PART 3: Daily — Notify 1 day before expiration with Stripe payment link
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    logStep("Checking subscriptions expiring tomorrow");
-
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const tomorrowStr = tomorrow.toISOString().split("T")[0];
-
-    const { data: expiringSubs } = await supabase
-      .from("suscripciones")
-      .select("*, planes(*)")
-      .in("estado", ["trial", "activa"])
-      .eq("fecha_vencimiento", tomorrowStr);
-
-    logStep("Expiring tomorrow", { count: expiringSubs?.length || 0 });
-
-    for (const sub of expiringSubs || []) {
-      try {
-        const { data: empData } = await supabase
-          .from("empresas")
-          .select("nombre")
-          .eq("id", sub.empresa_id)
-          .single();
-        const empresaNombre = empData?.nombre || "tu empresa";
-
-        // Get admin email and info for Stripe customer
-        const { data: adminRoles } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "admin");
-
-        const adminIds = (adminRoles || []).map((a: any) => a.user_id);
-        const { data: adminProfiles } = await supabase
-          .from("profiles")
-          .select("id, nombre_completo, telefono")
-          .eq("empresa_id", sub.empresa_id)
-          .in("id", adminIds);
-
-        const adminProfile = (adminProfiles || [])[0];
-        if (!adminProfile) {
-          logStep("No admin found for empresa, skipping", { empresa_id: sub.empresa_id });
-          continue;
-        }
-
-        // Get admin email from auth
-        const { data: authData } = await supabase.auth.admin.getUserById(adminProfile.id);
-        const adminEmail = authData?.user?.email;
-
-        let checkoutUrl = "";
-
-        if (stripe && sub.plan_id && sub.planes?.stripe_price_id) {
-          try {
-            // Find or create Stripe customer
-            let customerId = sub.stripe_customer_id;
-
-            if (!customerId && adminEmail) {
-              const customers = await stripe.customers.list({ email: adminEmail, limit: 1 });
-              if (customers.data.length > 0) {
-                customerId = customers.data[0].id;
-              } else {
-                const customer = await stripe.customers.create({
-                  email: adminEmail,
-                  name: adminProfile.nombre_completo || empresaNombre,
-                  metadata: { empresa_id: sub.empresa_id },
-                });
-                customerId = customer.id;
-              }
-            }
-
-            const extraUsers = Math.max(0, sub.num_usuarios - (sub.planes?.usuarios_incluidos || 1));
-            const lineItems: any[] = [{ price: sub.planes.stripe_price_id, quantity: 1 }];
-
-            if (extraUsers > 0 && sub.planes.stripe_product_id) {
-              lineItems.push({
-                price_data: {
-                  currency: "mxn",
-                  product: sub.planes.stripe_product_id,
-                  unit_amount: Math.round(sub.precio_usuario_extra * 100),
-                  recurring: { interval: "month" as const },
-                },
-                quantity: extraUsers,
-              });
-            }
-
-            // Anchor billing to 1st of month after expiration
-            const postExpiry = new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
-            const nextFirst = new Date(Date.UTC(postExpiry.getUTCFullYear(), postExpiry.getUTCMonth() + 1, 1));
-            const anchorTs = Math.floor(nextFirst.getTime() / 1000);
-
-            const sessionParams: any = {
-              line_items: lineItems,
-              mode: "subscription",
-              success_url: `https://prestapps.lovable.app/mi-suscripcion?checkout=success`,
-              cancel_url: `https://prestapps.lovable.app/mi-suscripcion?checkout=cancel`,
-              metadata: {
-                empresa_id: sub.empresa_id,
-                plan_id: sub.plan_id,
-                num_usuarios: String(sub.num_usuarios),
-                renewal: "true",
-              },
-              subscription_data: {
-                billing_cycle_anchor: anchorTs,
-                proration_behavior: "create_prorations",
-                metadata: {
-                  empresa_id: sub.empresa_id,
-                  plan_id: sub.plan_id,
-                  num_usuarios: String(sub.num_usuarios),
-                },
-              },
-            };
-
-            if (customerId) {
-              sessionParams.customer = customerId;
-            } else if (adminEmail) {
-              sessionParams.customer_email = adminEmail;
-            }
-
-            const session = await stripe.checkout.sessions.create(sessionParams);
-            checkoutUrl = session.url || "";
-            logStep("Checkout session created for renewal", { empresa_id: sub.empresa_id, sessionId: session.id });
-          } catch (stripeErr: any) {
-            logStep("Error creating checkout for renewal", { empresa_id: sub.empresa_id, error: stripeErr?.message });
-          }
-        }
-
-        // Build the WhatsApp message
-        const planNombre = sub.planes?.nombre || "tu plan";
-        const precio = sub.planes?.precio_base_mes
-          ? formatMXN(sub.planes.precio_base_mes)
-          : "";
-        const esTrial = sub.estado === "trial";
-        const fechaVenc = formatDate(tomorrow);
-
-        let mensaje = "";
-
-        if (esTrial) {
-          mensaje =
-            `👋 *${empresaNombre}*\n\n` +
-            `Tu prueba gratuita de *PrestApps* termina *mañana ${fechaVenc}*. ⏰\n\n` +
-            `🎯 No pierdas el avance que llevas — activa tu plan y sigue operando sin pausa.\n\n` +
-            `📦 ${planNombre}\n` +
-            (precio ? `💵 Desde *${precio} MXN/mes*\n\n` : "\n") +
-            (checkoutUrl
-              ? `👉 Paga aquí y renueva al instante:\n${checkoutUrl}\n\n`
-              : `👉 Entra a *Mi Suscripción* en la app para activar tu plan.\n\n`) +
-            `Tu información está segura 🔐 y lista para seguir trabajando.`;
-        } else {
-          mensaje =
-            `👋 *${empresaNombre}*\n\n` +
-            `Tu suscripción de *PrestApps* vence *mañana ${fechaVenc}*. ⏰\n\n` +
-            `📦 ${planNombre}\n` +
-            (precio ? `💵 *${precio} MXN/mes*\n\n` : "\n") +
-            `Renueva hoy para que tu servicio no se interrumpa:\n\n` +
-            (checkoutUrl
-              ? `👉 Paga con un clic:\n${checkoutUrl}\n\n`
-              : `👉 Entra a *Mi Suscripción* en la app para renovar.\n\n`) +
-            `Al pagar, tu plan se activa de inmediato. ✅\n` +
-            `Tus datos están seguros. 🔐`;
-        }
-
-        await notifyEmpresaAdmins(supabase, sub.empresa_id, mensaje, "recordatorio_vencimiento");
-
-        logStep("Expiration reminder sent", { empresa_id: sub.empresa_id, esTrial, hasCheckoutUrl: !!checkoutUrl });
-        results.push({ empresa_id: sub.empresa_id, action: "expiration_reminder", esTrial });
-      } catch (err: any) {
-        logStep("Error processing expiration reminder", { empresa_id: sub.empresa_id, error: err?.message });
-        results.push({ empresa_id: sub.empresa_id, action: "reminder_error", error: err?.message });
-      }
-    }
+    // PART 3: Expiration reminders are now handled by billing-notifications at 9AM
 
     logStep("Billing cycle complete", { resultsCount: results.length });
 
