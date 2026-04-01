@@ -480,7 +480,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   onClick={async () => {
                     setSavingConfig(true);
                     try {
-                      await saFetch("save-system-wa-config", "POST", { api_url: sysUrl, api_token: sysToken });
+                      await saFetch("save-system-wa-config", "POST", { api_token: sysToken });
                       queryClient.invalidateQueries({ queryKey: ["sa-system-wa-config"] });
                       toast.success("Configuración del sistema guardada");
                     } catch (e: any) {
