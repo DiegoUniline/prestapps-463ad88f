@@ -228,42 +228,7 @@ serve(async (req) => {
             logStep("Invoice created", { empresa_id: sub.empresa_id, total, isStripeBilled });
           }
 
-          // ── Get empresa name for WA messages ──
-          const { data: empresaData } = await supabase
-            .from("empresas")
-            .select("nombre")
-            .eq("id", sub.empresa_id)
-            .single();
-          const empresaNombre = empresaData?.nombre || "tu empresa";
-          const planNombre = plan?.nombre || "tu plan";
-          const mesNombre = now.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
-
-          // ── Send WhatsApp: Invoice generated notification ──
-          if (isStripeBilled) {
-            // Stripe will auto-charge — friendly heads-up
-            await notifyEmpresaAdmins(supabase, sub.empresa_id,
-              `Hola 👋 *${empresaNombre}*\n\n` +
-              `Gracias por usar *PrestApps*. Hemos generado tu factura del mes de *${mesNombre}*.\n\n` +
-              `🧾 *${facNum}*\n` +
-              `💵 *${formatMXN(total)} MXN* · ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n\n` +
-              `💳 Se cobrará automáticamente a tu tarjeta.\n` +
-              `Si el cobro falla, cuentas con *${DIAS_GRACIA} días* antes de que se pause tu servicio.\n\n` +
-              `¿Necesitas cambiar tu tarjeta? Entra a *Mi Suscripción* en la app. 📱`,
-              "factura_generada",
-            );
-          } else {
-            // Manual / no-stripe — let them know they need to pay
-            await notifyEmpresaAdmins(supabase, sub.empresa_id,
-              `Hola 👋 *${empresaNombre}*\n\n` +
-              `Gracias por usar *PrestApps*. Tu factura de *${mesNombre}* ya está lista.\n\n` +
-              `🧾 *${facNum}*\n` +
-              `💵 *${formatMXN(total)} MXN* · ${planNombre} (${sub.num_usuarios} usuario${sub.num_usuarios > 1 ? "s" : ""})\n` +
-              `📅 Fecha límite: *${formatDate(fechaVencimiento)}*\n\n` +
-              `Tienes *${DIAS_GRACIA} días* para pagar sin que se interrumpa tu servicio.\n\n` +
-              `👉 Entra a *Mi Suscripción* en la app para completar tu pago. 📱`,
-              "factura_generada",
-            );
-          }
+          // (WA notifications are sent by billing-notifications at 9AM)
 
           // ── For manual subs with Stripe customer — attempt charge ──
           if (!isStripeBilled && stripe && sub.stripe_customer_id) {
