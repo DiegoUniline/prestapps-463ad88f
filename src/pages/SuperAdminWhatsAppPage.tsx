@@ -177,6 +177,12 @@ export default function SuperAdminWhatsAppPage() {
     queryFn: () => saFetch("templates"),
   });
 
+  // Fetch WA configs for all empresas
+  const { data: waConfigs, isLoading: configsLoading } = useQuery({
+    queryKey: ["sa-wa-configs"],
+    queryFn: () => saFetch("wa-configs"),
+  });
+
   // Save template
   const saveTemplate = useMutation({
     mutationFn: async ({ key, message }: { key: string; message: string }) => {
@@ -203,6 +209,8 @@ export default function SuperAdminWhatsAppPage() {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (tipoFilter !== "all" && l.tipo !== tipoFilter) return false;
       if (empresaFilter !== "all" && l.empresa_id !== empresaFilter) return false;
+      if (origenFilter === "sistema" && !SYSTEM_TIPOS.includes(l.tipo)) return false;
+      if (origenFilter === "empresa" && SYSTEM_TIPOS.includes(l.tipo)) return false;
       if (search) {
         const s = search.toLowerCase();
         const empresa = (l.empresas as any)?.nombre || "";
