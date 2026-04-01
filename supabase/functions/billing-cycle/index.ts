@@ -275,15 +275,7 @@ serve(async (req) => {
                   logStep("Manual sub charged successfully", { empresa_id: sub.empresa_id, amount: total });
                   results.push({ empresa_id: sub.empresa_id, action: "charged", amount: total });
 
-                  // WA: Payment successful
-                  await notifyEmpresaAdmins(supabase, sub.empresa_id,
-                    `✅ *${empresaNombre}* — Pago confirmado\n\n` +
-                    `Tu pago de *${formatMXN(total)} MXN* del mes de *${mesNombre}* se procesó correctamente.\n\n` +
-                    `🧾 ${facNum}\n` +
-                    `📅 Próximo cobro: *${formatDate(nextMonth)}*\n\n` +
-                    `¡Sigue creciendo tu negocio con *PrestApps*! 💪`,
-                    "pago_exitoso",
-                  );
+                  // (WA notification sent by billing-notifications at 9AM)
                 } else {
                   throw new Error(`PaymentIntent status: ${pi.status}`);
                 }
