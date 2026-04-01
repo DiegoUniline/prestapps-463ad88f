@@ -36,7 +36,7 @@ import {
   CalendarCheck, Settings, UserCheck, ClipboardCheck, Building2, MessageSquare,
   Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog, BarChart3,
   FileInput, ShieldCheck, Bell, RefreshCw, PieChart, ScrollText, CalendarDays,
-  ChevronRight, CheckCircle2, Clock, AlertTriangle,
+  ChevronRight, CheckCircle2, Clock, AlertTriangle, Send,
   type LucideIcon,
 } from "lucide-react";
 
