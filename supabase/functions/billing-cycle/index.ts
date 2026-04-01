@@ -340,45 +340,11 @@ serve(async (req) => {
         logStep("Grace expired → suspendida", { empresa_id: sub.empresa_id, daysSinceGracia });
         results.push({ empresa_id: sub.empresa_id, action: "suspendida", daysSinceGracia });
 
-        // ── WA: Subscription suspended ──
-        const { data: empData } = await supabase
-          .from("empresas")
-          .select("nombre")
-          .eq("id", sub.empresa_id)
-          .single();
-
-        await notifyEmpresaAdmins(supabase, sub.empresa_id,
-          `⚠️ *${empData?.nombre || "tu empresa"}* — Servicio pausado\n\n` +
-          `No recibimos tu pago a tiempo y tu cuenta ha sido suspendida temporalmente.\n\n` +
-          `🔒 Los módulos operativos están restringidos hasta que regularices tu pago.\n\n` +
-          `Para reactivar al instante:\n` +
-          `1️⃣ Abre la app → *Mi Suscripción*\n` +
-          `2️⃣ Registra o actualiza tu método de pago\n` +
-          `3️⃣ Tu acceso se restaura de inmediato ✅\n\n` +
-          `Tus datos están seguros, no se perderá nada. 🔐\n\n` +
-          `¿Necesitas ayuda? Responde aquí y te apoyamos. 💬`,
-          "suscripcion_suspendida",
-        );
+        // (WA notification sent by billing-notifications at 9AM)
       } else {
         const daysLeft = DIAS_GRACIA - daysSinceGracia;
         logStep("Still in grace", { empresa_id: sub.empresa_id, daysLeft });
-
-        // ── WA: Daily grace reminder (only if >0 days passed) ──
-        if (daysSinceGracia > 0) {
-          const { data: empData } = await supabase
-            .from("empresas")
-            .select("nombre")
-            .eq("id", sub.empresa_id)
-            .single();
-
-          await notifyEmpresaAdmins(supabase, sub.empresa_id,
-            `⏳ *${empData?.nombre || "tu empresa"}* — Pago pendiente\n\n` +
-            `Tu suscripción sigue sin pagarse. Te ${daysLeft === 1 ? "queda *1 día*" : `quedan *${daysLeft} días*`} antes de que pausemos tu servicio.\n\n` +
-            `👉 Entra a *Mi Suscripción* en la app y resuelve tu pago hoy.\n\n` +
-            `¡Estamos para ayudarte! 🙏`,
-            "recordatorio_gracia",
-          );
-        }
+        // (WA notification sent by billing-notifications at 9AM)
       }
     }
 
