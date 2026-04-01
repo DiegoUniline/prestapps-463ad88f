@@ -435,17 +435,92 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
           </Card>
         </TabsContent>
 
-        {/* ── TAB: Config API ── */}
         <TabsContent value="config" className="space-y-4">
+          {/* ── System WA Config ── */}
+          <Card className="border-primary/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-primary" />
+                API de WhatsApp del Sistema (PrestApps)
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Esta es la API central de PrestApps para enviar notificaciones de facturación, suscripciones, pagos y recordatorios a todas las empresas.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="sys-url" className="text-sm font-medium">API URL</Label>
+                  <Input
+                    id="sys-url"
+                    placeholder="https://api.ejemplo.com/send"
+                    value={sysUrl}
+                    onChange={(e) => setSysUrl(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="sys-token" className="text-sm font-medium">API Token</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="sys-token"
+                      type={showToken ? "text" : "password"}
+                      placeholder="Tu token de API"
+                      value={sysToken}
+                      onChange={(e) => setSysToken(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      type="button"
+                      onClick={() => setShowToken(!showToken)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  disabled={savingConfig}
+                  onClick={async () => {
+                    setSavingConfig(true);
+                    try {
+                      await saFetch("save-system-wa-config", "POST", { api_url: sysUrl, api_token: sysToken });
+                      queryClient.invalidateQueries({ queryKey: ["sa-system-wa-config"] });
+                      toast.success("Configuración del sistema guardada");
+                    } catch (e: any) {
+                      toast.error("Error: " + e.message);
+                    } finally {
+                      setSavingConfig(false);
+                    }
+                  }}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {savingConfig ? "Guardando..." : "Guardar"}
+                </Button>
+                {systemWaConfig?.api_url && systemWaConfig?.api_token ? (
+                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                    <Wifi className="h-3 w-3 mr-1" /> Configurado
+                  </Badge>
+                ) : (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertCircle className="h-3 w-3" /> Sin configurar
+                  </Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Per-empresa configs ── */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Key className="h-5 w-5" />
-                APIs de WhatsApp por Empresa
+                APIs de WhatsApp por Empresa (Cobranza)
               </CardTitle>
               <p className="text-sm text-muted-foreground">
-                Las notificaciones del sistema (facturación, suscripciones) se envían usando la API de WhatsApp configurada por cada empresa.
-                No existe un número central de PrestApps — cada empresa usa su propio número de WhatsApp Business.
+                Cada empresa configura su propia API para enviar avisos de cobranza a sus clientes.
               </p>
             </CardHeader>
             <CardContent>
@@ -520,26 +595,6 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   </TableBody>
                 </Table>
               </div>
-
-              <Card className="mt-4 border-primary/20 bg-primary/5">
-                <CardContent className="pt-4">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                    <div className="text-sm space-y-1">
-                      <p className="font-medium">¿Cómo funcionan las notificaciones del sistema?</p>
-                      <p className="text-muted-foreground">
-                        Las notificaciones de <strong>facturación</strong> (factura generada, pago exitoso, recordatorio de gracia, suspensión) 
-                        se envían a los admins de cada empresa usando <strong>su propia API de WhatsApp</strong>. 
-                        Si una empresa no tiene WA configurado, no recibe estas notificaciones.
-                      </p>
-                      <p className="text-muted-foreground">
-                        Los mensajes de <strong>cobranza</strong> (aviso día antes, vencido, recibo de pago) también usan la misma API de cada empresa 
-                        y se envían a los <strong>clientes</strong> de la empresa.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </CardContent>
           </Card>
         </TabsContent>
