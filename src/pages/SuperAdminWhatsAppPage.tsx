@@ -191,11 +191,14 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   const { data: systemWaConfig } = useQuery({
     queryKey: ["sa-system-wa-config"],
     queryFn: () => saFetch("system-wa-config"),
-    onSuccess: (data: any) => {
-      if (data?.api_url && !sysUrl) setSysUrl(data.api_url);
-      if (data?.api_token && !sysToken) setSysToken(data.api_token);
-    },
-  } as any);
+  });
+
+  // Sync system config into local state
+  React.useEffect(() => {
+    const cfg = systemWaConfig as any;
+    if (cfg?.api_url && !sysUrl) setSysUrl(cfg.api_url);
+    if (cfg?.api_token && !sysToken) setSysToken(cfg.api_token);
+  }, [systemWaConfig]);
 
   // Save template
   const saveTemplate = useMutation({
