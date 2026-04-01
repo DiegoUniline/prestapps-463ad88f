@@ -397,8 +397,13 @@ export default function SuperAdminWhatsAppPage() {
                             {(log.empresas as any)?.nombre || "—"}
                           </TableCell>
                           <TableCell className="text-sm font-mono">{log.telefono}</TableCell>
-                          <TableCell>
+                          <TableCell className="space-x-1">
                             <Badge variant="secondary" className="text-xs">{log.tipo}</Badge>
+                            {SYSTEM_TIPOS.includes(log.tipo) ? (
+                              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Sistema</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">Empresa</Badge>
+                            )}
                           </TableCell>
                           <TableCell>{getStatusIcon(log.status)}</TableCell>
                           <TableCell>
