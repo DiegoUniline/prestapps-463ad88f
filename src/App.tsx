@@ -61,6 +61,7 @@ const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
 const ProductividadPage = lazy(() => import("@/pages/ProductividadPage"));
 const MiSuscripcionPage = lazy(() => import("@/pages/MiSuscripcionPage"));
 const SuperAdminWhatsAppPage = lazy(() => import("@/pages/SuperAdminWhatsAppPage"));
+const SuperAdminPage = lazy(() => import("@/pages/SuperAdminPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
@@ -141,6 +142,7 @@ const App = () => (
               <Route path="/cobradores" element={<RoleGuard allowed={["admin"]}><CobradoresPage /></RoleGuard>} />
               <Route path="/usuarios" element={<RoleGuard allowed={["admin"]}><LazyPage><UsuariosPage /></LazyPage></RoleGuard>} />
               <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]}><LazyPage><UsuariosPage /></LazyPage></RoleGuard>} />
+              <Route path="/super-admin" element={<SuperAdminGuard><LazyPage><SuperAdminPage /></LazyPage></SuperAdminGuard>} />
               <Route path="/empresas" element={<SuperAdminGuard><LazyPage><EmpresasPage /></LazyPage></SuperAdminGuard>} />
               <Route path="/sa-whatsapp" element={<SuperAdminGuard><LazyPage><SuperAdminWhatsAppPage /></LazyPage></SuperAdminGuard>} />
               <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]}><LazyPage><WhatsAppConfigPage /></LazyPage></RoleGuard>} />
