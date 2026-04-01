@@ -474,26 +474,6 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                     </Button>
                   </div>
                 </div>
-                  <Label htmlFor="sys-token" className="text-sm font-medium">API Token</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="sys-token"
-                      type={showToken ? "text" : "password"}
-                      placeholder="Tu token de API"
-                      value={sysToken}
-                      onChange={(e) => setSysToken(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      type="button"
-                      onClick={() => setShowToken(!showToken)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
               </div>
               <div className="flex items-center gap-3">
                 <Button
