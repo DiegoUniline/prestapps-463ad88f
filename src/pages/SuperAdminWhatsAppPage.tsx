@@ -419,7 +419,115 @@ export default function SuperAdminWhatsAppPage() {
           </Card>
         </TabsContent>
 
-        {/* ── TAB: Templates ── */}
+        {/* ── TAB: Config API ── */}
+        <TabsContent value="config" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                APIs de WhatsApp por Empresa
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Las notificaciones del sistema (facturación, suscripciones) se envían usando la API de WhatsApp configurada por cada empresa.
+                No existe un número central de PrestApps — cada empresa usa su propio número de WhatsApp Business.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Empresa</TableHead>
+                      <TableHead>API URL</TableHead>
+                      <TableHead>Token</TableHead>
+                      <TableHead className="w-[100px]">Estado</TableHead>
+                      <TableHead>Avisos</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {configsLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8">
+                          <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
+                          Cargando...
+                        </TableCell>
+                      </TableRow>
+                    ) : !waConfigs?.length ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          No hay configuraciones de WhatsApp
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      waConfigs.map((cfg: any) => (
+                        <TableRow key={cfg.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                              {(cfg.empresas as any)?.nombre || cfg.empresa_id?.slice(0, 8)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-2 py-1 rounded break-all max-w-[250px] block">
+                              {cfg.api_url || "—"}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">
+                              {cfg.api_token ? `${cfg.api_token.slice(0, 8)}...${cfg.api_token.slice(-4)}` : "—"}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            {cfg.activo ? (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                <Wifi className="h-3 w-3 mr-1" /> Activo
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                <WifiOff className="h-3 w-3 mr-1" /> Inactivo
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 flex-wrap">
+                              {cfg.aviso_dia_antes && <Badge variant="outline" className="text-[10px]">Día antes</Badge>}
+                              {cfg.aviso_vencido && <Badge variant="outline" className="text-[10px]">Vencido</Badge>}
+                              {cfg.recibo_pago && <Badge variant="outline" className="text-[10px]">Recibo</Badge>}
+                              {!cfg.aviso_dia_antes && !cfg.aviso_vencido && !cfg.recibo_pago && (
+                                <span className="text-xs text-muted-foreground">Ninguno</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <Card className="mt-4 border-primary/20 bg-primary/5">
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div className="text-sm space-y-1">
+                      <p className="font-medium">¿Cómo funcionan las notificaciones del sistema?</p>
+                      <p className="text-muted-foreground">
+                        Las notificaciones de <strong>facturación</strong> (factura generada, pago exitoso, recordatorio de gracia, suspensión) 
+                        se envían a los admins de cada empresa usando <strong>su propia API de WhatsApp</strong>. 
+                        Si una empresa no tiene WA configurado, no recibe estas notificaciones.
+                      </p>
+                      <p className="text-muted-foreground">
+                        Los mensajes de <strong>cobranza</strong> (aviso día antes, vencido, recibo de pago) también usan la misma API de cada empresa 
+                        y se envían a los <strong>clientes</strong> de la empresa.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="templates" className="space-y-4">
           <Card>
             <CardHeader>
