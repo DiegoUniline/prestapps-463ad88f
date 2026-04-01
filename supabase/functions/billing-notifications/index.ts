@@ -13,8 +13,19 @@ const logStep = (step: string, details?: any) => {
 };
 
 const DIAS_GRACIA = 3;
+const SUPERADMIN_PHONE = "523171035768";
 
-// ── WhatsApp helpers ──
+// ── Notify Super Admin directly ──
+async function notifySuperAdmin(
+  apiUrl: string,
+  apiToken: string,
+  mensaje: string,
+) {
+  const candidates = getPhoneCandidates(SUPERADMIN_PHONE);
+  const result = await sendWhatsAppWithFallback(apiUrl, apiToken, mensaje, candidates);
+  logStep("SuperAdmin WA", { success: result.success });
+}
+
 function getPhoneCandidates(phone: string): string[] {
   const digits = String(phone || "").replace(/\D/g, "");
   const candidates = new Set<string>();
@@ -249,6 +260,21 @@ serve(async (req) => {
         "pago_exitoso",
       );
 
+      // Notify Super Admin about this payment
+      const waConfig = await getSystemWaConfig(supabase);
+      if (waConfig) {
+        const adminEmails = (adminMap[factura.empresa_id] || []).map((a: any) => a.email).join(", ") || "—";
+        await notifySuperAdmin(waConfig.api_url, waConfig.api_token,
+          `💰 *Cobro exitoso*\n\n` +
+          `🏢 *${empresaNombre}*\n` +
+          `🧾 ${factura.numero_factura}\n` +
+          `💵 *${formatMXN(factura.total)} MXN*\n` +
+          `📦 ${planNombre} (${factura.num_usuarios} usuario${factura.num_usuarios > 1 ? "s" : ""})\n` +
+          (nextCobro ? `📅 Próximo cobro: ${nextCobro}\n` : "") +
+          `\n✅ Pago procesado correctamente.`
+        );
+      }
+
       results.push({ empresa_id: factura.empresa_id, action: "pago_notificado" });
     }
 
@@ -322,6 +348,17 @@ serve(async (req) => {
         `¿Necesitas ayuda? Responde aquí y te apoyamos. 💬`,
         "suscripcion_suspendida",
       );
+      // Notify Super Admin about suspension
+      const waConfig3 = await getSystemWaConfig(supabase);
+      if (waConfig3) {
+        await notifySuperAdmin(waConfig3.api_url, waConfig3.api_token,
+          `🚫 *Empresa suspendida*\n\n` +
+          `🏢 *${empData?.nombre || "—"}*\n` +
+          `No pagó a tiempo y su servicio fue pausado.\n\n` +
+          `Requiere seguimiento.`
+        );
+      }
+
       results.push({ empresa_id: sub.empresa_id, action: "suspension_notificada" });
     }
 
@@ -505,6 +542,18 @@ serve(async (req) => {
         `Verifica los métodos de pago de tus clientes en la app. 📱`,
         "alerta_cobro_fallido",
       );
+      // Notify Super Admin about failed charges
+      const waConfig2 = await getSystemWaConfig(supabase);
+      if (waConfig2) {
+        await notifySuperAdmin(waConfig2.api_url, waConfig2.api_token,
+          `❌ *Cobros fallidos*\n\n` +
+          `🏢 *${empData?.nombre || empresaId}*\n` +
+          `📊 ${charges.length} cobro${charges.length > 1 ? "s" : ""} fallido${charges.length > 1 ? "s" : ""}\n\n` +
+          `${detalle}\n\n` +
+          `⚠️ Requiere seguimiento.`
+        );
+      }
+
       results.push({ empresa_id: empresaId, action: "cobro_fallido_notificado", count: charges.length });
     }
 
