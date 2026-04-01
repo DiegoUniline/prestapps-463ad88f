@@ -304,6 +304,17 @@ export default function SuperAdminWhatsAppPage() {
                     <SelectItem value="error">❌ Error</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={origenFilter} onValueChange={setOrigenFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <Globe className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Origen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="sistema">🏢 Sistema (PrestApps)</SelectItem>
+                    <SelectItem value="empresa">📋 Empresa (Cobranza)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   variant="outline"
                   size="icon"
