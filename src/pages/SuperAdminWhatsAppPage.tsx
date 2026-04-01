@@ -356,6 +356,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[140px]">Fecha</TableHead>
+                      <TableHead>Destinatario</TableHead>
                       <TableHead>Teléfono</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead className="w-[80px]">Status</TableHead>
@@ -365,14 +366,14 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <TableBody>
                     {logsLoading ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12">
+                        <TableCell colSpan={6} className="text-center py-12">
                           <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
                           Cargando...
                         </TableCell>
                       </TableRow>
                     ) : filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                           No se encontraron mensajes
                         </TableCell>
                       </TableRow>
@@ -381,6 +382,9 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                         <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedLog(log)}>
                           <TableCell className="text-xs font-mono">
                             {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: es })}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {(log.empresas as any)?.nombre || "—"}
                           </TableCell>
                           <TableCell className="text-sm font-mono">{log.telefono}</TableCell>
                           <TableCell>
