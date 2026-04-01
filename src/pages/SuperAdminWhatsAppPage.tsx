@@ -155,7 +155,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   const [editingTemplate, setEditingTemplate] = useState<SystemTemplate | null>(null);
   const [editedMessage, setEditedMessage] = useState("");
   const [origenFilter, setOrigenFilter] = useState<string>("all");
-  const [sysUrl, setSysUrl] = useState("");
+  
   const [sysToken, setSysToken] = useState("");
   const [showToken, setShowToken] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
