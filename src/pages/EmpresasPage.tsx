@@ -66,6 +66,7 @@ const emptyForm: EmpresaForm = {
 };
 
 export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) {
+  const [filtroSub, setFiltroSub] = useState<string>("todas");
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
@@ -259,6 +260,29 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
         </Button>
       </div>
 
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm text-muted-foreground font-medium">Filtrar:</span>
+        {[
+          { value: "todas", label: "Todas" },
+          { value: "activa", label: "✅ Al día" },
+          { value: "trial", label: "🆓 Trial" },
+          { value: "gracia", label: "⏳ Gracia" },
+          { value: "suspendida", label: "⚠️ Suspendida" },
+          { value: "vencida", label: "🔴 Vencida" },
+          { value: "sin_sub", label: "Sin suscripción" },
+        ].map((opt) => (
+          <Button
+            key={opt.value}
+            variant={filtroSub === opt.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFiltroSub(opt.value)}
+            className="text-xs"
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -286,7 +310,13 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
                 </TableRow>
               ) : (
-                empresas.map((e) => {
+                empresas.filter((emp) => {
+                  if (filtroSub === "todas") return true;
+                  const sub = subsMap[emp.id];
+                  if (filtroSub === "sin_sub") return !sub;
+                  if (filtroSub === "vencida") return sub?.fecha_vencimiento && new Date(sub.fecha_vencimiento) < new Date();
+                  return sub?.estado === filtroSub;
+                }).map((e) => {
                   const admins = adminMap[e.id] || [];
                     const planInfo = PLAN_CONFIG[e.plan] || PLAN_CONFIG.basico;
                     const userCount = userCountMap[e.id] || 0;
