@@ -154,6 +154,10 @@ export default function SuperAdminWhatsAppPage() {
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [editingTemplate, setEditingTemplate] = useState<SystemTemplate | null>(null);
   const [editedMessage, setEditedMessage] = useState("");
+  const [origenFilter, setOrigenFilter] = useState<string>("all");
+
+  // System notification tipos
+  const SYSTEM_TIPOS = ["factura_generada", "pago_exitoso", "recordatorio_gracia", "suscripcion_suspendida", "recordatorio_vencimiento", "alerta_pago"];
 
   // Fetch ALL whatsapp logs via edge function (bypasses RLS)
   const { data: logs, isLoading: logsLoading } = useQuery({
