@@ -493,7 +493,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <Save className="h-4 w-4 mr-2" />
                   {savingConfig ? "Guardando..." : "Guardar"}
                 </Button>
-                {(systemWaConfig as any)?.api_url && (systemWaConfig as any)?.api_token ? (
+                {(systemWaConfig as any)?.api_token ? (
                   <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
                     <Wifi className="h-3 w-3 mr-1" /> Configurado
                   </Badge>
