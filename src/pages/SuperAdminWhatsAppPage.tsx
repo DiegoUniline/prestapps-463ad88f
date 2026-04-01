@@ -277,24 +277,12 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar teléfono, mensaje, empresa..."
+                    placeholder="Buscar teléfono, mensaje..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-10"
                   />
                 </div>
-                <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
-                  <SelectTrigger className="w-[200px]">
-                    <Building2 className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Empresa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las empresas</SelectItem>
-                    {empresas?.map((e: any) => (
-                      <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Select value={tipoFilter} onValueChange={setTipoFilter}>
                   <SelectTrigger className="w-[180px]">
                     <Filter className="h-4 w-4 mr-2" />
@@ -315,17 +303,6 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="enviado">✅ Enviado</SelectItem>
                     <SelectItem value="error">❌ Error</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={origenFilter} onValueChange={setOrigenFilter}>
-                  <SelectTrigger className="w-[150px]">
-                    <Globe className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Origen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="sistema">🏢 Sistema (PrestApps)</SelectItem>
-                    <SelectItem value="empresa">📋 Empresa (Cobranza)</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
