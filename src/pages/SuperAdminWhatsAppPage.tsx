@@ -238,10 +238,12 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Centro de Notificaciones"
-        description="Monitoreo global de mensajes WhatsApp y gestión de plantillas del sistema"
-      />
+      {!embedded && (
+        <PageHeader
+          title="Centro de Notificaciones"
+          description="Monitoreo global de mensajes WhatsApp y gestión de plantillas del sistema"
+        />
+      )}
 
       <Tabs defaultValue="logs" className="space-y-4">
         <TabsList>
