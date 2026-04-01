@@ -112,6 +112,49 @@ serve(async (req) => {
       });
     }
 
+    if (action === "system-wa-config") {
+      const { data, error } = await supabase
+        .from("system_notification_templates")
+        .select("message_template")
+        .eq("template_key", "__system_wa_config")
+        .maybeSingle();
+      if (error) throw error;
+      let config = { api_url: "", api_token: "" };
+      try { config = JSON.parse(data?.message_template || "{}"); } catch {}
+      return new Response(JSON.stringify(config), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "save-system-wa-config" && req.method === "POST") {
+      const body = await req.json();
+      const { api_url, api_token } = body;
+      const configJson = JSON.stringify({ api_url: api_url || "", api_token: api_token || "" });
+
+      const { data: existing } = await supabase
+        .from("system_notification_templates")
+        .select("id")
+        .eq("template_key", "__system_wa_config")
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from("system_notification_templates")
+          .update({ message_template: configJson, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("system_notification_templates")
+          .insert({ template_key: "__system_wa_config", message_template: configJson });
+        if (error) throw error;
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,

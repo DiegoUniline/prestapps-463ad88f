@@ -57,6 +57,21 @@ async function sendWhatsAppWithFallback(
   return { success: false, phoneUsed: candidates[0] || null };
 }
 
+async function getSystemWaConfig(supabase: any) {
+  try {
+    const { data } = await supabase
+      .from("system_notification_templates")
+      .select("message_template")
+      .eq("template_key", "__system_wa_config")
+      .maybeSingle();
+    if (data?.message_template) {
+      const cfg = JSON.parse(data.message_template);
+      if (cfg.api_url && cfg.api_token) return cfg;
+    }
+  } catch {}
+  return null;
+}
+
 async function notifyEmpresaAdmins(
   supabase: any,
   empresaId: string,
@@ -64,13 +79,9 @@ async function notifyEmpresaAdmins(
   tipo: string,
 ) {
   try {
-    const { data: waConfig } = await supabase
-      .from("whatsapp_config")
-      .select("api_url, api_token, activo")
-      .eq("empresa_id", empresaId)
-      .single();
-
-    if (!waConfig?.activo) return;
+    // Use SYSTEM WA config (PrestApps central API)
+    const waConfig = await getSystemWaConfig(supabase);
+    if (!waConfig) return;
 
     const { data: admins } = await supabase
       .from("user_roles")
