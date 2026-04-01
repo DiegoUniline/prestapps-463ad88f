@@ -187,6 +187,16 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
     queryFn: () => saFetch("wa-configs"),
   });
 
+  // Fetch system WA config
+  const { data: systemWaConfig } = useQuery({
+    queryKey: ["sa-system-wa-config"],
+    queryFn: () => saFetch("system-wa-config"),
+    onSuccess: (data: any) => {
+      if (data?.api_url && !sysUrl) setSysUrl(data.api_url);
+      if (data?.api_token && !sysToken) setSysToken(data.api_token);
+    },
+  } as any);
+
   // Save template
   const saveTemplate = useMutation({
     mutationFn: async ({ key, message }: { key: string; message: string }) => {
