@@ -224,22 +224,17 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
     return logs.filter((l: any) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (tipoFilter !== "all" && l.tipo !== tipoFilter) return false;
-      if (empresaFilter !== "all" && l.empresa_id !== empresaFilter) return false;
-      if (origenFilter === "sistema" && !SYSTEM_TIPOS.includes(l.tipo)) return false;
-      if (origenFilter === "empresa" && SYSTEM_TIPOS.includes(l.tipo)) return false;
       if (search) {
         const s = search.toLowerCase();
-        const empresa = (l.empresas as any)?.nombre || "";
         return (
           l.telefono?.toLowerCase().includes(s) ||
           l.mensaje?.toLowerCase().includes(s) ||
-          empresa.toLowerCase().includes(s) ||
           l.tipo?.toLowerCase().includes(s)
         );
       }
       return true;
     });
-  }, [logs, statusFilter, tipoFilter, empresaFilter, search]);
+  }, [logs, statusFilter, tipoFilter, search]);
 
   const getStatusIcon = (status: string) => {
     if (status === "enviado") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
