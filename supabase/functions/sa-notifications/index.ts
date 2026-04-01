@@ -41,10 +41,15 @@ serve(async (req) => {
 
   try {
     if (action === "logs") {
+      const SYSTEM_TIPOS = [
+        "factura_generada", "factura_generada_stripe", "pago_exitoso",
+        "recordatorio_gracia", "suscripcion_suspendida",
+        "recordatorio_vencimiento", "alerta_pago", "test_factura",
+      ];
       const { data, error } = await supabase
         .from("whatsapp_log")
-        .select("*")
-        .is("empresa_id", null)
+        .select("*, empresas:empresa_id(nombre)")
+        .in("tipo", SYSTEM_TIPOS)
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
