@@ -386,7 +386,6 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                           <TableCell>
                             <Badge variant="secondary" className="text-xs">{log.tipo}</Badge>
                           </TableCell>
-                          </TableCell>
                           <TableCell>{getStatusIcon(log.status)}</TableCell>
                           <TableCell>
                             <Eye className="h-4 w-4 text-muted-foreground" />
