@@ -451,17 +451,29 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sys-url" className="text-sm font-medium">API URL</Label>
-                  <Input
-                    id="sys-url"
-                    placeholder="https://api.ejemplo.com/send"
-                    value={sysUrl}
-                    onChange={(e) => setSysUrl(e.target.value)}
-                  />
+                  <Label htmlFor="sys-token" className="text-sm font-medium">API Token del Sistema</Label>
+                  <p className="text-xs text-muted-foreground">La URL de la API es compartida con todas las empresas. Solo el token es exclusivo de PrestApps.</p>
+                  <div className="flex gap-2">
+                    <Input
+                      id="sys-token"
+                      type={showToken ? "text" : "password"}
+                      placeholder="Tu token de API"
+                      value={sysToken}
+                      onChange={(e) => setSysToken(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      type="button"
+                      onClick={() => setShowToken(!showToken)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
                   <Label htmlFor="sys-token" className="text-sm font-medium">API Token</Label>
                   <div className="flex gap-2">
                     <Input
