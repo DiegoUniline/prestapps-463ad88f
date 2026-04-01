@@ -248,6 +248,9 @@ export default function SuperAdminWhatsAppPage() {
           <TabsTrigger value="logs" className="gap-2">
             <MessageSquare className="h-4 w-4" /> Mensajes Enviados
           </TabsTrigger>
+          <TabsTrigger value="config" className="gap-2">
+            <Key className="h-4 w-4" /> Config API
+          </TabsTrigger>
           <TabsTrigger value="templates" className="gap-2">
             <Edit2 className="h-4 w-4" /> Plantillas del Sistema
           </TabsTrigger>
