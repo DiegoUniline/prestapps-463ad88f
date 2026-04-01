@@ -66,6 +66,7 @@ const emptyForm: EmpresaForm = {
 };
 
 export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) {
+  const [filtroSub, setFiltroSub] = useState<string>("todas");
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
