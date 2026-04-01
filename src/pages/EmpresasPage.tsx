@@ -310,7 +310,13 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No hay empresas</TableCell>
                 </TableRow>
               ) : (
-                empresas.map((e) => {
+                empresas.filter((emp) => {
+                  if (filtroSub === "todas") return true;
+                  const sub = subsMap[emp.id];
+                  if (filtroSub === "sin_sub") return !sub;
+                  if (filtroSub === "vencida") return sub?.fecha_vencimiento && new Date(sub.fecha_vencimiento) < new Date();
+                  return sub?.estado === filtroSub;
+                }).map((e) => {
                   const admins = adminMap[e.id] || [];
                     const planInfo = PLAN_CONFIG[e.plan] || PLAN_CONFIG.basico;
                     const userCount = userCountMap[e.id] || 0;
