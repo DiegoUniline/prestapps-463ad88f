@@ -356,7 +356,6 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[140px]">Fecha</TableHead>
-                      <TableHead>Empresa</TableHead>
                       <TableHead>Teléfono</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead className="w-[80px]">Status</TableHead>
@@ -366,14 +365,14 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <TableBody>
                     {logsLoading ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12">
+                        <TableCell colSpan={5} className="text-center py-12">
                           <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
                           Cargando...
                         </TableCell>
                       </TableRow>
                     ) : filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                           No se encontraron mensajes
                         </TableCell>
                       </TableRow>
@@ -383,17 +382,10 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                           <TableCell className="text-xs font-mono">
                             {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: es })}
                           </TableCell>
-                          <TableCell className="text-sm">
-                            {(log.empresas as any)?.nombre || "—"}
-                          </TableCell>
                           <TableCell className="text-sm font-mono">{log.telefono}</TableCell>
-                          <TableCell className="space-x-1">
+                          <TableCell>
                             <Badge variant="secondary" className="text-xs">{log.tipo}</Badge>
-                            {SYSTEM_TIPOS.includes(log.tipo) ? (
-                              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Sistema</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px]">Empresa</Badge>
-                            )}
+                          </TableCell>
                           </TableCell>
                           <TableCell>{getStatusIcon(log.status)}</TableCell>
                           <TableCell>
