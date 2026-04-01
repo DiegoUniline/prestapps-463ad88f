@@ -36,7 +36,7 @@ import {
   CalendarCheck, Settings, UserCheck, ClipboardCheck, Building2, MessageSquare,
   Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog, BarChart3,
   FileInput, ShieldCheck, Bell, RefreshCw, PieChart, ScrollText, CalendarDays,
-  ChevronRight, CheckCircle2, Clock, AlertTriangle,
+  ChevronRight, CheckCircle2, Clock, AlertTriangle, Send,
   type LucideIcon,
 } from "lucide-react";
 
@@ -117,6 +117,7 @@ const modules: NavModule[] = [
     label: "Configuración",
     items: [
       { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"], superAdminOnly: true, permModule: "empresas" },
+      { title: "Notificaciones SA", url: "/sa-whatsapp", icon: Send, roles: ["admin"], superAdminOnly: true },
       { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"], permModule: "configuracion" },
       { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"], permModule: "catalogos" },
       { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"], permModule: "whatsapp" },
