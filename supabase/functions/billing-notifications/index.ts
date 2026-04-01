@@ -260,6 +260,21 @@ serve(async (req) => {
         "pago_exitoso",
       );
 
+      // Notify Super Admin about this payment
+      const waConfig = await getSystemWaConfig(supabase);
+      if (waConfig) {
+        const adminEmails = (adminMap[factura.empresa_id] || []).map((a: any) => a.email).join(", ") || "—";
+        await notifySuperAdmin(waConfig.api_url, waConfig.api_token,
+          `💰 *Cobro exitoso*\n\n` +
+          `🏢 *${empresaNombre}*\n` +
+          `🧾 ${factura.numero_factura}\n` +
+          `💵 *${formatMXN(factura.total)} MXN*\n` +
+          `📦 ${planNombre} (${factura.num_usuarios} usuario${factura.num_usuarios > 1 ? "s" : ""})\n` +
+          (nextCobro ? `📅 Próximo cobro: ${nextCobro}\n` : "") +
+          `\n✅ Pago procesado correctamente.`
+        );
+      }
+
       results.push({ empresa_id: factura.empresa_id, action: "pago_notificado" });
     }
 
