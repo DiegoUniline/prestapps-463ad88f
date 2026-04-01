@@ -13,8 +13,19 @@ const logStep = (step: string, details?: any) => {
 };
 
 const DIAS_GRACIA = 3;
+const SUPERADMIN_PHONE = "523171035768";
 
-// ── WhatsApp helpers ──
+// ── Notify Super Admin directly ──
+async function notifySuperAdmin(
+  apiUrl: string,
+  apiToken: string,
+  mensaje: string,
+) {
+  const candidates = getPhoneCandidates(SUPERADMIN_PHONE);
+  const result = await sendWhatsAppWithFallback(apiUrl, apiToken, mensaje, candidates);
+  logStep("SuperAdmin WA", { success: result.success });
+}
+
 function getPhoneCandidates(phone: string): string[] {
   const digits = String(phone || "").replace(/\D/g, "");
   const candidates = new Set<string>();
