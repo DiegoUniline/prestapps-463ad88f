@@ -531,6 +531,18 @@ serve(async (req) => {
         `Verifica los métodos de pago de tus clientes en la app. 📱`,
         "alerta_cobro_fallido",
       );
+      // Notify Super Admin about failed charges
+      const waConfig2 = await getSystemWaConfig(supabase);
+      if (waConfig2) {
+        await notifySuperAdmin(waConfig2.api_url, waConfig2.api_token,
+          `❌ *Cobros fallidos*\n\n` +
+          `🏢 *${empData?.nombre || empresaId}*\n` +
+          `📊 ${charges.length} cobro${charges.length > 1 ? "s" : ""} fallido${charges.length > 1 ? "s" : ""}\n\n` +
+          `${detalle}\n\n` +
+          `⚠️ Requiere seguimiento.`
+        );
+      }
+
       results.push({ empresa_id: empresaId, action: "cobro_fallido_notificado", count: charges.length });
     }
 
