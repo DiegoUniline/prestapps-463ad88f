@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import {
   MessageSquare, Search, Filter, CheckCircle2, XCircle, Ban, Eye, Edit2, Save,
-  RefreshCw, Building2, Phone, Clock, Send,
+  RefreshCw, Building2, Phone, Clock, Send, Wifi, WifiOff, Key, Globe, AlertCircle,
+  type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
