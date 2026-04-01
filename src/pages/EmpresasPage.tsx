@@ -65,7 +65,7 @@ const emptyForm: EmpresaForm = {
   adminEmail: "", adminPassword: "", adminNombre: "", adminTelefono: "",
 };
 
-export default function EmpresasPage() {
+export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);

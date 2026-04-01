@@ -145,7 +145,7 @@ const SYSTEM_TEMPLATES: SystemTemplate[] = [
 /* ────────────────────────────────────────────── */
 /* Main Page                                      */
 /* ────────────────────────────────────────────── */
-export default function SuperAdminWhatsAppPage() {
+export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolean } = {}) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
