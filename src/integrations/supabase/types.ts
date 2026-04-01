@@ -1967,6 +1967,30 @@ export type Database = {
           },
         ]
       }
+      system_notification_templates: {
+        Row: {
+          created_at: string | null
+          id: string
+          message_template: string
+          template_key: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message_template: string
+          template_key: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message_template?: string
+          template_key?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
