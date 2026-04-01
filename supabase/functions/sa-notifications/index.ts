@@ -43,7 +43,8 @@ serve(async (req) => {
     if (action === "logs") {
       const { data, error } = await supabase
         .from("whatsapp_log")
-        .select("*, empresas:empresa_id(nombre)")
+        .select("*")
+        .is("empresa_id", null)
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;

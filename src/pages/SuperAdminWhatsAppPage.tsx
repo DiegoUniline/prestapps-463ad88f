@@ -224,22 +224,17 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
     return logs.filter((l: any) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (tipoFilter !== "all" && l.tipo !== tipoFilter) return false;
-      if (empresaFilter !== "all" && l.empresa_id !== empresaFilter) return false;
-      if (origenFilter === "sistema" && !SYSTEM_TIPOS.includes(l.tipo)) return false;
-      if (origenFilter === "empresa" && SYSTEM_TIPOS.includes(l.tipo)) return false;
       if (search) {
         const s = search.toLowerCase();
-        const empresa = (l.empresas as any)?.nombre || "";
         return (
           l.telefono?.toLowerCase().includes(s) ||
           l.mensaje?.toLowerCase().includes(s) ||
-          empresa.toLowerCase().includes(s) ||
           l.tipo?.toLowerCase().includes(s)
         );
       }
       return true;
     });
-  }, [logs, statusFilter, tipoFilter, empresaFilter, search]);
+  }, [logs, statusFilter, tipoFilter, search]);
 
   const getStatusIcon = (status: string) => {
     if (status === "enviado") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
@@ -282,24 +277,12 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar teléfono, mensaje, empresa..."
+                    placeholder="Buscar teléfono, mensaje..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-10"
                   />
                 </div>
-                <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
-                  <SelectTrigger className="w-[200px]">
-                    <Building2 className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Empresa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas las empresas</SelectItem>
-                    {empresas?.map((e: any) => (
-                      <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Select value={tipoFilter} onValueChange={setTipoFilter}>
                   <SelectTrigger className="w-[180px]">
                     <Filter className="h-4 w-4 mr-2" />
@@ -320,17 +303,6 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="enviado">✅ Enviado</SelectItem>
                     <SelectItem value="error">❌ Error</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={origenFilter} onValueChange={setOrigenFilter}>
-                  <SelectTrigger className="w-[150px]">
-                    <Globe className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Origen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="sistema">🏢 Sistema (PrestApps)</SelectItem>
-                    <SelectItem value="empresa">📋 Empresa (Cobranza)</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
@@ -384,7 +356,6 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[140px]">Fecha</TableHead>
-                      <TableHead>Empresa</TableHead>
                       <TableHead>Teléfono</TableHead>
                       <TableHead>Tipo</TableHead>
                       <TableHead className="w-[80px]">Status</TableHead>
@@ -394,14 +365,14 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <TableBody>
                     {logsLoading ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12">
+                        <TableCell colSpan={5} className="text-center py-12">
                           <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
                           Cargando...
                         </TableCell>
                       </TableRow>
                     ) : filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                           No se encontraron mensajes
                         </TableCell>
                       </TableRow>
@@ -411,17 +382,9 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                           <TableCell className="text-xs font-mono">
                             {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: es })}
                           </TableCell>
-                          <TableCell className="text-sm">
-                            {(log.empresas as any)?.nombre || "—"}
-                          </TableCell>
                           <TableCell className="text-sm font-mono">{log.telefono}</TableCell>
-                          <TableCell className="space-x-1">
+                          <TableCell>
                             <Badge variant="secondary" className="text-xs">{log.tipo}</Badge>
-                            {SYSTEM_TIPOS.includes(log.tipo) ? (
-                              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Sistema</Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px]">Empresa</Badge>
-                            )}
                           </TableCell>
                           <TableCell>{getStatusIcon(log.status)}</TableCell>
                           <TableCell>
