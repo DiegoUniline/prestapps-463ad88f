@@ -248,11 +248,13 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
-          <p className="text-sm text-muted-foreground">Gestiona las empresas, planes y administradores</p>
-        </div>
-        <Button onClick={openNew} className="gap-2">
+        {!embedded && (
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Empresas</h1>
+            <p className="text-sm text-muted-foreground">Gestiona las empresas, planes y administradores</p>
+          </div>
+        )}
+        <Button onClick={openNew} className="gap-2 ml-auto">
           <Plus className="h-4 w-4" /> Nueva Empresa
         </Button>
       </div>
