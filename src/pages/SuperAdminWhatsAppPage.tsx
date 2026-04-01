@@ -194,7 +194,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   });
 
   // Sync system config into local state
-  React.useEffect(() => {
+  useEffect(() => {
     const cfg = systemWaConfig as any;
     if (cfg?.api_url && !sysUrl) setSysUrl(cfg.api_url);
     if (cfg?.api_token && !sysToken) setSysToken(cfg.api_token);
