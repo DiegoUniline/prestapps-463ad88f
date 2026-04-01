@@ -348,6 +348,17 @@ serve(async (req) => {
         `¿Necesitas ayuda? Responde aquí y te apoyamos. 💬`,
         "suscripcion_suspendida",
       );
+      // Notify Super Admin about suspension
+      const waConfig3 = await getSystemWaConfig(supabase);
+      if (waConfig3) {
+        await notifySuperAdmin(waConfig3.api_url, waConfig3.api_token,
+          `🚫 *Empresa suspendida*\n\n` +
+          `🏢 *${empData?.nombre || "—"}*\n` +
+          `No pagó a tiempo y su servicio fue pausado.\n\n` +
+          `Requiere seguimiento.`
+        );
+      }
+
       results.push({ empresa_id: sub.empresa_id, action: "suspension_notificada" });
     }
 
