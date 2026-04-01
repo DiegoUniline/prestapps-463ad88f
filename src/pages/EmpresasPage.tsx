@@ -260,6 +260,29 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
         </Button>
       </div>
 
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm text-muted-foreground font-medium">Filtrar:</span>
+        {[
+          { value: "todas", label: "Todas" },
+          { value: "activa", label: "✅ Al día" },
+          { value: "trial", label: "🆓 Trial" },
+          { value: "gracia", label: "⏳ Gracia" },
+          { value: "suspendida", label: "⚠️ Suspendida" },
+          { value: "vencida", label: "🔴 Vencida" },
+          { value: "sin_sub", label: "Sin suscripción" },
+        ].map((opt) => (
+          <Button
+            key={opt.value}
+            variant={filtroSub === opt.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFiltroSub(opt.value)}
+            className="text-xs"
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+
       <Card>
         <CardContent className="p-0">
           <Table>
