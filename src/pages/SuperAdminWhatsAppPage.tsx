@@ -155,7 +155,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   const [editingTemplate, setEditingTemplate] = useState<SystemTemplate | null>(null);
   const [editedMessage, setEditedMessage] = useState("");
   const [origenFilter, setOrigenFilter] = useState<string>("all");
-  const [sysUrl, setSysUrl] = useState("");
+  
   const [sysToken, setSysToken] = useState("");
   const [showToken, setShowToken] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -196,7 +196,6 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   // Sync system config into local state
   useEffect(() => {
     const cfg = systemWaConfig as any;
-    if (cfg?.api_url && !sysUrl) setSysUrl(cfg.api_url);
     if (cfg?.api_token && !sysToken) setSysToken(cfg.api_token);
   }, [systemWaConfig]);
 
@@ -451,18 +450,10 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sys-url" className="text-sm font-medium">API URL</Label>
-                  <Input
-                    id="sys-url"
-                    placeholder="https://api.ejemplo.com/send"
-                    value={sysUrl}
-                    onChange={(e) => setSysUrl(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="sys-token" className="text-sm font-medium">API Token</Label>
+                  <Label htmlFor="sys-token" className="text-sm font-medium">API Token del Sistema</Label>
+                  <p className="text-xs text-muted-foreground">La URL de la API es compartida con todas las empresas. Solo el token es exclusivo de PrestApps.</p>
                   <div className="flex gap-2">
                     <Input
                       id="sys-token"
@@ -489,7 +480,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   onClick={async () => {
                     setSavingConfig(true);
                     try {
-                      await saFetch("save-system-wa-config", "POST", { api_url: sysUrl, api_token: sysToken });
+                      await saFetch("save-system-wa-config", "POST", { api_token: sysToken });
                       queryClient.invalidateQueries({ queryKey: ["sa-system-wa-config"] });
                       toast.success("Configuración del sistema guardada");
                     } catch (e: any) {
@@ -502,7 +493,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <Save className="h-4 w-4 mr-2" />
                   {savingConfig ? "Guardando..." : "Guardar"}
                 </Button>
-                {(systemWaConfig as any)?.api_url && (systemWaConfig as any)?.api_token ? (
+                {(systemWaConfig as any)?.api_token ? (
                   <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
                     <Wifi className="h-3 w-3 mr-1" /> Configurado
                   </Badge>

@@ -59,15 +59,27 @@ async function sendWhatsAppWithFallback(
 
 async function getSystemWaConfig(supabase: any) {
   try {
+    // Get system token
     const { data } = await supabase
       .from("system_notification_templates")
       .select("message_template")
       .eq("template_key", "__system_wa_config")
       .maybeSingle();
-    if (data?.message_template) {
-      const cfg = JSON.parse(data.message_template);
-      if (cfg.api_url && cfg.api_token) return cfg;
-    }
+    if (!data?.message_template) return null;
+    const cfg = JSON.parse(data.message_template);
+    if (!cfg.api_token) return null;
+
+    // Get shared API URL from any empresa's whatsapp_config
+    const { data: anyWa } = await supabase
+      .from("whatsapp_config")
+      .select("api_url")
+      .limit(1)
+      .maybeSingle();
+
+    const api_url = cfg.api_url || anyWa?.api_url;
+    if (!api_url) return null;
+
+    return { api_url, api_token: cfg.api_token };
   } catch {}
   return null;
 }
