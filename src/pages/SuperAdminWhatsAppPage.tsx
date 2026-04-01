@@ -26,8 +26,45 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+/* ── helper to call the SA edge function ── */
+async function saFetch(action: string, method = "GET", body?: any) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await supabase.functions.invoke("sa-notifications", {
+    method: method as any,
+    headers: { "Content-Type": "application/json" },
+    body: method === "GET" ? undefined : body,
+  });
+
+  // For GET with query params, use raw fetch
+  if (method === "GET") {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sa-notifications?action=${action}`;
+    const resp = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    return resp.json();
+  }
+
+  // POST
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sa-notifications?action=${action}`;
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session?.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!resp.ok) throw new Error(await resp.text());
+  return resp.json();
+}
+
 /* ────────────────────────────────────────────── */
-/* System notification templates (billing-cycle)  */
+/* System notification templates                  */
 /* ────────────────────────────────────────────── */
 interface SystemTemplate {
   key: string;
@@ -117,75 +154,28 @@ export default function SuperAdminWhatsAppPage() {
   const [editingTemplate, setEditingTemplate] = useState<SystemTemplate | null>(null);
   const [editedMessage, setEditedMessage] = useState("");
 
-  // Fetch ALL whatsapp logs (super admin sees all empresas)
+  // Fetch ALL whatsapp logs via edge function (bypasses RLS)
   const { data: logs, isLoading: logsLoading } = useQuery({
     queryKey: ["sa-whatsapp-logs"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("whatsapp_log")
-        .select("*, empresas:empresa_id(nombre)")
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-      return data || [];
-    },
+    queryFn: () => saFetch("logs"),
   });
 
-  // Fetch empresas for filter
+  // Fetch empresas
   const { data: empresas } = useQuery({
     queryKey: ["sa-empresas-list"],
-    queryFn: async () => {
-      const { data } = await supabase.from("empresas").select("id, nombre").order("nombre");
-      return data || [];
-    },
+    queryFn: () => saFetch("empresas"),
   });
 
-  // Fetch saved templates overrides (untyped table)
+  // Fetch saved templates
   const { data: savedTemplates } = useQuery({
     queryKey: ["sa-system-templates"],
-    queryFn: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/system_notification_templates?select=*`,
-        {
-          headers: {
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-        }
-      );
-      return res.ok ? await res.json() : [];
-    },
+    queryFn: () => saFetch("templates"),
   });
 
-  // Save template override
+  // Save template
   const saveTemplate = useMutation({
     mutationFn: async ({ key, message }: { key: string; message: string }) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${session?.access_token}`,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal",
-      };
-      const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/system_notification_templates`;
-
-      const existing = savedTemplates?.find((t: any) => t.template_key === key);
-      if (existing) {
-        const res = await fetch(`${baseUrl}?id=eq.${existing.id}`, {
-          method: "PATCH",
-          headers,
-          body: JSON.stringify({ message_template: message, updated_at: new Date().toISOString() }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-      } else {
-        const res = await fetch(baseUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ template_key: key, message_template: message }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-      }
+      return saFetch("save-template", "POST", { template_key: key, message_template: message });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sa-system-templates"] });
@@ -195,7 +185,7 @@ export default function SuperAdminWhatsAppPage() {
     onError: (e: any) => toast.error("Error: " + e.message),
   });
 
-  // Get unique tipos from logs
+  // Get unique tipos
   const tipos = useMemo(() => {
     if (!logs) return [];
     return [...new Set(logs.map((l: any) => l.tipo))].sort();
@@ -223,8 +213,8 @@ export default function SuperAdminWhatsAppPage() {
   }, [logs, statusFilter, tipoFilter, empresaFilter, search]);
 
   const getStatusIcon = (status: string) => {
-    if (status === "enviado") return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-    if (status === "error") return <XCircle className="h-4 w-4 text-red-500" />;
+    if (status === "enviado") return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+    if (status === "error") return <XCircle className="h-4 w-4 text-destructive" />;
     return <Ban className="h-4 w-4 text-muted-foreground" />;
   };
 
@@ -252,7 +242,6 @@ export default function SuperAdminWhatsAppPage() {
 
         {/* ── TAB: Logs ── */}
         <TabsContent value="logs" className="space-y-4">
-          {/* Filters */}
           <Card>
             <CardContent className="pt-4">
               <div className="flex flex-wrap gap-3">
@@ -320,7 +309,7 @@ export default function SuperAdminWhatsAppPage() {
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-2xl font-bold text-emerald-600">
                   {logs?.filter((l: any) => l.status === "enviado").length || 0}
                 </div>
                 <div className="text-xs text-muted-foreground">Enviados</div>
@@ -328,7 +317,7 @@ export default function SuperAdminWhatsAppPage() {
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-2xl font-bold text-destructive">
                   {logs?.filter((l: any) => l.status === "error").length || 0}
                 </div>
                 <div className="text-xs text-muted-foreground">Errores</div>
@@ -424,7 +413,7 @@ export default function SuperAdminWhatsAppPage() {
                           <div className="flex items-center gap-2">
                             <h4 className="font-semibold text-sm">{tmpl.label}</h4>
                             {isCustomized && (
-                              <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                              <Badge variant="outline" className="text-xs text-primary border-primary/30">
                                 Personalizado
                               </Badge>
                             )}
@@ -502,7 +491,7 @@ export default function SuperAdminWhatsAppPage() {
                 {selectedLog.error_detalle && (
                   <div className="col-span-2">
                     <Label className="text-muted-foreground text-xs">Error</Label>
-                    <div className="text-red-600 text-sm bg-red-50 dark:bg-red-950/20 rounded p-2">
+                    <div className="text-destructive text-sm bg-destructive/10 rounded p-2">
                       {selectedLog.error_detalle}
                     </div>
                   </div>
@@ -538,9 +527,7 @@ export default function SuperAdminWhatsAppPage() {
                 <span className="text-xs text-muted-foreground mr-1">Variables disponibles:</span>
                 {editingTemplate.variables.map((v) => (
                   <Badge key={v} variant="secondary" className="text-[10px] font-mono cursor-pointer"
-                    onClick={() => {
-                      setEditedMessage((prev) => prev + v);
-                    }}
+                    onClick={() => setEditedMessage((prev) => prev + v)}
                   >{v}</Badge>
                 ))}
               </div>
