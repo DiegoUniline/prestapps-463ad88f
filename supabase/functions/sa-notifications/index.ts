@@ -101,6 +101,17 @@ serve(async (req) => {
       });
     }
 
+    if (action === "wa-configs") {
+      const { data, error } = await supabase
+        .from("whatsapp_config")
+        .select("*, empresas:empresa_id(nombre, telefono)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,

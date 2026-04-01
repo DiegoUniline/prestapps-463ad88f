@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/dialog";
 import {
   MessageSquare, Search, Filter, CheckCircle2, XCircle, Ban, Eye, Edit2, Save,
-  RefreshCw, Building2, Phone, Clock, Send,
+  RefreshCw, Building2, Phone, Clock, Send, Wifi, WifiOff, Key, Globe, AlertCircle,
+  type LucideIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -153,6 +154,10 @@ export default function SuperAdminWhatsAppPage() {
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [editingTemplate, setEditingTemplate] = useState<SystemTemplate | null>(null);
   const [editedMessage, setEditedMessage] = useState("");
+  const [origenFilter, setOrigenFilter] = useState<string>("all");
+
+  // System notification tipos
+  const SYSTEM_TIPOS = ["factura_generada", "pago_exitoso", "recordatorio_gracia", "suscripcion_suspendida", "recordatorio_vencimiento", "alerta_pago"];
 
   // Fetch ALL whatsapp logs via edge function (bypasses RLS)
   const { data: logs, isLoading: logsLoading } = useQuery({
@@ -170,6 +175,12 @@ export default function SuperAdminWhatsAppPage() {
   const { data: savedTemplates } = useQuery({
     queryKey: ["sa-system-templates"],
     queryFn: () => saFetch("templates"),
+  });
+
+  // Fetch WA configs for all empresas
+  const { data: waConfigs, isLoading: configsLoading } = useQuery({
+    queryKey: ["sa-wa-configs"],
+    queryFn: () => saFetch("wa-configs"),
   });
 
   // Save template
@@ -198,6 +209,8 @@ export default function SuperAdminWhatsAppPage() {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (tipoFilter !== "all" && l.tipo !== tipoFilter) return false;
       if (empresaFilter !== "all" && l.empresa_id !== empresaFilter) return false;
+      if (origenFilter === "sistema" && !SYSTEM_TIPOS.includes(l.tipo)) return false;
+      if (origenFilter === "empresa" && SYSTEM_TIPOS.includes(l.tipo)) return false;
       if (search) {
         const s = search.toLowerCase();
         const empresa = (l.empresas as any)?.nombre || "";
@@ -234,6 +247,9 @@ export default function SuperAdminWhatsAppPage() {
         <TabsList>
           <TabsTrigger value="logs" className="gap-2">
             <MessageSquare className="h-4 w-4" /> Mensajes Enviados
+          </TabsTrigger>
+          <TabsTrigger value="config" className="gap-2">
+            <Key className="h-4 w-4" /> Config API
           </TabsTrigger>
           <TabsTrigger value="templates" className="gap-2">
             <Edit2 className="h-4 w-4" /> Plantillas del Sistema
@@ -286,6 +302,17 @@ export default function SuperAdminWhatsAppPage() {
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="enviado">✅ Enviado</SelectItem>
                     <SelectItem value="error">❌ Error</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={origenFilter} onValueChange={setOrigenFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <Globe className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Origen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="sistema">🏢 Sistema (PrestApps)</SelectItem>
+                    <SelectItem value="empresa">📋 Empresa (Cobranza)</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
@@ -370,8 +397,13 @@ export default function SuperAdminWhatsAppPage() {
                             {(log.empresas as any)?.nombre || "—"}
                           </TableCell>
                           <TableCell className="text-sm font-mono">{log.telefono}</TableCell>
-                          <TableCell>
+                          <TableCell className="space-x-1">
                             <Badge variant="secondary" className="text-xs">{log.tipo}</Badge>
+                            {SYSTEM_TIPOS.includes(log.tipo) ? (
+                              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">Sistema</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px]">Empresa</Badge>
+                            )}
                           </TableCell>
                           <TableCell>{getStatusIcon(log.status)}</TableCell>
                           <TableCell>
@@ -387,7 +419,115 @@ export default function SuperAdminWhatsAppPage() {
           </Card>
         </TabsContent>
 
-        {/* ── TAB: Templates ── */}
+        {/* ── TAB: Config API ── */}
+        <TabsContent value="config" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                APIs de WhatsApp por Empresa
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Las notificaciones del sistema (facturación, suscripciones) se envían usando la API de WhatsApp configurada por cada empresa.
+                No existe un número central de PrestApps — cada empresa usa su propio número de WhatsApp Business.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Empresa</TableHead>
+                      <TableHead>API URL</TableHead>
+                      <TableHead>Token</TableHead>
+                      <TableHead className="w-[100px]">Estado</TableHead>
+                      <TableHead>Avisos</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {configsLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8">
+                          <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
+                          Cargando...
+                        </TableCell>
+                      </TableRow>
+                    ) : !waConfigs?.length ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          No hay configuraciones de WhatsApp
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      waConfigs.map((cfg: any) => (
+                        <TableRow key={cfg.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-muted-foreground" />
+                              {(cfg.empresas as any)?.nombre || cfg.empresa_id?.slice(0, 8)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-2 py-1 rounded break-all max-w-[250px] block">
+                              {cfg.api_url || "—"}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">
+                              {cfg.api_token ? `${cfg.api_token.slice(0, 8)}...${cfg.api_token.slice(-4)}` : "—"}
+                            </code>
+                          </TableCell>
+                          <TableCell>
+                            {cfg.activo ? (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                <Wifi className="h-3 w-3 mr-1" /> Activo
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                <WifiOff className="h-3 w-3 mr-1" /> Inactivo
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1 flex-wrap">
+                              {cfg.aviso_dia_antes && <Badge variant="outline" className="text-[10px]">Día antes</Badge>}
+                              {cfg.aviso_vencido && <Badge variant="outline" className="text-[10px]">Vencido</Badge>}
+                              {cfg.recibo_pago && <Badge variant="outline" className="text-[10px]">Recibo</Badge>}
+                              {!cfg.aviso_dia_antes && !cfg.aviso_vencido && !cfg.recibo_pago && (
+                                <span className="text-xs text-muted-foreground">Ninguno</span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <Card className="mt-4 border-primary/20 bg-primary/5">
+                <CardContent className="pt-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div className="text-sm space-y-1">
+                      <p className="font-medium">¿Cómo funcionan las notificaciones del sistema?</p>
+                      <p className="text-muted-foreground">
+                        Las notificaciones de <strong>facturación</strong> (factura generada, pago exitoso, recordatorio de gracia, suspensión) 
+                        se envían a los admins de cada empresa usando <strong>su propia API de WhatsApp</strong>. 
+                        Si una empresa no tiene WA configurado, no recibe estas notificaciones.
+                      </p>
+                      <p className="text-muted-foreground">
+                        Los mensajes de <strong>cobranza</strong> (aviso día antes, vencido, recibo de pago) también usan la misma API de cada empresa 
+                        y se envían a los <strong>clientes</strong> de la empresa.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="templates" className="space-y-4">
           <Card>
             <CardHeader>
