@@ -766,15 +766,16 @@ export default function PrestamoDetallePage() {
                       <TableBody>
                         {(() => {
                           const filtered = amortFilter === "todas" ? amort
-                            : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
-                            : amort.filter(c => c.status === amortFilter);
+                            : amortFilter === "Pendiente" ? amort.filter(c => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Parcial" || vs === "Prometida"; })
+                            : amort.filter(c => cuotaVisualStatus(c) === amortFilter);
                           if (filtered.length === 0) return (
                             <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</TableCell></TableRow>
                           );
                           return filtered.map((c) => {
-                          const status = c.status || "Pendiente";
+                          const status = cuotaVisualStatus(c);
                           const isNext = proximaCuota?.num_cuota === c.num_cuota;
                           const isParcial = status === "Parcial";
+                          const saldoAtrasado = status === "Vencida" ? Number(c.saldo_total || 0) + Number(c.saldo_mora || 0) : 0;
                           return (
                             <TableRow
                               key={c.num_cuota}
