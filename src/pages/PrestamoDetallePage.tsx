@@ -724,9 +724,9 @@ export default function PrestamoDetallePage() {
                     <div className="flex gap-1 overflow-x-auto">
                       {([
                         { key: "todas", label: "Todas", count: amort.length },
-                        { key: "Pagada", label: "Pagadas", count: amort.filter(c => c.status === "Pagada").length },
-                        { key: "Pendiente", label: "Pendientes", count: amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida").length },
-                        { key: "Vencida", label: "Vencidas", count: amort.filter(c => c.status === "Vencida").length },
+                        { key: "Pagada", label: "Pagadas", count: amort.filter(c => cuotaVisualStatus(c) === "Pagada").length },
+                        { key: "Pendiente", label: "Pendientes", count: amort.filter(c => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Parcial" || vs === "Prometida"; }).length },
+                        { key: "Vencida", label: "Vencidas", count: amort.filter(c => cuotaVisualStatus(c) === "Vencida").length },
                       ] as const).map((f) => (
                         <button
                           key={f.key}
