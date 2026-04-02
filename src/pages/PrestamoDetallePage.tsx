@@ -95,8 +95,18 @@ function MetodoDot({ metodo }: { metodo: string }) {
 }
 
 // ── Default & optional columns ────────────────────────────────────
-const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "Mora", "Pagado", "Saldo Total", "Status", "F.Pagada"];
+const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "Mora", "Pagado", "Saldo Total", "Saldo Atrasado", "Status", "F.Pagada"];
 const optionalCols = ["Cap.Pag.", "Int.Pag.", "Mora Pag.", "S.Cap", "S.Int", "S.Mora", "Desc.Mora", "Avisado"];
+
+// Compute visual status: override "Pendiente" to "Vencida" when past due
+const today = new Date().toISOString().slice(0, 10);
+function cuotaVisualStatus(c: { status: string | null; fecha_vencimiento: string; saldo_total: number | null }): string {
+  const dbStatus = c.status || "Pendiente";
+  if (dbStatus === "Pendiente" && c.fecha_vencimiento < today && Number(c.saldo_total || 0) > 0) {
+    return "Vencida";
+  }
+  return dbStatus;
+}
 
 // ── Stripe Auto-Charge Toggle ─────────────────────────────────────
 function StripeAutoChargeToggle({ prestamoId, enabled, disabled, onToggled, empresaId }: {
