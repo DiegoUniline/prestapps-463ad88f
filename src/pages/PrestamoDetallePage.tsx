@@ -802,6 +802,9 @@ export default function PrestamoDetallePage() {
                                 {(() => { const paid = Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0); return paid > 0 ? $$(paid) : "—"; })()}
                               </TableCell>
                               <TableCell className="px-3 text-[13px] font-medium">{dash(c.saldo_total) || $$(c.saldo_total)}</TableCell>
+                              <TableCell className={cn("px-3 text-[13px] font-medium", saldoAtrasado > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
+                                {saldoAtrasado > 0 ? $$(saldoAtrasado) : "—"}
+                              </TableCell>
                               <TableCell className="px-3"><CuotaStatusBadge status={status} /></TableCell>
                               <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
                                 {c.fecha_pagada ? fmtDate(c.fecha_pagada) : <span className="text-[hsl(220,14%,83%)]">—</span>}
