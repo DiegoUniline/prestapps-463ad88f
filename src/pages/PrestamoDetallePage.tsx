@@ -268,12 +268,12 @@ export default function PrestamoDetallePage() {
   // KPI calculations
   const totalPagado = amort.reduce((s, c) => s + Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0), 0);
   const saldoPendiente = amort.reduce((s, c) => s + Number(c.saldo_total || 0), 0);
-  const cuotasVencidas = amort.filter((c) => c.status === "Vencida").length;
-  const cuotasPagadas = amort.filter((c) => c.status === "Pagada").length;
+  const cuotasVencidas = amort.filter((c) => cuotaVisualStatus(c) === "Vencida").length;
+  const cuotasPagadas = amort.filter((c) => cuotaVisualStatus(c) === "Pagada").length;
   const saldoMoroso = amort.reduce((s, c) => s + Number(c.saldo_mora || 0), 0);
-  const proximaCuota = amort.find((c) => c.status === "Parcial") || amort.find((c) => c.status === "Vencida") || amort.find((c) => c.status === "Pendiente" || c.status === "Prometida");
+  const proximaCuota = amort.find((c) => cuotaVisualStatus(c) === "Parcial") || amort.find((c) => cuotaVisualStatus(c) === "Vencida") || amort.find((c) => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Prometida"; });
   const ultimoPago = pagosRaw.length > 0 ? pagosRaw[pagosRaw.length - 1] : null;
-  const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
+  const diasMora = amort.filter(c => cuotaVisualStatus(c) === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
   const cobroHoy = proximaCuota ? Number(proximaCuota.saldo_total || 0) : 0;
 
   const estado = (prestamo.estado || "Activo") as string;
