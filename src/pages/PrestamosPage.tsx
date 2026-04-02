@@ -627,7 +627,7 @@ export default function PrestamosPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {kpis.map((k) => (
           <div key={k.label} className="bg-card rounded-lg border border-border px-4 py-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
             <div className="flex items-center justify-between">
@@ -635,6 +635,7 @@ export default function PrestamosPage() {
               <k.icon className={cn("h-4 w-4", k.accent)} />
             </div>
             <p className="text-lg font-semibold mt-1">{isLoading ? "—" : k.value}</p>
+            {k.description && <p className="text-[10px] text-muted-foreground mt-0.5">{k.description}</p>}
           </div>
         ))}
       </div>
