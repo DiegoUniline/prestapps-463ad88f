@@ -582,12 +582,17 @@ export default function PrestamosPage() {
     const porCobrar = source.reduce((s, p) => s + p.saldo, 0);
     const morosos = source.filter((p) => p.mora > 0);
     const totalMora = morosos.reduce((s, p) => s + p.mora, 0);
+    const atrasados = source.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado");
+    const saldoAtrasadoCuotas = atrasados.reduce((s, p) => s + p.saldo, 0);
+    const moraAtrasada = atrasados.reduce((s, p) => s + p.mora, 0);
+    const saldoAtrasadoTotal = saldoAtrasadoCuotas + moraAtrasada;
 
     return [
-      { label: "Total Préstamos", value: String(totalPrestamos), icon: FileText, accent: "text-primary" },
-      { label: "Monto Colocado", value: $$(montoColocado), icon: DollarSign, accent: "text-success" },
-      { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning" },
-      { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
+      { label: "Total Préstamos", value: String(totalPrestamos), icon: FileText, accent: "text-primary", description: undefined as string | undefined },
+      { label: "Monto Colocado", value: $$(montoColocado), icon: DollarSign, accent: "text-success", description: undefined as string | undefined },
+      { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning", description: undefined as string | undefined },
+      { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive", description: undefined as string | undefined },
+      { label: `Saldo Atrasado (${atrasados.length})`, value: $$(saldoAtrasadoTotal), icon: AlertTriangle, accent: "text-destructive", description: `Saldo ${$$(saldoAtrasadoCuotas)} + Mora ${$$(moraAtrasada)}` },
     ];
   }, [filtered]);
 
@@ -622,7 +627,7 @@ export default function PrestamosPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {kpis.map((k) => (
           <div key={k.label} className="bg-card rounded-lg border border-border px-4 py-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
             <div className="flex items-center justify-between">
@@ -630,6 +635,7 @@ export default function PrestamosPage() {
               <k.icon className={cn("h-4 w-4", k.accent)} />
             </div>
             <p className="text-lg font-semibold mt-1">{isLoading ? "—" : k.value}</p>
+            {k.description && <p className="text-[10px] text-muted-foreground mt-0.5">{k.description}</p>}
           </div>
         ))}
       </div>
