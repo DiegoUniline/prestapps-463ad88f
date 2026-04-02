@@ -95,8 +95,18 @@ function MetodoDot({ metodo }: { metodo: string }) {
 }
 
 // ── Default & optional columns ────────────────────────────────────
-const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "Mora", "Pagado", "Saldo Total", "Status", "F.Pagada"];
+const defaultCols = ["#", "Capital", "Interés", "Cuota", "F.Venc.", "Días", "Mora", "Pagado", "Saldo Total", "Saldo Atrasado", "Status", "F.Pagada"];
 const optionalCols = ["Cap.Pag.", "Int.Pag.", "Mora Pag.", "S.Cap", "S.Int", "S.Mora", "Desc.Mora", "Avisado"];
+
+// Compute visual status: override "Pendiente" to "Vencida" when past due
+const today = new Date().toISOString().slice(0, 10);
+function cuotaVisualStatus(c: { status: string | null; fecha_vencimiento: string; saldo_total: number | null }): string {
+  const dbStatus = c.status || "Pendiente";
+  if (dbStatus === "Pendiente" && c.fecha_vencimiento < today && Number(c.saldo_total || 0) > 0) {
+    return "Vencida";
+  }
+  return dbStatus;
+}
 
 // ── Stripe Auto-Charge Toggle ─────────────────────────────────────
 function StripeAutoChargeToggle({ prestamoId, enabled, disabled, onToggled, empresaId }: {
@@ -258,12 +268,12 @@ export default function PrestamoDetallePage() {
   // KPI calculations
   const totalPagado = amort.reduce((s, c) => s + Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0), 0);
   const saldoPendiente = amort.reduce((s, c) => s + Number(c.saldo_total || 0), 0);
-  const cuotasVencidas = amort.filter((c) => c.status === "Vencida").length;
-  const cuotasPagadas = amort.filter((c) => c.status === "Pagada").length;
+  const cuotasVencidas = amort.filter((c) => cuotaVisualStatus(c) === "Vencida").length;
+  const cuotasPagadas = amort.filter((c) => cuotaVisualStatus(c) === "Pagada").length;
   const saldoMoroso = amort.reduce((s, c) => s + Number(c.saldo_mora || 0), 0);
-  const proximaCuota = amort.find((c) => c.status === "Parcial") || amort.find((c) => c.status === "Vencida") || amort.find((c) => c.status === "Pendiente" || c.status === "Prometida");
+  const proximaCuota = amort.find((c) => cuotaVisualStatus(c) === "Parcial") || amort.find((c) => cuotaVisualStatus(c) === "Vencida") || amort.find((c) => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Prometida"; });
   const ultimoPago = pagosRaw.length > 0 ? pagosRaw[pagosRaw.length - 1] : null;
-  const diasMora = amort.filter(c => c.status === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
+  const diasMora = amort.filter(c => cuotaVisualStatus(c) === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
   const cobroHoy = proximaCuota ? Number(proximaCuota.saldo_total || 0) : 0;
 
   const estado = (prestamo.estado || "Activo") as string;
@@ -714,9 +724,9 @@ export default function PrestamoDetallePage() {
                     <div className="flex gap-1 overflow-x-auto">
                       {([
                         { key: "todas", label: "Todas", count: amort.length },
-                        { key: "Pagada", label: "Pagadas", count: amort.filter(c => c.status === "Pagada").length },
-                        { key: "Pendiente", label: "Pendientes", count: amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida").length },
-                        { key: "Vencida", label: "Vencidas", count: amort.filter(c => c.status === "Vencida").length },
+                        { key: "Pagada", label: "Pagadas", count: amort.filter(c => cuotaVisualStatus(c) === "Pagada").length },
+                        { key: "Pendiente", label: "Pendientes", count: amort.filter(c => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Parcial" || vs === "Prometida"; }).length },
+                        { key: "Vencida", label: "Vencidas", count: amort.filter(c => cuotaVisualStatus(c) === "Vencida").length },
                       ] as const).map((f) => (
                         <button
                           key={f.key}
@@ -756,15 +766,16 @@ export default function PrestamoDetallePage() {
                       <TableBody>
                         {(() => {
                           const filtered = amortFilter === "todas" ? amort
-                            : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
-                            : amort.filter(c => c.status === amortFilter);
+                            : amortFilter === "Pendiente" ? amort.filter(c => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Parcial" || vs === "Prometida"; })
+                            : amort.filter(c => cuotaVisualStatus(c) === amortFilter);
                           if (filtered.length === 0) return (
                             <TableRow><TableCell colSpan={defaultCols.length + (showOptional ? optionalCols.length : 0) + 1} className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</TableCell></TableRow>
                           );
                           return filtered.map((c) => {
-                          const status = c.status || "Pendiente";
+                          const status = cuotaVisualStatus(c);
                           const isNext = proximaCuota?.num_cuota === c.num_cuota;
                           const isParcial = status === "Parcial";
+                          const saldoAtrasado = status === "Vencida" ? Number(c.saldo_total || 0) + Number(c.saldo_mora || 0) : 0;
                           return (
                             <TableRow
                               key={c.num_cuota}
@@ -791,6 +802,9 @@ export default function PrestamoDetallePage() {
                                 {(() => { const paid = Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0); return paid > 0 ? $$(paid) : "—"; })()}
                               </TableCell>
                               <TableCell className="px-3 text-[13px] font-medium">{dash(c.saldo_total) || $$(c.saldo_total)}</TableCell>
+                              <TableCell className={cn("px-3 text-[13px] font-medium", saldoAtrasado > 0 ? "text-destructive font-bold" : "text-[hsl(220,14%,83%)]")}>
+                                {saldoAtrasado > 0 ? $$(saldoAtrasado) : "—"}
+                              </TableCell>
                               <TableCell className="px-3"><CuotaStatusBadge status={status} /></TableCell>
                               <TableCell className="px-3 text-[12px] text-muted-foreground whitespace-nowrap">
                                 {c.fecha_pagada ? fmtDate(c.fecha_pagada) : <span className="text-[hsl(220,14%,83%)]">—</span>}
@@ -854,13 +868,14 @@ export default function PrestamoDetallePage() {
                   <div className="md:hidden space-y-2 p-3">
                     {(() => {
                       const filtered = amortFilter === "todas" ? amort
-                        : amortFilter === "Pendiente" ? amort.filter(c => c.status === "Pendiente" || c.status === "Parcial" || c.status === "Prometida")
-                        : amort.filter(c => c.status === amortFilter);
+                        : amortFilter === "Pendiente" ? amort.filter(c => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Parcial" || vs === "Prometida"; })
+                        : amort.filter(c => cuotaVisualStatus(c) === amortFilter);
                       if (filtered.length === 0) return <p className="text-center py-8 text-muted-foreground text-[13px]">Sin cuotas en este filtro</p>;
                       return filtered.map((c) => {
-                        const status = c.status || "Pendiente";
+                        const status = cuotaVisualStatus(c);
                         const isNext = proximaCuota?.num_cuota === c.num_cuota;
                         const paid = Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0);
+                        const saldoAtrasado = status === "Vencida" ? Number(c.saldo_total || 0) + Number(c.saldo_mora || 0) : 0;
                         return (
                           <div
                             key={c.num_cuota}
@@ -891,6 +906,9 @@ export default function PrestamoDetallePage() {
                                 <div className="flex justify-between"><span className="text-muted-foreground">Pagado</span><span className="text-[hsl(142,72%,37%)] font-medium">{$$(paid)}</span></div>
                               )}
                               <div className="flex justify-between"><span className="text-muted-foreground">Saldo</span><span className="font-medium">{$$(c.saldo_total)}</span></div>
+                              {saldoAtrasado > 0 && (
+                                <div className="flex justify-between"><span className="text-muted-foreground">Saldo Atrasado</span><span className="text-destructive font-bold">{$$(saldoAtrasado)}</span></div>
+                              )}
                               {c.fecha_pagada && <div className="flex justify-between"><span className="text-muted-foreground">F.Pagada</span><span>{fmtDate(c.fecha_pagada)}</span></div>}
                             </div>
                             {status !== "Pagada" && !isCancelado && (
