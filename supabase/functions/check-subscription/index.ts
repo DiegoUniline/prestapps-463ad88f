@@ -125,9 +125,11 @@ serve(async (req) => {
           logStep("Trial expired", { daysSinceExpiry, diasGraciaRestantes });
         }
       } else if (!["trial", "pendiente_pago"].includes(suscripcion.estado)) {
-        // Keep pending payment state as-is even if old trial fecha_vencimiento is in the past
-        const vencida = suscripcion.fecha_vencimiento && new Date(suscripcion.fecha_vencimiento) < new Date();
-        if (vencida) estado = "suspendida";
+        // fecha_vencimiento = NULL means "sin vencimiento" — never expire
+        if (suscripcion.fecha_vencimiento) {
+          const vencida = new Date(suscripcion.fecha_vencimiento) < new Date();
+          if (vencida) estado = "suspendida";
+        }
       }
 
       if (estado === "gracia" && suscripcion.actualizado_en) {

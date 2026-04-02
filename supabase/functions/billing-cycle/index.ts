@@ -230,6 +230,26 @@ serve(async (req) => {
 
           // (WA notifications are sent by billing-notifications at 9AM)
 
+          // ── If total is $0 (100% discount), auto-mark as paid ──
+          if (total <= 0) {
+            await supabase.from("facturas")
+              .update({ estado: "pagada", fecha_pago: now.toISOString() })
+              .eq("empresa_id", sub.empresa_id)
+              .eq("periodo_inicio", periodoInicio);
+
+            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+            await supabase.from("suscripciones")
+              .update({
+                fecha_proximo_cobro: nextMonth.toISOString().split("T")[0],
+                actualizado_en: now.toISOString(),
+              })
+              .eq("id", sub.id);
+
+            logStep("Zero-total invoice auto-paid (100% discount)", { empresa_id: sub.empresa_id });
+            results.push({ empresa_id: sub.empresa_id, action: "auto_paid_zero", total });
+            continue;
+          }
+
           // ── For manual subs with Stripe customer — attempt charge ──
           if (!isStripeBilled && stripe && sub.stripe_customer_id) {
             try {
