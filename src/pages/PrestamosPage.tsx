@@ -582,12 +582,17 @@ export default function PrestamosPage() {
     const porCobrar = source.reduce((s, p) => s + p.saldo, 0);
     const morosos = source.filter((p) => p.mora > 0);
     const totalMora = morosos.reduce((s, p) => s + p.mora, 0);
+    const atrasados = source.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado");
+    const saldoAtrasadoCuotas = atrasados.reduce((s, p) => s + p.saldo, 0);
+    const moraAtrasada = atrasados.reduce((s, p) => s + p.mora, 0);
+    const saldoAtrasadoTotal = saldoAtrasadoCuotas + moraAtrasada;
 
     return [
-      { label: "Total Préstamos", value: String(totalPrestamos), icon: FileText, accent: "text-primary" },
-      { label: "Monto Colocado", value: $$(montoColocado), icon: DollarSign, accent: "text-success" },
-      { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning" },
-      { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive" },
+      { label: "Total Préstamos", value: String(totalPrestamos), icon: FileText, accent: "text-primary", description: undefined as string | undefined },
+      { label: "Monto Colocado", value: $$(montoColocado), icon: DollarSign, accent: "text-success", description: undefined as string | undefined },
+      { label: "Por Cobrar", value: $$(porCobrar), icon: TrendingUp, accent: "text-warning", description: undefined as string | undefined },
+      { label: `En Mora (${morosos.length})`, value: $$(totalMora), icon: AlertTriangle, accent: "text-destructive", description: undefined as string | undefined },
+      { label: `Saldo Atrasado (${atrasados.length})`, value: $$(saldoAtrasadoTotal), icon: AlertTriangle, accent: "text-destructive", description: `Saldo ${$$(saldoAtrasadoCuotas)} + Mora ${$$(moraAtrasada)}` },
     ];
   }, [filtered]);
 
