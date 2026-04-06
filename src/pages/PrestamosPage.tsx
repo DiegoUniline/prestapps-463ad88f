@@ -157,6 +157,22 @@ const ALL_COLUMNS: ColumnDef[] = [
     className: "text-right",
   },
   {
+    key: "saldoAPagar", label: "Saldo a Pagar", sortKey: "saldoAtrasado" as any, defaultVisible: true,
+    render: (p) => {
+      const total = (p.saldoAtrasado || 0) + (p.moraAtrasada || 0);
+      if (total <= 0) return <span className="text-muted-foreground text-[12px]">—</span>;
+      return (
+        <div className="text-right">
+          <span className="font-bold text-[13px] text-destructive">{$$(total)}</span>
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            Saldo {$$(p.saldoAtrasado || 0)} + Mora {$$(p.moraAtrasada || 0)}
+          </p>
+        </div>
+      );
+    },
+    className: "text-right",
+  },
+  {
     key: "diasAtraso", label: "Días Atraso", sortKey: "diasAtraso", defaultVisible: true,
     render: (p) => {
       const d = p.diasAtraso ?? 0;
