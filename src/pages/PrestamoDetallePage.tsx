@@ -274,12 +274,6 @@ export default function PrestamoDetallePage() {
   const proximaCuota = amort.find((c) => cuotaVisualStatus(c) === "Parcial") || amort.find((c) => cuotaVisualStatus(c) === "Vencida") || amort.find((c) => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Prometida"; });
   const ultimoPago = pagosRaw.length > 0 ? pagosRaw[pagosRaw.length - 1] : null;
   const diasMora = amort.filter(c => cuotaVisualStatus(c) === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
-  const cobroHoy = proximaCuota ? Number(proximaCuota.saldo_total || 0) : 0;
-
-  const estado = (prestamo.estado || "Activo") as string;
-  const isCancelado = estado === "Cancelado" || estado === "Reestructurado";
-  const folioId = (prestamo as any).id_prestamo || `PRE-${(prestamo.id?.slice(0, 8) || id)}`;
-  const shortId = folioId;
 
   // Saldo atrasado: sum of saldo_total + saldo_mora for overdue cuotas
   const cuotasAtrasadas = amort.filter(c => cuotaVisualStatus(c) === "Vencida");
@@ -287,8 +281,16 @@ export default function PrestamoDetallePage() {
   const moraAtrasada = cuotasAtrasadas.reduce((s, c) => s + Number(c.saldo_mora || 0), 0);
   const saldoAtrasadoTotal = saldoAtrasadoCuotas + moraAtrasada;
 
+  // Cobro de hoy = total para ponerse al corriente (todas las cuotas vencidas + mora + cuota actual si no es vencida)
+  const cobroHoy = saldoAtrasadoCuotas + moraAtrasada + (proximaCuota && cuotaVisualStatus(proximaCuota) !== "Vencida" ? Number(proximaCuota.saldo_total || 0) : 0);
+
+  const estado = (prestamo.estado || "Activo") as string;
+  const isCancelado = estado === "Cancelado" || estado === "Reestructurado";
+  const folioId = (prestamo as any).id_prestamo || `PRE-${(prestamo.id?.slice(0, 8) || id)}`;
+  const shortId = folioId;
+
   const kpis = [
-    { label: "Cobro de Hoy", value: $$(cobroHoy), color: cobroHoy > 0 ? "text-primary" : "text-foreground", sub: proximaCuota ? `Cuota #${proximaCuota.num_cuota}` : "—" },
+    { label: "Cobro de Hoy", value: $$(cobroHoy), color: cobroHoy > 0 ? "text-primary" : "text-foreground", sub: cobroHoy > 0 ? `Saldo ${$$(saldoAtrasadoCuotas)} + Mora ${$$(moraAtrasada)}` : "Al corriente" },
     { label: "Avance", value: `${cuotasPagadas}/${prestamo.num_cuotas}`, color: "text-foreground", sub: "cuotas pagadas" },
     { label: "Total Pagado", value: $$(totalPagado), color: "text-[hsl(142,72%,37%)]" },
     { label: "Saldo Pendiente", value: $$(saldoPendiente), color: "text-[hsl(217,91%,60%)]" },
