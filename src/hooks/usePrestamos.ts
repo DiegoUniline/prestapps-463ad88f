@@ -32,6 +32,8 @@ export interface PrestamoListItem {
   ultimoPagoFecha: string | null;
   ultimoPagoMonto: number | null;
   proximoVencimiento: string | null;
+  saldoAtrasado: number;
+  moraAtrasada: number;
 }
 
 export interface FetchFilters {
@@ -149,11 +151,11 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const amortByPrestamo: Record<string, { saldo: number; saldoCapital: number; saldoInteres: number; mora: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number; proximoVencimiento: string | null }> = {};
+  const amortByPrestamo: Record<string, { saldo: number; saldoCapital: number; saldoInteres: number; mora: number; saldoAtrasado: number; moraAtrasada: number; pagadas: number; tieneAtraso: boolean; diasAtraso: number; proximoVencimiento: string | null }> = {};
 
   for (const a of amortData) {
     if (!amortByPrestamo[a.prestamo_id]) {
-      amortByPrestamo[a.prestamo_id] = { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0, proximoVencimiento: null };
+      amortByPrestamo[a.prestamo_id] = { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, saldoAtrasado: 0, moraAtrasada: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0, proximoVencimiento: null };
     }
     const entry = amortByPrestamo[a.prestamo_id];
     entry.saldo += Number(a.saldo_total || 0);
@@ -169,6 +171,8 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
     }
     if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
       entry.tieneAtraso = true;
+      entry.saldoAtrasado += Number(a.saldo_total || 0);
+      entry.moraAtrasada += Number(a.saldo_mora || 0);
       const diffDays = Math.floor((parseLocalDate(today).getTime() - parseLocalDate(a.fecha_vencimiento).getTime()) / 86400000);
       if (diffDays > entry.diasAtraso) {
         entry.diasAtraso = diffDays;
@@ -177,7 +181,7 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
   }
 
   return prestamos.map((p) => {
-    const amort = amortByPrestamo[p.id] || { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0, proximoVencimiento: null };
+    const amort = amortByPrestamo[p.id] || { saldo: 0, saldoCapital: 0, saldoInteres: 0, mora: 0, saldoAtrasado: 0, moraAtrasada: 0, pagadas: 0, tieneAtraso: false, diasAtraso: 0, proximoVencimiento: null };
 
     // Compute visual estado: override DB estado if real-time data says otherwise
     let estado = p.estado || "Activo";
@@ -212,6 +216,8 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
       saldoCapital: amort.saldoCapital,
       saldoInteres: amort.saldoInteres,
       mora: amort.mora,
+      saldoAtrasado: amort.saldoAtrasado,
+      moraAtrasada: amort.moraAtrasada,
       estado,
       fechaRegistro: p.fecha_registro || "",
       fechaPrimerPago: p.fecha_primer_pago || "",
