@@ -43,8 +43,8 @@ const TEMPLATE_TYPES = [
     tipo: "aviso_vencido",
     nombre: "Aviso de cuota vencida",
     descripcion: "Se envía cuando una cuota está vencida",
-    variables: "{cliente}, {monto_cuota}, {cuota}, {total_cuotas}, {fecha_vencimiento}",
-    default: "🔴 *Cuota vencida*\n\nHola {cliente}, tu cuota #{cuota} por *${monto_cuota}* venció el *{fecha_vencimiento}*.\n\nPor favor realiza tu pago lo antes posible para evitar cargos por mora.",
+    variables: "{cliente}, {monto_total}, {saldo_atrasado}, {mora_total}, {cuota}, {num_cuotas_vencidas}, {total_cuotas}, {fecha_vencimiento}, {detalle_cuotas}",
+    default: "🔴 *Saldo Vencido*\n\nHola {cliente}, tienes un saldo vencido de *${monto_total}* al día de hoy.\n\n📊 Desglose:\n• Saldo pendiente: ${saldo_atrasado}\n• Mora acumulada: ${mora_total}\n• Cuotas vencidas: {num_cuotas_vencidas}\n\n{detalle_cuotas}\n\nPor favor realiza tu pago lo antes posible para evitar más recargos.",
   },
   {
     tipo: "cobranza_manual",

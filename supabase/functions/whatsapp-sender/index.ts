@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
       let query = supabase
         .from("amortizacion")
         .select(`
-          id, num_cuota, fecha_vencimiento, saldo_total, capital_interes,
+          id, num_cuota, fecha_vencimiento, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes,
           prestamo_id, empresa_id,
           prestamos!inner(id, cliente_id, num_cuotas, monto_solicitado,
         clientes!inner(nombre_completo, telefono),
@@ -203,6 +203,8 @@ Deno.serve(async (req) => {
 
         // Build cuotas detail lines for the message
         const montoTotal = cuotasList.reduce((sum: number, c: any) => sum + (c.saldo_total || 0), 0);
+        const moraTotal = cuotasList.reduce((sum: number, c: any) => sum + (c.saldo_mora || 0), 0);
+        const saldoSinMora = montoTotal - moraTotal;
         const cuotasNums = cuotasList.map(c => `#${c.num_cuota}`).join(", ");
         const cuotasDetalle = cuotasList.map(c => {
           const fecha = c.fecha_vencimiento ? c.fecha_vencimiento.split("-").reverse().join("/") : "";
@@ -218,6 +220,8 @@ Deno.serve(async (req) => {
           total_cuotas: String(firstPrestamo?.num_cuotas || ""),
           monto_cuota: montoTotal.toFixed(2),
           monto_total: montoTotal.toFixed(2),
+          saldo_atrasado: saldoSinMora.toFixed(2),
+          mora_total: moraTotal.toFixed(2),
           fecha_vencimiento: cuotasList[0]?.fecha_vencimiento ? cuotasList[0].fecha_vencimiento.split("-").reverse().join("/") : "",
           monto_prestamo: firstPrestamo?.monto_solicitado?.toFixed(2) || "0.00",
           detalle_cuotas: cuotasDetalle,
