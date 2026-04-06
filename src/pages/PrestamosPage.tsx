@@ -599,8 +599,8 @@ export default function PrestamosPage() {
     const morosos = source.filter((p) => p.mora > 0);
     const totalMora = morosos.reduce((s, p) => s + p.mora, 0);
     const atrasados = source.filter((p) => p.tieneAtraso && p.estado !== "Liquidado" && p.estado !== "Cancelado");
-    const saldoAtrasadoCuotas = atrasados.reduce((s, p) => s + p.saldo, 0);
-    const moraAtrasada = atrasados.reduce((s, p) => s + p.mora, 0);
+    const saldoAtrasadoCuotas = atrasados.reduce((s, p) => s + (p.saldoAtrasado || 0), 0);
+    const moraAtrasada = atrasados.reduce((s, p) => s + (p.moraAtrasada || 0), 0);
     const saldoAtrasadoTotal = saldoAtrasadoCuotas + moraAtrasada;
 
     return [
