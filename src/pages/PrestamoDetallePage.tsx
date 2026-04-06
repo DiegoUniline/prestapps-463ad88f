@@ -274,7 +274,8 @@ export default function PrestamoDetallePage() {
   const proximaCuota = amort.find((c) => cuotaVisualStatus(c) === "Parcial") || amort.find((c) => cuotaVisualStatus(c) === "Vencida") || amort.find((c) => { const vs = cuotaVisualStatus(c); return vs === "Pendiente" || vs === "Prometida"; });
   const ultimoPago = pagosRaw.length > 0 ? pagosRaw[pagosRaw.length - 1] : null;
   const diasMora = amort.filter(c => cuotaVisualStatus(c) === "Vencida").reduce((max, c) => Math.max(max, c.dias_atraso || 0), 0);
-  const cobroHoy = proximaCuota ? Number(proximaCuota.saldo_total || 0) : 0;
+  // Cobro de hoy = total para ponerse al corriente (todas las cuotas vencidas + mora + cuota actual si aplica)
+  const cobroHoy = saldoAtrasadoCuotas + moraAtrasada + (proximaCuota && cuotaVisualStatus(proximaCuota) !== "Vencida" ? Number(proximaCuota.saldo_total || 0) : 0);
 
   const estado = (prestamo.estado || "Activo") as string;
   const isCancelado = estado === "Cancelado" || estado === "Reestructurado";
