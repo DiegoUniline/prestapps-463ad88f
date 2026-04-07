@@ -320,6 +320,16 @@ export default function PagosPage() {
   const sendWhatsAppReceipt = async (p: PagoListItem, caption: string) => {
     const t = toast.loading("Enviando recibo por WhatsApp…");
     try {
+      // Fetch current saldo for this prestamo
+      const { data: cuotasData } = await supabase
+        .from("amortizacion")
+        .select("saldo_total, num_cuota, fecha_vencimiento, status")
+        .eq("prestamo_id", p.prestamoId)
+        .order("num_cuota");
+      
+      const saldoRestante = (cuotasData || []).reduce((s: number, c: any) => s + Number(c.saldo_total || 0), 0);
+      const nextUnpaid = (cuotasData || []).find((c: any) => c.status !== "Pagada");
+
       const result = await sendReceiptAsImage(
         empresaId,
         p.clientePhone!,
@@ -331,7 +341,11 @@ export default function PagosPage() {
             aplicado_interes: p.aplicadoInteres,
             aplicado_capital: p.aplicadoCapital,
             metodo_pago: p.metodo,
-            saldo_restante: 0,
+            saldo_restante: saldoRestante,
+            cuota_num: undefined,
+            proxima_cuota: nextUnpaid?.fecha_vencimiento || undefined,
+            monto_proxima: nextUnpaid ? Number(nextUnpaid.saldo_total || 0) : undefined,
+            fecha: p.fechaPago || undefined,
           },
           empresa: {
             nombre: p.empresaNombre,
@@ -845,6 +859,16 @@ export default function PagosPage() {
           onWhatsApp={async (phone: string) => {
             const p = docPreview.pago!;
             const caption = buildReceiptCaption(p);
+
+            // Fetch current saldo
+            const { data: cuotasData } = await supabase
+              .from("amortizacion")
+              .select("saldo_total, num_cuota, fecha_vencimiento, status")
+              .eq("prestamo_id", p.prestamoId)
+              .order("num_cuota");
+            const saldoRestante = (cuotasData || []).reduce((s: number, c: any) => s + Number(c.saldo_total || 0), 0);
+            const nextUnpaid = (cuotasData || []).find((c: any) => c.status !== "Pagada");
+
             const result = await sendReceiptAsImage(
               empresaId,
               phone,
@@ -856,7 +880,10 @@ export default function PagosPage() {
                   aplicado_interes: p.aplicadoInteres,
                   aplicado_capital: p.aplicadoCapital,
                   metodo_pago: p.metodo,
-                  saldo_restante: 0,
+                  saldo_restante: saldoRestante,
+                  proxima_cuota: nextUnpaid?.fecha_vencimiento || undefined,
+                  monto_proxima: nextUnpaid ? Number(nextUnpaid.saldo_total || 0) : undefined,
+                  fecha: p.fechaPago || undefined,
                 },
                 empresa: {
                   nombre: p.empresaNombre,

@@ -426,6 +426,14 @@ export default function PrestamoDetallePage() {
     const telefono = cliente?.telefono;
     if (!telefono) return;
     const cuotaMatch = amort.find(c => c.id === pg.cuota_id);
+
+    // Calculate saldo restante at time of this payment by summing remaining cuotas' current saldo
+    // and for the specific cuota that was paid, use current saldo (already reduced)
+    const saldoRestanteActual = amort.reduce((s, c) => s + Number(c.saldo_total || 0), 0);
+
+    // Find next unpaid cuota
+    const nextUnpaid = amort.find(c => cuotaVisualStatus(c) !== "Pagada");
+
     const result = await sendReceiptAsImage(
       empresaId,
       telefono,
@@ -437,10 +445,12 @@ export default function PrestamoDetallePage() {
           aplicado_interes: Number(pg.aplicado_interes || 0),
           aplicado_capital: Number(pg.aplicado_capital || 0),
           metodo_pago: pg.metodo_pago || "Efectivo",
-          saldo_restante: saldoPendiente,
+          saldo_restante: saldoRestanteActual,
           cuota_num: cuotaMatch?.num_cuota || (i + 1),
-          proxima_cuota: proximaCuota ? fmtDate(proximaCuota.fecha_vencimiento) : undefined,
-          monto_proxima: proximaCuota ? Number(proximaCuota.saldo_total || 0) : undefined,
+          proxima_cuota: nextUnpaid ? fmtDate(nextUnpaid.fecha_vencimiento) : undefined,
+          monto_proxima: nextUnpaid ? Number(nextUnpaid.saldo_total || 0) : undefined,
+          fecha: pg.fecha_pago ? fmtDate(pg.fecha_pago) : undefined,
+          cobrador_nombre: pg.cobrador_nombre || undefined,
         },
         empresa: {
           nombre: empresaData?.nombre || "Empresa",
@@ -448,7 +458,7 @@ export default function PrestamoDetallePage() {
           direccion: (empresaData as any)?.direccion || undefined,
           logo_url: empresaData?.logo_url || null,
         },
-        cliente: { nombre: cliente?.nombre_completo || "Cliente" },
+        cliente: { nombre: cliente?.nombre_completo || "Cliente", telefono: cliente?.telefono || undefined },
         prestamo: { folio: folioId, num_cuotas: prestamo.num_cuotas },
       },
       caption,
