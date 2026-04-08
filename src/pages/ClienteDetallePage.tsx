@@ -197,7 +197,12 @@ export default function ClienteDetallePage() {
       updateField("foto_cliente", urlData.publicUrl);
       toast.success("Foto subida correctamente");
     } catch (err: any) {
-      toast.error("Error al subir foto: " + (err.message || err));
+      const msg = err?.message || String(err);
+      if (msg.includes("Load failed") || msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        toast.error("Error de conexión al subir foto. Verifica tu internet e intenta de nuevo.");
+      } else {
+        toast.error("Error al subir foto: " + msg);
+      }
     } finally {
       setUploadingFoto(false);
       if (fotoInputRef.current) fotoInputRef.current.value = "";
