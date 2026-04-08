@@ -281,14 +281,21 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       toast.success(`Pago de ${$$(montoNum)} registrado correctamente`);
 
       // Send WhatsApp receipt in background (don't block UI)
-      sendWhatsAppReceipt(distribution, montoNum, metodo, descuentoNum);
+      sendWhatsAppReceipt(distribution, montoNum, metodo, descuentoNum).catch((e) =>
+        console.warn("WhatsApp receipt background error:", e)
+      );
 
       onOpenChange(false);
       setMontoRecibido("");
       setDescuento("");
       setFechaPago(new Date());
     } catch (err: any) {
-      toast.error("Error al registrar pago: " + (err.message || err));
+      const msg = err?.message || String(err);
+      if (msg.includes("Load failed") || msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+        toast.error("Error de conexión. Verifica tu internet e intenta de nuevo.");
+      } else {
+        toast.error("Error al registrar pago: " + msg);
+      }
     } finally {
       setSaving(false);
     }
