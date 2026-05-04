@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye, Trash2 } from "lucide-react";
+import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye, Trash2, Archive, RotateCcw } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { cn, $$, parseLocalDate } from "@/lib/utils";
@@ -25,16 +25,16 @@ function useCajas(empresaId: string) {
   return useQuery({
     queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
-      const baseColumns = "id, nombre, descripcion, saldo_actual, empresa_id, created_at";
-      const { data, error } = await supabase
+      const baseColumns = "id, nombre, descripcion, saldo_actual, empresa_id, created_at, activo";
+      const { data, error } = await (supabase
         .from("cajas")
         .select(baseColumns)
         .eq("empresa_id", empresaId)
-        .order("nombre");
+        .order("nombre") as any);
       if (error) throw error;
 
       if (data && data.length > 0) {
-        return data.map((c) => ({ ...c, activo: true })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
+        return data.map((c: any) => ({ ...c, activo: c.activo !== false })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
       }
 
       const { data: prestamos, error: prestamosError } = await supabase
@@ -179,6 +179,7 @@ export default function CajasPage() {
   const [cajasView, setCajasView] = useState<"table" | "cards">("table");
   const [tab, setTab] = useState<"activas" | "inactivas">("activas");
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; nombre: string } | null>(null);
+  const [confirmActivo, setConfirmActivo] = useState<{ id: string; nombre: string; activo: boolean } | null>(null);
 
   const cajasFiltradas = useMemo(
     () => cajas.filter((c) => (tab === "activas" ? c.activo !== false : c.activo === false)),
@@ -203,12 +204,27 @@ export default function CajasPage() {
   const handleCrearCaja = async () => {
     if (!nombreCaja.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("cajas").insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId });
+    const { error } = await (supabase.from("cajas") as any).insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId, activo: true });
     setSaving(false);
     if (error) { toast.error("Error: " + error.message); return; }
     toast.success("Caja creada");
     invalidate();
     resetModal();
+  };
+
+  // ── Activar / Inactivar ──────────────────────────────────────────
+  const handleToggleActivo = async () => {
+    if (!confirmActivo) return;
+    setSaving(true);
+    const { error } = await (supabase.from("cajas") as any)
+      .update({ activo: !confirmActivo.activo })
+      .eq("id", confirmActivo.id)
+      .eq("empresa_id", empresaId);
+    setSaving(false);
+    if (error) { toast.error("Error: " + error.message); return; }
+    toast.success(confirmActivo.activo ? "Caja inactivada" : "Caja reactivada");
+    invalidate();
+    setConfirmActivo(null);
   };
 
   // ── Deposit / Withdraw ──────────────────────────────────────────
@@ -409,6 +425,10 @@ export default function CajasPage() {
                           <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                             <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setConfirmActivo({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
+                            {c.activo !== false ? <Archive className="h-3.5 w-3.5 mr-2" /> : <RotateCcw className="h-3.5 w-3.5 mr-2" />}
+                            {c.activo !== false ? "Dar de baja" : "Reactivar"}
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
                             <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
                           </DropdownMenuItem>
@@ -462,6 +482,10 @@ export default function CajasPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                           <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setConfirmActivo({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
+                          {c.activo !== false ? <Archive className="h-3.5 w-3.5 mr-2" /> : <RotateCcw className="h-3.5 w-3.5 mr-2" />}
+                          {c.activo !== false ? "Dar de baja" : "Reactivar"}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
                           <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
@@ -654,6 +678,17 @@ export default function CajasPage() {
         variant="destructive"
         confirmLabel="Eliminar"
         onConfirm={handleEliminar}
+        loading={saving}
+      />
+
+      <ConfirmDialog
+        open={!!confirmActivo}
+        onOpenChange={(o) => !o && setConfirmActivo(null)}
+        title={confirmActivo?.activo ? "Dar de baja caja" : "Reactivar caja"}
+        description={confirmActivo?.activo ? `¿Marcar "${confirmActivo?.nombre}" como inactiva?` : `¿Reactivar "${confirmActivo?.nombre}"?`}
+        variant={confirmActivo?.activo ? "destructive" : "default"}
+        confirmLabel={confirmActivo?.activo ? "Dar de baja" : "Reactivar"}
+        onConfirm={handleToggleActivo}
         loading={saving}
       />
 
