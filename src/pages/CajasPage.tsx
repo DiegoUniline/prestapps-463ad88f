@@ -25,9 +25,9 @@ function useCajas(empresaId: string) {
   return useQuery({
     queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cajas").select("id, nombre, descripcion, saldo_actual, empresa_id, created_at, activo").eq("empresa_id", empresaId).order("nombre");
+      const { data, error } = await (supabase.from("cajas") as any).select("id, nombre, descripcion, saldo_actual, empresa_id, created_at, activo").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
-      return data || [];
+      return (data || []) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
     },
   });
 }
@@ -176,7 +176,7 @@ export default function CajasPage() {
   const handleCrearCaja = async () => {
     if (!nombreCaja.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("cajas").insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId });
+    const { error } = await (supabase.from("cajas") as any).insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId, activo: true });
     setSaving(false);
     if (error) { toast.error("Error: " + error.message); return; }
     toast.success("Caja creada");
