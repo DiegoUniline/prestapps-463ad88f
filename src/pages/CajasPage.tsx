@@ -349,17 +349,20 @@ export default function CajasPage() {
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}><TableCell colSpan={9}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ))
-              ) : cajas.map((c) => {
+              ) : cajasFiltradas.map((c) => {
                 const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
                 return (
                   <TableRow
                     key={c.id}
-                    className="cursor-pointer hover:bg-table-hover"
+                    className={cn("cursor-pointer hover:bg-table-hover", c.activo === false && "opacity-60")}
                     onClick={() => navigate(`/cajas/${c.id}`)}
                   >
                     <TableCell>
                       <div>
-                        <p className="font-medium text-[13px]">{c.nombre}</p>
+                        <p className="font-medium text-[13px]">
+                          {c.nombre}
+                          {c.activo === false && <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">(Inactiva)</span>}
+                        </p>
                         {c.descripcion && <p className="text-[11px] text-muted-foreground">{c.descripcion}</p>}
                       </div>
                     </TableCell>
@@ -390,6 +393,14 @@ export default function CajasPage() {
                           <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                             <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setConfirmBaja({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
+                            {c.activo === false
+                              ? <><ArchiveRestore className="h-3.5 w-3.5 mr-2 text-primary" />Reactivar</>
+                              : <><Archive className="h-3.5 w-3.5 mr-2 text-warning" />Dar de baja</>}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
+                            <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -404,19 +415,23 @@ export default function CajasPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-lg" />)
-          ) : cajas.map((c) => {
+          ) : cajasFiltradas.map((c) => {
             const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
             return (
               <div
                 key={c.id}
                 className={cn(
                   "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
-                  "border-border"
+                  "border-border",
+                  c.activo === false && "opacity-60"
                 )}
                 onClick={() => navigate(`/cajas/${c.id}`)}
               >
                 <div className="flex items-center justify-between">
-                  <p className="font-semibold text-[14px]">{c.nombre}</p>
+                  <p className="font-semibold text-[14px]">
+                    {c.nombre}
+                    {c.activo === false && <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">(Inactiva)</span>}
+                  </p>
                   <div onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -436,6 +451,14 @@ export default function CajasPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                           <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setConfirmBaja({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
+                          {c.activo === false
+                            ? <><ArchiveRestore className="h-3.5 w-3.5 mr-2 text-primary" />Reactivar</>
+                            : <><Archive className="h-3.5 w-3.5 mr-2 text-warning" />Dar de baja</>}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
+                          <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
