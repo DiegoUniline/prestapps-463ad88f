@@ -513,7 +513,7 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c=>c.activo!==false).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -548,7 +548,7 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c=>c.activo!==false).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -583,14 +583,14 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Origen</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar origen" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c=>c.activo!==false).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
               <Select value={cajaDestinoId} onValueChange={setCajaDestinoId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar destino" /></SelectTrigger>
-                <SelectContent>{cajas.filter(c => c.id !== cajaId).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c => c.id !== cajaId && c.activo!==false).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
