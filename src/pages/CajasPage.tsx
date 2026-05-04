@@ -681,6 +681,17 @@ export default function CajasPage() {
         loading={saving}
       />
 
+      <ConfirmDialog
+        open={!!confirmActivo}
+        onOpenChange={(o) => !o && setConfirmActivo(null)}
+        title={confirmActivo?.activo ? "Dar de baja caja" : "Reactivar caja"}
+        description={confirmActivo?.activo ? `¿Marcar "${confirmActivo?.nombre}" como inactiva?` : `¿Reactivar "${confirmActivo?.nombre}"?`}
+        variant={confirmActivo?.activo ? "destructive" : "default"}
+        confirmLabel={confirmActivo?.activo ? "Dar de baja" : "Reactivar"}
+        onConfirm={handleToggleActivo}
+        loading={saving}
+      />
+
       </div>
   );
 }
