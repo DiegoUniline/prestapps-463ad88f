@@ -149,6 +149,16 @@ export default function CajasPage() {
   const [saving, setSaving] = useState(false);
 
   const [cajasView, setCajasView] = useState<"table" | "cards">("table");
+  const [tab, setTab] = useState<"activas" | "inactivas">("activas");
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; nombre: string } | null>(null);
+  const [confirmBaja, setConfirmBaja] = useState<{ id: string; nombre: string; activo: boolean } | null>(null);
+
+  const cajasFiltradas = useMemo(
+    () => cajas.filter((c) => (tab === "activas" ? c.activo !== false : c.activo === false)),
+    [cajas, tab]
+  );
+  const countActivas = cajas.filter((c) => c.activo !== false).length;
+  const countInactivas = cajas.filter((c) => c.activo === false).length;
 
   const resetModal = () => {
     setModal(null); setCajaId(""); setCajaDestinoId(""); setMonto(""); setConcepto("");
@@ -227,6 +237,42 @@ export default function CajasPage() {
     resetModal();
   };
 
+  // ── Toggle activo / Eliminar ────────────────────────────────────
+  const handleToggleActivo = async () => {
+    if (!confirmBaja) return;
+    setSaving(true);
+    const { error } = await supabase.from("cajas").update({ activo: !confirmBaja.activo }).eq("id", confirmBaja.id);
+    setSaving(false);
+    if (error) { toast.error("Error: " + error.message); return; }
+    toast.success(confirmBaja.activo ? "Caja dada de baja" : "Caja reactivada");
+    invalidate();
+    setConfirmBaja(null);
+  };
+
+  const handleEliminar = async () => {
+    if (!confirmDelete) return;
+    setSaving(true);
+    // Verificar referencias
+    const [{ count: pCount }, { count: pgCount }, { count: mCount }] = await Promise.all([
+      supabase.from("prestamos").select("id", { count: "exact", head: true }).eq("caja_id", confirmDelete.id),
+      supabase.from("pagos").select("id", { count: "exact", head: true }).eq("caja_id", confirmDelete.id),
+      supabase.from("movimientos_caja").select("id", { count: "exact", head: true }).eq("caja_id", confirmDelete.id),
+    ]);
+    const total = (pCount || 0) + (pgCount || 0) + (mCount || 0);
+    if (total > 0) {
+      setSaving(false);
+      toast.error(`No se puede eliminar: tiene ${total} registros relacionados. Mejor da de baja la caja.`);
+      setConfirmDelete(null);
+      return;
+    }
+    const { error } = await supabase.from("cajas").delete().eq("id", confirmDelete.id);
+    setSaving(false);
+    if (error) { toast.error("Error: " + error.message); return; }
+    toast.success("Caja eliminada");
+    invalidate();
+    setConfirmDelete(null);
+  };
+
   // ── KPIs ────────────────────────────────────────────────────────
   const totalSaldo = cajas.reduce((s, c) => s + getSaldo(c.id), 0);
 
@@ -265,7 +311,12 @@ export default function CajasPage() {
 
       {/* Cajas view toggle */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-semibold">Cajas ({cajas.length})</h2>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "activas" | "inactivas")}>
+          <TabsList className="h-8">
+            <TabsTrigger value="activas" className="text-[12px] h-7">Activas ({countActivas})</TabsTrigger>
+            <TabsTrigger value="inactivas" className="text-[12px] h-7">Inactivas ({countInactivas})</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
           <Button variant={cajasView === "table" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setCajasView("table")}>
             <List className="h-3.5 w-3.5" />
