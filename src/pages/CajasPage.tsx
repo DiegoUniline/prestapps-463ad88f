@@ -176,7 +176,7 @@ export default function CajasPage() {
   const handleCrearCaja = async () => {
     if (!nombreCaja.trim()) return;
     setSaving(true);
-    const { error } = await (supabase.from("cajas") as any).insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId, activo: true });
+    const { error } = await supabase.from("cajas").insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId });
     setSaving(false);
     if (error) { toast.error("Error: " + error.message); return; }
     toast.success("Caja creada");
