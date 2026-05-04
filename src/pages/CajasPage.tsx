@@ -25,9 +25,27 @@ function useCajas(empresaId: string) {
   return useQuery({
     queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("cajas") as any).select("id, nombre, descripcion, saldo_actual, empresa_id, created_at, activo").eq("empresa_id", empresaId).order("nombre");
+      const baseColumns = "id, nombre, descripcion, saldo_actual, empresa_id, created_at";
+      const queryWithActivo = await (supabase.from("cajas") as any)
+        .select(`${baseColumns}, activo`)
+        .eq("empresa_id", empresaId)
+        .order("nombre");
+
+      if (!queryWithActivo.error) {
+        return (queryWithActivo.data || []) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
+      }
+
+      if (!queryWithActivo.error.message?.toLowerCase().includes("activo")) {
+        throw queryWithActivo.error;
+      }
+
+      const { data, error } = await supabase
+        .from("cajas")
+        .select(baseColumns)
+        .eq("empresa_id", empresaId)
+        .order("nombre");
       if (error) throw error;
-      return (data || []) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
+      return (data || []).map((c) => ({ ...c, activo: true })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
     },
   });
 }
