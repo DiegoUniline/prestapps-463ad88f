@@ -1,6 +1,6 @@
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import DashboardPage from "@/pages/DashboardPage";
-import InicioMenuPage from "@/pages/InicioMenuPage";
+import { Navigate } from "react-router-dom";
 
 export default function HomeRouter() {
   const { role, loading } = useCurrentUserRole();
@@ -12,5 +12,6 @@ export default function HomeRouter() {
     );
   }
   if (role === "admin") return <DashboardPage />;
-  return <InicioMenuPage />;
+  // Cobradores y supervisores van directo a su cobranza
+  return <Navigate to="/mi-cobranza" replace />;
 }
