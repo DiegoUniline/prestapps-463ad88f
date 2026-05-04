@@ -640,6 +640,31 @@ export default function CajasPage() {
         </DialogContent>
       </Dialog>
 
+      <ConfirmDialog
+        open={!!confirmBaja}
+        onOpenChange={(o) => !o && setConfirmBaja(null)}
+        title={confirmBaja?.activo ? "Dar de baja caja" : "Reactivar caja"}
+        description={
+          confirmBaja?.activo
+            ? `La caja "${confirmBaja?.nombre}" se ocultará de los selectores y se moverá a Inactivas. Podrás reactivarla cuando quieras.`
+            : `La caja "${confirmBaja?.nombre}" volverá a estar disponible.`
+        }
+        confirmLabel={confirmBaja?.activo ? "Dar de baja" : "Reactivar"}
+        onConfirm={handleToggleActivo}
+        loading={saving}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onOpenChange={(o) => !o && setConfirmDelete(null)}
+        title="Eliminar caja"
+        description={`¿Eliminar permanentemente "${confirmDelete?.nombre}"? Solo se permite si no tiene préstamos, pagos ni movimientos relacionados.`}
+        variant="destructive"
+        confirmLabel="Eliminar"
+        onConfirm={handleEliminar}
+        loading={saving}
+      />
+
       </div>
   );
 }
