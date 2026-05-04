@@ -241,7 +241,7 @@ export default function CajasPage() {
   const handleToggleActivo = async () => {
     if (!confirmBaja) return;
     setSaving(true);
-    const { error } = await supabase.from("cajas").update({ activo: !confirmBaja.activo }).eq("id", confirmBaja.id);
+    const { error } = await (supabase.from("cajas") as any).update({ activo: !confirmBaja.activo }).eq("id", confirmBaja.id);
     setSaving(false);
     if (error) { toast.error("Error: " + error.message); return; }
     toast.success(confirmBaja.activo ? "Caja dada de baja" : "Caja reactivada");
