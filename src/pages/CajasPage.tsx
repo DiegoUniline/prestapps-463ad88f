@@ -26,25 +26,37 @@ function useCajas(empresaId: string) {
     queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
       const baseColumns = "id, nombre, descripcion, saldo_actual, empresa_id, created_at";
-      const queryWithActivo = await (supabase.from("cajas") as any)
-        .select(`${baseColumns}, activo`)
-        .order("nombre");
-
-      if (!queryWithActivo.error) {
-        return (queryWithActivo.data || []).map((c: any) => ({ ...c, activo: true })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
-      }
-
-      if (!queryWithActivo.error.message?.toLowerCase().includes("activo")) {
-        throw queryWithActivo.error;
-      }
-
       const { data, error } = await supabase
         .from("cajas")
         .select(baseColumns)
+        .eq("empresa_id", empresaId)
         .order("nombre");
       if (error) throw error;
-      return (data || []).map((c) => ({ ...c, activo: true })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
+
+      if (data && data.length > 0) {
+        return data.map((c) => ({ ...c, activo: true })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
+      }
+
+      const { data: prestamos, error: prestamosError } = await supabase
+        .from("prestamos")
+        .select("caja_id")
+        .eq("empresa_id", empresaId)
+        .not("caja_id", "is", null)
+        .not("estado", "in", '("Cancelado")');
+      if (prestamosError) throw prestamosError;
+
+      const fallbackIds = Array.from(new Set((prestamos || []).map((p) => p.caja_id).filter(Boolean)));
+      return fallbackIds.map((id, index) => ({
+        id: id as string,
+        nombre: `Caja ${index + 1}`,
+        descripcion: "Caja vinculada a préstamos",
+        saldo_actual: 0,
+        empresa_id: empresaId,
+        created_at: new Date().toISOString(),
+        activo: true,
+      })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
     },
+    enabled: !!empresaId,
   });
 }
 
