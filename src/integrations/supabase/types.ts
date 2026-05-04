@@ -109,6 +109,7 @@ export type Database = {
       }
       cajas: {
         Row: {
+          activo: boolean
           created_at: string | null
           descripcion: string | null
           empresa_id: string | null
@@ -117,6 +118,7 @@ export type Database = {
           saldo_actual: number | null
         }
         Insert: {
+          activo?: boolean
           created_at?: string | null
           descripcion?: string | null
           empresa_id?: string | null
@@ -125,6 +127,7 @@ export type Database = {
           saldo_actual?: number | null
         }
         Update: {
+          activo?: boolean
           created_at?: string | null
           descripcion?: string | null
           empresa_id?: string | null
