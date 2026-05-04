@@ -425,6 +425,10 @@ export default function CajasPage() {
                           <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                             <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setConfirmActivo({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
+                            {c.activo !== false ? <Archive className="h-3.5 w-3.5 mr-2" /> : <RotateCcw className="h-3.5 w-3.5 mr-2" />}
+                            {c.activo !== false ? "Dar de baja" : "Reactivar"}
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
                             <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
                           </DropdownMenuItem>
@@ -478,6 +482,10 @@ export default function CajasPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                           <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setConfirmActivo({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
+                          {c.activo !== false ? <Archive className="h-3.5 w-3.5 mr-2" /> : <RotateCcw className="h-3.5 w-3.5 mr-2" />}
+                          {c.activo !== false ? "Dar de baja" : "Reactivar"}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
                           <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
