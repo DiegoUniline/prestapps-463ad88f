@@ -409,11 +409,6 @@ export default function CajasPage() {
                           <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                             <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setConfirmBaja({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
-                            {c.activo === false
-                              ? <><ArchiveRestore className="h-3.5 w-3.5 mr-2 text-primary" />Reactivar</>
-                              : <><Archive className="h-3.5 w-3.5 mr-2 text-warning" />Dar de baja</>}
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
                             <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
                           </DropdownMenuItem>
@@ -467,11 +462,6 @@ export default function CajasPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                           <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setConfirmBaja({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
-                          {c.activo === false
-                            ? <><ArchiveRestore className="h-3.5 w-3.5 mr-2 text-primary" />Reactivar</>
-                            : <><Archive className="h-3.5 w-3.5 mr-2 text-warning" />Dar de baja</>}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
                           <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
@@ -655,20 +645,6 @@ export default function CajasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <ConfirmDialog
-        open={!!confirmBaja}
-        onOpenChange={(o) => !o && setConfirmBaja(null)}
-        title={confirmBaja?.activo ? "Dar de baja caja" : "Reactivar caja"}
-        description={
-          confirmBaja?.activo
-            ? `La caja "${confirmBaja?.nombre}" se ocultará de los selectores y se moverá a Inactivas. Podrás reactivarla cuando quieras.`
-            : `La caja "${confirmBaja?.nombre}" volverá a estar disponible.`
-        }
-        confirmLabel={confirmBaja?.activo ? "Dar de baja" : "Reactivar"}
-        onConfirm={handleToggleActivo}
-        loading={saving}
-      />
 
       <ConfirmDialog
         open={!!confirmDelete}
