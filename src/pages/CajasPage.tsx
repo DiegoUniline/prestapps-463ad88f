@@ -16,16 +16,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye } from "lucide-react";
+import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { cn, $$, parseLocalDate } from "@/lib/utils";
 // ── Data hooks ────────────────────────────────────────────────────
 function useCajas(empresaId: string) {
   return useQuery({
     queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cajas").select("id, nombre, descripcion, saldo_actual, empresa_id, created_at").eq("empresa_id", empresaId).order("nombre");
+      const { data, error } = await (supabase.from("cajas") as any).select("id, nombre, descripcion, saldo_actual, empresa_id, created_at, activo").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
-      return data || [];
+      return (data || []) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
     },
   });
 }
@@ -147,6 +149,16 @@ export default function CajasPage() {
   const [saving, setSaving] = useState(false);
 
   const [cajasView, setCajasView] = useState<"table" | "cards">("table");
+  const [tab, setTab] = useState<"activas" | "inactivas">("activas");
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; nombre: string } | null>(null);
+  const [confirmBaja, setConfirmBaja] = useState<{ id: string; nombre: string; activo: boolean } | null>(null);
+
+  const cajasFiltradas = useMemo(
+    () => cajas.filter((c) => (tab === "activas" ? c.activo !== false : c.activo === false)),
+    [cajas, tab]
+  );
+  const countActivas = cajas.filter((c) => c.activo !== false).length;
+  const countInactivas = cajas.filter((c) => c.activo === false).length;
 
   const resetModal = () => {
     setModal(null); setCajaId(""); setCajaDestinoId(""); setMonto(""); setConcepto("");
@@ -225,6 +237,42 @@ export default function CajasPage() {
     resetModal();
   };
 
+  // ── Toggle activo / Eliminar ────────────────────────────────────
+  const handleToggleActivo = async () => {
+    if (!confirmBaja) return;
+    setSaving(true);
+    const { error } = await (supabase.from("cajas") as any).update({ activo: !confirmBaja.activo }).eq("id", confirmBaja.id);
+    setSaving(false);
+    if (error) { toast.error("Error: " + error.message); return; }
+    toast.success(confirmBaja.activo ? "Caja dada de baja" : "Caja reactivada");
+    invalidate();
+    setConfirmBaja(null);
+  };
+
+  const handleEliminar = async () => {
+    if (!confirmDelete) return;
+    setSaving(true);
+    // Verificar referencias
+    const [{ count: pCount }, { count: pgCount }, { count: mCount }] = await Promise.all([
+      supabase.from("prestamos").select("id", { count: "exact", head: true }).eq("caja_id", confirmDelete.id),
+      supabase.from("pagos").select("id", { count: "exact", head: true }).eq("caja_id", confirmDelete.id),
+      supabase.from("movimientos_caja").select("id", { count: "exact", head: true }).eq("caja_id", confirmDelete.id),
+    ]);
+    const total = (pCount || 0) + (pgCount || 0) + (mCount || 0);
+    if (total > 0) {
+      setSaving(false);
+      toast.error(`No se puede eliminar: tiene ${total} registros relacionados. Mejor da de baja la caja.`);
+      setConfirmDelete(null);
+      return;
+    }
+    const { error } = await supabase.from("cajas").delete().eq("id", confirmDelete.id);
+    setSaving(false);
+    if (error) { toast.error("Error: " + error.message); return; }
+    toast.success("Caja eliminada");
+    invalidate();
+    setConfirmDelete(null);
+  };
+
   // ── KPIs ────────────────────────────────────────────────────────
   const totalSaldo = cajas.reduce((s, c) => s + getSaldo(c.id), 0);
 
@@ -263,7 +311,12 @@ export default function CajasPage() {
 
       {/* Cajas view toggle */}
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-semibold">Cajas ({cajas.length})</h2>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "activas" | "inactivas")}>
+          <TabsList className="h-8">
+            <TabsTrigger value="activas" className="text-[12px] h-7">Activas ({countActivas})</TabsTrigger>
+            <TabsTrigger value="inactivas" className="text-[12px] h-7">Inactivas ({countInactivas})</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <div className="flex items-center gap-1 border border-border rounded-md p-0.5">
           <Button variant={cajasView === "table" ? "default" : "ghost"} size="sm" className="h-7 px-2" onClick={() => setCajasView("table")}>
             <List className="h-3.5 w-3.5" />
@@ -296,17 +349,20 @@ export default function CajasPage() {
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}><TableCell colSpan={9}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                 ))
-              ) : cajas.map((c) => {
+              ) : cajasFiltradas.map((c) => {
                 const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
                 return (
                   <TableRow
                     key={c.id}
-                    className="cursor-pointer hover:bg-table-hover"
+                    className={cn("cursor-pointer hover:bg-table-hover", c.activo === false && "opacity-60")}
                     onClick={() => navigate(`/cajas/${c.id}`)}
                   >
                     <TableCell>
                       <div>
-                        <p className="font-medium text-[13px]">{c.nombre}</p>
+                        <p className="font-medium text-[13px]">
+                          {c.nombre}
+                          {c.activo === false && <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">(Inactiva)</span>}
+                        </p>
                         {c.descripcion && <p className="text-[11px] text-muted-foreground">{c.descripcion}</p>}
                       </div>
                     </TableCell>
@@ -337,6 +393,14 @@ export default function CajasPage() {
                           <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                             <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setConfirmBaja({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
+                            {c.activo === false
+                              ? <><ArchiveRestore className="h-3.5 w-3.5 mr-2 text-primary" />Reactivar</>
+                              : <><Archive className="h-3.5 w-3.5 mr-2 text-warning" />Dar de baja</>}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
+                            <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -351,19 +415,23 @@ export default function CajasPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-36 rounded-lg" />)
-          ) : cajas.map((c) => {
+          ) : cajasFiltradas.map((c) => {
             const cs = byCaja[c.id] || { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
             return (
               <div
                 key={c.id}
                 className={cn(
                   "bg-card rounded-lg border px-5 py-4 cursor-pointer transition-all hover:shadow-md",
-                  "border-border"
+                  "border-border",
+                  c.activo === false && "opacity-60"
                 )}
                 onClick={() => navigate(`/cajas/${c.id}`)}
               >
                 <div className="flex items-center justify-between">
-                  <p className="font-semibold text-[14px]">{c.nombre}</p>
+                  <p className="font-semibold text-[14px]">
+                    {c.nombre}
+                    {c.activo === false && <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">(Inactiva)</span>}
+                  </p>
                   <div onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -383,6 +451,14 @@ export default function CajasPage() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => openModalForCaja("transferir", c.id)}>
                           <ArrowLeftRight className="h-3.5 w-3.5 mr-2 text-primary" />Transferir
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setConfirmBaja({ id: c.id, nombre: c.nombre, activo: c.activo !== false })}>
+                          {c.activo === false
+                            ? <><ArchiveRestore className="h-3.5 w-3.5 mr-2 text-primary" />Reactivar</>
+                            : <><Archive className="h-3.5 w-3.5 mr-2 text-warning" />Dar de baja</>}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setConfirmDelete({ id: c.id, nombre: c.nombre })}>
+                          <Trash2 className="h-3.5 w-3.5 mr-2 text-destructive" />Eliminar
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -437,7 +513,7 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c=>c.activo!==false).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -472,7 +548,7 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c=>c.activo!==false).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -507,14 +583,14 @@ export default function CajasPage() {
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Origen</Label>
               <Select value={cajaId} onValueChange={setCajaId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar origen" /></SelectTrigger>
-                <SelectContent>{cajas.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c=>c.activo!==false).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino</Label>
               <Select value={cajaDestinoId} onValueChange={setCajaDestinoId}>
                 <SelectTrigger className="mt-1 h-9 text-[13px]"><SelectValue placeholder="Seleccionar destino" /></SelectTrigger>
-                <SelectContent>{cajas.filter(c => c.id !== cajaId).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
+                <SelectContent>{cajas.filter(c => c.id !== cajaId && c.activo!==false).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre} — {$$(getSaldo(c.id))}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
@@ -563,6 +639,31 @@ export default function CajasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!confirmBaja}
+        onOpenChange={(o) => !o && setConfirmBaja(null)}
+        title={confirmBaja?.activo ? "Dar de baja caja" : "Reactivar caja"}
+        description={
+          confirmBaja?.activo
+            ? `La caja "${confirmBaja?.nombre}" se ocultará de los selectores y se moverá a Inactivas. Podrás reactivarla cuando quieras.`
+            : `La caja "${confirmBaja?.nombre}" volverá a estar disponible.`
+        }
+        confirmLabel={confirmBaja?.activo ? "Dar de baja" : "Reactivar"}
+        onConfirm={handleToggleActivo}
+        loading={saving}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        onOpenChange={(o) => !o && setConfirmDelete(null)}
+        title="Eliminar caja"
+        description={`¿Eliminar permanentemente "${confirmDelete?.nombre}"? Solo se permite si no tiene préstamos, pagos ni movimientos relacionados.`}
+        variant="destructive"
+        confirmLabel="Eliminar"
+        onConfirm={handleEliminar}
+        loading={saving}
+      />
 
       </div>
   );

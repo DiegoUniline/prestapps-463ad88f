@@ -21,6 +21,7 @@ import LandingPage from "@/pages/LandingPage";
 import RegisterPage from "@/pages/RegisterPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import DashboardPage from "@/pages/DashboardPage";
+import HomeRouter from "@/pages/HomeRouter";
 import PrestamosPage from "@/pages/PrestamosPage";
 import PrestamoDetallePage from "@/pages/PrestamoDetallePage";
 import NuevoPrestamoPage from "@/pages/NuevoPrestamoPage";
@@ -117,7 +118,7 @@ const App = () => (
             <Route path="/registro" element={<RegisterPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/dashboard" element={<HomeRouter />} />
               <Route path="/cobranza" element={<CobranzaDiariaPage />} />
               <Route path="/cobranza/cliente/:id" element={<ClienteCobranzaDetallePage />} />
               <Route path="/mi-cobranza" element={<CobradorViewPage />} />
