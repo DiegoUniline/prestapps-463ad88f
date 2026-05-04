@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye, Trash2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { cn, $$, parseLocalDate } from "@/lib/utils";
@@ -179,7 +179,6 @@ export default function CajasPage() {
   const [cajasView, setCajasView] = useState<"table" | "cards">("table");
   const [tab, setTab] = useState<"activas" | "inactivas">("activas");
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; nombre: string } | null>(null);
-  const [confirmBaja, setConfirmBaja] = useState<{ id: string; nombre: string; activo: boolean } | null>(null);
 
   const cajasFiltradas = useMemo(
     () => cajas.filter((c) => (tab === "activas" ? c.activo !== false : c.activo === false)),
@@ -265,18 +264,7 @@ export default function CajasPage() {
     resetModal();
   };
 
-  // ── Toggle activo / Eliminar ────────────────────────────────────
-  const handleToggleActivo = async () => {
-    if (!confirmBaja) return;
-    setSaving(true);
-    const { error } = await (supabase.from("cajas") as any).update({ activo: !confirmBaja.activo }).eq("id", confirmBaja.id);
-    setSaving(false);
-    if (error) { toast.error("Error: " + error.message); return; }
-    toast.success(confirmBaja.activo ? "Caja dada de baja" : "Caja reactivada");
-    invalidate();
-    setConfirmBaja(null);
-  };
-
+  // ── Eliminar ────────────────────────────────────────────────────
   const handleEliminar = async () => {
     if (!confirmDelete) return;
     setSaving(true);
