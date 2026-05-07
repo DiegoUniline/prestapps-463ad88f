@@ -300,10 +300,10 @@ function useCajasAll(empresaId: string) {
 }
 
 // Profile data for cobrador
-function usePerfilCobrador(cobradorId: string | null, empresaId: string) {
+function usePerfilCobrador(cobradorId: string | null, empresaId: string, enabled = true) {
   return useQuery({
     queryKey: ["cobrador-perfil", cobradorId, empresaId],
-    enabled: !!cobradorId,
+    enabled: enabled && !!empresaId,
     queryFn: async () => {
       // Profile info
       const { data: profile } = await supabase
@@ -374,6 +374,22 @@ function usePerfilCobrador(cobradorId: string | null, empresaId: string) {
         })),
       };
     },
+  });
+}
+
+function useProfileEmpresa(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["current-profile-empresa", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("empresa_id")
+        .eq("id", userId!)
+        .single();
+      return data?.empresa_id || "";
+    },
+    staleTime: 10 * 60 * 1000,
   });
 }
 
