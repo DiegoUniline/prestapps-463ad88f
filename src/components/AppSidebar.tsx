@@ -139,6 +139,9 @@ export function AppSidebar() {
   // Prefetch main views on mount — keys MUST match actual hook keys
   useEffect(() => {
     if (!empresaId) return;
+    // Solo admins ven Préstamos/Cajas/Rutas en sidebar — evita cargar
+    // miles de filas de amortización para cobradores/supervisores.
+    if (role !== "admin") return;
     queryClient.prefetchQuery({
       queryKey: ["prestamos-list-v2", undefined, undefined, empresaId],
       queryFn: () => fetchPrestamos({ empresaId }),
@@ -164,7 +167,7 @@ export function AppSidebar() {
       },
       staleTime: 1000 * 60 * 5,
     });
-  }, [queryClient, empresaId]);
+  }, [queryClient, empresaId, role]);
 
   const fullPath = location.pathname + location.search;
 
