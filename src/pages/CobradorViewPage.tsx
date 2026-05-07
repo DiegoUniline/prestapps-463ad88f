@@ -564,7 +564,7 @@ export default function CobradorViewPage() {
     );
   }
 
-  if (!effectiveCobradorId) {
+  if (role !== "admin" && !effectiveCobradorId) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">
         <Card className="max-w-sm w-full">
