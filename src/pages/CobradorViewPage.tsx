@@ -763,7 +763,7 @@ export default function CobradorViewPage() {
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 sm:grid-cols-5 h-10 p-1">
+        <TabsList className="w-full grid grid-cols-6 h-10 p-1">
           <TabsTrigger value="cobranza" className="text-[11px] sm:text-sm px-1 gap-0.5">
             Cobrar
             {kpis.pendientes > 0 && (
@@ -779,10 +779,10 @@ export default function CobradorViewPage() {
           <TabsTrigger value="pagos" className="text-[11px] sm:text-sm px-1">
             Pagos
           </TabsTrigger>
-          <TabsTrigger value="resumen" className="text-[11px] sm:text-sm px-1 sm:hidden">
+          <TabsTrigger value="resumen" className="text-[10px] sm:text-sm px-1">
             Resumen
           </TabsTrigger>
-          <TabsTrigger value="perfil" className="text-[11px] sm:text-sm px-1 hidden sm:flex">
+          <TabsTrigger value="perfil" className="text-[10px] sm:text-sm px-1">
             Perfil
           </TabsTrigger>
         </TabsList>
