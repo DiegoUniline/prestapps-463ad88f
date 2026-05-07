@@ -11,6 +11,8 @@ export function MobileBottomNav() {
   const miCobranzaActive = location.pathname === "/mi-cobranza" || location.pathname.startsWith("/mi-cobranza");
 
   if (!canMiCobranza) return null;
+  // En /mi-cobranza ya hay un menú inferior dedicado, ocultar el FAB.
+  if (miCobranzaActive) return null;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 safe-area-bottom flex justify-center pb-4 pointer-events-none">
