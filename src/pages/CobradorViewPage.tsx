@@ -716,6 +716,21 @@ export default function CobradorViewPage() {
     }
   }, [queryClient]);
 
+  // Group expand state + handler for grouped "por cobrar" cards
+  const [grupoExpanded, setGrupoExpanded] = useState<Set<string>>(new Set());
+  const toggleGrupo = useCallback((prestamoId: string) => {
+    setGrupoExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(prestamoId)) n.delete(prestamoId); else n.add(prestamoId);
+      return n;
+    });
+  }, []);
+  const openPagoGrupo = useCallback((g: { cuotas: CuotaCobrador[]; saldoTotal: number }) => {
+    const firstCuota = g.cuotas[0];
+    if (!firstCuota) return;
+    openPago({ ...firstCuota, saldoTotal: g.saldoTotal });
+  }, [openPago]);
+
   // Pagos filtered
   const filteredPagos = useMemo(() => {
     if (!pagos) return [];
