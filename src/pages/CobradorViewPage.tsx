@@ -1124,6 +1124,21 @@ export default function CobradorViewPage() {
           cuotaId={promesaItem.cuotaId} saldoTotal={promesaItem.saldoTotal}
           fechaVencimiento={promesaItem.fechaVencimiento} />
       )}
+      {historialOpen && (
+        <HistorialPagosModal
+          open={historialOpen}
+          onOpenChange={setHistorialOpen}
+          prestamoId={historialPrestamoId}
+          clienteNombre={historialNombre}
+        />
+      )}
+      {drawerOpen && (
+        <PrestamoQuickDrawer
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          prestamoId={drawerPrestamoId}
+        />
+      )}
     </div>
   );
 }
