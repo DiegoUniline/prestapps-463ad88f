@@ -78,10 +78,10 @@ interface PagoHistorial {
 }
 
 // ── Hooks ───────────────────────────────────────────────────────
-function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null) {
+function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["cobrador-cobranza", fechaDesde, fechaHasta, empresaId, cobradorId],
-    enabled: !!cobradorId,
+    enabled: enabled && !!empresaId,
     queryFn: async () => {
       // Get cuotas in date range + overdue (before range, not paid)
       const { data: cuotas, error } = await supabase
@@ -170,12 +170,12 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
   });
 }
 
-function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null) {
+function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["cobrador-pagos", fechaDesde, fechaHasta, empresaId, cobradorId],
-    enabled: !!cobradorId,
+    enabled: enabled && !!empresaId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let pagosQuery = supabase
         .from("pagos")
         .select(`
           id, prestamo_id, monto_recibido, aplicado_capital, aplicado_interes,
@@ -184,10 +184,15 @@ function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: str
           amortizacion:cuota_id ( num_cuota )
         `)
         .eq("empresa_id", empresaId)
-        .eq("cobrador_id", cobradorId!)
         .gte("created_at", `${fechaDesde}T00:00:00`)
         .lte("created_at", `${fechaHasta}T23:59:59`)
         .order("created_at", { ascending: false });
+
+      if (cobradorId) {
+        pagosQuery = pagosQuery.eq("cobrador_id", cobradorId);
+      }
+
+      const { data, error } = await pagosQuery;
 
       if (error) throw error;
 
@@ -231,14 +236,14 @@ function getWeekRange(weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
 }
 
 // ── Weekly summary hook ─────────────────────────────────────────
-function useResumenSemanal(empresaId: string, cobradorId: string | null, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
+function useResumenSemanal(empresaId: string, cobradorId: string | null, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6, enabled = true) {
   const { start, end } = getWeekRange(weekStartsOn);
   const desde = format(start, "yyyy-MM-dd");
   const hasta = format(end, "yyyy-MM-dd");
 
   return useQuery({
     queryKey: ["cobrador-resumen-semanal", desde, hasta, empresaId, cobradorId],
-    enabled: !!cobradorId,
+    enabled: enabled && !!empresaId,
     queryFn: async () => {
       // Cuotas that fall in this week
       const { data: cuotas } = await supabase
@@ -252,11 +257,16 @@ function useResumenSemanal(empresaId: string, cobradorId: string | null, weekSta
 
       // Filter by cobrador
       const prestamoIds = [...new Set(cuotas.map((c) => c.prestamo_id))];
-      const { data: prestamos } = await supabase
+      let prestamosQuery = supabase
         .from("prestamos")
         .select("id")
-        .in("id", prestamoIds)
-        .eq("cobrador_id", cobradorId!);
+        .in("id", prestamoIds);
+
+      if (cobradorId) {
+        prestamosQuery = prestamosQuery.eq("cobrador_id", cobradorId);
+      }
+
+      const { data: prestamos } = await prestamosQuery;
 
       const validIds = new Set((prestamos || []).map((p) => p.id));
       const filtered = cuotas.filter((c) => validIds.has(c.prestamo_id));
@@ -270,7 +280,7 @@ function useResumenSemanal(empresaId: string, cobradorId: string | null, weekSta
           .select("monto_recibido")
           .in("cuota_id", cuotaIds)
           .eq("anulado", false)
-          .eq("cobrador_id", cobradorId!);
+          .eq("empresa_id", empresaId);
         pagadoTotal = (pagos || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
       }
 
@@ -295,10 +305,10 @@ function useCajasAll(empresaId: string) {
 }
 
 // Profile data for cobrador
-function usePerfilCobrador(cobradorId: string | null, empresaId: string) {
+function usePerfilCobrador(cobradorId: string | null, empresaId: string, enabled = true) {
   return useQuery({
     queryKey: ["cobrador-perfil", cobradorId, empresaId],
-    enabled: !!cobradorId,
+    enabled: enabled && !!empresaId,
     queryFn: async () => {
       // Profile info
       const { data: profile } = await supabase
@@ -372,6 +382,22 @@ function usePerfilCobrador(cobradorId: string | null, empresaId: string) {
   });
 }
 
+function useProfileEmpresa(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["current-profile-empresa", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("empresa_id")
+        .eq("id", userId!)
+        .single();
+      return data?.empresa_id || "";
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 // ── Quick Date Range Presets ────────────────────────────────────
 type RangePreset = "hoy" | "semana" | "custom";
 
@@ -391,12 +417,14 @@ export default function CobradorViewPage() {
   const { cobradorId, role, profileId } = useCurrentUserRole();
   const { user } = useAuth();
   const canView = useCan("mi_cobranza", "ver");
+  const { data: profileEmpresaId } = useProfileEmpresa(user?.id);
+  const activeEmpresaId = profileEmpresaId || empresaId;
 
   // Use the logged-in user's ID as cobrador — if they're assigned as cobrador on any loan, they'll see it
-  const effectiveCobradorId = user?.id || cobradorId || profileId;
+  const effectiveCobradorId = role === "admin" ? null : (cobradorId || profileId || user?.id || null);
 
   // Empresa week config
-  const { data: weekStartsOn = 1 } = useEmpresaSemana(empresaId);
+  const { data: weekStartsOn = 1 } = useEmpresaSemana(activeEmpresaId);
 
   // Date range state
   const today = new Date();
@@ -426,11 +454,11 @@ export default function CobradorViewPage() {
   const fechaDesdeStr = format(fechaDesde, "yyyy-MM-dd");
   const fechaHastaStr = format(fechaHasta, "yyyy-MM-dd");
 
-  const { data: cuotas, isLoading: loadingCuotas } = useCobranzaRango(fechaDesdeStr, fechaHastaStr, empresaId, effectiveCobradorId);
-  const { data: pagos, isLoading: loadingPagos } = usePagosCobrador(fechaDesdeStr, fechaHastaStr, empresaId, effectiveCobradorId);
-  const { data: cajas } = useCajasAll(empresaId);
-  const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, empresaId);
-  const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(empresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6);
+  const { data: cuotas, isLoading: loadingCuotas } = useCobranzaRango(fechaDesdeStr, fechaHastaStr, activeEmpresaId, effectiveCobradorId, role === "admin" || !!effectiveCobradorId);
+  const { data: pagos, isLoading: loadingPagos } = usePagosCobrador(fechaDesdeStr, fechaHastaStr, activeEmpresaId, effectiveCobradorId, role === "admin" || !!effectiveCobradorId);
+  const { data: cajas } = useCajasAll(activeEmpresaId);
+  const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, activeEmpresaId, role !== "admin" && !!effectiveCobradorId);
+  const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(activeEmpresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6, role === "admin" || !!effectiveCobradorId);
   
   // Preset handlers
   const setHoy = useCallback(() => {
@@ -536,7 +564,7 @@ export default function CobradorViewPage() {
     );
   }
 
-  if (!effectiveCobradorId) {
+  if (role !== "admin" && !effectiveCobradorId) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] p-4">
         <Card className="max-w-sm w-full">
