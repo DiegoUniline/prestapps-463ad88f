@@ -25,11 +25,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PagoModal } from "@/components/PagoModal";
 import { VisitaModal } from "@/components/VisitaModal";
 import { PromesaModal } from "@/components/PromesaModal";
+import { HistorialPagosModal } from "@/components/cobranza/HistorialPagosModal";
+import { PrestamoQuickDrawer } from "@/components/cobranza/PrestamoQuickDrawer";
+import { resendReceiptForPrestamo } from "@/lib/resendReceipt";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   HandCoins, ChevronLeft, ChevronRight, DollarSign, TrendingUp,
   Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
-  User, Lock, Wallet, FileText, Briefcase,
+  User, Lock, Wallet, FileText, Briefcase, Send, ChevronDown, ChevronUp, Loader2,
 } from "lucide-react";
 
 
