@@ -412,12 +412,14 @@ export default function CobradorViewPage() {
   const { cobradorId, role, profileId } = useCurrentUserRole();
   const { user } = useAuth();
   const canView = useCan("mi_cobranza", "ver");
+  const { data: profileEmpresaId } = useProfileEmpresa(user?.id);
+  const activeEmpresaId = profileEmpresaId || empresaId;
 
   // Use the logged-in user's ID as cobrador — if they're assigned as cobrador on any loan, they'll see it
-  const effectiveCobradorId = user?.id || cobradorId || profileId;
+  const effectiveCobradorId = role === "admin" ? null : (cobradorId || profileId || user?.id || null);
 
   // Empresa week config
-  const { data: weekStartsOn = 1 } = useEmpresaSemana(empresaId);
+  const { data: weekStartsOn = 1 } = useEmpresaSemana(activeEmpresaId);
 
   // Date range state
   const today = new Date();
@@ -447,11 +449,11 @@ export default function CobradorViewPage() {
   const fechaDesdeStr = format(fechaDesde, "yyyy-MM-dd");
   const fechaHastaStr = format(fechaHasta, "yyyy-MM-dd");
 
-  const { data: cuotas, isLoading: loadingCuotas } = useCobranzaRango(fechaDesdeStr, fechaHastaStr, empresaId, effectiveCobradorId);
-  const { data: pagos, isLoading: loadingPagos } = usePagosCobrador(fechaDesdeStr, fechaHastaStr, empresaId, effectiveCobradorId);
-  const { data: cajas } = useCajasAll(empresaId);
-  const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, empresaId);
-  const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(empresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6);
+  const { data: cuotas, isLoading: loadingCuotas } = useCobranzaRango(fechaDesdeStr, fechaHastaStr, activeEmpresaId, effectiveCobradorId, role === "admin" || !!effectiveCobradorId);
+  const { data: pagos, isLoading: loadingPagos } = usePagosCobrador(fechaDesdeStr, fechaHastaStr, activeEmpresaId, effectiveCobradorId, role === "admin" || !!effectiveCobradorId);
+  const { data: cajas } = useCajasAll(activeEmpresaId);
+  const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, activeEmpresaId, role !== "admin" && !!effectiveCobradorId);
+  const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(activeEmpresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6);
   
   // Preset handlers
   const setHoy = useCallback(() => {
