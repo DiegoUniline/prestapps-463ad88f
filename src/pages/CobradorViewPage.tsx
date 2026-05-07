@@ -618,6 +618,71 @@ export default function CobradorViewPage() {
   const pendientes = useMemo(() => filtered.filter((c) => !c.pagada), [filtered]);
   const cobradas = useMemo(() => filtered.filter((c) => c.cobradaEnRango), [filtered]);
 
+  // Group "por cobrar" by préstamo (= por cliente con su crédito)
+  const pendientesGrupos = useMemo(() => {
+    const groups = new Map<string, {
+      prestamoId: string;
+      clienteNombre: string;
+      clienteId: string;
+      clienteTelefono: string | null;
+      clienteDireccion: string | null;
+      ruta: string;
+      rutaId: string | null;
+      cobradorId: string | null;
+      cuotas: CuotaCobrador[];
+      saldoTotal: number;
+      saldoMora: number;
+      diasAtrasoMax: number;
+      proximaCuota: number;
+      totalCuotas: number;
+    }>();
+    for (const c of pendientes) {
+      let g = groups.get(c.prestamoId);
+      if (!g) {
+        g = {
+          prestamoId: c.prestamoId,
+          clienteNombre: c.clienteNombre,
+          clienteId: c.clienteId,
+          clienteTelefono: c.clienteTelefono,
+          clienteDireccion: c.clienteDireccion,
+          ruta: c.ruta,
+          rutaId: c.rutaId,
+          cobradorId: c.cobradorId,
+          cuotas: [],
+          saldoTotal: 0,
+          saldoMora: 0,
+          diasAtrasoMax: 0,
+          proximaCuota: c.numCuota,
+          totalCuotas: c.totalCuotas,
+        };
+        groups.set(c.prestamoId, g);
+      }
+      g.cuotas.push(c);
+      g.saldoTotal += c.saldoTotal;
+      g.saldoMora += c.saldoMora;
+      if (c.diasAtraso > g.diasAtrasoMax) g.diasAtrasoMax = c.diasAtraso;
+      if (c.numCuota < g.proximaCuota) g.proximaCuota = c.numCuota;
+    }
+    return Array.from(groups.values()).sort((a, b) => b.diasAtrasoMax - a.diasAtrasoMax);
+  }, [pendientes]);
+
+  const [grupoExpanded, setGrupoExpanded] = useState<Set<string>>(new Set());
+  const toggleGrupo = useCallback((prestamoId: string) => {
+    setGrupoExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(prestamoId)) n.delete(prestamoId); else n.add(prestamoId);
+      return n;
+    });
+  }, []);
+
+  // Open PagoModal directly from a grouped card (passing the first overdue cuota for context)
+  const openPagoGrupo = useCallback((g: typeof pendientesGrupos[number]) => {
+    const firstCuota = g.cuotas[0];
+    if (!firstCuota) return;
+    // Override montoInicial with the full grouped saldo
+    openPago({ ...firstCuota, saldoTotal: g.saldoTotal });
+  }, [openPago]);
+
   // KPIs
   const kpis = useMemo(() => {
     const total = filtered.length;
