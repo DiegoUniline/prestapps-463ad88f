@@ -666,22 +666,6 @@ export default function CobradorViewPage() {
     return Array.from(groups.values()).sort((a, b) => b.diasAtrasoMax - a.diasAtrasoMax);
   }, [pendientes]);
 
-  const [grupoExpanded, setGrupoExpanded] = useState<Set<string>>(new Set());
-  const toggleGrupo = useCallback((prestamoId: string) => {
-    setGrupoExpanded((prev) => {
-      const n = new Set(prev);
-      if (n.has(prestamoId)) n.delete(prestamoId); else n.add(prestamoId);
-      return n;
-    });
-  }, []);
-
-  // Open PagoModal directly from a grouped card (passing the first overdue cuota for context)
-  const openPagoGrupo = useCallback((g: typeof pendientesGrupos[number]) => {
-    const firstCuota = g.cuotas[0];
-    if (!firstCuota) return;
-    // Override montoInicial with the full grouped saldo
-    openPago({ ...firstCuota, saldoTotal: g.saldoTotal });
-  }, [openPago]);
 
   // KPIs
   const kpis = useMemo(() => {
