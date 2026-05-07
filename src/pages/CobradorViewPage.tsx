@@ -282,31 +282,33 @@ function useResumenSemanal(empresaId: string, cobradorId: string | null, weekSta
     queryKey: ["cobrador-resumen-semanal", desde, hasta, empresaId, cobradorId],
     enabled: enabled && !!empresaId,
     queryFn: async () => {
-      // Cuotas that fall in this week
-      const { data: cuotas } = await supabase
-        .from("amortizacion")
-        .select("id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento")
-        .eq("empresa_id", empresaId)
-        .gte("fecha_vencimiento", desde)
-        .lte("fecha_vencimiento", hasta);
-
-      if (!cuotas?.length) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
-
-      // Filter by cobrador
-      const prestamoIds = [...new Set(cuotas.map((c) => c.prestamo_id))];
-      let prestamosQuery = supabase
-        .from("prestamos")
-        .select("id")
-        .in("id", prestamoIds);
-
+      let cuotas: any[] = [];
       if (cobradorId) {
-        prestamosQuery = prestamosQuery.eq("cobrador_id", cobradorId);
+        const { data: prestamos } = await supabase
+          .from("prestamos")
+          .select("id")
+          .eq("empresa_id", empresaId)
+          .eq("cobrador_id", cobradorId);
+        const ids = (prestamos || []).map((p) => p.id);
+        if (ids.length === 0) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
+        const { data } = await supabase
+          .from("amortizacion")
+          .select("id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento")
+          .in("prestamo_id", ids)
+          .gte("fecha_vencimiento", desde)
+          .lte("fecha_vencimiento", hasta);
+        cuotas = data || [];
+      } else {
+        const { data } = await supabase
+          .from("amortizacion")
+          .select("id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento")
+          .eq("empresa_id", empresaId)
+          .gte("fecha_vencimiento", desde)
+          .lte("fecha_vencimiento", hasta);
+        cuotas = data || [];
       }
-
-      const { data: prestamos } = await prestamosQuery;
-
-      const validIds = new Set((prestamos || []).map((p) => p.id));
-      const filtered = cuotas.filter((c) => validIds.has(c.prestamo_id));
+      if (!cuotas.length) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
+      const filtered = cuotas;
 
       // Payments received this week for these cuotas
       const cuotaIds = filtered.map((c) => c.id);
