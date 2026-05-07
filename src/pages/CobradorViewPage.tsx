@@ -1270,29 +1270,75 @@ function CuotaCard({
                     <CalendarCheck className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                <Button variant="outline" size="icon" className="h-8 w-8"
-                  onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}>
+                <Button variant="outline" size="icon" className="h-8 w-8" title="Ver préstamo"
+                  onClick={() => onDrawer ? onDrawer(item) : onNavigate(`/prestamos/${item.prestamoId}`)}>
                   <Eye className="h-3.5 w-3.5" />
                 </Button>
+                {onToggleExpand && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Más"
+                    onClick={onToggleExpand}>
+                    {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-between w-full">
+            <div className="flex items-center justify-between w-full gap-2 flex-wrap">
               <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Cobrado {$$(item.montoPagado || item.capitalInteres)}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}
-              >
-                <Eye className="h-3 w-3 mr-1" /> Ver
-              </Button>
+              <div className="flex items-center gap-1">
+                {onResend && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px]" disabled={resending}
+                    onClick={() => onResend(item)} title="Reenviar último ticket">
+                    {resending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                    Reenviar
+                  </Button>
+                )}
+                {onHistorial && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px]"
+                    onClick={() => onHistorial(item)}>
+                    <Receipt className="h-3 w-3 mr-1" /> Pagos
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" className="h-7 text-xs"
+                  onClick={() => onDrawer ? onDrawer(item) : onNavigate(`/prestamos/${item.prestamoId}`)}>
+                  <Eye className="h-3 w-3 mr-1" /> Ver
+                </Button>
+              </div>
             </div>
           )}
         </div>
+
+        {/* Expanded actions panel */}
+        {expanded && (
+          <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {onDrawer && (
+              <Button variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => onDrawer(item)}>
+                <FileText className="h-3 w-3 mr-1" /> Préstamo
+              </Button>
+            )}
+            {onHistorial && (
+              <Button variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => onHistorial(item)}>
+                <Receipt className="h-3 w-3 mr-1" /> Pagos
+              </Button>
+            )}
+            {onResend && (
+              <Button variant="outline" size="sm" className="h-8 text-[11px]" disabled={resending}
+                onClick={() => onResend(item)}>
+                {resending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                Reenviar ticket
+              </Button>
+            )}
+            {item.clienteDireccion && (
+              <Button variant="outline" size="sm" className="h-8 text-[11px]"
+                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.clienteDireccion!)}`, "_blank")}>
+                <MapPin className="h-3 w-3 mr-1" /> Mapa
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Client address if available */}
         {item.clienteDireccion && !item.pagada && (
