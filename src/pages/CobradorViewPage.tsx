@@ -618,6 +618,55 @@ export default function CobradorViewPage() {
   const pendientes = useMemo(() => filtered.filter((c) => !c.pagada), [filtered]);
   const cobradas = useMemo(() => filtered.filter((c) => c.cobradaEnRango), [filtered]);
 
+  // Group "por cobrar" by préstamo (= por cliente con su crédito)
+  const pendientesGrupos = useMemo(() => {
+    const groups = new Map<string, {
+      prestamoId: string;
+      clienteNombre: string;
+      clienteId: string;
+      clienteTelefono: string | null;
+      clienteDireccion: string | null;
+      ruta: string;
+      rutaId: string | null;
+      cobradorId: string | null;
+      cuotas: CuotaCobrador[];
+      saldoTotal: number;
+      saldoMora: number;
+      diasAtrasoMax: number;
+      proximaCuota: number;
+      totalCuotas: number;
+    }>();
+    for (const c of pendientes) {
+      let g = groups.get(c.prestamoId);
+      if (!g) {
+        g = {
+          prestamoId: c.prestamoId,
+          clienteNombre: c.clienteNombre,
+          clienteId: c.clienteId,
+          clienteTelefono: c.clienteTelefono,
+          clienteDireccion: c.clienteDireccion,
+          ruta: c.ruta,
+          rutaId: c.rutaId,
+          cobradorId: c.cobradorId,
+          cuotas: [],
+          saldoTotal: 0,
+          saldoMora: 0,
+          diasAtrasoMax: 0,
+          proximaCuota: c.numCuota,
+          totalCuotas: c.totalCuotas,
+        };
+        groups.set(c.prestamoId, g);
+      }
+      g.cuotas.push(c);
+      g.saldoTotal += c.saldoTotal;
+      g.saldoMora += c.saldoMora;
+      if (c.diasAtraso > g.diasAtrasoMax) g.diasAtrasoMax = c.diasAtraso;
+      if (c.numCuota < g.proximaCuota) g.proximaCuota = c.numCuota;
+    }
+    return Array.from(groups.values()).sort((a, b) => b.diasAtrasoMax - a.diasAtrasoMax);
+  }, [pendientes]);
+
+
   // KPIs
   const kpis = useMemo(() => {
     const total = filtered.length;
@@ -666,6 +715,21 @@ export default function CobradorViewPage() {
       queryClient.invalidateQueries({ queryKey: ["cobrador-pagos"] });
     }
   }, [queryClient]);
+
+  // Group expand state + handler for grouped "por cobrar" cards
+  const [grupoExpanded, setGrupoExpanded] = useState<Set<string>>(new Set());
+  const toggleGrupo = useCallback((prestamoId: string) => {
+    setGrupoExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(prestamoId)) n.delete(prestamoId); else n.add(prestamoId);
+      return n;
+    });
+  }, []);
+  const openPagoGrupo = useCallback((g: { cuotas: CuotaCobrador[]; saldoTotal: number }) => {
+    const firstCuota = g.cuotas[0];
+    if (!firstCuota) return;
+    openPago({ ...firstCuota, saldoTotal: g.saldoTotal });
+  }, [openPago]);
 
   // Pagos filtered
   const filteredPagos = useMemo(() => {
@@ -898,22 +962,20 @@ export default function CobradorViewPage() {
               </TabsList>
 
               <TabsContent value="por-cobrar" className="mt-3 space-y-2">
-                {pendientes.length === 0 ? (
+                {pendientesGrupos.length === 0 ? (
                   <EmptyCard icon={CheckCircle2} title="¡Todo cobrado!" subtitle="No tienes cuotas pendientes en este rango." />
-                ) : pendientes.map((item) => (
-                  <CuotaCard
-                    key={item.cuotaId}
-                    item={item}
-                    expanded={expanded.has(item.cuotaId)}
-                    onToggleExpand={() => toggleExpand(item.cuotaId)}
-                    onCobrar={openPago}
+                ) : pendientesGrupos.map((g) => (
+                  <PrestamoGroupCard
+                    key={g.prestamoId}
+                    grupo={g}
+                    expanded={grupoExpanded.has(g.prestamoId)}
+                    onToggleExpand={() => toggleGrupo(g.prestamoId)}
+                    onCobrar={() => openPagoGrupo(g)}
                     onNavigate={navigate}
-                    onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
-                    onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
-                    onHistorial={openHistorial}
-                    onDrawer={openDrawer}
-                    onResend={handleResend}
-                    resending={resending === item.prestamoId}
+                    onDrawer={() => { setDrawerPrestamoId(g.prestamoId); setDrawerOpen(true); }}
+                    onHistorial={() => { setHistorialPrestamoId(g.prestamoId); setHistorialNombre(g.clienteNombre); setHistorialOpen(true); }}
+                    onVisita={() => { setVisitaItem(g.cuotas[0]); setVisitaOpen(true); }}
+                    onPromesa={() => { setPromesaItem(g.cuotas[0]); setPromesaOpen(true); }}
                   />
                 ))}
               </TabsContent>
@@ -1617,5 +1679,171 @@ function LoadingCards() {
         <Skeleton key={i} className="h-32 w-full rounded-lg" />
       ))}
     </div>
+  );
+}
+
+// ── Prestamo Group Card ─────────────────────────────────────────
+// Shows one card per loan with the TOTAL outstanding (saldo + mora).
+// Click "Cobrar" → opens PagoModal preloaded with the full grouped amount.
+// The waterfall (Mora → Interés → Capital) settles cuotas oldest-first automatically.
+function PrestamoGroupCard({
+  grupo, expanded, onToggleExpand, onCobrar, onNavigate, onDrawer, onHistorial, onVisita, onPromesa,
+}: {
+  grupo: {
+    prestamoId: string; clienteNombre: string; clienteId: string;
+    clienteTelefono: string | null; clienteDireccion: string | null;
+    ruta: string; cuotas: CuotaCobrador[]; saldoTotal: number; saldoMora: number;
+    diasAtrasoMax: number; proximaCuota: number; totalCuotas: number;
+  };
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onCobrar: () => void;
+  onNavigate: (path: string) => void;
+  onDrawer: () => void;
+  onHistorial: () => void;
+  onVisita: () => void;
+  onPromesa: () => void;
+}) {
+  const isOverdue = grupo.diasAtrasoMax > 0;
+  const cuotasVencidas = grupo.cuotas.filter((c) => c.diasAtraso > 0).length;
+  return (
+    <Card className={cn(
+      "border-border/50 transition-colors",
+      isOverdue && "border-destructive/30 bg-destructive/5",
+    )}>
+      <CardContent className="p-3 space-y-2">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <button
+              className="font-semibold text-sm hover:text-primary hover:underline text-left block w-full truncate"
+              onClick={() => onNavigate(`/clientes/${grupo.clienteId}`)}
+            >
+              {grupo.clienteNombre}
+            </button>
+            <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+              <span className="text-[11px] text-muted-foreground">{grupo.ruta}</span>
+              <span className="text-[11px] text-muted-foreground">•</span>
+              <span className="text-[11px] text-muted-foreground">
+                {grupo.cuotas.length} {grupo.cuotas.length === 1 ? "cuota" : "cuotas"} pend.
+              </span>
+              {cuotasVencidas > 0 && (
+                <Badge variant="destructive" className="h-4 text-[9px] px-1">
+                  {cuotasVencidas} vencida{cuotasVencidas > 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
+          </div>
+          {isOverdue && (
+            <Badge className="text-[10px] shrink-0 h-5 bg-destructive text-destructive-foreground">
+              {grupo.diasAtrasoMax}d atraso
+            </Badge>
+          )}
+        </div>
+
+        {/* Amounts: saldo total a pagar + mora */}
+        <div className="grid grid-cols-2 gap-2 text-center bg-secondary/50 rounded-md p-2">
+          <div>
+            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Mora</p>
+            <p className={cn("text-xs font-semibold", grupo.saldoMora > 0 ? "text-destructive" : "text-muted-foreground")}>
+              {grupo.saldoMora > 0 ? $$(grupo.saldoMora) : "—"}
+            </p>
+          </div>
+          <div>
+            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Saldo total</p>
+            <p className="text-base font-bold text-primary">{$$(grupo.saldoTotal)}</p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Button
+            size="sm"
+            className="h-9 text-xs font-medium min-w-0 flex-1"
+            onClick={onCobrar}
+          >
+            <HandCoins className="h-3.5 w-3.5 mr-1 shrink-0" />
+            <span className="truncate">Cobrar — el monto que ingreses se aplica automático</span>
+          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            {grupo.clienteTelefono && (
+              <>
+                <Button variant="outline" size="icon" className="h-9 w-9"
+                  onClick={() => window.open(`tel:${grupo.clienteTelefono}`, "_blank")}>
+                  <Phone className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-9 w-9 text-green-600"
+                  onClick={() => window.open(`https://wa.me/${grupo.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
+                  <MessageSquare className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+            <Button variant="outline" size="icon" className="h-9 w-9" title="Ver préstamo" onClick={onDrawer}>
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9" title={expanded ? "Ocultar cuotas" : "Ver cuotas"}
+              onClick={onToggleExpand}>
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Expanded: list of pending cuotas + extra actions */}
+        {expanded && (
+          <div className="pt-2 border-t border-border/50 space-y-1.5">
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={onHistorial}>
+                <Receipt className="h-3 w-3 mr-1" /> Pagos
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={onVisita}>
+                <MapPin className="h-3 w-3 mr-1" /> Visita
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={onPromesa}>
+                <CalendarCheck className="h-3 w-3 mr-1" /> Promesa
+              </Button>
+              {grupo.clienteDireccion && (
+                <Button variant="outline" size="sm" className="h-7 text-[11px]"
+                  onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(grupo.clienteDireccion!)}`, "_blank")}>
+                  <MapPin className="h-3 w-3 mr-1" /> Mapa
+                </Button>
+              )}
+            </div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+              Cuotas pendientes
+            </p>
+            <div className="space-y-1">
+              {grupo.cuotas.map((c) => (
+                <div key={c.cuotaId} className={cn(
+                  "flex items-center justify-between gap-2 text-xs py-1.5 px-2 rounded",
+                  c.diasAtraso > 0 ? "bg-destructive/10" : "bg-secondary/40",
+                )}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-medium shrink-0">#{c.numCuota}/{c.totalCuotas}</span>
+                    <span className="text-muted-foreground text-[11px] shrink-0">
+                      {format(parseISO(c.fechaVencimiento), "dd/MM")}
+                    </span>
+                    {c.diasAtraso > 0 && (
+                      <span className="text-destructive text-[10px] shrink-0">+{c.diasAtraso}d</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {c.saldoMora > 0 && (
+                      <span className="text-destructive text-[10px]">M: {$$(c.saldoMora)}</span>
+                    )}
+                    <span className="font-semibold">{$$(c.saldoTotal)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {grupo.clienteDireccion && (
+              <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-border/50">
+                <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                <p className="text-[11px] text-muted-foreground leading-tight">{grupo.clienteDireccion}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
