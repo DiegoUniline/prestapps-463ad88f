@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCan } from "@/hooks/usePermisos";
 import { useNavigate } from "react-router-dom";
 import { format, parseISO, startOfDay, endOfDay, isToday, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
@@ -504,7 +503,6 @@ export default function CobradorViewPage() {
   const { empresaId } = useEmpresa();
   const { cobradorId, role, profileId } = useCurrentUserRole();
   const { user } = useAuth();
-  const canView = useCan("mi_cobranza", "ver");
   const { data: profileEmpresaId } = useProfileEmpresa(user?.id);
   const activeEmpresaId = profileEmpresaId || empresaId;
 
@@ -743,20 +741,6 @@ export default function CobradorViewPage() {
     filteredPagos.filter((p) => !p.anulado).reduce((s, p) => s + p.montoRecibido, 0),
     [filteredPagos]
   );
-
-  if (!canView) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh] p-4">
-        <Card className="max-w-sm w-full">
-          <CardContent className="p-6 text-center">
-            <AlertTriangle className="h-10 w-10 text-warning mx-auto mb-3" />
-            <p className="font-semibold">Acceso restringido</p>
-            <p className="text-sm text-muted-foreground mt-1">No tienes permisos para ver Mi Cobranza.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   if (role !== "admin" && !effectiveCobradorId) {
     return (
