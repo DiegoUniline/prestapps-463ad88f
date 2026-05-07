@@ -25,11 +25,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PagoModal } from "@/components/PagoModal";
 import { VisitaModal } from "@/components/VisitaModal";
 import { PromesaModal } from "@/components/PromesaModal";
+import { HistorialPagosModal } from "@/components/cobranza/HistorialPagosModal";
+import { PrestamoQuickDrawer } from "@/components/cobranza/PrestamoQuickDrawer";
+import { resendReceiptForPrestamo } from "@/lib/resendReceipt";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   HandCoins, ChevronLeft, ChevronRight, DollarSign, TrendingUp,
   Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
-  User, Lock, Wallet, FileText, Briefcase,
+  User, Lock, Wallet, FileText, Briefcase, Send, ChevronDown, ChevronUp, Loader2,
 } from "lucide-react";
 
 
@@ -451,6 +454,45 @@ export default function CobradorViewPage() {
   const [promesaOpen, setPromesaOpen] = useState(false);
   const [promesaItem, setPromesaItem] = useState<CuotaCobrador | null>(null);
 
+  // Historial pagos + Drawer préstamo (in-page navigation)
+  const [historialOpen, setHistorialOpen] = useState(false);
+  const [historialPrestamoId, setHistorialPrestamoId] = useState("");
+  const [historialNombre, setHistorialNombre] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerPrestamoId, setDrawerPrestamoId] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [resending, setResending] = useState<string | null>(null);
+
+  const toggleExpand = useCallback((cuotaId: string) => {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(cuotaId)) n.delete(cuotaId); else n.add(cuotaId);
+      return n;
+    });
+  }, []);
+
+  const openHistorial = useCallback((item: CuotaCobrador) => {
+    setHistorialPrestamoId(item.prestamoId);
+    setHistorialNombre(item.clienteNombre);
+    setHistorialOpen(true);
+  }, []);
+
+  const openDrawer = useCallback((item: CuotaCobrador) => {
+    setDrawerPrestamoId(item.prestamoId);
+    setDrawerOpen(true);
+  }, []);
+
+  const handleResend = useCallback(async (item: CuotaCobrador) => {
+    setResending(item.prestamoId);
+    try {
+      const res = await resendReceiptForPrestamo({ empresaId: activeEmpresaId, prestamoId: item.prestamoId });
+      if (res.success) toast.success("Ticket reenviado por WhatsApp");
+      else toast.error(res.error || "No se pudo reenviar");
+    } finally {
+      setResending(null);
+    }
+  }, [activeEmpresaId]);
+
   const fechaDesdeStr = format(fechaDesde, "yyyy-MM-dd");
   const fechaHastaStr = format(fechaHasta, "yyyy-MM-dd");
 
@@ -743,23 +785,48 @@ export default function CobradorViewPage() {
         <TabsContent value="cobranza" className="mt-3 space-y-2">
           {loadingCuotas ? (
             <LoadingCards />
-          ) : pendientes.length === 0 ? (
-            <EmptyCard icon={CheckCircle2} title="¡Todo cobrado!" subtitle="No hay cuotas pendientes para este periodo." />
+          ) : filtered.length === 0 ? (
+            <EmptyCard icon={CheckCircle2} title="Sin cuotas en este rango" subtitle="No hay cuotas asignadas para este periodo." />
           ) : (
-            pendientes.map((item) => (
-              <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }} onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }} />
-            ))
-          )}
-
-          {cobradas.length > 0 && (
-            <div className="pt-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                Ya cobradas ({cobradas.length})
-              </p>
-              {cobradas.map((item) => (
-                <CuotaCard key={item.cuotaId} item={item} onCobrar={openPago} onNavigate={navigate} onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }} onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }} />
+            <>
+              {pendientes.map((item) => (
+                <CuotaCard
+                  key={item.cuotaId}
+                  item={item}
+                  expanded={expanded.has(item.cuotaId)}
+                  onToggleExpand={() => toggleExpand(item.cuotaId)}
+                  onCobrar={openPago}
+                  onNavigate={navigate}
+                  onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
+                  onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
+                  onHistorial={openHistorial}
+                  onDrawer={openDrawer}
+                  onResend={handleResend}
+                  resending={resending === item.prestamoId}
+                />
               ))}
-            </div>
+              {cobradas.length > 0 && pendientes.length > 0 && (
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-3 mb-1 px-1">
+                  Ya cobradas ({cobradas.length})
+                </p>
+              )}
+              {cobradas.map((item) => (
+                <CuotaCard
+                  key={item.cuotaId}
+                  item={item}
+                  expanded={expanded.has(item.cuotaId)}
+                  onToggleExpand={() => toggleExpand(item.cuotaId)}
+                  onCobrar={openPago}
+                  onNavigate={navigate}
+                  onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
+                  onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
+                  onHistorial={openHistorial}
+                  onDrawer={openDrawer}
+                  onResend={handleResend}
+                  resending={resending === item.prestamoId}
+                />
+              ))}
+            </>
           )}
         </TabsContent>
 
@@ -1057,6 +1124,21 @@ export default function CobradorViewPage() {
           cuotaId={promesaItem.cuotaId} saldoTotal={promesaItem.saldoTotal}
           fechaVencimiento={promesaItem.fechaVencimiento} />
       )}
+      {historialOpen && (
+        <HistorialPagosModal
+          open={historialOpen}
+          onOpenChange={setHistorialOpen}
+          prestamoId={historialPrestamoId}
+          clienteNombre={historialNombre}
+        />
+      )}
+      {drawerOpen && (
+        <PrestamoQuickDrawer
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          prestamoId={drawerPrestamoId}
+        />
+      )}
     </div>
   );
 }
@@ -1080,13 +1162,22 @@ function KPICard({ label, value, sub, icon: Icon, color }: {
   );
 }
 
-function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }: {
+function CuotaCard({
+  item, onCobrar, onNavigate, onVisita, onPromesa, showDate,
+  expanded, onToggleExpand, onHistorial, onDrawer, onResend, resending,
+}: {
   item: CuotaCobrador;
   onCobrar: (item: CuotaCobrador) => void;
   onNavigate: (path: string) => void;
   onVisita?: (item: CuotaCobrador) => void;
   onPromesa?: (item: CuotaCobrador) => void;
   showDate?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+  onHistorial?: (item: CuotaCobrador) => void;
+  onDrawer?: (item: CuotaCobrador) => void;
+  onResend?: (item: CuotaCobrador) => void;
+  resending?: boolean;
 }) {
   const status = getStatusInfo(item);
   const isOverdue = item.diasAtraso > 0 && !item.pagada;
@@ -1179,29 +1270,75 @@ function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }
                     <CalendarCheck className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                <Button variant="outline" size="icon" className="h-8 w-8"
-                  onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}>
+                <Button variant="outline" size="icon" className="h-8 w-8" title="Ver préstamo"
+                  onClick={() => onDrawer ? onDrawer(item) : onNavigate(`/prestamos/${item.prestamoId}`)}>
                   <Eye className="h-3.5 w-3.5" />
                 </Button>
+                {onToggleExpand && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Más"
+                    onClick={onToggleExpand}>
+                    {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-between w-full">
+            <div className="flex items-center justify-between w-full gap-2 flex-wrap">
               <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 Cobrado {$$(item.montoPagado || item.capitalInteres)}
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => onNavigate(`/prestamos/${item.prestamoId}`)}
-              >
-                <Eye className="h-3 w-3 mr-1" /> Ver
-              </Button>
+              <div className="flex items-center gap-1">
+                {onResend && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px]" disabled={resending}
+                    onClick={() => onResend(item)} title="Reenviar último ticket">
+                    {resending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                    Reenviar
+                  </Button>
+                )}
+                {onHistorial && (
+                  <Button variant="outline" size="sm" className="h-7 text-[11px]"
+                    onClick={() => onHistorial(item)}>
+                    <Receipt className="h-3 w-3 mr-1" /> Pagos
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" className="h-7 text-xs"
+                  onClick={() => onDrawer ? onDrawer(item) : onNavigate(`/prestamos/${item.prestamoId}`)}>
+                  <Eye className="h-3 w-3 mr-1" /> Ver
+                </Button>
+              </div>
             </div>
           )}
         </div>
+
+        {/* Expanded actions panel */}
+        {expanded && (
+          <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {onDrawer && (
+              <Button variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => onDrawer(item)}>
+                <FileText className="h-3 w-3 mr-1" /> Préstamo
+              </Button>
+            )}
+            {onHistorial && (
+              <Button variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => onHistorial(item)}>
+                <Receipt className="h-3 w-3 mr-1" /> Pagos
+              </Button>
+            )}
+            {onResend && (
+              <Button variant="outline" size="sm" className="h-8 text-[11px]" disabled={resending}
+                onClick={() => onResend(item)}>
+                {resending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
+                Reenviar ticket
+              </Button>
+            )}
+            {item.clienteDireccion && (
+              <Button variant="outline" size="sm" className="h-8 text-[11px]"
+                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.clienteDireccion!)}`, "_blank")}>
+                <MapPin className="h-3 w-3 mr-1" /> Mapa
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Client address if available */}
         {item.clienteDireccion && !item.pagada && (
