@@ -400,9 +400,9 @@ export default function CobradorViewPage() {
 
   // Date range state
   const today = new Date();
-  const [rangePreset, setRangePreset] = useState<RangePreset>("hoy");
-  const [fechaDesde, setFechaDesde] = useState(today);
-  const [fechaHasta, setFechaHasta] = useState(today);
+  const [rangePreset, setRangePreset] = useState<RangePreset>("semana");
+  const [fechaDesde, setFechaDesde] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [fechaHasta, setFechaHasta] = useState(() => endOfWeek(new Date(), { weekStartsOn: 1 }));
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("cobranza");
   const [newPassword, setNewPassword] = useState("");
