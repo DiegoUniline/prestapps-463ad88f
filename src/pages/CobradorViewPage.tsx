@@ -1309,6 +1309,32 @@ export default function CobradorViewPage() {
           prestamoId={drawerPrestamoId}
         />
       )}
+
+      {/* ── Mobile bottom nav (Resumen / Cobranza / Perfil) ── */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-lg">
+        <div className="grid grid-cols-3">
+          {[
+            { val: "resumen", label: "Resumen", icon: TrendingUp },
+            { val: "cobranza", label: "Mi Cobranza", icon: HandCoins },
+            { val: "perfil", label: "Mi Perfil", icon: User },
+          ].map(({ val, label, icon: Icon }) => {
+            const active = activeTab === val;
+            return (
+              <button
+                key={val}
+                onClick={() => setActiveTab(val)}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <Icon className={cn("h-5 w-5", active && "scale-110 transition-transform")} />
+                <span className="text-[10px] font-medium">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
