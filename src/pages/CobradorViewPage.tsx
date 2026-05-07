@@ -614,9 +614,9 @@ export default function CobradorViewPage() {
     return cuotas.filter((c) => c.clienteNombre.toLowerCase().includes(q));
   }, [cuotas, search]);
 
-  // Split into pendientes and cobradas
+  // Split into pendientes and cobradas del rango elegido
   const pendientes = useMemo(() => filtered.filter((c) => !c.pagada), [filtered]);
-  const cobradas = useMemo(() => filtered.filter((c) => c.pagada), [filtered]);
+  const cobradas = useMemo(() => filtered.filter((c) => c.cobradaEnRango), [filtered]);
 
   // KPIs
   const kpis = useMemo(() => {
