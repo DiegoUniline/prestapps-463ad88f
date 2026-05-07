@@ -236,14 +236,14 @@ function getWeekRange(weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
 }
 
 // ── Weekly summary hook ─────────────────────────────────────────
-function useResumenSemanal(empresaId: string, cobradorId: string | null, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
+function useResumenSemanal(empresaId: string, cobradorId: string | null, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6, enabled = true) {
   const { start, end } = getWeekRange(weekStartsOn);
   const desde = format(start, "yyyy-MM-dd");
   const hasta = format(end, "yyyy-MM-dd");
 
   return useQuery({
     queryKey: ["cobrador-resumen-semanal", desde, hasta, empresaId, cobradorId],
-    enabled: !!cobradorId,
+    enabled: enabled && !!empresaId,
     queryFn: async () => {
       // Cuotas that fall in this week
       const { data: cuotas } = await supabase
@@ -257,11 +257,16 @@ function useResumenSemanal(empresaId: string, cobradorId: string | null, weekSta
 
       // Filter by cobrador
       const prestamoIds = [...new Set(cuotas.map((c) => c.prestamo_id))];
-      const { data: prestamos } = await supabase
+      let prestamosQuery = supabase
         .from("prestamos")
         .select("id")
-        .in("id", prestamoIds)
-        .eq("cobrador_id", cobradorId!);
+        .in("id", prestamoIds);
+
+      if (cobradorId) {
+        prestamosQuery = prestamosQuery.eq("cobrador_id", cobradorId);
+      }
+
+      const { data: prestamos } = await prestamosQuery;
 
       const validIds = new Set((prestamos || []).map((p) => p.id));
       const filtered = cuotas.filter((c) => validIds.has(c.prestamo_id));
@@ -275,7 +280,8 @@ function useResumenSemanal(empresaId: string, cobradorId: string | null, weekSta
           .select("monto_recibido")
           .in("cuota_id", cuotaIds)
           .eq("anulado", false)
-          .eq("cobrador_id", cobradorId!);
+          .eq("empresa_id", empresaId)
+          .or(cobradorId ? `cobrador_id.eq.${cobradorId}` : "cobrador_id.not.is.null");
         pagadoTotal = (pagos || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
       }
 
