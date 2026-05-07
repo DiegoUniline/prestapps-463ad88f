@@ -962,22 +962,20 @@ export default function CobradorViewPage() {
               </TabsList>
 
               <TabsContent value="por-cobrar" className="mt-3 space-y-2">
-                {pendientes.length === 0 ? (
+                {pendientesGrupos.length === 0 ? (
                   <EmptyCard icon={CheckCircle2} title="¡Todo cobrado!" subtitle="No tienes cuotas pendientes en este rango." />
-                ) : pendientes.map((item) => (
-                  <CuotaCard
-                    key={item.cuotaId}
-                    item={item}
-                    expanded={expanded.has(item.cuotaId)}
-                    onToggleExpand={() => toggleExpand(item.cuotaId)}
-                    onCobrar={openPago}
+                ) : pendientesGrupos.map((g) => (
+                  <PrestamoGroupCard
+                    key={g.prestamoId}
+                    grupo={g}
+                    expanded={grupoExpanded.has(g.prestamoId)}
+                    onToggleExpand={() => toggleGrupo(g.prestamoId)}
+                    onCobrar={() => openPagoGrupo(g)}
                     onNavigate={navigate}
-                    onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
-                    onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
-                    onHistorial={openHistorial}
-                    onDrawer={openDrawer}
-                    onResend={handleResend}
-                    resending={resending === item.prestamoId}
+                    onDrawer={() => { setDrawerPrestamoId(g.prestamoId); setDrawerOpen(true); }}
+                    onHistorial={() => { setHistorialPrestamoId(g.prestamoId); setHistorialNombre(g.clienteNombre); setHistorialOpen(true); }}
+                    onVisita={() => { setVisitaItem(g.cuotas[0]); setVisitaOpen(true); }}
+                    onPromesa={() => { setPromesaItem(g.cuotas[0]); setPromesaOpen(true); }}
                   />
                 ))}
               </TabsContent>
