@@ -688,7 +688,7 @@ export default function CobradorViewPage() {
       </div>
 
       {/* ── Resumen Semanal ────────────────────────────────── */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+      <Card className="hidden sm:block border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -738,7 +738,7 @@ export default function CobradorViewPage() {
       </Card>
 
       {/* ── KPI Cards (mobile: 2 cols) ─────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-2">
         <KPICard label="Pendientes" value={kpis.pendientes.toString()} sub={$$(kpis.porCobrar)} icon={Clock} color="text-warning" />
         <KPICard label="Cobradas" value={kpis.cobradas.toString()} sub={$$(kpis.cobrado)} icon={CheckCircle2} color="text-emerald-600 dark:text-emerald-400" />
         <KPICard label="Mora" value={$$(kpis.mora)} icon={AlertTriangle} color="text-destructive" />
@@ -763,7 +763,7 @@ export default function CobradorViewPage() {
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-10 p-1">
+        <TabsList className="w-full grid grid-cols-6 h-10 p-1">
           <TabsTrigger value="cobranza" className="text-[11px] sm:text-sm px-1 gap-0.5">
             Cobrar
             {kpis.pendientes > 0 && (
@@ -779,7 +779,10 @@ export default function CobradorViewPage() {
           <TabsTrigger value="pagos" className="text-[11px] sm:text-sm px-1">
             Pagos
           </TabsTrigger>
-          <TabsTrigger value="perfil" className="text-[11px] sm:text-sm px-1">
+          <TabsTrigger value="resumen" className="text-[10px] sm:text-sm px-1">
+            Resumen
+          </TabsTrigger>
+          <TabsTrigger value="perfil" className="text-[10px] sm:text-sm px-1">
             Perfil
           </TabsTrigger>
         </TabsList>
@@ -953,6 +956,64 @@ export default function CobradorViewPage() {
               <PagoCard key={p.id} pago={p} onNavigate={navigate} />
             ))
           )}
+        </TabsContent>
+
+        {/* ── Tab: Resumen (mobile) ───────────────────────── */}
+        <TabsContent value="resumen" className="mt-3 space-y-3">
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CalendarCheck className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Resumen Semanal</span>
+                </div>
+                {resumenSemanal && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(resumenSemanal.start, "dd/MM", { locale: es })} — {format(resumenSemanal.end, "dd/MM", { locale: es })}
+                  </span>
+                )}
+              </div>
+              {loadingResumen ? (
+                <Skeleton className="h-16 w-full" />
+              ) : resumenSemanal ? (
+                <>
+                  <div className="flex items-end justify-between gap-4">
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Cobrado</span>
+                        <span className="font-bold text-primary">{$$(resumenSemanal.cobrado)}</span>
+                      </div>
+                      <Progress value={resumenSemanal.pct} className="h-3" />
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Meta semanal</span>
+                        <span className="font-semibold">{$$(resumenSemanal.total)}</span>
+                      </div>
+                    </div>
+                    <div className="text-center shrink-0">
+                      <span className="text-3xl" role="img" aria-label="estado">
+                        {resumenSemanal.pct >= 100 ? "🎉" : resumenSemanal.pct >= 70 ? "😊" : resumenSemanal.pct >= 40 ? "😐" : "😟"}
+                      </span>
+                      <p className="text-[10px] font-bold text-primary mt-0.5">{resumenSemanal.pct.toFixed(0)}%</p>
+                    </div>
+                  </div>
+                  {resumenSemanal.porCobrar > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Falta por cobrar: <span className="font-semibold text-foreground">{$$(resumenSemanal.porCobrar)}</span>
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-2">Sin datos para esta semana</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-2 gap-2">
+            <KPICard label="Pendientes" value={kpis.pendientes.toString()} sub={$$(kpis.porCobrar)} icon={Clock} color="text-warning" />
+            <KPICard label="Cobradas" value={kpis.cobradas.toString()} sub={$$(kpis.cobrado)} icon={CheckCircle2} color="text-emerald-600 dark:text-emerald-400" />
+            <KPICard label="Mora" value={$$(kpis.mora)} icon={AlertTriangle} color="text-destructive" />
+            <KPICard label="Eficiencia" value={`${kpis.pct.toFixed(0)}%`} icon={TrendingUp} color="text-primary" />
+          </div>
         </TabsContent>
 
         {/* ── Tab: Perfil ─────────────────────────────────── */}
