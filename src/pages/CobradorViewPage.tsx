@@ -1162,13 +1162,22 @@ function KPICard({ label, value, sub, icon: Icon, color }: {
   );
 }
 
-function CuotaCard({ item, onCobrar, onNavigate, onVisita, onPromesa, showDate }: {
+function CuotaCard({
+  item, onCobrar, onNavigate, onVisita, onPromesa, showDate,
+  expanded, onToggleExpand, onHistorial, onDrawer, onResend, resending,
+}: {
   item: CuotaCobrador;
   onCobrar: (item: CuotaCobrador) => void;
   onNavigate: (path: string) => void;
   onVisita?: (item: CuotaCobrador) => void;
   onPromesa?: (item: CuotaCobrador) => void;
   showDate?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
+  onHistorial?: (item: CuotaCobrador) => void;
+  onDrawer?: (item: CuotaCobrador) => void;
+  onResend?: (item: CuotaCobrador) => void;
+  resending?: boolean;
 }) {
   const status = getStatusInfo(item);
   const isOverdue = item.diasAtraso > 0 && !item.pagada;
