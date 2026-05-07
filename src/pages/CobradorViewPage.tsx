@@ -63,6 +63,7 @@ interface CuotaCobrador {
   cobradorId: string | null;
   cajaId: string | null;
   pagada: boolean;
+  cobradaEnRango: boolean;
   montoPagado: number;
 }
 
@@ -220,6 +221,7 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
             montoPagado = Math.min(pagoRestanteByPrestamo[c.prestamo_id], referencia > 0 ? referencia : pagoRestanteByPrestamo[c.prestamo_id]);
             pagoRestanteByPrestamo[c.prestamo_id] = Math.max(0, pagoRestanteByPrestamo[c.prestamo_id] - montoPagado);
           }
+          const cobradaEnRango = montoPagado > 0 || Boolean(fechaPagadaEnRango);
           return {
             cuotaId: c.id,
             prestamoId: c.prestamo_id,
@@ -245,6 +247,7 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
             cobradorId: pres.cobrador_id || null,
             cajaId: pres.caja_id || null,
             pagada: c.status === "Pagada",
+            cobradaEnRango,
             montoPagado,
           };
         });
