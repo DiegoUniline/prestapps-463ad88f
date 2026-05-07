@@ -261,13 +261,14 @@ function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: str
         .from("pagos")
         .select(`
           id, prestamo_id, monto_recibido, aplicado_capital, aplicado_interes,
-          aplicado_mora, metodo_pago, created_at, anulado, cuota_id,
+          aplicado_mora, metodo_pago, created_at, fecha_pago, anulado, cuota_id,
           prestamos!inner ( cliente_id, clientes ( nombre_completo ) ),
           amortizacion:cuota_id ( num_cuota )
         `)
         .eq("empresa_id", empresaId)
-        .gte("created_at", `${fechaDesde}T00:00:00`)
-        .lte("created_at", `${fechaHasta}T23:59:59`)
+        .gte("fecha_pago", fechaDesde)
+        .lte("fecha_pago", fechaHasta)
+        .order("fecha_pago", { ascending: false })
         .order("created_at", { ascending: false });
 
       if (cobradorId) {
@@ -287,7 +288,7 @@ function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: str
         aplicadoInteres: Number(p.aplicado_interes || 0),
         aplicadoMora: Number(p.aplicado_mora || 0),
         metodoPago: p.metodo_pago || "Efectivo",
-        fechaPago: p.created_at || "",
+        fechaPago: p.fecha_pago || p.created_at || "",
         anulado: p.anulado || false,
         numCuota: (p.amortizacion as any)?.num_cuota || null,
       }));
