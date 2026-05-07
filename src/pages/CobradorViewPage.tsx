@@ -78,10 +78,10 @@ interface PagoHistorial {
 }
 
 // ── Hooks ───────────────────────────────────────────────────────
-function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null) {
+function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["cobrador-cobranza", fechaDesde, fechaHasta, empresaId, cobradorId],
-    enabled: !!cobradorId,
+    enabled: enabled && !!empresaId,
     queryFn: async () => {
       // Get cuotas in date range + overdue (before range, not paid)
       const { data: cuotas, error } = await supabase
@@ -170,12 +170,12 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
   });
 }
 
-function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null) {
+function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null, enabled = true) {
   return useQuery({
     queryKey: ["cobrador-pagos", fechaDesde, fechaHasta, empresaId, cobradorId],
-    enabled: !!cobradorId,
+    enabled: enabled && !!empresaId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let pagosQuery = supabase
         .from("pagos")
         .select(`
           id, prestamo_id, monto_recibido, aplicado_capital, aplicado_interes,
@@ -184,10 +184,15 @@ function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: str
           amortizacion:cuota_id ( num_cuota )
         `)
         .eq("empresa_id", empresaId)
-        .eq("cobrador_id", cobradorId!)
         .gte("created_at", `${fechaDesde}T00:00:00`)
         .lte("created_at", `${fechaHasta}T23:59:59`)
         .order("created_at", { ascending: false });
+
+      if (cobradorId) {
+        pagosQuery = pagosQuery.eq("cobrador_id", cobradorId);
+      }
+
+      const { data, error } = await pagosQuery;
 
       if (error) throw error;
 
