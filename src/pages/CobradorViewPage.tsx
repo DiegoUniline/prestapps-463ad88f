@@ -454,6 +454,45 @@ export default function CobradorViewPage() {
   const [promesaOpen, setPromesaOpen] = useState(false);
   const [promesaItem, setPromesaItem] = useState<CuotaCobrador | null>(null);
 
+  // Historial pagos + Drawer préstamo (in-page navigation)
+  const [historialOpen, setHistorialOpen] = useState(false);
+  const [historialPrestamoId, setHistorialPrestamoId] = useState("");
+  const [historialNombre, setHistorialNombre] = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerPrestamoId, setDrawerPrestamoId] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [resending, setResending] = useState<string | null>(null);
+
+  const toggleExpand = useCallback((cuotaId: string) => {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(cuotaId)) n.delete(cuotaId); else n.add(cuotaId);
+      return n;
+    });
+  }, []);
+
+  const openHistorial = useCallback((item: CuotaCobrador) => {
+    setHistorialPrestamoId(item.prestamoId);
+    setHistorialNombre(item.clienteNombre);
+    setHistorialOpen(true);
+  }, []);
+
+  const openDrawer = useCallback((item: CuotaCobrador) => {
+    setDrawerPrestamoId(item.prestamoId);
+    setDrawerOpen(true);
+  }, []);
+
+  const handleResend = useCallback(async (item: CuotaCobrador) => {
+    setResending(item.prestamoId);
+    try {
+      const res = await resendReceiptForPrestamo({ empresaId: activeEmpresaId, prestamoId: item.prestamoId });
+      if (res.success) toast.success("Ticket reenviado por WhatsApp");
+      else toast.error(res.error || "No se pudo reenviar");
+    } finally {
+      setResending(null);
+    }
+  }, [activeEmpresaId]);
+
   const fechaDesdeStr = format(fechaDesde, "yyyy-MM-dd");
   const fechaHastaStr = format(fechaHasta, "yyyy-MM-dd");
 
