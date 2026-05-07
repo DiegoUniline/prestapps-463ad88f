@@ -95,7 +95,12 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
           fecha_vencimiento, status, dias_atraso, fecha_pagada
         `)
         .eq("empresa_id", empresaId)
-        .or(`and(fecha_vencimiento.gte.${fechaDesde},fecha_vencimiento.lte.${fechaHasta}),and(fecha_vencimiento.lt.${fechaDesde},status.neq.Pagada)`)
+        .or(
+          `and(fecha_vencimiento.gte.${fechaDesde},fecha_vencimiento.lte.${fechaHasta}),` +
+          `and(fecha_vencimiento.lt.${fechaDesde},status.neq.Pagada),` +
+          // Cuotas vencidas antes del rango pero PAGADAS dentro del rango
+          `and(fecha_pagada.gte.${fechaDesde},fecha_pagada.lte.${fechaHasta})`
+        )
         .order("fecha_vencimiento", { ascending: true });
 
       if (error) throw error;
