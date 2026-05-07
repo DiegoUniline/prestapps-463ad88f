@@ -1711,77 +1711,77 @@ function PrestamoGroupCard({
       "border-border/50 transition-colors",
       isOverdue && "border-destructive/30 bg-destructive/5",
     )}>
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-2.5 space-y-1.5">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <button
-              className="font-semibold text-sm hover:text-primary hover:underline text-left block w-full truncate"
+              className="font-semibold text-[13px] leading-tight hover:text-primary hover:underline text-left block w-full truncate"
               onClick={() => onNavigate(`/clientes/${grupo.clienteId}`)}
             >
               {grupo.clienteNombre}
             </button>
             <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-              <span className="text-[11px] text-muted-foreground">{grupo.ruta}</span>
-              <span className="text-[11px] text-muted-foreground">•</span>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[10px] text-muted-foreground">{grupo.ruta}</span>
+              <span className="text-[10px] text-muted-foreground">•</span>
+              <span className="text-[10px] text-muted-foreground">
                 {grupo.cuotas.length} {grupo.cuotas.length === 1 ? "cuota" : "cuotas"} pend.
               </span>
               {cuotasVencidas > 0 && (
-                <Badge variant="destructive" className="h-4 text-[9px] px-1">
-                  {cuotasVencidas} vencida{cuotasVencidas > 1 ? "s" : ""}
+                <Badge variant="destructive" className="h-3.5 text-[9px] px-1 leading-none">
+                  {cuotasVencidas} venc.
                 </Badge>
               )}
             </div>
           </div>
           {isOverdue && (
-            <Badge className="text-[10px] shrink-0 h-5 bg-destructive text-destructive-foreground">
+            <Badge className="text-[9px] shrink-0 h-4 px-1.5 bg-destructive text-destructive-foreground">
               {grupo.diasAtrasoMax}d atraso
             </Badge>
           )}
         </div>
 
         {/* Amounts: saldo total a pagar + mora */}
-        <div className="grid grid-cols-2 gap-2 text-center bg-secondary/50 rounded-md p-2">
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Mora</p>
-            <p className={cn("text-xs font-semibold", grupo.saldoMora > 0 ? "text-destructive" : "text-muted-foreground")}>
+        <div className="flex items-center justify-between gap-2 bg-secondary/50 rounded-md px-2.5 py-1.5">
+          <div className="text-left">
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground mr-1">Mora</span>
+            <span className={cn("text-[11px] font-semibold", grupo.saldoMora > 0 ? "text-destructive" : "text-muted-foreground")}>
               {grupo.saldoMora > 0 ? $$(grupo.saldoMora) : "—"}
-            </p>
+            </span>
           </div>
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Saldo total</p>
-            <p className="text-base font-bold text-primary">{$$(grupo.saldoTotal)}</p>
+          <div className="text-right">
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground mr-1">Saldo</span>
+            <span className="text-sm font-bold text-primary">{$$(grupo.saldoTotal)}</span>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1">
           <Button
             size="sm"
-            className="h-9 text-xs font-medium min-w-0 flex-1"
+            className="h-8 text-[11px] font-medium min-w-0 flex-1 px-2"
             onClick={onCobrar}
           >
             <HandCoins className="h-3.5 w-3.5 mr-1 shrink-0" />
-            <span className="truncate">Cobrar — el monto que ingreses se aplica automático</span>
+            <span className="truncate">Cobrar {$$(grupo.saldoTotal)}</span>
           </Button>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             {grupo.clienteTelefono && (
               <>
-                <Button variant="outline" size="icon" className="h-9 w-9"
+                <Button variant="outline" size="icon" className="h-8 w-8"
                   onClick={() => window.open(`tel:${grupo.clienteTelefono}`, "_blank")}>
                   <Phone className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="outline" size="icon" className="h-9 w-9 text-green-600"
+                <Button variant="outline" size="icon" className="h-8 w-8 text-green-600"
                   onClick={() => window.open(`https://wa.me/${grupo.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
                   <MessageSquare className="h-3.5 w-3.5" />
                 </Button>
               </>
             )}
-            <Button variant="outline" size="icon" className="h-9 w-9" title="Ver préstamo" onClick={onDrawer}>
+            <Button variant="outline" size="icon" className="h-8 w-8" title="Ver préstamo" onClick={onDrawer}>
               <Eye className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-9 w-9" title={expanded ? "Ocultar cuotas" : "Ver cuotas"}
+            <Button variant="ghost" size="icon" className="h-8 w-8" title={expanded ? "Ocultar cuotas" : "Ver cuotas"}
               onClick={onToggleExpand}>
               {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
