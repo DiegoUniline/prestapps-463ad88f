@@ -280,8 +280,7 @@ function useResumenSemanal(empresaId: string, cobradorId: string | null, weekSta
           .select("monto_recibido")
           .in("cuota_id", cuotaIds)
           .eq("anulado", false)
-          .eq("empresa_id", empresaId)
-          .or(cobradorId ? `cobrador_id.eq.${cobradorId}` : "cobrador_id.not.is.null");
+          .eq("empresa_id", empresaId);
         pagadoTotal = (pagos || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
       }
 
@@ -459,7 +458,7 @@ export default function CobradorViewPage() {
   const { data: pagos, isLoading: loadingPagos } = usePagosCobrador(fechaDesdeStr, fechaHastaStr, activeEmpresaId, effectiveCobradorId, role === "admin" || !!effectiveCobradorId);
   const { data: cajas } = useCajasAll(activeEmpresaId);
   const { data: perfil, isLoading: loadingPerfil } = usePerfilCobrador(effectiveCobradorId, activeEmpresaId, role !== "admin" && !!effectiveCobradorId);
-  const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(activeEmpresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6);
+  const { data: resumenSemanal, isLoading: loadingResumen } = useResumenSemanal(activeEmpresaId, effectiveCobradorId, weekStartsOn as 0 | 1 | 2 | 3 | 4 | 5 | 6, role === "admin" || !!effectiveCobradorId);
   
   // Preset handlers
   const setHoy = useCallback(() => {
