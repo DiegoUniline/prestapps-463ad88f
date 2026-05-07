@@ -848,7 +848,7 @@ export default function CobradorViewPage() {
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-6 h-10 p-1">
+        <TabsList className="w-full grid grid-cols-4 sm:grid-cols-6 h-10 p-1">
           <TabsTrigger value="cobranza" className="text-[11px] sm:text-sm px-1 gap-0.5">
             Cobrar
             {kpis.pendientes > 0 && (
@@ -864,10 +864,10 @@ export default function CobradorViewPage() {
           <TabsTrigger value="pagos" className="text-[11px] sm:text-sm px-1">
             Pagos
           </TabsTrigger>
-          <TabsTrigger value="resumen" className="text-[10px] sm:text-sm px-1">
+          <TabsTrigger value="resumen" className="hidden sm:flex text-[10px] sm:text-sm px-1">
             Resumen
           </TabsTrigger>
-          <TabsTrigger value="perfil" className="text-[10px] sm:text-sm px-1">
+          <TabsTrigger value="perfil" className="hidden sm:flex text-[10px] sm:text-sm px-1">
             Perfil
           </TabsTrigger>
         </TabsList>
@@ -1309,6 +1309,32 @@ export default function CobradorViewPage() {
           prestamoId={drawerPrestamoId}
         />
       )}
+
+      {/* ── Mobile bottom nav (Resumen / Cobranza / Perfil) ── */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-lg">
+        <div className="grid grid-cols-3">
+          {[
+            { val: "resumen", label: "Resumen", icon: TrendingUp },
+            { val: "cobranza", label: "Mi Cobranza", icon: HandCoins },
+            { val: "perfil", label: "Mi Perfil", icon: User },
+          ].map(({ val, label, icon: Icon }) => {
+            const active = activeTab === val;
+            return (
+              <button
+                key={val}
+                onClick={() => setActiveTab(val)}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}
+              >
+                <Icon className={cn("h-5 w-5", active && "scale-110 transition-transform")} />
+                <span className="text-[10px] font-medium">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
