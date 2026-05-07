@@ -688,7 +688,7 @@ export default function CobradorViewPage() {
       </div>
 
       {/* ── Resumen Semanal ────────────────────────────────── */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+      <Card className="hidden sm:block border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -738,7 +738,7 @@ export default function CobradorViewPage() {
       </Card>
 
       {/* ── KPI Cards (mobile: 2 cols) ─────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-2">
         <KPICard label="Pendientes" value={kpis.pendientes.toString()} sub={$$(kpis.porCobrar)} icon={Clock} color="text-warning" />
         <KPICard label="Cobradas" value={kpis.cobradas.toString()} sub={$$(kpis.cobrado)} icon={CheckCircle2} color="text-emerald-600 dark:text-emerald-400" />
         <KPICard label="Mora" value={$$(kpis.mora)} icon={AlertTriangle} color="text-destructive" />
@@ -763,7 +763,7 @@ export default function CobradorViewPage() {
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-10 p-1">
+        <TabsList className="w-full grid grid-cols-5 sm:grid-cols-5 h-10 p-1">
           <TabsTrigger value="cobranza" className="text-[11px] sm:text-sm px-1 gap-0.5">
             Cobrar
             {kpis.pendientes > 0 && (
@@ -779,7 +779,10 @@ export default function CobradorViewPage() {
           <TabsTrigger value="pagos" className="text-[11px] sm:text-sm px-1">
             Pagos
           </TabsTrigger>
-          <TabsTrigger value="perfil" className="text-[11px] sm:text-sm px-1">
+          <TabsTrigger value="resumen" className="text-[11px] sm:text-sm px-1 sm:hidden">
+            Resumen
+          </TabsTrigger>
+          <TabsTrigger value="perfil" className="text-[11px] sm:text-sm px-1 hidden sm:flex">
             Perfil
           </TabsTrigger>
         </TabsList>
