@@ -448,6 +448,9 @@ export default function CobradorViewPage() {
   const [pagoCobradorId, setPagoCobradorId] = useState<string | null>(null);
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();
 
+  // Sub-tab dentro de "Cobrar": por-cobrar | cobradas
+  const [cobranzaSubTab, setCobranzaSubTab] = useState<"por-cobrar" | "cobradas">("por-cobrar");
+
   // Visita + Promesa modals
   const [visitaOpen, setVisitaOpen] = useState(false);
   const [visitaItem, setVisitaItem] = useState<CuotaCobrador | null>(null);
@@ -788,45 +791,66 @@ export default function CobradorViewPage() {
           ) : filtered.length === 0 ? (
             <EmptyCard icon={CheckCircle2} title="Sin cuotas en este rango" subtitle="No hay cuotas asignadas para este periodo." />
           ) : (
-            <>
-              {pendientes.map((item) => (
-                <CuotaCard
-                  key={item.cuotaId}
-                  item={item}
-                  expanded={expanded.has(item.cuotaId)}
-                  onToggleExpand={() => toggleExpand(item.cuotaId)}
-                  onCobrar={openPago}
-                  onNavigate={navigate}
-                  onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
-                  onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
-                  onHistorial={openHistorial}
-                  onDrawer={openDrawer}
-                  onResend={handleResend}
+            <Tabs value={cobranzaSubTab} onValueChange={(v) => setCobranzaSubTab(v as "por-cobrar" | "cobradas")} className="w-full">
+              <TabsList className="w-full grid grid-cols-2 h-9 p-1">
+                <TabsTrigger value="por-cobrar" className="text-xs gap-1">
+                  <Clock className="h-3 w-3" />
+                  Por cobrar
+                  {pendientes.length > 0 && (
+                    <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{pendientes.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="cobradas" className="text-xs gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Cobradas
+                  {cobradas.length > 0 && (
+                    <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{cobradas.length}</Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="por-cobrar" className="mt-3 space-y-2">
+                {pendientes.length === 0 ? (
+                  <EmptyCard icon={CheckCircle2} title="¡Todo cobrado!" subtitle="No tienes cuotas pendientes en este rango." />
+                ) : pendientes.map((item) => (
+                  <CuotaCard
+                    key={item.cuotaId}
+                    item={item}
+                    expanded={expanded.has(item.cuotaId)}
+                    onToggleExpand={() => toggleExpand(item.cuotaId)}
+                    onCobrar={openPago}
+                    onNavigate={navigate}
+                    onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
+                    onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
+                    onHistorial={openHistorial}
+                    onDrawer={openDrawer}
+                    onResend={handleResend}
+                    resending={resending === item.prestamoId}
+                  />
+                ))}
+              </TabsContent>
+
+              <TabsContent value="cobradas" className="mt-3 space-y-2">
+                {cobradas.length === 0 ? (
+                  <EmptyCard icon={Clock} title="Aún no cobras nada" subtitle="Las cuotas que cobres aparecerán aquí." />
+                ) : cobradas.map((item) => (
+                  <CuotaCard
+                    key={item.cuotaId}
+                    item={item}
+                    expanded={expanded.has(item.cuotaId)}
+                    onToggleExpand={() => toggleExpand(item.cuotaId)}
+                    onCobrar={openPago}
+                    onNavigate={navigate}
+                    onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
+                    onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
+                    onHistorial={openHistorial}
+                    onDrawer={openDrawer}
+                    onResend={handleResend}
                   resending={resending === item.prestamoId}
                 />
               ))}
-              {cobradas.length > 0 && pendientes.length > 0 && (
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mt-3 mb-1 px-1">
-                  Ya cobradas ({cobradas.length})
-                </p>
-              )}
-              {cobradas.map((item) => (
-                <CuotaCard
-                  key={item.cuotaId}
-                  item={item}
-                  expanded={expanded.has(item.cuotaId)}
-                  onToggleExpand={() => toggleExpand(item.cuotaId)}
-                  onCobrar={openPago}
-                  onNavigate={navigate}
-                  onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
-                  onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
-                  onHistorial={openHistorial}
-                  onDrawer={openDrawer}
-                  onResend={handleResend}
-                  resending={resending === item.prestamoId}
-                />
-              ))}
-            </>
+              </TabsContent>
+            </Tabs>
           )}
         </TabsContent>
 
