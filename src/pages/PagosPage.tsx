@@ -360,7 +360,7 @@ export default function PagosPage() {
       );
       toast.dismiss(t);
       if (result.success) toast.success("Recibo enviado por WhatsApp");
-      else toast.error("Error: " + (result.error || "desconocido"));
+      else toast.error("No se pudo enviar el recibo por WhatsApp. Intenta de nuevo.");
     } catch (e: any) {
       toast.dismiss(t);
       toast.error(e.message || "Error al enviar");
@@ -897,7 +897,7 @@ export default function PagosPage() {
               caption,
             );
             if (result.success) toast.success("Recibo enviado por WhatsApp");
-            else toast.error("Error: " + (result.error || "desconocido"));
+            else toast.error("No se pudo enviar el recibo por WhatsApp. Intenta de nuevo.");
           }}
         />
       )}
