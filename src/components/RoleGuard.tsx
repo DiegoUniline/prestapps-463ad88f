@@ -26,7 +26,9 @@ export default function RoleGuard({ children, allowed = [], module, action = "ve
   const hasAccess = module ? isAllowed(role, module, action) : allowed.includes(role);
 
   if (!hasAccess) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirige a "/" (HomeRouter) que elige el primer módulo permitido
+    // — evita loops infinitos cuando /dashboard también está denegado.
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
