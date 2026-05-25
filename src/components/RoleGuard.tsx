@@ -23,10 +23,9 @@ export default function RoleGuard({ children, allowed = [], module, action = "ve
     );
   }
 
-  const hasRoleAccess = allowed.includes(role);
-  const hasPermissionAccess = module ? isAllowed(role, module, action) : false;
+  const hasAccess = module ? isAllowed(role, module, action) : allowed.includes(role);
 
-  if (!hasRoleAccess && !hasPermissionAccess) {
+  if (!hasAccess) {
     return <Navigate to="/dashboard" replace />;
   }
 
