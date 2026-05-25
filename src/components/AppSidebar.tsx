@@ -194,7 +194,9 @@ export function AppSidebar() {
       ...mod,
       items: (loading || permLoading) ? [] : mod.items.filter((item) => {
         if (item.superAdminOnly && !superAdmin) return false;
-        if (!item.roles.includes(role)) return false;
+        const roleAccess = item.roles.includes(role);
+        const permissionAccess = item.permModule ? isAllowed(role, item.permModule, "ver") : false;
+        if (!roleAccess && !permissionAccess) return false;
         if (item.permModule) {
           return isAllowed(role, item.permModule, "ver");
         }
