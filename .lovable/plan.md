@@ -1,64 +1,44 @@
-# Mi Cobranza — Vista Todo-en-Uno
 
-Convertir `/mi-cobranza` en un centro de operaciones donde el cobrador trabaja sin salir de la página. Los clientes/cuotas no desaparecen al cobrar: cambian de estado visual y siguen ofreciendo todas las acciones (ver préstamo, pagos, reenviar ticket, etc.).
+## Causa raíz
 
-## Cambios principales
+El `billing-cycle` actual, cuando la suscripción tiene `stripe_subscription_id`, **solo crea la factura local en `procesando` y asume que la suscripción recurrente de Stripe cobrará sola** (y que el webhook actualizará). Pero las facturas que Stripe generó el 1 de junio para tus dos cuentas activas quedaron en **estado `draft`** (verificado: `in_1TdJqTCUpJnsv7il2eALv1iE`, Financial Company, $499 MXN, `status: draft`, sin `number`, sin `hosted_invoice_url`). Una invoice en draft nunca se cobra ni dispara webhook → por eso no hay `intentos_cobro`, no hay `stripe_payment_intent_id` y la factura local lleva semanas en `procesando`.
 
-### 1. La cuota cobrada no desaparece
-- En la pestaña **Cobrar**, mostrar TODAS las cuotas del rango (pendientes + ya cobradas) en una sola lista ordenada (pendientes arriba, cobradas abajo atenuadas con badge "Cobrada hoy").
-- Quitar el bloque separado "Ya cobradas" — todo en una sola lista continua.
-- Una cuota recién cobrada se actualiza in-place mostrando el monto cobrado y un check verde.
+Cuentas activas afectadas (suscripciones SaaS, no clientes finales):
+- **Financial Company** — `sub_1THOteCUpJnsv7ilAIKDuEzW` — $499 — factura draft `in_1TdJqTCUpJnsv7il2eALv1iE`.
+- **Todito a crédito** — `sub_1TFNrACUpJnsv7il5VeUUFXp` — $999 — pendiente de verificar igual situación.
 
-### 2. Nueva tarjeta "CuotaCard" expandible
-Cada cuota se vuelve un panel acordeón. Al hacer clic en la tarjeta (o en un botón "Ver más") se expande mostrando:
+## Plan
 
-- **Resumen del préstamo**: ID, monto original, saldo total restante, próxima cuota, % avanzado.
-- **Tabla mini de amortización** (últimas 3 + próximas 3 cuotas) con estado de cada una.
-- **Últimos pagos** del préstamo (5 más recientes) con fecha, monto, método.
-- **Acciones rápidas** (sin navegar):
-  - Cobrar / Cobrar de nuevo (si hay saldo)
-  - Reenviar último ticket por WhatsApp
-  - Descargar PDF del último recibo
-  - Registrar visita
-  - Registrar promesa
-  - Llamar / WhatsApp al cliente
-  - Ver foto del cliente
-  - Abrir mapa con dirección/GPS
-- **Botón secundario** "Abrir préstamo completo" (mantiene navegación opcional para casos avanzados).
+### 1. Diagnóstico final (un paso, sin código)
+Inspeccionar en Stripe ambas suscripciones (`sub_1THOteCUpJnsv7ilAIKDuEzW` y `sub_1TFNrACUpJnsv7il5VeUUFXp`) y sus últimas invoices para confirmar `collection_method`, `default_payment_method` y por qué la invoice quedó en draft. Esto sólo lee datos.
 
-### 3. Modales en lugar de navegación
-Sustituir los `navigate()` actuales por modales/drawers dentro de la página:
+### 2. Reparación inmediata de junio (one-shot)
+Crear edge function temporal `billing-fix-drafts` (o reutilizar invocación manual) que, para cada suscripción activa:
+- Recupere la última invoice del período actual.
+- Si está en `draft`: `stripe.invoices.finalizeInvoice(id)` y luego `stripe.invoices.pay(id)`.
+- Si está en `open`: `stripe.invoices.pay(id)`.
+- Si se paga, actualizar la factura local: `estado='pagada'`, `stripe_invoice_id`, `stripe_payment_intent_id`, `fecha_pago`, y avanzar `fecha_proximo_cobro` al 1 del mes siguiente.
+- Si falla el cobro, marcar suscripción `gracia` y registrar `intentos_cobro` con `error_mensaje`.
 
-- **DetallePrestamoDrawer**: side-drawer (desde la derecha) con tabs (Info, Amortización, Pagos, Documentos). Reusa componentes existentes de `PrestamoDetallePage`.
-- **HistorialPagosModal**: lista de pagos del préstamo con acción "Reenviar ticket" y "Descargar PDF" por cada pago.
-- **ClienteInfoModal**: ficha rápida del cliente (foto, contacto, dirección, otros préstamos).
+### 3. Arreglo permanente en `billing-cycle`
+Reemplazar la rama "Stripe-billed = no hacer nada" por una rama que **sí ejecute y reconcilie** el cobro cada 1 de mes:
+- Tras crear la factura local, buscar la invoice abierta/draft de Stripe para esa suscripción del período actual; si no existe, dejar que Stripe la genere y reintentar (loop con backoff corto) o forzar `stripe.invoices.create({ customer, subscription, auto_advance: true })`.
+- Finalizar + pagar la invoice (`finalizeInvoice` → `pay`), igual que en el paso 2.
+- Reflejar el resultado en la factura local (`pagada` / `gracia`) y en `intentos_cobro`.
+- Mantener el flujo actual de `gracia` a 3 días → `suspendida`.
 
-### 4. Reenviar ticket / comprobante
-- Botón "Reenviar último ticket" en cada CuotaCard si hay pagos previos.
-- Botón "Reenviar" por cada pago en HistorialPagosModal.
-- Reusa `sendWhatsAppReceipt` del `PagoModal` y la generación PNG existente. Si no hay último pago, deshabilitar.
+### 4. Resiliencia
+- Añadir log + entrada en `intentos_cobro` por cada intento (éxito o fallo) para tener trazabilidad real.
+- Confirmar que el webhook de Stripe (`invoice.payment_succeeded`, `invoice.payment_failed`) actualiza la factura local — si no existe handler o no está enlazado al evento de invoice de suscripción, agregarlo como red de seguridad complementaria, no como único mecanismo.
 
-### 5. Feedback visual mejorado
-- Toast con acción "Reenviar ticket" inmediatamente después de cobrar.
-- Badge dinámico en la tarjeta: Pendiente → Parcial → Cobrada (con animación suave).
-- Contadores arriba se actualizan en vivo (ya lo hacen al invalidar queries).
+### 5. Verificación
+- Ejecutar `billing-fix-drafts` para las 2 cuentas y validar en Stripe que ambas invoices quedan en `paid` y en la BD que las facturas pasan a `pagada` con `fecha_proximo_cobro = 2026-07-01`.
+- Revisar logs de la función para confirmar ausencia de errores.
 
 ## Detalles técnicos
 
-- Archivos a editar:
-  - `src/pages/CobradorViewPage.tsx`: refactor de `CuotaCard` a versión expandible; unificar lista pendientes+cobradas en pestaña Cobrar; añadir handlers para nuevos modales.
-  - **Nuevos componentes** en `src/components/cobranza/`:
-    - `CuotaCardExpandible.tsx` (reemplaza el sub-componente actual)
-    - `DetallePrestamoDrawer.tsx` (Sheet de shadcn con tabs)
-    - `HistorialPagosModal.tsx`
-    - `ClienteInfoModal.tsx`
-  - `src/lib/whatsapp-receipt.ts` (extraer la lógica de `sendWhatsAppReceipt` de `PagoModal` para reusarla desde tarjetas y modales).
-- Hooks reusados: `useCobranzaRango`, `usePagosCobrador`. Nuevo hook `usePagosPorPrestamo(prestamoId)` para cargar historial bajo demanda al expandir.
-- El estado de "expandido" se guarda en un `Set<cuotaId>` en el componente padre para que persista al re-render de queries.
-- No se toca lógica financiera ni RPC (se mantiene `registrar_pago` + `rebuild_amortizacion`).
-
-## Lo que NO cambia
-- Permisos / roles.
-- Lógica de cálculo de mora, distribución waterfall.
-- Pestañas Cartera, Historial, Pagos, Perfil (siguen igual).
-- `PagoModal` se sigue usando tal cual.
+- Archivos a tocar: `supabase/functions/billing-cycle/index.ts` (modificar rama `isStripeBilled`), nueva `supabase/functions/billing-fix-drafts/index.ts` (one-shot, invocable manualmente desde la UI de Super Admin o vía curl).
+- Stripe API: `invoices.list({ subscription, status: 'draft|open', limit: 1 })`, `invoices.finalizeInvoice`, `invoices.pay`. Versión `2025-08-27.basil`.
+- Tablas tocadas: `facturas` (UPDATE estado/fecha_pago/stripe_*), `suscripciones` (UPDATE fecha_proximo_cobro/estado), `intentos_cobro` (INSERT).
+- Sin cambios de schema ni RLS — todas las columnas requeridas ya existen.
+- Sin impacto en la operación de los clientes finales de cada empresa (préstamos/cobranza); este flujo es exclusivamente del cobro SaaS hacia las empresas que rentan PrestApps.
