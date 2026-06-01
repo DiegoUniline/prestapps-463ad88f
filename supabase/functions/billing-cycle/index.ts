@@ -207,7 +207,7 @@ serve(async (req) => {
 
           const fechaVencimiento = new Date(now.getFullYear(), now.getMonth(), 1 + DIAS_GRACIA);
 
-          const { error: facErr } = await supabase.from("facturas").insert({
+          const { data: facRow, error: facErr } = await supabase.from("facturas").insert({
             empresa_id: sub.empresa_id,
             suscripcion_id: sub.id,
             numero_factura: facNum,
@@ -220,7 +220,7 @@ serve(async (req) => {
             total,
             estado: isStripeBilled ? "procesando" : "pendiente",
             fecha_vencimiento: fechaVencimiento.toISOString(),
-          });
+          }).select("id").maybeSingle();
 
           if (facErr) {
             logStep("Error creating invoice", { empresa_id: sub.empresa_id, error: facErr.message });
@@ -322,6 +322,74 @@ serve(async (req) => {
               .eq("id", sub.id);
             logStep("No Stripe customer, set to gracia", { empresa_id: sub.empresa_id });
             results.push({ empresa_id: sub.empresa_id, action: "gracia", reason: "no_stripe_customer" });
+          }
+
+          // ── For Stripe-billed subs — DO NOT trust Stripe to cobrar solo.
+          // Finalize + pay the latest open/draft invoice ourselves.
+          if (isStripeBilled && stripe) {
+            try {
+              // Small delay so Stripe's auto-generated invoice for this cycle exists
+              await new Promise((r) => setTimeout(r, 2000));
+              const invs = await stripe.invoices.list({
+                subscription: sub.stripe_subscription_id!,
+                limit: 1,
+              });
+              let inv = invs.data[0];
+
+              if (!inv) {
+                logStep("No invoice yet for Stripe sub", { empresa_id: sub.empresa_id });
+              } else {
+                if (inv.status === "draft") {
+                  inv = await stripe.invoices.finalizeInvoice(inv.id!, { auto_advance: true });
+                }
+                if (inv.status === "open" || inv.status === "draft") {
+                  inv = await stripe.invoices.pay(inv.id!, { off_session: true });
+                }
+
+                if (inv.status === "paid") {
+                  const pi = typeof inv.payment_intent === "string" ? inv.payment_intent : null;
+                  await supabase.from("facturas").update({
+                    estado: "pagada",
+                    stripe_invoice_id: inv.id,
+                    stripe_payment_intent_id: pi,
+                    fecha_pago: now.toISOString(),
+                  }).eq("empresa_id", sub.empresa_id).eq("periodo_inicio", periodoInicio);
+
+                  const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+                  await supabase.from("suscripciones").update({
+                    estado: "activa",
+                    fecha_proximo_cobro: nextMonth.toISOString().split("T")[0],
+                    actualizado_en: now.toISOString(),
+                  }).eq("id", sub.id);
+
+                  await supabase.from("intentos_cobro").insert({
+                    factura_id: facRow?.id ?? null,
+                    stripe_charge_id: typeof inv.charge === "string" ? inv.charge : null,
+                    monto: (inv.total || 0) / 100,
+                    estado: "exitoso",
+                  });
+
+                  logStep("Stripe sub charged via invoice.pay", { empresa_id: sub.empresa_id, invoice: inv.id });
+                  results.push({ empresa_id: sub.empresa_id, action: "charged_stripe_sub", amount: (inv.total || 0) / 100 });
+                } else {
+                  logStep("Stripe invoice unexpected status", { empresa_id: sub.empresa_id, status: inv.status });
+                }
+              }
+            } catch (sErr: any) {
+              const msg = sErr?.message || String(sErr);
+              logStep("Stripe sub charge failed", { empresa_id: sub.empresa_id, error: msg });
+              await supabase.from("suscripciones").update({
+                estado: "gracia",
+                actualizado_en: now.toISOString(),
+              }).eq("id", sub.id);
+              await supabase.from("intentos_cobro").insert({
+                factura_id: facRow?.id ?? null,
+                monto: total,
+                estado: "fallido",
+                error_mensaje: msg,
+              });
+              results.push({ empresa_id: sub.empresa_id, action: "gracia", reason: "stripe_sub_charge_failed", error: msg });
+            }
           }
         } catch (subErr: any) {
           logStep("Error processing sub", { empresa_id: sub.empresa_id, error: String(subErr) });
