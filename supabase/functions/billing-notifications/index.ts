@@ -263,7 +263,6 @@ serve(async (req) => {
       // Notify Super Admin about this payment
       const waConfig = await getSystemWaConfig(supabase);
       if (waConfig) {
-        const adminEmails = (adminMap[factura.empresa_id] || []).map((a: any) => a.email).join(", ") || "—";
         await notifySuperAdmin(waConfig.api_url, waConfig.api_token,
           `💰 *Cobro exitoso*\n\n` +
           `🏢 *${empresaNombre}*\n` +
