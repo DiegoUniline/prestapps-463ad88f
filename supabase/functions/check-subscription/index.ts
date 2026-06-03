@@ -183,9 +183,17 @@ serve(async (req) => {
           const stripeSub = await stripe.subscriptions.retrieve(suscripcion.stripe_subscription_id);
           
           let dbEstado = suscripcion.estado;
-          if (stripeSub.status === "active") dbEstado = "activa";
-          else if (stripeSub.status === "past_due") dbEstado = "gracia";
-          else if (stripeSub.status === "canceled" || stripeSub.status === "unpaid") dbEstado = "suspendida";
+          // Stripe -> DB sync, but RESPECT manual suspensions.
+          // If we already marked it 'suspendida' (manual cut), don't downgrade to 'gracia'
+          // just because Stripe still reports 'past_due'.
+          if (stripeSub.status === "active") {
+            dbEstado = "activa";
+          } else if (stripeSub.status === "past_due") {
+            // only move into 'gracia' if it's currently activa; never overwrite suspendida
+            if (suscripcion.estado === "activa") dbEstado = "gracia";
+          } else if (stripeSub.status === "canceled" || stripeSub.status === "unpaid") {
+            dbEstado = "suspendida";
+          }
 
           if (dbEstado !== suscripcion.estado) {
             const updateData: any = { estado: dbEstado, actualizado_en: new Date().toISOString() };
