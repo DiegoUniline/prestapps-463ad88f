@@ -207,6 +207,39 @@ export default function WhatsAppConfigPage() {
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [showToken, setShowToken] = useState(false);
   const [editingToken, setEditingToken] = useState(false);
+  const [testPhone, setTestPhone] = useState("");
+  const [testMessage, setTestMessage] = useState("🧪 Mensaje de prueba desde PrestApps. Si recibes esto, tu WhatsApp está conectado correctamente.");
+  const [sendingTest, setSendingTest] = useState(false);
+
+  const sendTestMessage = async () => {
+    const phone = testPhone.trim();
+    if (!phone) { toast.error("Ingresa un número de teléfono"); return; }
+    if (!form.api_token) { toast.error("Configura primero el API Token"); return; }
+    setSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-sender", {
+        body: {
+          action: "send-text",
+          empresa_id: empresaId,
+          phone,
+          message: testMessage,
+          tipo: "prueba",
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success("✅ Mensaje enviado a " + phone);
+      } else {
+        toast.error("Error: " + (data?.error || "No se pudo enviar"));
+      }
+      refetchLogs();
+    } catch (e: any) {
+      toast.error("Error: " + (e.message || "Intenta de nuevo"));
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const [reminderResults, setReminderResults] = useState<{
     open: boolean;
     type: string;
