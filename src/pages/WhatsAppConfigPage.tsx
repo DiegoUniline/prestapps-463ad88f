@@ -207,6 +207,39 @@ export default function WhatsAppConfigPage() {
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [showToken, setShowToken] = useState(false);
   const [editingToken, setEditingToken] = useState(false);
+  const [testPhone, setTestPhone] = useState("");
+  const [testMessage, setTestMessage] = useState("🧪 Mensaje de prueba desde PrestApps. Si recibes esto, tu WhatsApp está conectado correctamente.");
+  const [sendingTest, setSendingTest] = useState(false);
+
+  const sendTestMessage = async () => {
+    const phone = testPhone.trim();
+    if (!phone) { toast.error("Ingresa un número de teléfono"); return; }
+    if (!form.api_token) { toast.error("Configura primero el API Token"); return; }
+    setSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("whatsapp-sender", {
+        body: {
+          action: "send-text",
+          empresa_id: empresaId,
+          phone,
+          message: testMessage,
+          tipo: "prueba",
+        },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast.success("✅ Mensaje enviado a " + phone);
+      } else {
+        toast.error("Error: " + (data?.error || "No se pudo enviar"));
+      }
+      refetchLogs();
+    } catch (e: any) {
+      toast.error("Error: " + (e.message || "Intenta de nuevo"));
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   const [reminderResults, setReminderResults] = useState<{
     open: boolean;
     type: string;
@@ -375,6 +408,39 @@ export default function WhatsAppConfigPage() {
                   <Badge variant={form.activo ? "default" : "secondary"}>{form.activo ? "Activo" : "Inactivo"}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">Los cambios se guardan automáticamente</p>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-sm">Probar conexión</h3>
+                  <p className="text-xs text-muted-foreground">Envía un mensaje de prueba al número que elijas para verificar que la API funciona</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-[1fr,2fr]">
+                  <div>
+                    <Label className="text-xs">Número (con lada)</Label>
+                    <Input
+                      placeholder="525512345678"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Mensaje</Label>
+                    <Textarea
+                      rows={2}
+                      value={testMessage}
+                      onChange={(e) => setTestMessage(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <Button onClick={sendTestMessage} disabled={sendingTest || !form.api_token} size="sm">
+                  {sendingTest ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                  Enviar mensaje de prueba
+                </Button>
               </div>
             </CardContent>
           </Card>
