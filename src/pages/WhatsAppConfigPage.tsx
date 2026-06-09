@@ -326,6 +326,11 @@ export default function WhatsAppConfigPage() {
               <div className="space-y-4">
                 <div>
                   <Label>API Token</Label>
+                  {config?.api_token && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Token guardado en BD: <span className="font-mono">…{String(config.api_token).slice(-12)}</span>
+                    </p>
+                  )}
                   {!editingToken && form.api_token ? (
                     <div className="flex items-center gap-2 mt-1">
                       <Input
