@@ -51,8 +51,9 @@ Deno.serve(async (req) => {
     if (action === "send-text") {
       const { message, tipo, referencia_id } = body;
       const phone = normalizePhone(body.phone || "", ladaPais);
-      
-      const result = await sendWhatsApp(config.api_url, config.api_token, {
+      const tokenToUse = body.override_api_token || config.api_token;
+
+      const result = await sendWhatsApp(config.api_url, tokenToUse, {
         action: "send-text",
         phone,
         message,
