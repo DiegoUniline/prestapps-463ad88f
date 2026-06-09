@@ -224,6 +224,7 @@ export default function WhatsAppConfigPage() {
           phone,
           message: testMessage,
           tipo: "prueba",
+          override_api_token: form.api_token,
         },
       });
       if (error) throw error;
