@@ -2215,6 +2215,17 @@ export type Database = {
         Args: { p_empresa_id: string; p_tipo: string }
         Returns: string
       }
+      notif_cleanup: { Args: never; Returns: undefined }
+      notif_emit_admins: {
+        Args: {
+          p_empresa_id: string
+          p_link: string
+          p_mensaje: string
+          p_tipo: string
+          p_titulo: string
+        }
+        Returns: undefined
+      }
       rebuild_amortizacion: {
         Args: { p_prestamo_id: string }
         Returns: undefined
