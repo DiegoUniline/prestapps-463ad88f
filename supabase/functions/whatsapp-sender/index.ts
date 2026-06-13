@@ -279,20 +279,50 @@ Deno.serve(async (req) => {
 
 // ── Helpers ────────────────────────────────────────
 async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<string, any>) {
-  try {
-    const res = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "x-api-token": apiToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    return { success: res.ok, data, error: res.ok ? null : JSON.stringify(data) };
-  } catch (e: any) {
-    return { success: false, error: e.message };
+  // Retry with exponential backoff. Retries on:
+  //  - Network/fetch errors (transient)
+  //  - HTTP 5xx
+  //  - HTTP 429 (rate limit)
+  //  - "Connection Closed" (WA instance momentary disconnect)
+  const MAX_ATTEMPTS = 3;
+  const BACKOFFS_MS = [0, 1500, 4000]; // attempt 1: immediate, 2: 1.5s, 3: 4s
+  let lastError: string | null = null;
+  let lastData: any = null;
+
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (BACKOFFS_MS[attempt] > 0) {
+      await new Promise((r) => setTimeout(r, BACKOFFS_MS[attempt]));
+    }
+    try {
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "x-api-token": apiToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        return { success: true, data, error: null, attempts: attempt + 1 };
+      }
+      lastData = data;
+      lastError = JSON.stringify(data);
+      const errStr = (lastError || "").toLowerCase();
+      const isTransient =
+        res.status >= 500 ||
+        res.status === 429 ||
+        errStr.includes("connection closed") ||
+        errStr.includes("timeout") ||
+        errStr.includes("econn");
+      if (!isTransient) break; // permanent error (auth, bad number, etc.) — don't retry
+    } catch (e: any) {
+      lastError = e.message || "Network error";
+      // Network errors are always transient — keep retrying
+    }
   }
+
+  return { success: false, data: lastData, error: lastError, attempts: MAX_ATTEMPTS };
 }
 
 function replaceVariables(template: string, vars: Record<string, any>): string {
