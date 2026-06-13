@@ -38,7 +38,7 @@ export function NotificationBell() {
 
   const load = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("notificaciones")
       .select("id, titulo, mensaje, tipo, link, leida, created_at")
       .eq("user_id", user.id)
@@ -67,7 +67,7 @@ export function NotificationBell() {
 
   const markAllRead = async () => {
     if (!user || unread === 0) return;
-    await supabase
+    await (supabase as any)
       .from("notificaciones")
       .update({ leida: true, read_at: new Date().toISOString() })
       .eq("user_id", user.id)
@@ -77,7 +77,7 @@ export function NotificationBell() {
 
   const handleClick = async (n: Notif) => {
     if (!n.leida) {
-      await supabase.from("notificaciones").update({ leida: true, read_at: new Date().toISOString() }).eq("id", n.id);
+      await (supabase as any).from("notificaciones").update({ leida: true, read_at: new Date().toISOString() }).eq("id", n.id);
       setItems((prev) => prev.map((it) => (it.id === n.id ? { ...it, leida: true } : it)));
     }
     if (n.link) {
