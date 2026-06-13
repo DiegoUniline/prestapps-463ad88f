@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MobileMenuSheet } from "@/components/MobileMenuSheet";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function TopBar() {
   const { theme, toggleTheme } = useTheme();
@@ -51,6 +52,7 @@ export function TopBar() {
           </div>
         )}
         <SyncStatusBadge />
+        <NotificationBell />
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
           {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </Button>
