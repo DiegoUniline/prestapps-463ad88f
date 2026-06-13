@@ -32,7 +32,6 @@ export default function SuperAdminPage() {
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
         <TabsList className="grid w-full max-w-xl grid-cols-3">
           {TABS.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
