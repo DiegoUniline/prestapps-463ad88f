@@ -1057,6 +1057,53 @@ export type Database = {
           },
         ]
       }
+      notificaciones: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          leida: boolean
+          link: string | null
+          mensaje: string | null
+          read_at: string | null
+          tipo: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          leida?: boolean
+          link?: string | null
+          mensaje?: string | null
+          read_at?: string | null
+          tipo?: string
+          titulo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          leida?: boolean
+          link?: string | null
+          mensaje?: string | null
+          read_at?: string | null
+          tipo?: string
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagos: {
         Row: {
           anulado: boolean
