@@ -96,7 +96,7 @@ export default function SuperAdminHealthPage() {
     <div className="p-4 sm:p-6 space-y-4">
       <PageHeader
         title="Estado del Sistema"
-        subtitle="Diagnóstico en tiempo real de WhatsApp, suscripciones y base de datos"
+        description="Diagnóstico en tiempo real de WhatsApp, suscripciones y base de datos"
         actions={
           <Button onClick={load} variant="outline" size="sm" disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
