@@ -1327,7 +1327,7 @@ export default function PrestamoDetallePage() {
             if (!data?.success) throw new Error(data?.error || "Error al eliminar");
             toast.success(data.message || "Préstamo eliminado");
             setEliminarOpen(false);
-            qc.invalidateQueries();
+            queryClient.invalidateQueries();
             navigate("/prestamos");
           } catch (e: any) {
             toast.error(e.message || "No se pudo eliminar");
