@@ -30,6 +30,8 @@ import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 // ── Badge colors ──────────────────────────────────────────────────
 const estadoBadge: Record<string, string> = {
@@ -210,6 +212,9 @@ export default function PrestamoDetallePage() {
   const [editPagoData, setEditPagoData] = useState<any>(null);
   const [fotoLightbox, setFotoLightbox] = useState(false);
   const [waPreview, setWaPreview] = useState<{ open: boolean; pg: any; idx: number } | null>(null);
+  const [eliminarOpen, setEliminarOpen] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const { role } = useCurrentUserRole();
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
@@ -584,6 +589,14 @@ export default function PrestamoDetallePage() {
               >
                 <Ban className="h-3.5 w-3.5 mr-2" />Cancelar préstamo
               </DropdownMenuItem>
+              {role === "admin" && (
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setEliminarOpen(true)}
+                >
+                  <XCircle className="h-3.5 w-3.5 mr-2" />Eliminar préstamo
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -1293,6 +1306,35 @@ export default function PrestamoDetallePage() {
         montoDesembolso={Number(prestamo.monto_solicitado || 0)}
         empresaId={empresaId}
         folioId={prestamo.id_prestamo}
+      />
+
+      {/* Eliminar Préstamo (hard delete) */}
+      <ConfirmDialog
+        open={eliminarOpen}
+        onOpenChange={setEliminarOpen}
+        title={`¿Eliminar préstamo ${prestamo.id_prestamo}?`}
+        description="Esta acción es IRREVERSIBLE. Se borrarán pagos, amortización, promesas, movimientos de caja, gestiones CRM y el préstamo. Los saldos de caja y el efectivo en mano de los cobradores se ajustarán automáticamente."
+        confirmLabel="Sí, eliminar todo"
+        variant="destructive"
+        loading={eliminando}
+        onConfirm={async () => {
+          setEliminando(true);
+          try {
+            const { data, error } = await supabase.functions.invoke("delete-prestamo", {
+              body: { prestamoId: prestamo.id },
+            });
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.error || "Error al eliminar");
+            toast.success(data.message || "Préstamo eliminado");
+            setEliminarOpen(false);
+            queryClient.invalidateQueries();
+            navigate("/prestamos");
+          } catch (e: any) {
+            toast.error(e.message || "No se pudo eliminar");
+          } finally {
+            setEliminando(false);
+          }
+        }}
       />
 
       {/* Reestructurar Modal */}
