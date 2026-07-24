@@ -1308,6 +1308,35 @@ export default function PrestamoDetallePage() {
         folioId={prestamo.id_prestamo}
       />
 
+      {/* Eliminar Préstamo (hard delete) */}
+      <ConfirmDialog
+        open={eliminarOpen}
+        onOpenChange={setEliminarOpen}
+        title={`¿Eliminar préstamo ${prestamo.id_prestamo}?`}
+        description="Esta acción es IRREVERSIBLE. Se borrarán pagos, amortización, promesas, movimientos de caja, gestiones CRM y el préstamo. Los saldos de caja y el efectivo en mano de los cobradores se ajustarán automáticamente."
+        confirmLabel="Sí, eliminar todo"
+        variant="destructive"
+        loading={eliminando}
+        onConfirm={async () => {
+          setEliminando(true);
+          try {
+            const { data, error } = await supabase.functions.invoke("delete-prestamo", {
+              body: { prestamoId: prestamo.id },
+            });
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.error || "Error al eliminar");
+            toast.success(data.message || "Préstamo eliminado");
+            setEliminarOpen(false);
+            qc.invalidateQueries();
+            navigate("/prestamos");
+          } catch (e: any) {
+            toast.error(e.message || "No se pudo eliminar");
+          } finally {
+            setEliminando(false);
+          }
+        }}
+      />
+
       {/* Reestructurar Modal */}
       <ReestructurarModal
         open={reestructurarOpen}
