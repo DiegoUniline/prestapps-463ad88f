@@ -30,6 +30,8 @@ import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/
 import { DocumentPreviewModal } from "@/components/DocumentPreviewModal";
 import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 
 // ── Badge colors ──────────────────────────────────────────────────
 const estadoBadge: Record<string, string> = {
@@ -210,6 +212,9 @@ export default function PrestamoDetallePage() {
   const [editPagoData, setEditPagoData] = useState<any>(null);
   const [fotoLightbox, setFotoLightbox] = useState(false);
   const [waPreview, setWaPreview] = useState<{ open: boolean; pg: any; idx: number } | null>(null);
+  const [eliminarOpen, setEliminarOpen] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const { role } = useCurrentUserRole();
   const isNew = !id || id === "nuevo";
 
   const { data: prestamo, isLoading: loadingPrestamo } = usePrestamoDetalle(isNew ? undefined : id);
@@ -584,6 +589,14 @@ export default function PrestamoDetallePage() {
               >
                 <Ban className="h-3.5 w-3.5 mr-2" />Cancelar préstamo
               </DropdownMenuItem>
+              {role === "admin" && (
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setEliminarOpen(true)}
+                >
+                  <XCircle className="h-3.5 w-3.5 mr-2" />Eliminar préstamo
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
