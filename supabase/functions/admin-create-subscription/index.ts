@@ -48,6 +48,9 @@ serve(async (req) => {
       descuento_porcentaje = 0,
       notas_admin = "",
       suscripcion_id = null,
+      factura_id = null,
+      nuevo_estado = null,
+      metodo_pago = null,
     } = body;
 
     if (action === "create" || action === "update") {
@@ -153,6 +156,44 @@ serve(async (req) => {
       logStep("Cancelled subscription", { id: suscripcion_id });
 
       return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Manually mark an invoice as paid / pending / failed (Stripe webhook fallback)
+    if (action === "set_factura_estado" && factura_id) {
+      const estadoFactura = nuevo_estado || "pagada";
+      const nowIso = new Date().toISOString();
+
+      const { data: factura, error: facErr } = await supabaseClient
+        .from("facturas")
+        .update({
+          estado: estadoFactura,
+          fecha_pago: estadoFactura === "pagada" ? nowIso : null,
+        })
+        .eq("id", factura_id)
+        .select()
+        .single();
+      if (facErr) throw facErr;
+      logStep("Invoice state updated", { factura_id, estadoFactura });
+
+      // Reactivate subscription when marking as paid
+      if (estadoFactura === "pagada" && factura?.suscripcion_id) {
+        const now = new Date();
+        const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const { error: subErr } = await supabaseClient
+          .from("suscripciones")
+          .update({
+            estado: "activa",
+            fecha_proximo_cobro: next.toISOString().split("T")[0],
+            actualizado_en: nowIso,
+          })
+          .eq("id", factura.suscripcion_id);
+        if (subErr) throw subErr;
+        logStep("Subscription reactivated", { suscripcion_id: factura.suscripcion_id });
+      }
+
+      return new Response(JSON.stringify({ success: true, factura }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
