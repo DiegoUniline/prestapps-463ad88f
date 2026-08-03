@@ -170,7 +170,6 @@ serve(async (req) => {
         .update({
           estado: estadoFactura,
           fecha_pago: estadoFactura === "pagada" ? nowIso : null,
-          metodo_pago: metodo_pago || (estadoFactura === "pagada" ? "manual" : null),
         })
         .eq("id", factura_id)
         .select()
