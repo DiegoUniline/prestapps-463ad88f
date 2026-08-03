@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, CreditCard, Receipt } from "lucide-react";
+import { Plus, CreditCard, Receipt, CheckCircle2, Undo2 } from "lucide-react";
 import { $$ } from "@/lib/utils";
 
 interface Props {
@@ -155,6 +155,23 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
     onError: (err: any) => toast.error(err.message),
   });
 
+  const facturaEstadoMutation = useMutation({
+    mutationFn: async ({ facturaId, estado }: { facturaId: string; estado: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-create-subscription", {
+        body: { action: "set_factura_estado", factura_id: facturaId, nuevo_estado: estado },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.estado === "pagada" ? "Factura marcada como pagada" : "Factura marcada como pendiente");
+      queryClient.invalidateQueries({ queryKey: ["empresa-facturas", empresaId] });
+      queryClient.invalidateQueries({ queryKey: ["empresa-suscripcion", empresaId] });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
   const selectedPlan = planes.find((p) => p.id === form.plan_id);
 
   if (isLoading) return <p className="text-sm text-muted-foreground py-4 text-center">Cargando...</p>;
@@ -240,6 +257,7 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
                 <TableHead>Total</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Fecha</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -254,6 +272,29 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs">{f.fecha_emision?.split("T")[0]}</TableCell>
+                  <TableCell className="text-right">
+                    {f.estado === "pagada" ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 gap-1 text-xs"
+                        disabled={facturaEstadoMutation.isPending}
+                        onClick={() => facturaEstadoMutation.mutate({ facturaId: f.id, estado: "pendiente" })}
+                      >
+                        <Undo2 className="h-3.5 w-3.5" /> Revertir
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        disabled={facturaEstadoMutation.isPending}
+                        onClick={() => facturaEstadoMutation.mutate({ facturaId: f.id, estado: "pagada" })}
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Marcar pagada
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
