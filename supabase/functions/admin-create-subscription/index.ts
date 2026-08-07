@@ -186,6 +186,9 @@ serve(async (req) => {
           .update({
             estado: "activa",
             fecha_proximo_cobro: next.toISOString().split("T")[0],
+            // Clear any stale expiry date, otherwise check-subscription
+            // re-suspends the account for being "vencida".
+            fecha_vencimiento: null,
             actualizado_en: nowIso,
           })
           .eq("id", factura.suscripcion_id);
