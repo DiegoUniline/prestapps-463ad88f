@@ -33,30 +33,31 @@ export function calcularCostoMensual(
   return { subtotal, descuentoMonto, total, extraUsers };
 }
 
-/** Stripe plan config for frontend */
+/** Stripe plan config for frontend (precios vigentes para nuevas contrataciones) */
 export const PLANES_CONFIG = {
   basico: {
     nombre: "Básico",
-    precioBase: 499,
+    precioBase: 2300,
     usuariosIncluidos: 3,
     precioUsuarioExtra: 150,
-    stripe_price_id: "price_1TC4ahCUpJnsv7ilvYouPVl0",
-    stripe_product_id: "prod_UAPP1fKeVHbENq",
+    stripe_price_id: "price_1UAvgsCUpJnsv7illt38xs49",
+    stripe_product_id: "prod_VBIHaF5wpc4U6Z",
   },
   profesional: {
     nombre: "Profesional",
-    precioBase: 999,
+    precioBase: 4500,
     usuariosIncluidos: 10,
     precioUsuarioExtra: 130,
-    stripe_price_id: "price_1TC4bACUpJnsv7ilLvDTXwNl",
-    stripe_product_id: "prod_UAPQJHWgG5SGXe",
+    stripe_price_id: "price_1UAvhVCUpJnsv7ilHY4y4ho1",
+    stripe_product_id: "prod_VBIIIpOJpkTqld",
   },
   enterprise: {
     nombre: "Enterprise",
-    precioBase: 1999,
+    precioBase: 0, // a cotizar
+    cotizar: true,
     usuariosIncluidos: 20,
     precioUsuarioExtra: 100,
-    stripe_price_id: "price_1TC4bUCUpJnsv7ilFvHHo47k",
-    stripe_product_id: "prod_UAPQq47CHfuZzX",
+    stripe_price_id: "",
+    stripe_product_id: "",
   },
 } as const;
