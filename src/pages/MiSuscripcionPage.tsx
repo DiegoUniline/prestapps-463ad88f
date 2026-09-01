@@ -558,8 +558,14 @@ export default function MiSuscripcionPage() {
                 <CardTitle className="text-lg">{plan.nombre}</CardTitle>
                 <CardDescription className="text-xs">{plan.descripcion}</CardDescription>
                 <div className="pt-3">
-                  <span className="text-3xl font-extrabold">{$$(plan.precio_base_mes)}</span>
-                  <span className="text-muted-foreground text-sm">/mes</span>
+                  {plan.precio_base_mes > 0 ? (
+                    <>
+                      <span className="text-3xl font-extrabold">{$$(plan.precio_base_mes)}</span>
+                      <span className="text-muted-foreground text-sm">/mes</span>
+                    </>
+                  ) : (
+                    <span className="text-3xl font-extrabold">A cotizar</span>
+                  )}
                 </div>
                 <p className="text-xs text-primary font-semibold mt-1">
                   Hasta {plan.usuarios_incluidos} usuarios incluidos
