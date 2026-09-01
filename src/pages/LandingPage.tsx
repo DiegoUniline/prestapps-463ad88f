@@ -138,36 +138,34 @@ const plans = [
   },
 ];
 
-const stats = [
-  { value: "18+", label: "Módulos" },
-  { value: "3", label: "Roles" },
-  { value: "24/7", label: "Disponibilidad" },
-  { value: "100%", label: "Responsive" },
-];
-
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       {/* ═══ Navbar ═══ */}
-      <nav className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 h-16">
-          <img src={logoFull} alt="PrestApp" className="h-9 object-contain" />
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-            <a href="#modulos" className="hover:text-foreground transition-colors">Módulos</a>
-            <a href="#whatsapp" className="hover:text-foreground transition-colors">WhatsApp</a>
-            <a href="#stripe" className="hover:text-foreground transition-colors">Stripe</a>
-            <a href="#precios" className="hover:text-foreground transition-colors">Precios</a>
-            <a href="#contacto" className="hover:text-foreground transition-colors">Contacto</a>
+      <nav className="sticky top-0 z-50 border-b border-black/5 bg-white/95 backdrop-blur-xl">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between px-4 sm:px-8 h-[72px]">
+          <a href="#inicio" className="relative block h-10 w-40 overflow-hidden" aria-label="PrestApp, ir al inicio">
+            <img
+              src={logoFull}
+              alt="PrestApp"
+              className="absolute left-1/2 top-1/2 w-44 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain"
+            />
+          </a>
+          <div className="hidden lg:flex items-center gap-9 text-sm font-semibold text-neutral-500">
+            <a href="#modulos" className="hover:text-neutral-950 transition-colors">Cómo funciona</a>
+            <a href="#whatsapp" className="hover:text-neutral-950 transition-colors">Automatización</a>
+            <a href="#precios" className="hover:text-neutral-950 transition-colors">Planes</a>
+            <a href="#contacto" className="hover:text-neutral-950 transition-colors">Contacto</a>
           </div>
           <div className="flex items-center gap-2">
             <Link to="/login">
-              <Button size="sm" variant="outline" className="font-semibold">
-                Iniciar Sesión
+              <Button size="sm" variant="ghost" className="hidden sm:inline-flex font-semibold text-neutral-700 hover:text-neutral-950">
+                Iniciar sesión
               </Button>
             </Link>
             <Link to="/registro">
-              <Button size="sm" className="font-semibold">
-                Crear Cuenta Gratis <ArrowRight className="ml-1 h-4 w-4" />
+              <Button size="sm" className="h-10 rounded-full px-5 font-bold shadow-sm">
+                Probar gratis <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </Link>
           </div>
@@ -175,54 +173,135 @@ export default function LandingPage() {
       </nav>
 
       {/* ═══ Hero ═══ */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 pointer-events-none" />
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-12 md:pt-32 md:pb-20 relative">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-medium mb-6">
-                <Zap className="h-4 w-4" /> El sistema #1 de préstamos en México
+      <section id="inicio" className="relative isolate overflow-hidden bg-[#070707] text-white">
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div className="absolute -left-40 top-24 h-[420px] w-[420px] rounded-full bg-primary/20 blur-[130px]" />
+          <div className="absolute right-[-10%] top-[-25%] h-[640px] w-[640px] rounded-full bg-[#5d0b21]/30 blur-[150px]" />
+          <div className="absolute inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(255,255,255,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.8)_1px,transparent_1px)] [background-size:72px_72px]" />
+        </div>
+
+        <div className="relative mx-auto max-w-[1400px] px-4 pb-16 pt-14 sm:px-8 sm:pt-20 lg:min-h-[720px] lg:py-20">
+          <div className="grid items-center gap-14 lg:grid-cols-[0.9fr_1.1fr] xl:gap-20">
+            <div className="max-w-2xl">
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white/70">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
+                Control financiero para prestamistas
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">
-                Tu negocio de
-                <span className="text-primary"> préstamos</span> en piloto automático
+
+              <h1 className="text-[2.8rem] font-extrabold leading-[0.98] tracking-[-0.045em] sm:text-6xl lg:text-[4.3rem]">
+                Deja de prestar a ciegas.
+                <span className="mt-2 block text-primary">Descubre cuánto ganas de verdad.</span>
               </h1>
-              <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-lg">
-                Cobra cuotas con tarjeta automáticamente, envía recordatorios por WhatsApp, 
-                rastrea a tus cobradores por GPS y controla cada peso desde tu celular. 
-                <strong className="text-foreground"> Sin papel, sin errores, sin estrés.</strong>
+
+              <p className="mt-7 max-w-xl text-lg leading-relaxed text-white/65 sm:text-xl">
+                PrestApp conecta préstamos, cobranza, gastos y cajas para mostrarte tu utilidad real, el dinero en riesgo y cada peso que debe regresar a tu negocio.
               </p>
-              <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                <Link to="/registro">
-                  <Button size="lg" className="text-base px-8 h-12 font-semibold shadow-lg shadow-primary/25 w-full sm:w-auto">
-                    Probar 7 Días Gratis <ArrowRight className="ml-2 h-5 w-5" />
+
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <Link to="/registro" className="w-full sm:w-auto">
+                  <Button size="lg" className="h-14 w-full rounded-full px-7 text-base font-bold shadow-[0_14px_45px_rgba(239,21,75,.28)] sm:w-auto">
+                    Quiero tener el control <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <a href="#modulos">
-                  <Button variant="outline" size="lg" className="text-base px-8 h-12 font-semibold w-full sm:w-auto">
-                    Ver Demos <ChevronDown className="ml-2 h-5 w-5" />
+                <a href="#modulos" className="w-full sm:w-auto">
+                  <Button variant="outline" size="lg" className="h-14 w-full rounded-full border-white/15 bg-white/[0.04] px-7 text-base font-bold text-white hover:bg-white/10 hover:text-white sm:w-auto">
+                    Ver cómo funciona <ChevronDown className="ml-2 h-5 w-5" />
                   </Button>
                 </a>
               </div>
-              <div className="mt-10 grid grid-cols-4 gap-4">
-                {stats.map((s) => (
-                  <div key={s.label} className="text-center">
-                    <p className="text-2xl font-extrabold text-primary">{s.value}</p>
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
-                  </div>
+
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-white/55">
+                {["7 días gratis", "Control desde cualquier lugar", "Acompañamiento al iniciar"].map((item) => (
+                  <span key={item} className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary" /> {item}
+                  </span>
                 ))}
               </div>
             </div>
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-primary/5 rounded-3xl -rotate-3 scale-105" />
-              <img
-                src={screenshotDashboard}
-                alt="Dashboard PrestApp"
-                className="relative rounded-2xl shadow-2xl shadow-primary/10 border"
-                loading="lazy"
-              />
+
+            <div className="relative mx-auto w-full max-w-2xl lg:max-w-none">
+              <div className="absolute -inset-8 rounded-[3rem] bg-primary/10 blur-3xl" aria-hidden="true" />
+              <div className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#111111] shadow-[0_35px_100px_rgba(0,0,0,.55)]">
+                <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 sm:px-7">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/35">PrestApp Control</p>
+                    <p className="mt-1 text-sm font-semibold text-white/80">Tu negocio, sin puntos ciegos</p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> En vivo
+                  </div>
+                </div>
+
+                <div className="p-4 sm:p-7">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="col-span-2 rounded-2xl border border-white/10 bg-white/[0.055] p-5 sm:p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-medium text-white/45">Utilidad real estimada</p>
+                          <p className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">$84,320</p>
+                        </div>
+                        <div className="rounded-xl bg-emerald-400/10 p-2.5 text-emerald-300">
+                          <TrendingUp className="h-5 w-5" />
+                        </div>
+                      </div>
+                      <div className="mt-6 flex h-20 items-end gap-1.5" aria-label="Tendencia ascendente de utilidad">
+                        {[30, 42, 36, 51, 48, 62, 58, 72, 68, 82, 76, 92].map((height, index) => (
+                          <span
+                            key={index}
+                            className={`flex-1 rounded-t-sm ${index > 8 ? "bg-primary" : "bg-white/10"}`}
+                            style={{ height: `${height}%` }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:p-5">
+                      <Wallet className="mb-4 h-5 w-5 text-primary" />
+                      <p className="text-xs font-medium text-white/40 sm:text-sm">Capital en la calle</p>
+                      <p className="mt-1 text-xl font-bold sm:text-2xl">$1,248,000</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:p-5">
+                      <HandCoins className="mb-4 h-5 w-5 text-primary" />
+                      <p className="text-xs font-medium text-white/40 sm:text-sm">Por recuperar hoy</p>
+                      <p className="mt-1 text-xl font-bold sm:text-2xl">$42,850</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/[0.09] p-4 sm:px-5">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl bg-primary/15 p-2.5">
+                        <ShieldCheck className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold">Fugas bajo vigilancia</p>
+                        <p className="mt-0.5 text-xs text-white/45">Gastos, atrasos y diferencias de caja</p>
+                      </div>
+                    </div>
+                    <span className="hidden rounded-full bg-primary px-3 py-1 text-xs font-bold sm:inline-flex">Atención</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-white/10 bg-black/20 px-5 py-3 text-center text-xs font-medium text-white/35 sm:px-7">
+                  Vista ilustrativa · Tus cifras se actualizan con cada movimiento
+                </div>
+              </div>
             </div>
+          </div>
+
+          <div className="mt-14 grid overflow-hidden rounded-2xl border border-white/10 bg-white/[0.045] sm:grid-cols-3 lg:mt-16">
+            {[
+              ["¿Cuánto ganaste este mes?", "Conoce tu utilidad, no solo lo que cobraste."],
+              ["¿Dónde está tu dinero?", "Ubica cartera, cajas y cobranza en segundos."],
+              ["¿Qué te está costando?", "Detecta atrasos, gastos y diferencias a tiempo."],
+            ].map(([question, answer], index) => (
+              <div key={question} className={`p-5 sm:p-6 ${index ? "border-t border-white/10 sm:border-l sm:border-t-0" : ""}`}>
+                <p className="font-bold text-white">{question}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/45">{answer}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
