@@ -75,7 +75,7 @@ const features = [
 const plans = [
   {
     name: "Básico",
-    price: "$499",
+    price: "$2,300",
     period: "/mes",
     desc: "Para operaciones pequeñas que están iniciando",
     users: "Hasta 3 usuarios",
@@ -97,7 +97,7 @@ const plans = [
   },
   {
     name: "Profesional",
-    price: "$999",
+    price: "$4,500",
     period: "/mes",
     desc: "Para financieras en crecimiento",
     users: "Hasta 10 usuarios",
@@ -120,8 +120,8 @@ const plans = [
   },
   {
     name: "Enterprise",
-    price: "$1,999",
-    period: "/mes",
+    price: "A cotizar",
+    period: "",
     desc: "Para financieras grandes y grupos",
     users: "Hasta 20 usuarios",
     highlight: false,
@@ -481,7 +481,10 @@ export default function LandingPage() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-8">
-            * IVA no incluido. Precio por usuario adicional: $150 MXN/mes (Básico), $130 MXN/mes (Profesional), $100 MXN/mes (Enterprise).
+            * IVA no incluido. Precio por usuario adicional: $150 MXN/mes (Básico), $130 MXN/mes (Profesional). Enterprise se cotiza según necesidades.
+          </p>
+          <p className="text-center text-xs text-muted-foreground mt-2">
+            Los clientes activos conservan el precio de su contrato actual.
           </p>
         </div>
       </section>
