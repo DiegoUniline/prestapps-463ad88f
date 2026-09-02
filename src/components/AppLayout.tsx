@@ -26,7 +26,7 @@ export default function AppLayout() {
           <TopBar />
           <SubscriptionBanner />
           <PullToRefresh>
-            <main className="p-4 md:p-6 pb-24 md:pb-6">
+            <main className="px-3 py-4 pb-24 sm:p-4 md:p-6 md:pb-6">
               <div className="min-w-0">
                 <Outlet />
               </div>

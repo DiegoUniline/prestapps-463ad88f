@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { lazy, Suspense, useState, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -26,13 +26,16 @@ import { VisitaModal } from "@/components/VisitaModal";
 import { PromesaModal } from "@/components/PromesaModal";
 import { HistorialPagosModal } from "@/components/cobranza/HistorialPagosModal";
 import { PrestamoQuickDrawer } from "@/components/cobranza/PrestamoQuickDrawer";
+import type { RouteStop } from "@/components/cobranza/MiRutaMap";
 import { resendReceiptForPrestamo } from "@/lib/resendReceipt";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
   HandCoins, ChevronLeft, ChevronRight, DollarSign, TrendingUp,
   Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
-  User, Lock, Wallet, FileText, Briefcase, Send, ChevronDown, ChevronUp, Loader2,
+  User, Lock, Wallet, FileText, Briefcase, Send, ChevronDown, ChevronUp, Loader2, Navigation,
 } from "lucide-react";
+
+const MiRutaMap = lazy(() => import("@/components/cobranza/MiRutaMap").then((module) => ({ default: module.MiRutaMap })));
 
 
 
@@ -44,6 +47,8 @@ interface CuotaCobrador {
   clienteId: string;
   clienteTelefono: string | null;
   clienteDireccion: string | null;
+  gpsLat: number | null;
+  gpsLng: number | null;
   numCuota: number;
   totalCuotas: number;
   capitalInteres: number;
@@ -102,7 +107,7 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
           .from("prestamos")
           .select(`
             id, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id,
-            clientes ( nombre_completo, telefono, direccion ),
+            clientes ( nombre_completo, telefono, direccion, gps_lat, gps_lng ),
             rutas ( nombre )
           `)
           .eq("empresa_id", empresaId)
@@ -144,7 +149,7 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
           .from("prestamos")
           .select(`
             id, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id,
-            clientes ( nombre_completo, telefono, direccion ),
+            clientes ( nombre_completo, telefono, direccion, gps_lat, gps_lng ),
             rutas ( nombre )
           `)
           .in("id", prestamoIds);
@@ -228,6 +233,8 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
             clienteId: pres.cliente_id || "",
             clienteTelefono: cliente?.telefono || null,
             clienteDireccion: cliente?.direccion || null,
+            gpsLat: cliente?.gps_lat ? Number(cliente.gps_lat) : null,
+            gpsLng: cliente?.gps_lng ? Number(cliente.gps_lng) : null,
             numCuota: c.num_cuota,
             totalCuotas: pres.num_cuotas || 0,
             capitalInteres: Number(c.capital_interes || 0),
@@ -518,7 +525,11 @@ export default function CobradorViewPage() {
   const [fechaDesde, setFechaDesde] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [fechaHasta, setFechaHasta] = useState(() => endOfWeek(new Date(), { weekStartsOn: 1 }));
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("cobranza");
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = new URLSearchParams(window.location.search).get("view");
+    if (["resumen", "ruta", "cobranza", "cartera", "historial", "pagos", "perfil"].includes(requested || "")) return requested!;
+    return window.matchMedia("(max-width: 639px)").matches ? "resumen" : "cobranza";
+  });
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPw, setChangingPw] = useState(false);
@@ -624,6 +635,8 @@ export default function CobradorViewPage() {
       clienteId: string;
       clienteTelefono: string | null;
       clienteDireccion: string | null;
+      gpsLat: number | null;
+      gpsLng: number | null;
       ruta: string;
       rutaId: string | null;
       cobradorId: string | null;
@@ -643,6 +656,8 @@ export default function CobradorViewPage() {
           clienteId: c.clienteId,
           clienteTelefono: c.clienteTelefono,
           clienteDireccion: c.clienteDireccion,
+          gpsLat: c.gpsLat,
+          gpsLng: c.gpsLng,
           ruta: c.ruta,
           rutaId: c.rutaId,
           cobradorId: c.cobradorId,
@@ -664,6 +679,19 @@ export default function CobradorViewPage() {
     return Array.from(groups.values()).sort((a, b) => b.diasAtrasoMax - a.diasAtrasoMax);
   }, [pendientes]);
 
+  const routeStops = useMemo<RouteStop[]>(() => pendientesGrupos.map((group) => ({
+    prestamoId: group.prestamoId,
+    clienteNombre: group.clienteNombre,
+    clienteTelefono: group.clienteTelefono,
+    clienteDireccion: group.clienteDireccion,
+    gpsLat: group.gpsLat,
+    gpsLng: group.gpsLng,
+    ruta: group.ruta,
+    saldoTotal: group.saldoTotal,
+    saldoMora: group.saldoMora,
+    diasAtrasoMax: group.diasAtrasoMax,
+  })), [pendientesGrupos]);
+
 
   // KPIs
   const kpis = useMemo(() => {
@@ -671,11 +699,13 @@ export default function CobradorViewPage() {
     const cobradasCount = cobradas.length;
     const pendientesCount = pendientes.length;
     const porCobrar = pendientes.reduce((s, c) => s + c.saldoTotal, 0);
-    const cobrado = cobradas.reduce((s, c) => s + c.capitalInteres, 0);
+    const cobrado = cobradas.reduce((s, c) => s + (c.montoPagado || c.capitalInteres), 0);
     const mora = filtered.reduce((s, c) => s + c.saldoMora, 0);
     const pct = (porCobrar + cobrado) > 0 ? (cobrado / (porCobrar + cobrado)) * 100 : 0;
     return { total, cobradas: cobradasCount, pendientes: pendientesCount, porCobrar, cobrado, mora, pct };
   }, [filtered, pendientes, cobradas]);
+
+  const collectedStopsCount = useMemo(() => new Set(cobradas.map((item) => item.prestamoId)).size, [cobradas]);
 
   // Open PagoModal
   const openPago = useCallback(async (item: CuotaCobrador) => {
@@ -760,10 +790,10 @@ export default function CobradorViewPage() {
     <div className="space-y-3 pb-20 overflow-x-hidden">
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-xl sm:text-2xl font-bold">Mi Cobranza</h1>
+        <h1 className="hidden text-2xl font-bold sm:block">Mi Cobranza</h1>
 
         {/* Date range controls */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className={cn("flex flex-wrap items-center gap-2", ["resumen", "perfil"].includes(activeTab) && "hidden sm:flex")}>
           <Button
             variant={rangePreset === "hoy" ? "default" : "outline"}
             size="sm"
@@ -782,7 +812,7 @@ export default function CobradorViewPage() {
           </Button>
 
           {/* Custom range */}
-          <div className="flex items-center gap-1">
+          <div className="hidden items-center gap-1 sm:flex">
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
@@ -879,24 +909,29 @@ export default function CobradorViewPage() {
       </div>
 
       {/* ── Search ─────────────────────────────────────────── */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar cliente..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-10"
-        />
-        {search && (
-          <button className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setSearch("")}>
-            <X className="h-4 w-4 text-muted-foreground" />
-          </button>
-        )}
-      </div>
+      {["cobranza", "cartera", "historial", "pagos"].includes(activeTab) && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar cliente..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-11 rounded-xl border-border/70 bg-card pl-9 shadow-sm"
+          />
+          {search && (
+            <button className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setSearch("")}>
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Tabs ───────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-4 sm:grid-cols-6 h-10 p-1">
+        <TabsList className="hidden w-full grid-cols-7 p-1 sm:grid">
+          <TabsTrigger value="ruta" className="text-sm px-1 gap-1">
+            <Navigation className="h-3.5 w-3.5" />Ruta
+          </TabsTrigger>
           <TabsTrigger value="cobranza" className="text-[11px] sm:text-sm px-1 gap-0.5">
             Cobrar
             {kpis.pendientes > 0 && (
@@ -919,6 +954,32 @@ export default function CobradorViewPage() {
             Perfil
           </TabsTrigger>
         </TabsList>
+
+        {/* ── Tab: Mi Ruta ─────────────────────────────────── */}
+        <TabsContent value="ruta" className="mt-3">
+          {loadingCuotas ? (
+            <LoadingCards />
+          ) : (
+            <Suspense fallback={<LoadingCards />}>
+              <MiRutaMap
+                stops={routeStops}
+                collectedCount={collectedStopsCount}
+                collectedAmount={kpis.cobrado}
+                onCollect={(stop) => {
+                  const group = pendientesGrupos.find((item) => item.prestamoId === stop.prestamoId);
+                  if (group) openPagoGrupo(group);
+                }}
+                onVisit={(stop) => {
+                  const group = pendientesGrupos.find((item) => item.prestamoId === stop.prestamoId);
+                  if (group?.cuotas[0]) {
+                    setVisitaItem(group.cuotas[0]);
+                    setVisitaOpen(true);
+                  }
+                }}
+              />
+            </Suspense>
+          )}
+        </TabsContent>
 
         {/* ── Tab: Cobranza ─────────────────────────────────── */}
         <TabsContent value="cobranza" className="mt-3 space-y-2">
@@ -1091,6 +1152,41 @@ export default function CobradorViewPage() {
 
         {/* ── Tab: Resumen (mobile) ───────────────────────── */}
         <TabsContent value="resumen" className="mt-3 space-y-3">
+          <section className="relative overflow-hidden rounded-2xl bg-[#111217] p-5 text-white shadow-[0_26px_55px_-34px_rgba(15,23,42,.8)] sm:hidden">
+            <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-primary/25 blur-3xl" />
+            <div className="relative">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                {new Date().getHours() < 12 ? "Buenos días" : new Date().getHours() < 19 ? "Buenas tardes" : "Buenas noches"}
+              </p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight">
+                {perfil?.profile?.nombre_completo?.split(" ")[0] || "Tu cobranza"}
+              </h2>
+              <p className="mt-1 text-xs text-white/55">Todo lo que necesitas para completar tu día.</p>
+
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                  <p className="text-[9px] uppercase tracking-wider text-white/45">Pendientes</p>
+                  <p className="mt-1 text-xl font-bold">{pendientesGrupos.length}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                  <p className="text-[9px] uppercase tracking-wider text-white/45">Cobrado</p>
+                  <p className="mt-1 truncate text-sm font-bold text-emerald-400">{$$(kpis.cobrado)}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                  <p className="text-[9px] uppercase tracking-wider text-white/45">En mano</p>
+                  <p className="mt-1 truncate text-sm font-bold">{$$(Number(perfil?.profile?.efectivo_en_mano || 0))}</p>
+                </div>
+              </div>
+
+              <Button
+                className="mt-4 h-12 w-full rounded-xl bg-primary text-primary-foreground shadow-[0_12px_28px_-14px_rgba(240,20,77,.9)]"
+                onClick={() => { setHoy(); setActiveTab("ruta"); }}
+              >
+                <Navigation className="mr-2 h-4 w-4" />Iniciar mi ruta
+              </Button>
+            </div>
+          </section>
+
           <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -1356,26 +1452,37 @@ export default function CobradorViewPage() {
         />
       )}
 
-      {/* ── Mobile bottom nav (Resumen / Cobranza / Perfil) ── */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-background border-t border-border shadow-lg">
-        <div className="grid grid-cols-3">
+      {/* ── Mobile bottom nav ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/70 bg-background/95 shadow-[0_-12px_35px_-28px_rgba(15,23,42,.55)] backdrop-blur-xl sm:hidden safe-area-bottom">
+        <div className="grid grid-cols-5 px-1">
           {[
-            { val: "resumen", label: "Resumen", icon: TrendingUp },
-            { val: "cobranza", label: "Mi Cobranza", icon: HandCoins },
-            { val: "perfil", label: "Mi Perfil", icon: User },
-          ].map(({ val, label, icon: Icon }) => {
+            { val: "resumen", label: "Inicio", icon: TrendingUp },
+            { val: "ruta", label: "Ruta", icon: Navigation },
+            { val: "cobranza", label: "Cobrar", icon: HandCoins, main: true },
+            { val: "pagos", label: "Pagos", icon: Receipt },
+            { val: "perfil", label: "Perfil", icon: User },
+          ].map(({ val, label, icon: Icon, main }) => {
             const active = activeTab === val;
             return (
               <button
                 key={val}
-                onClick={() => setActiveTab(val)}
+                onClick={() => {
+                  if (val === "ruta") setHoy();
+                  setActiveTab(val);
+                }}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 py-2 transition-colors",
+                  "relative flex min-h-[60px] flex-col items-center justify-center gap-0.5 py-2 transition-colors",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <Icon className={cn("h-5 w-5", active && "scale-110 transition-transform")} />
-                <span className="text-[10px] font-medium">{label}</span>
+                <span className={cn(
+                  "flex items-center justify-center transition-all",
+                  main ? "-mt-7 h-[52px] w-[52px] rounded-2xl border-4 border-background bg-primary text-primary-foreground shadow-[0_10px_25px_-10px_rgba(240,20,77,.8)]" : "h-7 w-9 rounded-xl",
+                  !main && active && "bg-primary/10",
+                )}>
+                  <Icon className={cn(main ? "h-5 w-5" : "h-[18px] w-[18px]", active && !main && "scale-105")} />
+                </span>
+                <span className={cn("text-[9px] font-semibold", main && "-mt-0.5")}>{label}</span>
               </button>
             );
           })}

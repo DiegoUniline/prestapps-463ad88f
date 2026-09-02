@@ -6,7 +6,7 @@ import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { isSuperAdmin } from "@/components/SuperAdminGuard";
-import { Moon, Sun, Building2, LogOut, Menu } from "lucide-react";
+import { Moon, Sun, Building2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,7 +26,7 @@ export function TopBar() {
   const showEmpresaSwitcher = isSuperAdmin(user?.email) && empresas.length > 1;
 
   return (
-    <header className="h-14 border-b flex items-center justify-between px-3 md:px-4 bg-card shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border/70 bg-background/90 px-3 shadow-[0_10px_30px_-28px_rgba(15,23,42,.5)] backdrop-blur-xl md:px-4">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="hidden md:flex" />
         <div className="flex md:hidden items-center gap-2">
@@ -53,16 +53,16 @@ export function TopBar() {
         )}
         <SyncStatusBadge />
         <NotificationBell />
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
+        <Button variant="ghost" size="icon" className="hidden h-8 w-8 md:inline-flex" onClick={toggleTheme}>
           {theme === "light" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </Button>
         <Badge variant="secondary" className="text-[10px] h-6 hidden md:flex">{roleLabel[role] || role}</Badge>
-        <Avatar className="h-8 w-8">
+        <Avatar className="h-8 w-8 border border-border/70">
           <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
         </Avatar>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" onClick={signOut}>
+            <Button variant="ghost" size="icon" className="hidden md:inline-flex" onClick={signOut}>
               <LogOut className="h-4 w-4" />
             </Button>
           </TooltipTrigger>

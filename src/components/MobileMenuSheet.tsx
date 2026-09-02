@@ -1,6 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -9,7 +11,7 @@ import {
   HandCoins, Bell, FileText, PieChart, CalendarCheck, Settings, UserCheck,
   Building2, MessageSquare, Users2, Star, Receipt, Percent,
   MapPin, ClipboardList, BookOpen, Cog, FileInput, ShieldCheck,
-  RefreshCw, ScrollText, Route, type LucideIcon,
+  RefreshCw, ScrollText, Route, LogOut, Moon, Sun, type LucideIcon,
 } from "lucide-react";
 
 interface NavTab {
@@ -84,6 +86,8 @@ export function MobileMenuSheet({ role }: { role: string }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const { signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const isActive = (path: string) =>
     location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
@@ -136,6 +140,13 @@ export function MobileMenuSheet({ role }: { role: string }) {
             {/* Sync / force update button */}
             <div className="border-t pt-4 mt-2">
               <button
+                onClick={toggleTheme}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:bg-muted transition-colors"
+              >
+                {theme === "light" ? <Moon className="h-4 w-4 shrink-0" /> : <Sun className="h-4 w-4 shrink-0" />}
+                <span>{theme === "light" ? "Modo oscuro" : "Modo claro"}</span>
+              </button>
+              <button
                 onClick={async () => {
                   setOpen(false);
                   try {
@@ -147,7 +158,9 @@ export function MobileMenuSheet({ role }: { role: string }) {
                       });
                       return;
                     }
-                  } catch {}
+                  } catch (error) {
+                    console.warn("No se pudo activar la actualización pendiente", error);
+                  }
                   // Fallback: clear caches and hard reload
                   if ("caches" in window) {
                     const names = await caches.keys();
@@ -159,6 +172,13 @@ export function MobileMenuSheet({ role }: { role: string }) {
               >
                 <RefreshCw className="h-4 w-4 shrink-0" />
                 <span>Actualizar app</span>
+              </button>
+              <button
+                onClick={() => { setOpen(false); signOut(); }}
+                className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>Cerrar sesión</span>
               </button>
             </div>
           </div>
