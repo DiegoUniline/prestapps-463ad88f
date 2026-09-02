@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
@@ -17,14 +16,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area, LineChart, Line,
+  PieChart, Pie, Cell, Legend, AreaChart, Area,
 } from "recharts";
 import {
   DollarSign, TrendingUp, AlertTriangle, Clock, Users, Wallet,
   CalendarClock, Landmark, ArrowRight, Percent, ShieldAlert,
   Target, BarChart3, Activity, CircleDollarSign, Scale, TrendingDown,
   Banknote, PiggyBank, Receipt, ArrowUpRight, ArrowDownRight,
-  CalendarIcon, Filter, X, Gauge, Eye, CreditCard, BadgeDollarSign,
+  CalendarIcon, Filter, X, Eye, CreditCard, BadgeDollarSign,
+  MapPin, Phone, ChevronRight, HandCoins, Building2, CircleAlert,
+  Plus, CheckCircle2,
 } from "lucide-react";
 import { cn, $$, fmtDate } from "@/lib/utils";
 
@@ -37,6 +38,30 @@ const tooltipStyle = {
   fontSize: 12,
 };
 
+type DashboardMovimiento = {
+  tipo?: string | null;
+  monto?: number | null;
+  concepto?: string | null;
+  created_at?: string | null;
+  caja_id?: string | null;
+};
+
+type DashboardRuta = { id: string; nombre: string };
+type DashboardCobrador = { id: string; nombre_completo?: string | null; nombre?: string | null };
+type DashboardCliente = {
+  nombre_completo?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+  gps_lat?: number | null;
+  gps_lng?: number | null;
+};
+type DashboardPrestamo = {
+  id: string;
+  ruta_id?: string | null;
+  cobrador_id?: string | null;
+  clientes?: DashboardCliente | DashboardCliente[] | null;
+};
+
 // ── Data fetching ─────────────────────────────────────────────────
 function useDashboardData(empresaId: string) {
   return useQuery({
@@ -46,9 +71,9 @@ function useDashboardData(empresaId: string) {
       const [
         prestamos, amort, pagos,
         { data: cajas }, { data: cobradores }, { data: rutas },
-        clientes, promesas,
+        clientes, promesas, movimientos,
       ] = await Promise.all([
-        fetchAllRows(supabase.from("prestamos").select("id, monto_solicitado, monto_total_pagar, estado, fecha_registro, cobrador_id, ruta_id, caja_id, frecuencia, num_cuotas, tasa_interes, clientes(nombre_completo)").eq("empresa_id", empresaId)),
+        fetchAllRows(supabase.from("prestamos").select("id, cliente_id, monto_solicitado, monto_total_pagar, estado, fecha_registro, cobrador_id, ruta_id, caja_id, frecuencia, num_cuotas, tasa_interes, clientes(nombre_completo, telefono, direccion, gps_lat, gps_lng)").eq("empresa_id", empresaId)),
         fetchAllRows(supabase.from("amortizacion").select("prestamo_id, num_cuota, capital, interes, capital_interes, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento, mora, capital_pagado, interes_pagado, mora_pagada").eq("empresa_id", empresaId)),
         fetchAllRows(supabase.from("pagos").select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, created_at, cobrador_id, prestamo_id, caja_id, ruta_id").eq("empresa_id", empresaId)),
         supabase.from("cajas").select("id, nombre, saldo_actual").eq("empresa_id", empresaId),
@@ -56,24 +81,17 @@ function useDashboardData(empresaId: string) {
         supabase.from("rutas").select("id, nombre, cobrador_id").eq("empresa_id", empresaId),
         fetchAllRows(supabase.from("clientes").select("id, estado, created_at").eq("empresa_id", empresaId)),
         fetchAllRows(supabase.from("promesas_pago").select("id, monto_prometido, fecha_prometida, status").eq("empresa_id", empresaId)),
+        fetchAllRows(supabase.from("movimientos_caja").select("id, tipo, monto, concepto, created_at, caja_id").eq("empresa_id", empresaId)),
       ]);
       return {
         prestamos: prestamos || [], amort: amort || [], pagos: pagos || [],
         cajas: cajas || [], cobradores: cobradores || [], rutas: rutas || [],
-        clientes: clientes || [], promesas: promesas || [], today,
+        clientes: clientes || [], promesas: promesas || [], movimientos: movimientos || [], today,
       };
     },
     staleTime: 1000 * 60 * 3, // 3 min cache
   });
 }
-
-const statusColor: Record<string, string> = {
-  Pendiente: "bg-muted text-muted-foreground",
-  Vencida: "bg-badge-vencido text-badge-vencido-foreground",
-  Prometida: "bg-badge-prometido text-badge-prometido-foreground",
-  Pagada: "bg-badge-activo text-badge-activo-foreground",
-  Parcial: "bg-badge-aldia text-badge-aldia-foreground",
-};
 
 const PIE_COLORS = [
   "hsl(var(--primary))", "hsl(var(--success))", "hsl(var(--warning))",
@@ -119,42 +137,9 @@ function DatePick({ value, onChange, placeholder }: { value: Date | undefined; o
   );
 }
 
-// ── Sparkline mini component ──
-function MiniSpark({ data, dataKey, color, height = 50 }: { data: any[]; dataKey: string; color: string; height?: number }) {
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-        <Area type="monotone" dataKey={dataKey} stroke={color} fill={color} fillOpacity={0.15} strokeWidth={2} dot={false} />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
-// ── Visual KPI with sparkline ──
-function VisualKPI({ title, value, sub, data, dataKey, color, icon: Icon, accent }: {
-  title: string; value: string; sub?: string; data: any[]; dataKey: string;
-  color: string; icon: any; accent: string;
-}) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="px-4 pt-3 pb-1">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-            <Icon className={cn("h-4 w-4", accent)} />
-          </div>
-          <p className="text-xl font-bold mt-0.5">{value}</p>
-          {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
-        </div>
-        <MiniSpark data={data} dataKey={dataKey} color={color} height={55} />
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { empresaId } = useEmpresa();
+  const { empresaId, empresaNombre } = useEmpresa();
   const { data, isLoading } = useDashboardData(empresaId);
 
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
@@ -169,12 +154,12 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => {
     if (!data) return null;
-    const { prestamos: allPrestamos, amort: allAmort, pagos: allPagos, cajas, cobradores, rutas, clientes, promesas, today } = data;
+    const { prestamos: allPrestamos, amort: allAmort, pagos: allPagos, cajas, cobradores, rutas, clientes, promesas, movimientos, today } = data;
 
     const desdeStr = fechaDesde ? fechaDesde.toISOString().slice(0, 10) : null;
     const hastaStr = fechaHasta ? fechaHasta.toISOString().slice(0, 10) : null;
 
-    let prestamos = allPrestamos.filter(p => {
+    const prestamos = allPrestamos.filter(p => {
       if (filtroRuta !== "__all__" && p.ruta_id !== filtroRuta) return false;
       if (filtroCobrador !== "__all__" && p.cobrador_id !== filtroCobrador) return false;
       if (filtroCaja !== "__all__" && p.caja_id !== filtroCaja) return false;
@@ -184,8 +169,8 @@ export default function DashboardPage() {
     });
 
     const prestamoIds = new Set(prestamos.map(p => p.id));
-    let amort = allAmort.filter(a => prestamoIds.has(a.prestamo_id));
-    let pagos = allPagos.filter(p => {
+    const amort = allAmort.filter(a => prestamoIds.has(a.prestamo_id));
+    const pagos = allPagos.filter(p => {
       if (!prestamoIds.has(p.prestamo_id)) return false;
       if (filtroCobrador !== "__all__" && p.cobrador_id !== filtroCobrador) return false;
       if (filtroCaja !== "__all__" && p.caja_id !== filtroCaja) return false;
@@ -193,6 +178,14 @@ export default function DashboardPage() {
       const pDate = (p.created_at || "").slice(0, 10);
       if (desdeStr && pDate < desdeStr) return false;
       if (hastaStr && pDate > hastaStr) return false;
+      return true;
+    });
+
+    const movimientosFiltrados = (movimientos as DashboardMovimiento[]).filter(m => {
+      if (filtroCaja !== "__all__" && m.caja_id !== filtroCaja) return false;
+      const movimientoDate = (m.created_at || "").slice(0, 10);
+      if (desdeStr && movimientoDate < desdeStr) return false;
+      if (hastaStr && movimientoDate > hastaStr) return false;
       return true;
     });
 
@@ -252,6 +245,67 @@ export default function DashboardPage() {
     const clientesMora = clientes.filter((c: any) => c.estado === "En mora").length;
     const liquidezTotal = capitalCajas + efectivoCalle;
     const gananciaNeta = interesCobrado + moraCobrada;
+
+    // Resumen ejecutivo: lo que el dueño necesita entender al entrar.
+    const currentMonth = today.slice(0, 7);
+    const cobradoMes = pagos
+      .filter(p => (p.created_at || "").startsWith(currentMonth))
+      .reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+    const ingresoFinancieroMes = pagos
+      .filter(p => (p.created_at || "").startsWith(currentMonth))
+      .reduce((s, p) => s + Number(p.aplicado_interes || 0) + Number(p.aplicado_mora || 0), 0);
+    const gastosMes = movimientosFiltrados
+      .filter(m => {
+        if (m.tipo !== "salida" || !(m.created_at || "").startsWith(currentMonth)) return false;
+        const concepto = (m.concepto || "").toLowerCase();
+        return !["desembolso", "préstamo", "prestamo", "retiro", "transferencia", "recurso", "anulación", "anulacion", "corrección", "correccion"]
+          .some(exclusion => concepto.includes(exclusion));
+      })
+      .reduce((s: number, m) => s + Number(m.monto || 0), 0);
+    const gananciaMes = ingresoFinancieroMes - gastosMes;
+    const cuotasVencenHoy = amortActivos.filter(a => a.fecha_vencimiento === today && a.status !== "Pagada");
+    const montoVenceHoy = cuotasVencenHoy.reduce((s, a) => s + Number(a.saldo_total || 0), 0);
+    const prestamosEnRiesgo = new Set(
+      amortActivos
+        .filter(a => a.fecha_vencimiento < today && a.status !== "Pagada")
+        .map(a => a.prestamo_id),
+    ).size;
+
+    const rutaMap = new Map((rutas as DashboardRuta[]).map(r => [r.id, r.nombre]));
+    const cobradorMap = new Map((cobradores as DashboardCobrador[]).map(c => [c.id, c.nombre_completo || c.nombre || "Sin cobrador"]));
+    const topDeudores = (activos as DashboardPrestamo[])
+      .map(prestamo => {
+        const pendientes = amortActivos.filter(a => a.prestamo_id === prestamo.id && a.status !== "Pagada");
+        const vencidas = pendientes.filter(a => a.fecha_vencimiento < today);
+        const saldo = pendientes.reduce((s, a) => s + Number(a.saldo_total || 0), 0);
+        const vencido = vencidas.reduce((s, a) => s + Number(a.saldo_total || 0), 0);
+        const mora = pendientes.reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
+        const diasAtraso = vencidas.reduce((max, a) => {
+          const diff = Math.floor((Date.now() - new Date(`${a.fecha_vencimiento}T00:00:00`).getTime()) / 86400000);
+          return Math.max(max, diff);
+        }, 0);
+        const cliente = Array.isArray(prestamo.clientes) ? prestamo.clientes[0] : prestamo.clientes;
+        return {
+          id: prestamo.id,
+          cliente: cliente?.nombre_completo || "Cliente sin nombre",
+          telefono: cliente?.telefono || null,
+          direccion: cliente?.direccion || null,
+          gpsLat: cliente?.gps_lat || null,
+          gpsLng: cliente?.gps_lng || null,
+          saldo,
+          vencido,
+          mora,
+          diasAtraso,
+          ruta: rutaMap.get(prestamo.ruta_id) || "Sin ruta",
+          cobrador: cobradorMap.get(prestamo.cobrador_id) || "Sin cobrador",
+        };
+      })
+      .filter(cliente => cliente.saldo > 0)
+      .sort((a, b) => {
+        if (a.vencido > 0 || b.vencido > 0) return b.vencido - a.vencido;
+        return b.saldo - a.saldo;
+      })
+      .slice(0, 8);
 
     // Cuotas del día
     const cuotasHoy = amort
@@ -319,7 +373,9 @@ export default function DashboardPage() {
       cuotasPagadas, totalCuotas, prestamosVencidos, totalCobrado, capitalCobrado, interesCobrado, moraCobrada,
       cobradoHoy, numPagosHoy, efectivoCalle, capitalCajas, tasaRecuperacion, tasaMorosidad, eficienciaCobranza,
       indiceMora, rendimientoCartera, ticketPromedio, cuotaPromedio, promesasPendientes: promesasPendientes.length,
-      montoPromesasHoy, clientesActivos, clientesMora, liquidezTotal, gananciaNeta, carteraVencidaPct,
+      promesasPorAtender: promesasHoy.length, montoPromesasHoy, clientesActivos, clientesMora, liquidezTotal, gananciaNeta, carteraVencidaPct,
+      cobradoMes, ingresoFinancieroMes, gastosMes, gananciaMes, montoVenceHoy, cuotasVencenHoy: cuotasVencenHoy.length,
+      prestamosEnRiesgo, topDeudores,
       totalPrestamos: prestamos.length, totalActivos: activos.length, totalLiquidados: liquidados.length,
       totalJuridicos: juridicos.length, cuotasHoy, colocacionMes,
       estadoPie, saldoPie, freqPie, cuotaStatusPie,
@@ -340,16 +396,34 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between flex-wrap gap-2">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-muted-foreground text-[13px]">Panel de control — toma decisiones inteligentes</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Resumen ejecutivo</p>
+          <h1 className="text-xl font-semibold mt-0.5">Así está {empresaNombre || "tu empresa"} hoy</h1>
+          <p className="text-muted-foreground text-[13px]">Dinero, cobranza y prioridades en una sola vista.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => navigate("/pagos")}>
+            <HandCoins className="h-3.5 w-3.5 mr-1.5" />Registrar pago
+          </Button>
+          <Button size="sm" className="h-8 text-xs" onClick={() => navigate("/prestamos/nuevo")}>
+            <Plus className="h-3.5 w-3.5 mr-1.5" />Nuevo préstamo
+          </Button>
         </div>
       </div>
 
       {/* ── FILTROS ─────────────────────────────────────────── */}
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="flex h-9 cursor-pointer list-none items-center justify-between px-3 text-[12px] font-medium text-muted-foreground hover:text-foreground">
+          <span className="flex items-center gap-2"><Filter className="h-3.5 w-3.5" />Filtrar esta vista</span>
+          <span className="flex items-center gap-2">
+            {hasFilters && <Badge variant="outline" className="h-5 text-[9px] text-primary border-primary/30">Filtros activos</Badge>}
+            <ChevronRight className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+          </span>
+        </summary>
+        <div className="border-t border-border p-3">
       {/* Desktop filters */}
-      <div className="hidden md:block bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
+      <div className="hidden md:block">
         <div className="flex items-center gap-2 flex-wrap">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mr-1">Filtros:</span>
@@ -424,6 +498,8 @@ export default function DashboardPage() {
           </Select>
         </div>
       </div>
+        </div>
+      </details>
 
       {/* ── ONBOARDING CHECKLIST ──────────────────────── */}
       <OnboardingChecklist />
@@ -438,32 +514,201 @@ export default function DashboardPage() {
         </TabsList>
 
         {/* ════════════════════════════════════════════════════
-            TAB PRINCIPAL — Super visual, sparklines
+            TAB PRINCIPAL — resumen ejecutivo accionable
             ════════════════════════════════════════════════════ */}
         <TabsContent value="principal" className="mt-4 space-y-4">
-          {/* Hero KPIs with sparklines */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <VisualKPI title="Colocación" value={$$(stats.capitalColocado)} sub={`${stats.totalActivos} préstamos activos`}
-              data={stats.colocacionMes} dataKey="colocado" color="hsl(var(--primary))" icon={DollarSign} accent="text-primary" />
-            <VisualKPI title="Recuperación" value={$$(stats.totalCobrado)} sub={`Hoy: ${$$(stats.cobradoHoy)} (${stats.numPagosHoy} pagos)`}
-              data={stats.colocacionMes} dataKey="cobrado" color="hsl(var(--success))" icon={TrendingUp} accent="text-success" />
-            <VisualKPI title="Mora Acumulada" value={$$(stats.moraTotal)} sub={`${stats.cuotasVencidas} cuotas vencidas`}
-              data={stats.colocacionMes} dataKey="mora" color="hsl(var(--destructive))" icon={AlertTriangle} accent="text-destructive" />
-            <VisualKPI title="Interés Ganado" value={$$(stats.interesCobrado)} sub={`Rendimiento: ${pct(stats.rendimientoCartera)}`}
-              data={stats.colocacionMes} dataKey="interes" color="hsl(217, 91%, 60%)" icon={Percent} accent="text-[hsl(217,91%,60%)]" />
+          {/* Lectura de 5 segundos: cuánto hay, cuánto falta y qué está en riesgo. */}
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+            {[
+              {
+                label: "Te deben",
+                value: $$(stats.saldoPorCobrar),
+                detail: `${stats.totalActivos} préstamos activos`,
+                icon: Wallet,
+                tone: "text-primary bg-primary/10",
+              },
+              {
+                label: "Ya está vencido",
+                value: $$(stats.montoVencido),
+                detail: `${stats.prestamosEnRiesgo} cuentas requieren atención`,
+                icon: CircleAlert,
+                tone: stats.montoVencido > 0 ? "text-destructive bg-destructive/10" : "text-success bg-success/10",
+              },
+              {
+                label: "Dinero disponible",
+                value: $$(stats.liquidezTotal),
+                detail: `${$$(stats.capitalCajas)} en cajas · ${$$(stats.efectivoCalle)} en calle`,
+                icon: Landmark,
+                tone: "text-success bg-success/10",
+              },
+              {
+                label: "Ganancia del mes",
+                value: $$(stats.gananciaMes),
+                detail: `${$$(stats.ingresoFinancieroMes)} intereses/mora · ${$$(stats.gastosMes)} gastos`,
+                icon: stats.gananciaMes >= 0 ? TrendingUp : TrendingDown,
+                tone: stats.gananciaMes >= 0 ? "text-success bg-success/10" : "text-destructive bg-destructive/10",
+              },
+            ].map(({ label, value, detail, icon: Icon, tone }) => (
+              <Card key={label} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+                      <p className="text-xl md:text-2xl font-bold tracking-tight mt-1 truncate">{value}</p>
+                    </div>
+                    <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", tone)}>
+                      <Icon className="h-4 w-4" />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-2 leading-snug">{detail}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
-          {/* Colocación vs Cobranza — big chart */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+            {/* Quién debe, cuánto, desde cuándo y dónde encontrarlo. */}
+            <Card className="xl:col-span-8 overflow-hidden">
+              <CardHeader className="pb-3 border-b bg-muted/20">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base font-semibold">Quién te debe</CardTitle>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Primero aparecen los saldos vencidos de mayor importe.</p>
+                  </div>
+                  <button onClick={() => navigate("/cobranza")} className="text-[11px] font-medium text-primary flex items-center gap-1 hover:underline shrink-0">
+                    Ver cobranza <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {stats.topDeudores.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <CheckCircle2 className="h-8 w-8 text-success mx-auto mb-2" />
+                    <p className="text-sm font-medium">No hay saldos pendientes</p>
+                    <p className="text-xs text-muted-foreground">Tu cartera está al corriente.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {stats.topDeudores.map(deudor => (
+                      <button
+                        key={deudor.id}
+                        onClick={() => navigate(`/prestamos/${deudor.id}`)}
+                        className="w-full grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(190px,1.2fr)_minmax(170px,1fr)_120px_130px_20px] gap-3 items-center px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-semibold truncate">{deudor.cliente}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                            {deudor.telefono && <span className="flex items-center gap-1"><Phone className="h-2.5 w-2.5" />{deudor.telefono}</span>}
+                            <span className="flex items-center gap-1"><MapPin className="h-2.5 w-2.5" />{deudor.ruta}</span>
+                          </div>
+                        </div>
+                        <div className="hidden md:block min-w-0">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ubicación / responsable</p>
+                          <p className="text-[11px] truncate mt-0.5">{deudor.direccion || deudor.ruta}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{deudor.cobrador}</p>
+                        </div>
+                        <div className="hidden md:block text-right">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo total</p>
+                          <p className="text-[13px] font-semibold mt-0.5">{$$(deudor.saldo)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{deudor.vencido > 0 ? "Vencido" : "Pendiente"}</p>
+                          <p className={cn("text-[13px] font-bold mt-0.5", deudor.vencido > 0 ? "text-destructive" : "text-foreground")}>
+                            {$$(deudor.vencido > 0 ? deudor.vencido : deudor.saldo)}
+                          </p>
+                          <p className={cn("text-[10px]", deudor.diasAtraso > 0 ? "text-destructive" : "text-muted-foreground")}>
+                            {deudor.diasAtraso > 0 ? `${deudor.diasAtraso} días de atraso` : "Al corriente"}
+                          </p>
+                        </div>
+                        <ChevronRight className="hidden md:block h-4 w-4 text-muted-foreground" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="xl:col-span-4 space-y-4">
+              <Card className={cn("overflow-hidden", stats.montoVencido > 0 && "border-destructive/30")}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-semibold">Prioridades de hoy</CardTitle>
+                    <Badge variant="outline" className={cn("text-[10px]", stats.montoVencido > 0 ? "border-destructive/30 text-destructive" : "border-success/30 text-success")}>
+                      {stats.montoVencido > 0 ? "Requiere atención" : "Todo en orden"}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-2">
+                  <div className="flex items-center justify-between rounded-lg bg-success/10 px-3 py-2.5 mb-3">
+                    <div className="flex items-center gap-2 text-success">
+                      <TrendingUp className="h-4 w-4" />
+                      <span className="text-[12px] font-medium">Cobrado hoy</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[14px] font-bold text-success">{$$(stats.cobradoHoy)}</p>
+                      <p className="text-[9px] text-muted-foreground">{stats.numPagosHoy} pagos recibidos</p>
+                    </div>
+                  </div>
+                  {[
+                    { label: "Cartera vencida", value: $$(stats.montoVencido), sub: `${stats.prestamosEnRiesgo} cuentas`, path: "/cobranza", urgent: stats.montoVencido > 0 },
+                    { label: "Cobrar hoy", value: $$(stats.montoVenceHoy), sub: `${stats.cuotasVencenHoy} cuotas`, path: "/cobranza", urgent: false },
+                    { label: "Promesas por atender", value: $$(stats.montoPromesasHoy), sub: `${stats.promesasPorAtender} vencen o vencieron`, path: "/promesas", urgent: stats.montoPromesasHoy > 0 },
+                  ].map(item => (
+                    <button key={item.label} onClick={() => navigate(item.path)} className="w-full flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5 hover:bg-muted/40 transition-colors text-left">
+                      <div>
+                        <p className="text-[12px] font-medium">{item.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{item.sub}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <p className={cn("text-[13px] font-bold", item.urgent && "text-destructive")}>{item.value}</p>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                    </button>
+                  ))}
+                  <Button className="w-full h-9 text-xs mt-1" onClick={() => navigate("/cobranza")}>
+                    Ir a cobrar ahora <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">Dónde está tu dinero</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {[
+                    { label: "En clientes", value: stats.saldoPorCobrar, icon: Users, path: "/prestamos" },
+                    { label: "En cajas", value: stats.capitalCajas, icon: Building2, path: "/cajas" },
+                    { label: "Con cobradores", value: stats.efectivoCalle, icon: HandCoins, path: "/cobradores" },
+                  ].map(({ label, value, icon: Icon, path }) => (
+                    <button key={label} onClick={() => navigate(path)} className="w-full flex items-center justify-between py-2 border-b border-border/60 last:border-0 hover:text-primary transition-colors">
+                      <span className="flex items-center gap-2 text-[12px] text-muted-foreground"><Icon className="h-3.5 w-3.5" />{label}</span>
+                      <span className="text-[13px] font-semibold">{$$(value)}</span>
+                    </button>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Colocación vs Recuperación vs Mora (6 meses)</CardTitle></CardHeader>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold">Movimiento de los últimos 6 meses</CardTitle>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Compara lo colocado, lo cobrado y la mora sin salir del resumen.</p>
+                </div>
+                <button onClick={() => navigate("/rentabilidad")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver rentabilidad <ArrowRight className="h-3 w-3" /></button>
+              </div>
+            </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={210}>
                 <BarChart data={stats.colocacionMes} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} width={48} />
                   <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
                   <Bar dataKey="colocado" name="Colocado" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="cobrado" name="Cobrado" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="mora" name="Mora" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
@@ -471,72 +716,6 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             </CardContent>
           </Card>
-
-          {/* Gauges row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { label: "Tasa Recuperación", pct: stats.tasaRecuperacion, color: "text-success" },
-              { label: "Eficiencia Cobranza", pct: stats.eficienciaCobranza, color: "text-[hsl(217,91%,60%)]" },
-              { label: "Tasa Morosidad", pct: stats.tasaMorosidad, color: stats.tasaMorosidad > 20 ? "text-destructive" : "text-warning" },
-              { label: "Cuotas Cobradas", pct: stats.totalCuotas > 0 ? (stats.cuotasPagadas / stats.totalCuotas) * 100 : 0, color: "text-primary", extra: `${stats.cuotasPagadas}/${stats.totalCuotas}` },
-            ].map(item => (
-              <Card key={item.label}>
-                <CardContent className="pt-4 pb-3 text-center">
-                  <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">{item.label}</p>
-                  <p className={cn("text-2xl font-bold mt-1", item.color)}>{(item as any).extra || pct(item.pct)}</p>
-                  <Progress value={Math.min(item.pct, 100)} className="h-2 mt-2" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Quick lists */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cuotas Pendientes / Vencidas</CardTitle>
-                  <button onClick={() => navigate("/pagos")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver pagos <ArrowRight className="h-3 w-3" /></button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {stats.cuotasHoy.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">No hay cuotas pendientes</p> : (
-                  <div className="space-y-2">
-                    {stats.cuotasHoy.map((c, i) => (
-                      <div key={`${c.id}-${i}`} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0 cursor-pointer hover:bg-muted/30 px-1 rounded" onClick={() => navigate(`/prestamos/${c.id}`)}>
-                        <div><p className="text-[13px] font-medium">{c.cliente}</p><p className="text-[11px] text-muted-foreground">Cuota #{c.cuota} · {c.vencimiento}</p></div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-[13px] font-semibold">{$$(c.monto)}</p>
-                          <Badge className={cn("text-[10px]", statusColor[c.status] || statusColor.Pendiente)}>{c.status}</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Resumen Rápido</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {[
-                  { label: "Total Préstamos", value: stats.totalPrestamos.toString() },
-                  { label: "Activos", value: stats.totalActivos.toString(), color: "text-success" },
-                  { label: "Vencidos", value: stats.prestamosVencidos.toString(), color: "text-destructive" },
-                  { label: "Liquidados", value: stats.totalLiquidados.toString(), color: "text-[hsl(217,91%,60%)]" },
-                  { label: "Jurídicos", value: stats.totalJuridicos.toString(), color: "text-warning" },
-                  { label: "Clientes Activos", value: stats.clientesActivos.toString() },
-                  { label: "Clientes en Mora", value: stats.clientesMora.toString(), color: "text-destructive" },
-                  { label: "Promesas Hoy", value: `${$$(stats.montoPromesasHoy)} (${stats.promesasPendientes})`, color: "text-warning" },
-                ].map(item => (
-                  <div key={item.label} className="flex items-center justify-between py-1 border-b border-border/50 last:border-0">
-                    <p className="text-[12px] text-muted-foreground">{item.label}</p>
-                    <p className={cn("text-[13px] font-semibold", (item as any).color)}>{item.value}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         {/* ════════════════════════════════════════════════════
@@ -547,7 +726,7 @@ export default function DashboardPage() {
             <KPI large title="Capital Colocado" value={$$(stats.capitalColocado)} icon={DollarSign} accent="text-primary" sub={`${stats.totalActivos} préstamos`} />
             <KPI large title="Saldo por Cobrar" value={$$(stats.saldoPorCobrar)} icon={Wallet} accent="text-[hsl(217,91%,60%)]" sub={`${stats.cuotasPendientes} cuotas`} />
             <KPI large title="Total Cobrado" value={$$(stats.totalCobrado)} icon={TrendingUp} accent="text-success" sub={`Hoy: ${$$(stats.cobradoHoy)}`} />
-            <KPI large title="Ganancia Neta" value={$$(stats.gananciaNeta)} icon={CircleDollarSign} accent="text-success" sub="Interés + mora cobrados" />
+            <KPI large title="Utilidad Bruta" value={$$(stats.gananciaNeta)} icon={CircleDollarSign} accent="text-success" sub="Interés + mora cobrados" />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
