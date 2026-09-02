@@ -797,7 +797,7 @@ export default function CobradorViewPage() {
           <Button
             variant={rangePreset === "hoy" ? "default" : "outline"}
             size="sm"
-            className="h-8 text-xs"
+            className="h-9 rounded-full px-4 text-xs"
             onClick={setHoy}
           >
             Hoy
@@ -805,7 +805,7 @@ export default function CobradorViewPage() {
           <Button
             variant={rangePreset === "semana" ? "default" : "outline"}
             size="sm"
-            className="h-8 text-xs"
+            className="h-9 rounded-full px-4 text-xs"
             onClick={setSemana}
           >
             Esta semana
@@ -910,7 +910,7 @@ export default function CobradorViewPage() {
 
       {/* ── Search ─────────────────────────────────────────── */}
       {["cobranza", "cartera", "historial", "pagos"].includes(activeTab) && (
-        <div className="relative">
+        <div className={cn("relative", activeTab === "cobranza" && "hidden sm:block")}>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar cliente..."
@@ -982,31 +982,59 @@ export default function CobradorViewPage() {
         </TabsContent>
 
         {/* ── Tab: Cobranza ─────────────────────────────────── */}
-        <TabsContent value="cobranza" className="mt-3 space-y-2">
+        <TabsContent value="cobranza" className="mt-3 space-y-3">
+          <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,.45)] sm:hidden">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary">Cobranza del periodo</p>
+                <p className="mt-1 text-2xl font-bold tracking-tight">{$$(kpis.porCobrar)}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{pendientesGrupos.length} clientes pendientes</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-muted-foreground">Recuperado</p>
+                <p className="text-sm font-bold text-success">{$$(kpis.cobrado)}</p>
+                <p className="mt-1 text-[10px] font-semibold text-destructive">{$$(kpis.mora)} en mora</p>
+              </div>
+            </div>
+          </section>
+          <div className="relative sm:hidden">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="h-11 rounded-xl border-border/70 bg-card pl-9 pr-9 shadow-sm"
+            />
+            {search && (
+              <button className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setSearch("")}>
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
           {loadingCuotas ? (
             <LoadingCards />
           ) : filtered.length === 0 ? (
             <EmptyCard icon={CheckCircle2} title="Sin cuotas en este rango" subtitle="No hay cuotas asignadas para este periodo." />
           ) : (
             <Tabs value={cobranzaSubTab} onValueChange={(v) => setCobranzaSubTab(v as "por-cobrar" | "cobradas")} className="w-full">
-              <TabsList className="w-full grid grid-cols-2 h-9 p-1">
-                <TabsTrigger value="por-cobrar" className="text-xs gap-1">
+              <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-muted/70 p-1">
+                <TabsTrigger value="por-cobrar" className="gap-1 rounded-lg text-xs data-[state=active]:shadow-sm">
                   <Clock className="h-3 w-3" />
                   Por cobrar
-                  {pendientes.length > 0 && (
-                    <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{pendientes.length}</Badge>
+                  {pendientesGrupos.length > 0 && (
+                    <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{pendientesGrupos.length}</Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="cobradas" className="text-xs gap-1">
+                <TabsTrigger value="cobradas" className="gap-1 rounded-lg text-xs data-[state=active]:shadow-sm">
                   <CheckCircle2 className="h-3 w-3" />
                   Cobradas
-                  {cobradas.length > 0 && (
-                    <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{cobradas.length}</Badge>
+                  {collectedStopsCount > 0 && (
+                    <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{collectedStopsCount}</Badge>
                   )}
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="por-cobrar" className="mt-3 space-y-2">
+              <TabsContent value="por-cobrar" className="mt-3 space-y-3">
                 {pendientesGrupos.length === 0 ? (
                   <EmptyCard icon={CheckCircle2} title="¡Todo cobrado!" subtitle="No tienes cuotas pendientes en este rango." />
                 ) : pendientesGrupos.map((g) => (
@@ -1796,105 +1824,94 @@ function PrestamoGroupCard({
   onPromesa: () => void;
 }) {
   const isOverdue = grupo.diasAtrasoMax > 0;
-  const cuotasVencidas = grupo.cuotas.filter((c) => c.diasAtraso > 0).length;
   return (
     <Card className={cn(
-      "border-border/50 transition-colors",
-      isOverdue && "border-destructive/30 bg-destructive/5",
+      "relative overflow-hidden rounded-2xl border-border/70 bg-card shadow-[0_18px_38px_-34px_rgba(15,23,42,.5)] transition-all",
+      isOverdue && "border-destructive/20",
     )}>
-      <CardContent className="p-2 space-y-1">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-1.5">
+      {isOverdue && <span className="absolute inset-y-0 left-0 w-1 bg-destructive" />}
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <button
-              className="font-semibold text-[12px] leading-tight hover:text-primary hover:underline text-left block w-full truncate"
+              className="block w-full truncate text-left text-[15px] font-bold leading-tight tracking-tight hover:text-primary"
               onClick={() => onNavigate(`/clientes/${grupo.clienteId}`)}
             >
               {grupo.clienteNombre}
             </button>
-            <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-[9px] text-muted-foreground truncate">{grupo.ruta} • {grupo.cuotas.length}c pend.</span>
-              {cuotasVencidas > 0 && (
-                <Badge variant="destructive" className="h-3 text-[8px] px-1 leading-none">
-                  {cuotasVencidas} venc.
-                </Badge>
-              )}
-            </div>
+            <p className="mt-1 truncate text-[11px] text-muted-foreground">{grupo.ruta} · {grupo.cuotas.length} cuotas pendientes</p>
           </div>
-          {isOverdue && (
-            <Badge className="text-[9px] shrink-0 h-4 px-1.5 bg-destructive text-destructive-foreground">
-              {grupo.diasAtrasoMax}d
-            </Badge>
-          )}
+          <Badge className={cn(
+            "h-6 shrink-0 rounded-full px-2.5 text-[10px] font-bold",
+            isOverdue ? "bg-destructive/10 text-destructive hover:bg-destructive/10" : "bg-warning/10 text-warning hover:bg-warning/10",
+          )}>
+            {isOverdue ? `${grupo.diasAtrasoMax} días tarde` : "Pendiente"}
+          </Badge>
         </div>
 
-        {/* Amounts: saldo total a pagar + mora */}
-        {/* Actions: cobrar incluye saldo, mora a la izquierda si aplica */}
-        <div className="flex items-center gap-1">
-          {grupo.saldoMora > 0 && (
-            <span className="text-[10px] font-semibold text-destructive shrink-0 px-1">
-              M:{$$(grupo.saldoMora)}
-            </span>
-          )}
-          <Button
-            size="sm"
-            className="h-7 text-[11px] font-medium min-w-0 flex-1 px-2"
-            onClick={onCobrar}
-          >
-            <HandCoins className="h-3 w-3 mr-1 shrink-0" />
-            <span className="truncate">Cobrar {$$(grupo.saldoTotal)}</span>
-          </Button>
-          <div className="flex items-center gap-0.5 shrink-0">
-            {grupo.clienteTelefono && (
-              <>
-                <Button variant="outline" size="icon" className="h-7 w-7"
-                  onClick={() => window.open(`tel:${grupo.clienteTelefono}`, "_blank")}>
-                  <Phone className="h-3 w-3" />
-                </Button>
-                <Button variant="outline" size="icon" className="h-7 w-7 text-green-600"
-                  onClick={() => window.open(`https://wa.me/${grupo.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
-                  <MessageSquare className="h-3 w-3" />
-                </Button>
-              </>
-            )}
-            <Button variant="outline" size="icon" className="h-7 w-7" title="Ver préstamo" onClick={onDrawer}>
-              <Eye className="h-3 w-3" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" title={expanded ? "Ocultar cuotas" : "Ver cuotas"}
-              onClick={onToggleExpand}>
-              {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </Button>
+        <div className="flex items-end justify-between gap-3 rounded-xl bg-muted/45 px-3 py-2.5">
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Total por cobrar</p>
+            <p className="mt-0.5 text-xl font-bold tracking-tight">{$$(grupo.saldoTotal)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-muted-foreground">Cuota próxima #{grupo.proximaCuota}/{grupo.totalCuotas}</p>
+            {grupo.saldoMora > 0 && <p className="mt-0.5 text-[11px] font-semibold text-destructive">Mora {$$(grupo.saldoMora)}</p>}
           </div>
         </div>
+
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-2">
+          <Button
+            className="h-11 min-w-0 rounded-xl text-xs font-semibold shadow-[0_10px_24px_-15px_rgba(240,20,77,.8)]"
+            onClick={onCobrar}
+          >
+            <HandCoins className="mr-1.5 h-4 w-4 shrink-0" />
+            <span className="truncate">Registrar pago</span>
+          </Button>
+          <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl" disabled={!grupo.clienteTelefono}
+            onClick={() => grupo.clienteTelefono && window.open(`tel:${grupo.clienteTelefono}`, "_blank")} aria-label="Llamar al cliente">
+            <Phone className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl text-success" disabled={!grupo.clienteTelefono}
+            onClick={() => grupo.clienteTelefono && window.open(`https://wa.me/${grupo.clienteTelefono.replace(/\D/g, "")}`, "_blank")} aria-label="Enviar WhatsApp">
+            <MessageSquare className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl text-primary" disabled={!grupo.clienteDireccion}
+            onClick={() => grupo.clienteDireccion && window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(grupo.clienteDireccion)}`, "_blank")} aria-label="Abrir navegación">
+            <Navigation className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <button onClick={onToggleExpand} className="flex w-full items-center justify-center gap-1.5 border-t border-border/50 pt-2 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-foreground">
+          {expanded ? "Ocultar detalles" : `Ver detalles y ${grupo.cuotas.length} cuotas`}
+          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
 
         {/* Expanded: list of pending cuotas + extra actions */}
         {expanded && (
-          <div className="pt-2 border-t border-border/50 space-y-1.5">
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={onHistorial}>
-                <Receipt className="h-3 w-3 mr-1" /> Pagos
+          <div className="space-y-3 border-t border-border/50 pt-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px]" onClick={onDrawer}>
+                <Eye className="mr-1.5 h-3.5 w-3.5" /> Préstamo
               </Button>
-              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={onVisita}>
-                <MapPin className="h-3 w-3 mr-1" /> Visita
+              <Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px]" onClick={onHistorial}>
+                <Receipt className="mr-1.5 h-3.5 w-3.5" /> Historial
               </Button>
-              <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={onPromesa}>
-                <CalendarCheck className="h-3 w-3 mr-1" /> Promesa
+              <Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px]" onClick={onVisita}>
+                <MapPin className="mr-1.5 h-3.5 w-3.5" /> Registrar visita
               </Button>
-              {grupo.clienteDireccion && (
-                <Button variant="outline" size="sm" className="h-7 text-[11px]"
-                  onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(grupo.clienteDireccion!)}`, "_blank")}>
-                  <MapPin className="h-3 w-3 mr-1" /> Mapa
-                </Button>
-              )}
+              <Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px]" onClick={onPromesa}>
+                <CalendarCheck className="mr-1.5 h-3.5 w-3.5" /> Crear promesa
+              </Button>
             </div>
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Cuotas pendientes
             </p>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {grupo.cuotas.map((c) => (
                 <div key={c.cuotaId} className={cn(
-                  "flex items-center justify-between gap-2 text-xs py-1.5 px-2 rounded",
-                  c.diasAtraso > 0 ? "bg-destructive/10" : "bg-secondary/40",
+                  "flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs",
+                  c.diasAtraso > 0 ? "bg-destructive/[0.06]" : "bg-muted/45",
                 )}>
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-medium shrink-0">#{c.numCuota}/{c.totalCuotas}</span>
@@ -1915,7 +1932,7 @@ function PrestamoGroupCard({
               ))}
             </div>
             {grupo.clienteDireccion && (
-              <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-border/50">
+              <div className="flex items-start gap-1.5 border-t border-border/50 pt-3">
                 <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
                 <p className="text-[11px] text-muted-foreground leading-tight">{grupo.clienteDireccion}</p>
               </div>
