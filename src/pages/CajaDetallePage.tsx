@@ -23,14 +23,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, ArrowDownLeft, ArrowUpRight, ArrowLeftRight,
   Wallet, DollarSign, FileText, TrendingUp, TrendingDown,
-  PiggyBank, AlertTriangle, Loader2, BarChart3
+  PiggyBank, AlertTriangle, Loader2
 } from "lucide-react";
 import { useSingleCajaSaldoReal } from "@/hooks/useCajaSaldoReal";
 import { PrestamosTab, PagosTab, TransferenciasTab } from "@/components/CajaSourceTabs";
 import {
-  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid
+  Cell, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 } from "recharts";
+import {
+  ANALYTICS_COLORS,
+  ANALYTICS_PALETTE,
+  AnalyticsChartCard,
+  AnalyticsTooltip,
+  DonutBreakdown,
+  TrendPill,
+} from "@/components/analytics/ChartPrimitives";
 
 // ── Data hooks ─────────────────────────────────────────────────
 function useCaja(cajaId: string) {
@@ -228,12 +236,6 @@ function useAllCajas(empresaId: string) {
   });
 }
 
-// ── Chart colors ──────────────────────────────────────────────
-const COLORS = [
-  "hsl(142, 71%, 45%)", "hsl(0, 84%, 60%)", "hsl(217, 91%, 60%)",
-  "hsl(38, 92%, 50%)", "hsl(262, 83%, 58%)", "hsl(187, 85%, 43%)"
-];
-
 // ── Modal type ────────────────────────────────────────────────
 type ModalType = "depositar" | "retirar" | "transferir" | null;
 
@@ -418,102 +420,63 @@ export default function CajaDetallePage() {
         <TabsContent value="resumen" className="mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Composición de Entradas */}
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <ArrowDownLeft className="h-4 w-4 text-success" />Composición de Entradas
-                </h3>
-                {pieEntradas.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Sin entradas</p>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <ResponsiveContainer width="50%" height={160}>
-                      <PieChart>
-                        <Pie data={pieEntradas} cx="50%" cy="50%" innerRadius={35} outerRadius={65} dataKey="value" strokeWidth={2} stroke="hsl(var(--card))">
-                          {pieEntradas.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={(v: number) => $$(v)} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="flex-1 space-y-2">
-                      {pieEntradas.map((e, i) => (
-                        <div key={e.name} className="flex items-center justify-between text-[12px]">
-                          <span className="flex items-center gap-1.5">
-                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                            {e.name}
-                          </span>
-                          <span className="font-medium">{$$(e.value)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <AnalyticsChartCard
+              eyebrow="Origen del efectivo"
+              title="Composición de entradas"
+              description="Qué actividades están alimentando esta caja."
+              meta={<ArrowDownLeft className="h-4 w-4 text-success" />}
+            >
+              <DonutBreakdown
+                data={pieEntradas.map((item, index) => ({ ...item, color: [ANALYTICS_COLORS.success, ANALYTICS_COLORS.cyan, ANALYTICS_COLORS.blue, ...ANALYTICS_PALETTE][index] }))}
+                centerLabel="Entradas"
+                centerValue={$$(flujoData.totalEntradas)}
+              />
+            </AnalyticsChartCard>
 
             {/* Composición de Salidas */}
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <ArrowUpRight className="h-4 w-4 text-destructive" />Composición de Salidas
-                </h3>
-                {pieSalidas.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Sin salidas</p>
-                ) : (
-                  <div className="flex items-center gap-4">
-                    <ResponsiveContainer width="50%" height={160}>
-                      <PieChart>
-                        <Pie data={pieSalidas} cx="50%" cy="50%" innerRadius={35} outerRadius={65} dataKey="value" strokeWidth={2} stroke="hsl(var(--card))">
-                          {pieSalidas.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={(v: number) => $$(v)} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="flex-1 space-y-2">
-                      {pieSalidas.map((e, i) => (
-                        <div key={e.name} className="flex items-center justify-between text-[12px]">
-                          <span className="flex items-center gap-1.5">
-                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                            {e.name}
-                          </span>
-                          <span className="font-medium">{$$(e.value)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <AnalyticsChartCard
+              eyebrow="Uso del efectivo"
+              title="Composición de salidas"
+              description="Dónde se está utilizando el capital de esta caja."
+              meta={<ArrowUpRight className="h-4 w-4 text-destructive" />}
+            >
+              <DonutBreakdown
+                data={pieSalidas.map((item, index) => ({ ...item, color: [ANALYTICS_COLORS.danger, ANALYTICS_COLORS.warning, ANALYTICS_COLORS.primary, ANALYTICS_COLORS.violet, ANALYTICS_COLORS.slate][index] }))}
+                centerLabel="Salidas"
+                centerValue={$$(flujoData.totalSalidas)}
+              />
+            </AnalyticsChartCard>
 
             {/* Bar chart: Entradas vs Salidas */}
-            <Card className="lg:col-span-2">
-              <CardContent className="p-5">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-primary" />Entradas vs Salidas
-                </h3>
-                {flujoData.totalEntradas === 0 && flujoData.totalSalidas === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Sin movimientos</p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={[
-                      { name: "Entradas", monto: flujoData.totalEntradas },
-                      { name: "Salidas", monto: flujoData.totalSalidas },
-                      { name: "Flujo Neto", monto: flujoData.flujoNeto },
-                    ]} barSize={40}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 11 }} tickFormatter={v => $$(v)} width={80} />
-                      <Tooltip formatter={(v: number) => $$(v)} />
-                      <Bar dataKey="monto" radius={[6, 6, 0, 0]}>
-                        <Cell fill="hsl(142, 71%, 45%)" />
-                        <Cell fill="hsl(0, 84%, 60%)" />
-                        <Cell fill={flujoData.flujoNeto >= 0 ? "hsl(217, 91%, 60%)" : "hsl(38, 92%, 50%)"} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+            <AnalyticsChartCard
+              className="lg:col-span-2"
+              eyebrow="Balance operativo"
+              title="Entradas vs. salidas"
+              description="Lectura rápida del movimiento acumulado y el efectivo neto."
+              meta={<TrendPill value={$$(Math.abs(flujoData.flujoNeto))} label={flujoData.flujoNeto >= 0 ? "flujo positivo" : "flujo negativo"} tone={flujoData.flujoNeto >= 0 ? "positive" : "negative"} />}
+            >
+              {flujoData.totalEntradas === 0 && flujoData.totalSalidas === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Sin movimientos</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={[
+                    { name: "Entradas", monto: flujoData.totalEntradas },
+                    { name: "Salidas", monto: flujoData.totalSalidas },
+                    { name: "Flujo neto", monto: flujoData.flujoNeto },
+                  ]} barSize={48} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="4 8" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} dy={8} />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => `$${(Number(v) / 1000).toFixed(0)}k`} width={52} axisLine={false} tickLine={false} />
+                    <Tooltip cursor={{ fill: "rgba(148,163,184,.08)" }} content={<AnalyticsTooltip />} />
+                    <Bar dataKey="monto" name="Monto" radius={[9, 9, 3, 3]}>
+                      <Cell fill={ANALYTICS_COLORS.success} />
+                      <Cell fill={ANALYTICS_COLORS.danger} />
+                      <Cell fill={flujoData.flujoNeto >= 0 ? ANALYTICS_COLORS.blue : ANALYTICS_COLORS.warning} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </AnalyticsChartCard>
 
             {/* Summary card: Cartera */}
             <Card className="lg:col-span-2">

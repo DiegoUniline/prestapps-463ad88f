@@ -16,8 +16,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, AreaChart, Area,
+  Legend, AreaChart, Area, ComposedChart, Line,
 } from "recharts";
+import {
+  ANALYTICS_COLORS,
+  AnalyticsChartCard,
+  AnalyticsTooltip,
+  DonutBreakdown,
+  TrendPill,
+} from "@/components/analytics/ChartPrimitives";
 import {
   DollarSign, TrendingUp, AlertTriangle, Clock, Users, Wallet,
   CalendarClock, Landmark, ArrowRight, Percent, ShieldAlert,
@@ -30,13 +37,6 @@ import {
 import { cn, $$, fmtDate } from "@/lib/utils";
 
 const pct = (n: number) => `${n.toFixed(1)}%`;
-
-const tooltipStyle = {
-  backgroundColor: "hsl(var(--card))",
-  border: "1px solid hsl(var(--border))",
-  borderRadius: "var(--radius)",
-  fontSize: 12,
-};
 
 type DashboardMovimiento = {
   tipo?: string | null;
@@ -93,24 +93,21 @@ function useDashboardData(empresaId: string) {
   });
 }
 
-const PIE_COLORS = [
-  "hsl(var(--primary))", "hsl(var(--success))", "hsl(var(--warning))",
-  "hsl(var(--destructive))", "hsl(217, 91%, 60%)", "hsl(280, 67%, 55%)",
-  "hsl(32, 95%, 50%)",
-];
-
 function KPI({ title, value, icon: Icon, accent, sub, trend, large }: {
   title: string; value: string; icon: any; accent: string; sub?: string;
   trend?: "up" | "down" | null; large?: boolean;
 }) {
   return (
     <div className={cn(
-      "bg-card rounded-lg border border-border shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]",
+      "group relative overflow-hidden rounded-xl border border-border/70 bg-card shadow-[0_16px_35px_-30px_rgba(15,23,42,.42)] transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_20px_44px_-30px_rgba(240,20,77,.28)]",
       large ? "px-5 py-4" : "px-4 py-3",
     )}>
+      <div className="pointer-events-none absolute -right-6 -top-8 h-20 w-20 rounded-full bg-primary/[0.045] blur-2xl transition-colors group-hover:bg-primary/[0.08]" />
       <div className="flex items-center justify-between">
         <p className={cn("font-medium text-muted-foreground uppercase tracking-wider", large ? "text-[12px]" : "text-[11px]")}>{title}</p>
-        <Icon className={cn(large ? "h-5 w-5" : "h-4 w-4", accent)} />
+        <span className="rounded-lg border border-border/60 bg-muted/35 p-1.5">
+          <Icon className={cn(large ? "h-[18px] w-[18px]" : "h-3.5 w-3.5", accent)} />
+        </span>
       </div>
       <div className="flex items-baseline gap-1.5 mt-1">
         <p className={cn("font-semibold", large ? "text-2xl" : "text-lg")}>{value}</p>
@@ -333,6 +330,18 @@ export default function DashboardPage() {
       colocacionMes.push({ mes: label, colocado: col, cobrado: cob, mora: mor, interes: int, capital: cap });
     }
 
+    const currentPeriod = colocacionMes[colocacionMes.length - 1];
+    const previousPeriod = colocacionMes[colocacionMes.length - 2];
+    const variation = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
+    const monthlyTrend = {
+      collected: variation(currentPeriod.cobrado, previousPeriod.cobrado),
+      placed: variation(currentPeriod.colocado, previousPeriod.colocado),
+      arrears: variation(currentPeriod.mora, previousPeriod.mora),
+    };
+
     // Pies
     const estadoCount: Record<string, number> = {};
     for (const p of prestamos) { const e = p.estado || "Activo"; estadoCount[e] = (estadoCount[e] || 0) + 1; }
@@ -377,7 +386,7 @@ export default function DashboardPage() {
       cobradoMes, ingresoFinancieroMes, gastosMes, gananciaMes, montoVenceHoy, cuotasVencenHoy: cuotasVencenHoy.length,
       prestamosEnRiesgo, topDeudores,
       totalPrestamos: prestamos.length, totalActivos: activos.length, totalLiquidados: liquidados.length,
-      totalJuridicos: juridicos.length, cuotasHoy, colocacionMes,
+      totalJuridicos: juridicos.length, cuotasHoy, colocacionMes, monthlyTrend,
       estadoPie, saldoPie, freqPie, cuotaStatusPie,
       cobradorStats, rutaStats, cajasData, cobradoresChart,
     };
@@ -691,31 +700,42 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-sm font-semibold">Movimiento de los últimos 6 meses</CardTitle>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Compara lo colocado, lo cobrado y la mora sin salir del resumen.</p>
-                </div>
-                <button onClick={() => navigate("/rentabilidad")} className="text-[11px] text-primary flex items-center gap-1 hover:underline">Ver rentabilidad <ArrowRight className="h-3 w-3" /></button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={210}>
-                <BarChart data={stats.colocacionMes} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} width={48} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                  <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Bar dataKey="colocado" name="Colocado" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="cobrado" name="Cobrado" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="mora" name="Mora" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <AnalyticsChartCard
+            eyebrow="Pulso del negocio"
+            title="Movimiento de los últimos 6 meses"
+            description="Colocación, recuperación y mora en una sola lectura."
+            meta={(
+              <TrendPill
+                value={`${Math.abs(stats.monthlyTrend.collected).toFixed(1)}%`}
+                label="cobranza vs. mes anterior"
+                tone={stats.monthlyTrend.collected >= 0 ? "positive" : "negative"}
+              />
+            )}
+            action={<button onClick={() => navigate("/rentabilidad")} className="text-[11px] font-semibold text-primary flex items-center gap-1 hover:opacity-75">Ver rentabilidad <ArrowRight className="h-3 w-3" /></button>}
+          >
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={stats.colocacionMes} margin={{ top: 12, right: 6, left: -8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="dashboardPlaced" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={ANALYTICS_COLORS.primary} stopOpacity={0.92} />
+                    <stop offset="100%" stopColor={ANALYTICS_COLORS.primary} stopOpacity={0.34} />
+                  </linearGradient>
+                  <linearGradient id="dashboardCollected" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={ANALYTICS_COLORS.success} stopOpacity={0.28} />
+                    <stop offset="100%" stopColor={ANALYTICS_COLORS.success} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 8" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} dy={8} />
+                <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} width={52} />
+                <Tooltip cursor={{ fill: "rgba(148,163,184,.08)" }} content={<AnalyticsTooltip />} />
+                <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 11, paddingTop: 18 }} />
+                <Bar dataKey="colocado" name="Colocado" fill="url(#dashboardPlaced)" barSize={18} radius={[6, 6, 2, 2]} />
+                <Area type="monotone" dataKey="cobrado" name="Cobrado" stroke={ANALYTICS_COLORS.success} fill="url(#dashboardCollected)" strokeWidth={3} dot={false} activeDot={{ r: 5, strokeWidth: 3, stroke: "white" }} />
+                <Line type="monotone" dataKey="mora" name="Mora" stroke={ANALYTICS_COLORS.danger} strokeWidth={2.4} strokeDasharray="4 4" dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </AnalyticsChartCard>
         </TabsContent>
 
         {/* ════════════════════════════════════════════════════
@@ -771,23 +791,35 @@ export default function DashboardPage() {
           </Card>
 
           {/* Comparativa mensual interés vs capital */}
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Capital vs Interés Cobrado (6 meses)</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={stats.colocacionMes} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="capital" name="Capital" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="interes" name="Interés" fill="hsl(var(--success))" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="mora" name="Mora" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <AnalyticsChartCard
+            eyebrow="Calidad del ingreso"
+            title="Capital vs. ingreso financiero"
+            description="Separa la recuperación de capital del interés y la mora cobrados."
+            meta={<TrendPill value={pct(stats.rendimientoCartera)} label="rendimiento de cartera" tone="positive" />}
+          >
+            <ResponsiveContainer width="100%" height={280}>
+              <ComposedChart data={stats.colocacionMes} margin={{ top: 10, right: 6, left: -8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="financialCapital" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={ANALYTICS_COLORS.primary} stopOpacity={0.9} />
+                    <stop offset="100%" stopColor={ANALYTICS_COLORS.primary} stopOpacity={0.3} />
+                  </linearGradient>
+                  <linearGradient id="financialInterest" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={ANALYTICS_COLORS.success} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={ANALYTICS_COLORS.success} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 8" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} dy={8} />
+                <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} width={52} />
+                <Tooltip content={<AnalyticsTooltip />} />
+                <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 11, paddingTop: 18 }} />
+                <Bar dataKey="capital" name="Capital recuperado" fill="url(#financialCapital)" barSize={19} radius={[6, 6, 2, 2]} />
+                <Area type="monotone" dataKey="interes" name="Interés" stroke={ANALYTICS_COLORS.success} fill="url(#financialInterest)" strokeWidth={2.8} dot={false} />
+                <Line type="monotone" dataKey="mora" name="Mora cobrada" stroke={ANALYTICS_COLORS.warning} strokeWidth={2.2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </AnalyticsChartCard>
         </TabsContent>
 
         {/* ════════════════════════════════════════════════════
@@ -852,40 +884,60 @@ export default function DashboardPage() {
           </div>
 
           {/* Cobrado por cobrador chart */}
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Cobrado por Cobrador</CardTitle></CardHeader>
-            <CardContent>
-              {stats.cobradoresChart.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={stats.cobradoresChart} layout="vertical" barSize={16}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                    <YAxis type="category" dataKey="nombre" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} width={70} />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="cobrado" name="Cobrado" fill="hsl(var(--success))" radius={[0, 3, 3, 0]} />
-                    <Bar dataKey="saldo" name="Saldo" fill="hsl(var(--primary))" radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+          <AnalyticsChartCard
+            eyebrow="Equipo de calle"
+            title="Cobranza por cobrador"
+            description="Compara lo recuperado frente al saldo aún asignado."
+            action={<button onClick={() => navigate("/cobradores")} className="text-[11px] font-semibold text-primary flex items-center gap-1 hover:opacity-75">Ver equipo <ArrowRight className="h-3 w-3" /></button>}
+          >
+            {stats.cobradoresChart.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={stats.cobradoresChart} layout="vertical" barSize={12} barGap={5} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="collectorPaid" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={ANALYTICS_COLORS.success} stopOpacity={0.45} />
+                      <stop offset="100%" stopColor={ANALYTICS_COLORS.success} stopOpacity={1} />
+                    </linearGradient>
+                    <linearGradient id="collectorBalance" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={ANALYTICS_COLORS.primary} stopOpacity={0.32} />
+                      <stop offset="100%" stopColor={ANALYTICS_COLORS.primary} stopOpacity={0.85} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 8" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="nombre" tick={{ fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 600 }} width={78} axisLine={false} tickLine={false} />
+                  <Tooltip cursor={{ fill: "rgba(148,163,184,.08)" }} content={<AnalyticsTooltip />} />
+                  <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 11, paddingTop: 14 }} />
+                  <Bar dataKey="cobrado" name="Cobrado" fill="url(#collectorPaid)" radius={[0, 7, 7, 0]} />
+                  <Bar dataKey="saldo" name="Saldo asignado" fill="url(#collectorBalance)" radius={[0, 7, 7, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </AnalyticsChartCard>
 
           {/* Cobranza mensual trend */}
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tendencia de Cobranza (6 meses)</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={stats.colocacionMes}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                  <Area type="monotone" dataKey="cobrado" name="Cobrado" stroke="hsl(var(--success))" fill="hsl(var(--success))" fillOpacity={0.15} strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+          <AnalyticsChartCard
+            eyebrow="Velocidad de recuperación"
+            title="Tendencia de cobranza"
+            description="Evolución mensual del efectivo recuperado."
+            meta={<TrendPill value={`${Math.abs(stats.monthlyTrend.collected).toFixed(1)}%`} label="último mes" tone={stats.monthlyTrend.collected >= 0 ? "positive" : "negative"} />}
+          >
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={stats.colocacionMes} margin={{ top: 12, right: 6, left: -8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="collectionTrend" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={ANALYTICS_COLORS.success} stopOpacity={0.36} />
+                    <stop offset="100%" stopColor={ANALYTICS_COLORS.success} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="4 8" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} dy={8} />
+                <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} width={52} />
+                <Tooltip content={<AnalyticsTooltip />} />
+                <Area type="monotone" dataKey="cobrado" name="Cobrado" stroke={ANALYTICS_COLORS.success} fill="url(#collectionTrend)" strokeWidth={3} dot={false} activeDot={{ r: 5, strokeWidth: 3, stroke: "white" }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </AnalyticsChartCard>
         </TabsContent>
 
         {/* ════════════════════════════════════════════════════
@@ -908,91 +960,66 @@ export default function DashboardPage() {
 
           {/* Charts row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Estado de Cartera</CardTitle></CardHeader>
-              <CardContent>
-                {stats.estadoPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie data={stats.estadoPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10}>
-                        {stats.estadoPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+            <AnalyticsChartCard eyebrow="Composición" title="Estado de cartera" description="Distribución de préstamos por situación.">
+              <DonutBreakdown
+                data={stats.estadoPie}
+                centerLabel="Préstamos"
+                centerValue={stats.totalPrestamos.toLocaleString("es-MX")}
+                valueFormatter={(value) => value.toLocaleString("es-MX")}
+              />
+            </AnalyticsChartCard>
 
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Composición del Saldo</CardTitle></CardHeader>
-              <CardContent>
-                {stats.saldoPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie data={stats.saldoPie} dataKey="value" cx="50%" cy="50%" innerRadius={45} outerRadius={80} label={({ name, value }) => `${name}: ${$$(value)}`} labelLine={false} fontSize={10}>
-                        {stats.saldoPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
-                      </Pie>
-                      <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+            <AnalyticsChartCard eyebrow="Exposición" title="Composición del saldo" description="Qué parte corresponde a capital, interés y mora.">
+              <DonutBreakdown
+                data={stats.saldoPie}
+                centerLabel="Por cobrar"
+                centerValue={$$(stats.saldoPorCobrar)}
+              />
+            </AnalyticsChartCard>
 
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Estado de Cuotas</CardTitle></CardHeader>
-              <CardContent>
-                {stats.cuotaStatusPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <PieChart>
-                      <Pie data={stats.cuotaStatusPie} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={75} label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10}>
-                        {stats.cuotaStatusPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+            <AnalyticsChartCard eyebrow="Operación" title="Estado de cuotas" description="Cuotas pagadas, pendientes y vencidas.">
+              <DonutBreakdown
+                data={stats.cuotaStatusPie}
+                centerLabel="Cuotas"
+                centerValue={stats.totalCuotas.toLocaleString("es-MX")}
+                valueFormatter={(value) => value.toLocaleString("es-MX")}
+              />
+            </AnalyticsChartCard>
           </div>
 
           {/* Frecuencia + Mora trend */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Frecuencia de Pago</CardTitle></CardHeader>
-              <CardContent>
-                {stats.freqPie.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">Sin datos</p> : (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <PieChart>
-                      <Pie data={stats.freqPie} dataKey="value" cx="50%" cy="50%" innerRadius={40} outerRadius={70} label={({ name, value }) => `${name} (${value})`} labelLine={false} fontSize={10}>
-                        {stats.freqPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </CardContent>
-            </Card>
+            <AnalyticsChartCard eyebrow="Hábitos de pago" title="Frecuencia de cartera" description="Cómo se reparte la cartera activa por periodicidad.">
+              <DonutBreakdown
+                data={stats.freqPie}
+                centerLabel="Activos"
+                centerValue={stats.totalActivos.toLocaleString("es-MX")}
+                valueFormatter={(value) => value.toLocaleString("es-MX")}
+              />
+            </AnalyticsChartCard>
 
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tendencia de Mora</CardTitle></CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={stats.colocacionMes}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} />
-                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${v}`} />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => $$(v)} />
-                    <Area type="monotone" dataKey="mora" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.15} strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <AnalyticsChartCard
+              eyebrow="Riesgo"
+              title="Tendencia de mora"
+              description="Mora recuperada por mes; menos exposición es mejor."
+              meta={<TrendPill value={`${Math.abs(stats.monthlyTrend.arrears).toFixed(1)}%`} label="último mes" tone={stats.monthlyTrend.arrears <= 0 ? "positive" : "negative"} />}
+            >
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={stats.colocacionMes} margin={{ top: 12, right: 6, left: -8, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="arrearsTrend" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={ANALYTICS_COLORS.danger} stopOpacity={0.32} />
+                      <stop offset="100%" stopColor={ANALYTICS_COLORS.danger} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 8" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis dataKey="mes" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} dy={8} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} width={52} />
+                  <Tooltip content={<AnalyticsTooltip />} />
+                  <Area type="monotone" dataKey="mora" name="Mora" stroke={ANALYTICS_COLORS.danger} fill="url(#arrearsTrend)" strokeWidth={3} dot={false} activeDot={{ r: 5, strokeWidth: 3, stroke: "white" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </AnalyticsChartCard>
           </div>
 
           {/* Rutas */}
