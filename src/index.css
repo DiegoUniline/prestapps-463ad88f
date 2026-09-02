@@ -8,7 +8,7 @@
   :root {
     --font-sans: 'Inter', system-ui, sans-serif;
 
-    --background: 0 0% 94%;
+    --background: 220 20% 97%;
     --foreground: 0 0% 7%;
 
     --card: 0 0% 100%;
@@ -38,11 +38,11 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
+    --border: 220 16% 90%;
+    --input: 220 16% 90%;
     --ring: 345 88% 51%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Odoo-specific tokens */
     --table-header: 220 14% 97%;
@@ -77,13 +77,13 @@
   }
 
   .dark {
-    --background: 0 0% 5%;
+    --background: 225 16% 6%;
     --foreground: 0 0% 96%;
 
-    --card: 0 0% 10%;
+    --card: 225 13% 9%;
     --card-foreground: 0 0% 96%;
 
-    --popover: 0 0% 10%;
+    --popover: 225 13% 9%;
     --popover-foreground: 0 0% 96%;
 
     --primary: 345 88% 51%;
