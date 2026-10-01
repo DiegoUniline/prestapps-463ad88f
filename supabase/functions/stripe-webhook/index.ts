@@ -28,6 +28,20 @@ function getReadableError(code: string, message: string): string {
   return map[code] || message || "Error al procesar el pago";
 }
 
+// True when the subscription already has a paid invoice covering today.
+async function hasPaidCurrentPeriod(supabase: any, suscripcionId: string): Promise<boolean> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("facturas")
+    .select("id")
+    .eq("suscripcion_id", suscripcionId)
+    .eq("estado", "pagada")
+    .lte("periodo_inicio", today)
+    .gte("periodo_fin", today)
+    .limit(1);
+  return Array.isArray(data) && data.length > 0;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
