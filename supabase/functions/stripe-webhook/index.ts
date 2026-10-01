@@ -279,11 +279,38 @@ serve(async (req) => {
         if (customerId) {
           const { data: suscripcionData } = await supabase
             .from("suscripciones")
-            .select("empresa_id")
+            .select("id, empresa_id, stripe_subscription_id")
             .eq("stripe_customer_id", customerId)
-            .single();
+            .maybeSingle();
+
+          // Ignore charges coming from a duplicate / unlinked Stripe subscription
+          let chargeSubId: string | null = null;
+          try {
+            const invoiceId = (charge.invoice as string) || null;
+            if (invoiceId) {
+              const inv = await stripe.invoices.retrieve(invoiceId);
+              chargeSubId = ((inv as any).subscription as string) ||
+                ((inv as any).parent?.subscription_details?.subscription as string) || null;
+            }
+          } catch (e) {
+            logStep("Could not resolve invoice for charge", { error: String(e) });
+          }
+
+          if (
+            chargeSubId && suscripcionData?.stripe_subscription_id &&
+            chargeSubId !== suscripcionData.stripe_subscription_id
+          ) {
+            logStep("Skip failed-charge alert: duplicate subscription", { chargeSubId });
+            break;
+          }
+
+          if (suscripcionData?.id && (await hasPaidCurrentPeriod(supabase, suscripcionData.id))) {
+            logStep("Skip failed-charge alert: current period already paid");
+            break;
+          }
 
           if (suscripcionData?.empresa_id) {
+
             // Get empresa name for personalized message
             const { data: empresaData } = await supabase
               .from("empresas")
