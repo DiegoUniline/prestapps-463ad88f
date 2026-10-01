@@ -28,6 +28,20 @@ function getReadableError(code: string, message: string): string {
   return map[code] || message || "Error al procesar el pago";
 }
 
+// True when the subscription already has a paid invoice covering today.
+async function hasPaidCurrentPeriod(supabase: any, suscripcionId: string): Promise<boolean> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("facturas")
+    .select("id")
+    .eq("suscripcion_id", suscripcionId)
+    .eq("estado", "pagada")
+    .lte("periodo_inicio", today)
+    .gte("periodo_fin", today)
+    .limit(1);
+  return Array.isArray(data) && data.length > 0;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -227,6 +241,20 @@ serve(async (req) => {
 
         logStep("Subscription updated", { subId, stripeStatus: sub.status, dbEstado });
 
+        // Never downgrade an account that already paid the current period
+        if (dbEstado === "gracia" || dbEstado === "suspendida") {
+          const { data: dbSub } = await supabase
+            .from("suscripciones")
+            .select("id")
+            .eq("stripe_subscription_id", subId)
+            .maybeSingle();
+
+          if (dbSub?.id && (await hasPaidCurrentPeriod(supabase, dbSub.id))) {
+            logStep("Skip downgrade: current period already paid", { subId });
+            break;
+          }
+        }
+
         await supabase
           .from("suscripciones")
           .update({ estado: dbEstado, actualizado_en: new Date().toISOString() })
@@ -234,6 +262,7 @@ serve(async (req) => {
 
         break;
       }
+
 
       // ── Subscription deleted/cancelled ──
       case "customer.subscription.deleted": {
@@ -264,11 +293,38 @@ serve(async (req) => {
         if (customerId) {
           const { data: suscripcionData } = await supabase
             .from("suscripciones")
-            .select("empresa_id")
+            .select("id, empresa_id, stripe_subscription_id")
             .eq("stripe_customer_id", customerId)
-            .single();
+            .maybeSingle();
+
+          // Ignore charges coming from a duplicate / unlinked Stripe subscription
+          let chargeSubId: string | null = null;
+          try {
+            const invoiceId = (charge.invoice as string) || null;
+            if (invoiceId) {
+              const inv = await stripe.invoices.retrieve(invoiceId);
+              chargeSubId = ((inv as any).subscription as string) ||
+                ((inv as any).parent?.subscription_details?.subscription as string) || null;
+            }
+          } catch (e) {
+            logStep("Could not resolve invoice for charge", { error: String(e) });
+          }
+
+          if (
+            chargeSubId && suscripcionData?.stripe_subscription_id &&
+            chargeSubId !== suscripcionData.stripe_subscription_id
+          ) {
+            logStep("Skip failed-charge alert: duplicate subscription", { chargeSubId });
+            break;
+          }
+
+          if (suscripcionData?.id && (await hasPaidCurrentPeriod(supabase, suscripcionData.id))) {
+            logStep("Skip failed-charge alert: current period already paid");
+            break;
+          }
 
           if (suscripcionData?.empresa_id) {
+
             // Get empresa name for personalized message
             const { data: empresaData } = await supabase
               .from("empresas")
