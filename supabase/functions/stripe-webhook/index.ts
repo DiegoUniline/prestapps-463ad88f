@@ -227,6 +227,20 @@ serve(async (req) => {
 
         logStep("Subscription updated", { subId, stripeStatus: sub.status, dbEstado });
 
+        // Never downgrade an account that already paid the current period
+        if (dbEstado === "gracia" || dbEstado === "suspendida") {
+          const { data: dbSub } = await supabase
+            .from("suscripciones")
+            .select("id")
+            .eq("stripe_subscription_id", subId)
+            .maybeSingle();
+
+          if (dbSub?.id && (await hasPaidCurrentPeriod(supabase, dbSub.id))) {
+            logStep("Skip downgrade: current period already paid", { subId });
+            break;
+          }
+        }
+
         await supabase
           .from("suscripciones")
           .update({ estado: dbEstado, actualizado_en: new Date().toISOString() })
@@ -234,6 +248,7 @@ serve(async (req) => {
 
         break;
       }
+
 
       // ── Subscription deleted/cancelled ──
       case "customer.subscription.deleted": {
