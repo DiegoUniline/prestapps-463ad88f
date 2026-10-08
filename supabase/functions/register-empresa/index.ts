@@ -242,7 +242,8 @@ serve(async (req) => {
     logStep("Default folios created");
 
     const fecha = new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City" });
-    await sendWa(supabase, [ADMIN_PHONE], `🆕 *Nueva empresa registrada en PrestApp*\n\n🏢 Empresa: ${nombre_empresa}\n👤 Responsable: ${nombre_completo}\n📧 Correo: ${email}\n📱 Teléfono: +${lada_pais} ${telDigits} (verificado ✅)\n🎁 Plan: Prueba ${TRIAL_DAYS} días (vence ${trialEnd.toISOString().split("T")[0]})\n🆔 ID: ${empresa.id}\n🕒 Fecha: ${fecha}`);
+    const alertaAdmin = await sendWaRetry(supabase, [ADMIN_PHONE], `🆕 *Nueva empresa registrada en PrestApp*\n\n🏢 Empresa: ${nombre_empresa}\n👤 Responsable: ${nombre_completo}\n📧 Correo: ${email}\n📱 Teléfono: +${lada_pais} ${telDigits} (verificado ✅)\n🎁 Plan: Prueba ${TRIAL_DAYS} días (vence ${trialEnd.toISOString().split("T")[0]})\n🆔 ID: ${empresa.id}\n🕒 Fecha: ${fecha}`);
+    if (!alertaAdmin) logStep("WARNING: alerta de alta no llegó al administrador", { empresaId: empresa.id });
 
     logStep("Registration complete", { userId, empresaId: empresa.id });
 
