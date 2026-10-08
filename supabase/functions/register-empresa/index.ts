@@ -107,6 +107,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (!email || !password || !nombre_completo || !nombre_empresa) {
+      throw new Error("Faltan campos requeridos: email, password, nombre_completo, nombre_empresa");
+    }
+
     // Verify OTP
     if (!otp) throw new Error("Ingresa el código que te enviamos por WhatsApp");
     const { data: otpRows } = await supabase.from("otp_registro").select("*")
@@ -126,10 +130,6 @@ serve(async (req) => {
       throw new Error(activo ? "Código incorrecto" : "El código expiró. Solicita uno nuevo.");
     }
     await supabase.from("otp_registro").update({ usado: true }).eq("id", otpRow.id);
-
-    if (!email || !password || !nombre_completo || !nombre_empresa) {
-      throw new Error("Faltan campos requeridos: email, password, nombre_completo, nombre_empresa");
-    }
 
     logStep("Creating user", { email, nombre_empresa });
 
