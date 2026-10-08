@@ -47,6 +47,17 @@ async function sendWa(supabase: any, phones: string[], message: string) {
   return false;
 }
 
+async function sendWaRetry(supabase: any, phones: string[], message: string, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    if (await sendWa(supabase, phones, message)) return true;
+    if (i < tries - 1) {
+      logStep("WA retry", { attempt: i + 1 });
+      await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+    }
+  }
+  return false;
+}
+
 function phoneCandidates(lada: string, tel: string) {
   const d = tel.replace(/\D/g, "");
   return lada === "52" ? [`52${d}`, `521${d}`] : [`${lada}${d}`];
