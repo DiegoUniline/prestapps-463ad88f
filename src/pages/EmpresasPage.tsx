@@ -80,7 +80,7 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
       const { data, error } = await supabase
         .from("empresas")
         .select("id, nombre, ruc, telefono, direccion, logo_url, activa, created_at, plan, max_usuarios, lada_pais")
-        .order("nombre");
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return (data as unknown) as Empresa[];
     },
