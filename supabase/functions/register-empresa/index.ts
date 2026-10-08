@@ -47,6 +47,17 @@ async function sendWa(supabase: any, phones: string[], message: string) {
   return false;
 }
 
+async function sendWaRetry(supabase: any, phones: string[], message: string, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    if (await sendWa(supabase, phones, message)) return true;
+    if (i < tries - 1) {
+      logStep("WA retry", { attempt: i + 1 });
+      await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+    }
+  }
+  return false;
+}
+
 function phoneCandidates(lada: string, tel: string) {
   const d = tel.replace(/\D/g, "");
   return lada === "52" ? [`52${d}`, `521${d}`] : [`${lada}${d}`];
@@ -78,6 +89,9 @@ serve(async (req) => {
 
     if (body.action === "send_otp") {
       if (!email || !nombre_empresa) throw new Error("Faltan datos");
+      // Higiene: borra códigos vencidos o usados de hace más de un día.
+      await supabase.from("otp_registro").delete()
+        .lt("expires_at", new Date(Date.now() - 24 * 60 * 60000).toISOString());
       const { data: recent } = await supabase.from("otp_registro").select("id")
         .eq("email", email).gte("created_at", new Date(Date.now() - 10 * 60000).toISOString());
       if ((recent?.length || 0) >= 3) throw new Error("Demasiados códigos solicitados. Intenta en 10 minutos.");
@@ -87,28 +101,35 @@ serve(async (req) => {
         code_hash: await sha256(`${email}:${code}`),
         expires_at: new Date(Date.now() + 10 * 60000).toISOString(),
       });
-      const ok = await sendWa(supabase, phoneCandidates(lada_pais, telDigits),
+      const ok = await sendWaRetry(supabase, phoneCandidates(lada_pais, telDigits),
         `🔐 Tu código de verificación de PrestApp es: *${code}*\n\nVence en 10 minutos. No lo compartas con nadie.`);
       if (!ok) throw new Error("No pudimos enviar el código por WhatsApp. Verifica tu número.");
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Verify OTP
-    if (!otp) throw new Error("Ingresa el código que te enviamos por WhatsApp");
-    const { data: otpRow } = await supabase.from("otp_registro").select("*")
-      .eq("email", email).eq("usado", false).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (!otpRow || new Date(otpRow.expires_at) < new Date()) throw new Error("El código expiró. Solicita uno nuevo.");
-    if (otpRow.intentos >= 5) throw new Error("Demasiados intentos. Solicita un código nuevo.");
-    if (otpRow.telefono !== `${lada_pais}${telDigits}`) throw new Error("El teléfono no coincide con el código enviado.");
-    if ((await sha256(`${email}:${String(otp).trim()}`)) !== otpRow.code_hash) {
-      await supabase.from("otp_registro").update({ intentos: otpRow.intentos + 1 }).eq("id", otpRow.id);
-      throw new Error("Código incorrecto");
-    }
-    await supabase.from("otp_registro").update({ usado: true }).eq("id", otpRow.id);
-
     if (!email || !password || !nombre_completo || !nombre_empresa) {
       throw new Error("Faltan campos requeridos: email, password, nombre_completo, nombre_empresa");
     }
+
+    // Verify OTP
+    if (!otp) throw new Error("Ingresa el código que te enviamos por WhatsApp");
+    const { data: otpRows } = await supabase.from("otp_registro").select("*")
+      .eq("email", email).eq("usado", false).order("created_at", { ascending: false }).limit(3);
+    const hash = await sha256(`${email}:${String(otp).trim()}`);
+    const otpRow = (otpRows || []).find((r: any) =>
+      r.telefono === `${lada_pais}${telDigits}` &&
+      new Date(r.expires_at) >= new Date() &&
+      r.code_hash === hash
+    );
+    if (!otpRow) {
+      const activo = (otpRows || []).find((r: any) =>
+        r.telefono === `${lada_pais}${telDigits}` && new Date(r.expires_at) >= new Date()
+      );
+      if (activo && activo.intentos >= 5) throw new Error("Demasiados intentos. Solicita un código nuevo.");
+      if (activo) await supabase.from("otp_registro").update({ intentos: activo.intentos + 1 }).eq("id", activo.id);
+      throw new Error(activo ? "Código incorrecto" : "El código expiró. Solicita uno nuevo.");
+    }
+    await supabase.from("otp_registro").update({ usado: true }).eq("id", otpRow.id);
 
     logStep("Creating user", { email, nombre_empresa });
 
@@ -221,7 +242,8 @@ serve(async (req) => {
     logStep("Default folios created");
 
     const fecha = new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City" });
-    await sendWa(supabase, [ADMIN_PHONE], `🆕 *Nueva empresa registrada en PrestApp*\n\n🏢 Empresa: ${nombre_empresa}\n👤 Responsable: ${nombre_completo}\n📧 Correo: ${email}\n📱 Teléfono: +${lada_pais} ${telDigits} (verificado ✅)\n🎁 Plan: Prueba ${TRIAL_DAYS} días (vence ${trialEnd.toISOString().split("T")[0]})\n🆔 ID: ${empresa.id}\n🕒 Fecha: ${fecha}`);
+    const alertaAdmin = await sendWaRetry(supabase, [ADMIN_PHONE], `🆕 *Nueva empresa registrada en PrestApp*\n\n🏢 Empresa: ${nombre_empresa}\n👤 Responsable: ${nombre_completo}\n📧 Correo: ${email}\n📱 Teléfono: +${lada_pais} ${telDigits} (verificado ✅)\n🎁 Plan: Prueba ${TRIAL_DAYS} días (vence ${trialEnd.toISOString().split("T")[0]})\n🆔 ID: ${empresa.id}\n🕒 Fecha: ${fecha}`);
+    if (!alertaAdmin) logStep("WARNING: alerta de alta no llegó al administrador", { empresaId: empresa.id });
 
     logStep("Registration complete", { userId, empresaId: empresa.id });
 
