@@ -1104,6 +1104,39 @@ export type Database = {
           },
         ]
       }
+      otp_registro: {
+        Row: {
+          code_hash: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          intentos: number
+          telefono: string
+          usado: boolean
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          intentos?: number
+          telefono: string
+          usado?: boolean
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          intentos?: number
+          telefono?: string
+          usado?: boolean
+        }
+        Relationships: []
+      }
       pagos: {
         Row: {
           anulado: boolean
