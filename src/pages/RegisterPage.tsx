@@ -44,6 +44,8 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
 
   const selectedCountry = useMemo(
     () => COUNTRY_CODES.find((c) => c.code === form.lada_pais) || COUNTRY_CODES[0],
@@ -51,7 +53,7 @@ export default function RegisterPage() {
   );
 
   const phoneDigitsOnly = form.telefono.replace(/\D/g, "");
-  const isPhoneValid = !form.telefono.trim() || selectedCountry.digits.includes(phoneDigitsOnly.length);
+  const isPhoneValid = !!form.telefono.trim() && selectedCountry.digits.includes(phoneDigitsOnly.length);
   const expectedDigits = selectedCountry.digits.join(" ó ");
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -67,8 +69,41 @@ export default function RegisterPage() {
       return;
     }
 
-    if (form.telefono.trim() && !isPhoneValid) {
+    if (!isPhoneValid) {
       toast.error(`El teléfono para ${selectedCountry.label} debe tener ${expectedDigits} dígitos`);
+      return;
+    }
+
+    if (!otpSent) {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("register-empresa", {
+          body: {
+            action: "send_otp",
+            email: form.email.trim().toLowerCase(),
+            nombre_empresa: form.nombre_empresa.trim(),
+            telefono: form.telefono.trim(),
+            lada_pais: form.lada_pais,
+          },
+        });
+        if (error) {
+          const ctx: any = (error as any).context;
+          const txt = ctx?.text ? await ctx.text() : "";
+          throw new Error((() => { try { return JSON.parse(txt).error; } catch { return error.message; } })());
+        }
+        if (data?.error) throw new Error(data.error);
+        setOtpSent(true);
+        toast.success("Te enviamos un código por WhatsApp");
+      } catch (err: any) {
+        toast.error(err.message || "No se pudo enviar el código");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (otp.trim().length !== 6) {
+      toast.error("Ingresa el código de 6 dígitos");
       return;
     }
 
@@ -76,6 +111,7 @@ export default function RegisterPage() {
     try {
       const { data, error } = await supabase.functions.invoke("register-empresa", {
         body: {
+          otp: otp.trim(),
           email: form.email.trim().toLowerCase(),
           password: form.password,
           nombre_completo: form.nombre_completo.trim(),
@@ -85,7 +121,11 @@ export default function RegisterPage() {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        const ctx: any = (error as any).context;
+        const txt = ctx?.text ? await ctx.text() : "";
+        throw new Error((() => { try { return JSON.parse(txt).error; } catch { return error.message; } })());
+      }
       if (data?.error) throw new Error(data.error);
 
       toast.success("¡Cuenta creada exitosamente! Iniciando sesión...");
@@ -180,7 +220,7 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>País y teléfono (opcional)</Label>
+                <Label>WhatsApp (te enviaremos un código) *</Label>
                 <div className="flex gap-2">
                   <Select value={form.lada_pais} onValueChange={(v) => update("lada_pais", v)}>
                     <SelectTrigger className="w-[160px] shrink-0">
@@ -240,13 +280,34 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              {otpSent && (
+                <div className="space-y-2 rounded-md border p-3">
+                  <Label htmlFor="otp">Código de verificación</Label>
+                  <Input
+                    id="otp"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="000000"
+                    inputMode="numeric"
+                    autoFocus
+                    className="text-center text-lg tracking-[0.5em]"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Lo enviamos por WhatsApp al +{form.lada_pais} {phoneDigitsOnly}.{" "}
+                    <button type="button" className="text-primary underline" onClick={() => { setOtpSent(false); setOtp(""); }}>
+                      Cambiar número / reenviar
+                    </button>
+                  </p>
+                </div>
+              )}
+
               <Button type="submit" className="w-full gap-2" disabled={loading}>
                 {loading ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
                 ) : (
                   <Sparkles className="h-4 w-4" />
                 )}
-                {loading ? "Creando cuenta..." : "Comenzar prueba gratuita"}
+                {loading ? (otpSent ? "Creando cuenta..." : "Enviando código...") : otpSent ? "Verificar y crear cuenta" : "Enviar código por WhatsApp"}
               </Button>
             </form>
 
