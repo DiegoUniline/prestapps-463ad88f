@@ -109,14 +109,21 @@ serve(async (req) => {
 
     // Verify OTP
     if (!otp) throw new Error("Ingresa el código que te enviamos por WhatsApp");
-    const { data: otpRow } = await supabase.from("otp_registro").select("*")
-      .eq("email", email).eq("usado", false).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (!otpRow || new Date(otpRow.expires_at) < new Date()) throw new Error("El código expiró. Solicita uno nuevo.");
-    if (otpRow.intentos >= 5) throw new Error("Demasiados intentos. Solicita un código nuevo.");
-    if (otpRow.telefono !== `${lada_pais}${telDigits}`) throw new Error("El teléfono no coincide con el código enviado.");
-    if ((await sha256(`${email}:${String(otp).trim()}`)) !== otpRow.code_hash) {
-      await supabase.from("otp_registro").update({ intentos: otpRow.intentos + 1 }).eq("id", otpRow.id);
-      throw new Error("Código incorrecto");
+    const { data: otpRows } = await supabase.from("otp_registro").select("*")
+      .eq("email", email).eq("usado", false).order("created_at", { ascending: false }).limit(3);
+    const hash = await sha256(`${email}:${String(otp).trim()}`);
+    const otpRow = (otpRows || []).find((r: any) =>
+      r.telefono === `${lada_pais}${telDigits}` &&
+      new Date(r.expires_at) >= new Date() &&
+      r.code_hash === hash
+    );
+    if (!otpRow) {
+      const activo = (otpRows || []).find((r: any) =>
+        r.telefono === `${lada_pais}${telDigits}` && new Date(r.expires_at) >= new Date()
+      );
+      if (activo && activo.intentos >= 5) throw new Error("Demasiados intentos. Solicita un código nuevo.");
+      if (activo) await supabase.from("otp_registro").update({ intentos: activo.intentos + 1 }).eq("id", activo.id);
+      throw new Error(activo ? "Código incorrecto" : "El código expiró. Solicita uno nuevo.");
     }
     await supabase.from("otp_registro").update({ usado: true }).eq("id", otpRow.id);
 
