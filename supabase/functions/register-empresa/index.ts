@@ -89,6 +89,9 @@ serve(async (req) => {
 
     if (body.action === "send_otp") {
       if (!email || !nombre_empresa) throw new Error("Faltan datos");
+      // Higiene: borra códigos vencidos o usados de hace más de un día.
+      await supabase.from("otp_registro").delete()
+        .lt("expires_at", new Date(Date.now() - 24 * 60 * 60000).toISOString());
       const { data: recent } = await supabase.from("otp_registro").select("id")
         .eq("email", email).gte("created_at", new Date(Date.now() - 10 * 60000).toISOString());
       if ((recent?.length || 0) >= 3) throw new Error("Demasiados códigos solicitados. Intenta en 10 minutos.");
@@ -98,7 +101,7 @@ serve(async (req) => {
         code_hash: await sha256(`${email}:${code}`),
         expires_at: new Date(Date.now() + 10 * 60000).toISOString(),
       });
-      const ok = await sendWa(supabase, phoneCandidates(lada_pais, telDigits),
+      const ok = await sendWaRetry(supabase, phoneCandidates(lada_pais, telDigits),
         `🔐 Tu código de verificación de PrestApp es: *${code}*\n\nVence en 10 minutos. No lo compartas con nadie.`);
       if (!ok) throw new Error("No pudimos enviar el código por WhatsApp. Verifica tu número.");
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
