@@ -79,7 +79,11 @@ serve(async (req) => {
         precio_usuario_extra: precioExtra,
         periodicidad,
         estado,
-        fecha_vencimiento,
+        // An active subscription must never keep an already-past expiry date (would auto-suspend)
+        fecha_vencimiento:
+          estado === "activa" && fecha_vencimiento && String(fecha_vencimiento).slice(0, 10) < new Date().toISOString().slice(0, 10)
+            ? null
+            : fecha_vencimiento,
         descuento_porcentaje,
         notas_admin,
         es_manual: true,
