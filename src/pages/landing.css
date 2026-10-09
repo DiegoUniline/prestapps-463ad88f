@@ -35,8 +35,8 @@
 .landing-nav-links a { transition: color .25s ease; }
 .landing-nav-links a:hover { color: #fff; }
 .landing-nav-actions { display: flex; align-items: center; gap: 10px; }
-.landing-login { padding: 10px 14px; color: rgba(255,255,255,.68); font-size: .875rem; font-weight: 650; }
-.landing-login:hover { color: #fff; }
+.landing-page a.landing-login { display: inline-flex; align-items: center; height: 42px; padding: 0 18px; border: 1px solid rgba(255,255,255,.26); border-radius: 999px; background: rgba(255,255,255,.08); color: #fff; font-size: .875rem; font-weight: 700; white-space: nowrap; transition: background .25s ease, border-color .25s ease, transform .25s ease; }
+.landing-page a.landing-login:hover { color: #fff; background: rgba(255,255,255,.17); border-color: rgba(255,255,255,.45); transform: translateY(-1px); }
 
 .landing-pill { border: 0; border-radius: 999px; font-weight: 750; letter-spacing: -.015em; transition: transform .25s ease, box-shadow .25s ease, background .25s ease; }
 .landing-pill svg { width: 18px; height: 18px; margin-left: 7px; transition: transform .25s ease; }
@@ -422,7 +422,7 @@
   .landing-nav-inner { height: 66px; }
   .landing-brand { width: 128px; }
   .landing-brand img { width: 148px; }
-  .landing-login { padding: 8px 6px; font-size: .8rem; white-space: nowrap; }
+  .landing-page a.landing-login { height: 38px; padding: 0 13px; font-size: .74rem; }
   .landing-pill-small { height: 38px; padding-inline: 16px; font-size: .72rem; }
   .landing-hero { padding-top: 66px; }
   .landing-hero-content { min-height: auto; padding-top: 65px; padding-bottom: 135px; }
