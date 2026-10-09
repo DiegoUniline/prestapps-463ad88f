@@ -185,8 +185,9 @@ export default function SuperAdminBuroPage() {
             </div>
             <div className="flex items-end justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Switch checked={form.activo} disabled={!listo && !form.activo} onCheckedChange={(v) => setForm({ ...form, activo: v })} />
+                <Switch checked={form.activo} onCheckedChange={(v) => setForm({ ...form, activo: v })} />
                 <span className="text-sm">Servicio activo</span>
+                <Badge variant={listo ? "default" : "destructive"}>{produccion ? "Producción" : "Sandbox"} · {listo ? (cfg.activo ? "Activo" : "Listo") : "Incompleto"}</Badge>
               </div>
               <Button size="sm" disabled={busy === "cfg"} onClick={() => run("cfg", () => buroAdmin("save_config", form), "Configuración guardada")}>
                 {busy === "cfg" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}Guardar

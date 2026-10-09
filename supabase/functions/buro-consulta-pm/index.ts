@@ -247,8 +247,14 @@ Deno.serve(async (req) => {
     }
 
     const { data: cred } = await admin.from("circulo_config").select("*").eq("id", 1).maybeSingle();
-    if (!cred?.activo || !cred.api_url || !cred.api_key || (cred.usuario && cred.password && !cred.private_key)) {
-      return json({ error: "Servicio de consulta no disponible" }, 503);
+    const faltaCfg = [
+      !cred?.activo && "servicio inactivo",
+      !cred?.api_url && "URL",
+      !cred?.api_key && "x-api-key",
+      cred?.usuario && cred?.password && !cred?.private_key && "llave privada",
+    ].filter(Boolean);
+    if (faltaCfg.length) {
+      return json({ error: `Servicio de consulta no disponible (${faltaCfg.join(", ")})` }, 503);
     }
 
     const { data: plan } = await admin.from("buro_empresa_config").select("*")
