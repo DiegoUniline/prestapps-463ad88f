@@ -75,6 +75,18 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
     if (!fecha) { toast.error("Captura la fecha de la autorización firmada"); return; }
     if (!archivo) { toast.error("Adjunta la autorización firmada por el representante legal"); return; }
     if (!acepto) { toast.error("Confirma que cuentas con la autorización"); return; }
+    const { data: cli } = await supabase.from("clientes")
+      .select("rfc, razon_social, dom_calle, dom_colonia, dom_municipio, dom_estado, dom_cp")
+      .eq("id", clienteId).maybeSingle();
+    const etiquetas: Record<string, string> = {
+      rfc: "RFC", razon_social: "Razón social", dom_calle: "Calle", dom_colonia: "Colonia",
+      dom_municipio: "Municipio / Alcaldía", dom_estado: "Estado", dom_cp: "Código postal",
+    };
+    const faltan = Object.keys(etiquetas).filter((k) => !String((cli as Record<string, unknown> | null)?.[k] ?? "").trim());
+    if (faltan.length) {
+      toast.error(`Completa en la pestaña Personal: ${faltan.map((k) => etiquetas[k]).join(", ")}`);
+      return;
+    }
     setLoading(true);
     try {
       const { data: empresaId, error: empErr } = await supabase.rpc("get_user_empresa_id");
