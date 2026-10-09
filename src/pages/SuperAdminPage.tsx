@@ -2,16 +2,18 @@ import { lazy, Suspense, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, MessageSquare, Activity } from "lucide-react";
+import { Building2, MessageSquare, Activity, Landmark } from "lucide-react";
 
 const EmpresasPage = lazy(() => import("@/pages/EmpresasPage"));
 const SuperAdminWhatsAppPage = lazy(() => import("@/pages/SuperAdminWhatsAppPage"));
 const SuperAdminHealthPage = lazy(() => import("@/pages/SuperAdminHealthPage"));
+const SuperAdminBuroPage = lazy(() => import("@/pages/SuperAdminBuroPage"));
 
 const TABS = [
   { value: "empresas", label: "Empresas", icon: Building2 },
   { value: "whatsapp", label: "Notificaciones WA", icon: MessageSquare },
   { value: "health", label: "Estado", icon: Activity },
+  { value: "circulo", label: "Círculo de Crédito", icon: Landmark },
 ] as const;
 
 export default function SuperAdminPage() {
@@ -32,7 +34,7 @@ export default function SuperAdminPage() {
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-        <TabsList className="grid w-full max-w-xl grid-cols-3">
+        <TabsList className="grid w-full max-w-2xl grid-cols-2 sm:grid-cols-4 h-auto">
           {TABS.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} className="gap-2">
               <tab.icon className="h-4 w-4" />
@@ -56,6 +58,12 @@ export default function SuperAdminPage() {
         <TabsContent value="health" className="mt-4">
           <Suspense fallback={null}>
             <SuperAdminHealthPage />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="circulo" className="mt-4">
+          <Suspense fallback={null}>
+            <SuperAdminBuroPage />
           </Suspense>
         </TabsContent>
       </Tabs>

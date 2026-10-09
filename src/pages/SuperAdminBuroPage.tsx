@@ -58,7 +58,7 @@ function Estado({ ok, label }: { ok: boolean; label: string }) {
 export default function SuperAdminBuroPage() {
   const qc = useQueryClient();
   const cdcRef = useRef<HTMLInputElement>(null);
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["sa-buro"],
     queryFn: () => buroAdmin<{ config: BuroConfig; empresas: EmpresaBuro[] }>("get"),
   });
@@ -103,6 +103,18 @@ export default function SuperAdminBuroPage() {
     await run("cdc", () => buroAdmin("subir_cert_cdc", { pem }), "Certificado de Círculo cargado");
     if (cdcRef.current) cdcRef.current.value = "";
   };
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center space-y-3">
+          <p className="text-sm text-destructive">{error instanceof Error ? error.message : String(error)}</p>
+          <p className="text-xs text-muted-foreground">Verifica que el SQL esté aplicado y la función buro-admin desplegada.</p>
+          <Button size="sm" variant="outline" onClick={() => refetch()}>Reintentar</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading || !data) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;

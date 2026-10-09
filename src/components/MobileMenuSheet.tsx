@@ -6,12 +6,14 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/stores/authStore";
+import { isSuperAdmin } from "@/components/SuperAdminGuard";
 import {
   Menu, LayoutDashboard, ClipboardCheck, CreditCard, Users, Wallet,
   HandCoins, Bell, FileText, PieChart, CalendarCheck, Settings, UserCheck,
   Building2, MessageSquare, Users2, Star, Receipt, Percent,
   MapPin, ClipboardList, BookOpen, Cog, FileInput, ShieldCheck,
-  RefreshCw, ScrollText, Route, LogOut, Moon, Sun, type LucideIcon,
+  RefreshCw, ScrollText, Route, LogOut, Moon, Sun, Landmark, type LucideIcon,
 } from "lucide-react";
 
 interface NavTab {
@@ -19,6 +21,7 @@ interface NavTab {
   url: string;
   icon: LucideIcon;
   roles: string[];
+  superAdminOnly?: boolean;
 }
 
 const allMenuItems: { section: string; items: NavTab[] }[] = [
@@ -73,6 +76,7 @@ const allMenuItems: { section: string; items: NavTab[] }[] = [
     section: "Configuración",
     items: [
       { title: "Empresas", url: "/empresas", icon: Building2, roles: ["admin"] },
+      { title: "Círculo de Crédito", url: "/super-admin?tab=circulo", icon: Landmark, roles: ["admin"], superAdminOnly: true },
       { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"] },
       { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"] },
       { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"] },
@@ -89,13 +93,15 @@ export function MobileMenuSheet({ role }: { role: string }) {
   const { signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
+  const superAdmin = isSuperAdmin(useAuthStore((s) => s.user?.email));
+
   const isActive = (path: string) =>
     location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
 
   const visibleSections = allMenuItems
     .map((s) => ({
       ...s,
-      items: s.items.filter((i) => i.roles.includes(role)),
+      items: s.items.filter((i) => i.roles.includes(role) && (!i.superAdminOnly || superAdmin)),
     }))
     .filter((s) => s.items.length > 0);
 
