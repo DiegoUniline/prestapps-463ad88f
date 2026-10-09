@@ -107,6 +107,173 @@ export type Database = {
           },
         ]
       }
+      buro_consultas: {
+        Row: {
+          autorizacion_fecha: string
+          autorizacion_path: string | null
+          cliente_id: string
+          consultado_por: string | null
+          created_at: string
+          empresa_id: string
+          error: string | null
+          estatus: string
+          folio_consulta: string | null
+          id: string
+          intentos: number
+          precio: number | null
+          proveedor: string
+          razon_social: string | null
+          respuesta: Json | null
+          resumen: Json | null
+          rfc: string
+          score: number | null
+          tipo_persona: string
+          updated_at: string
+        }
+        Insert: {
+          autorizacion_fecha: string
+          autorizacion_path?: string | null
+          cliente_id: string
+          consultado_por?: string | null
+          created_at?: string
+          empresa_id: string
+          error?: string | null
+          estatus?: string
+          folio_consulta?: string | null
+          id?: string
+          intentos?: number
+          precio?: number | null
+          proveedor?: string
+          razon_social?: string | null
+          respuesta?: Json | null
+          resumen?: Json | null
+          rfc: string
+          score?: number | null
+          tipo_persona?: string
+          updated_at?: string
+        }
+        Update: {
+          autorizacion_fecha?: string
+          autorizacion_path?: string | null
+          cliente_id?: string
+          consultado_por?: string | null
+          created_at?: string
+          empresa_id?: string
+          error?: string | null
+          estatus?: string
+          folio_consulta?: string | null
+          id?: string
+          intentos?: number
+          precio?: number | null
+          proveedor?: string
+          razon_social?: string | null
+          respuesta?: Json | null
+          resumen?: Json | null
+          rfc?: string
+          score?: number | null
+          tipo_persona?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buro_consultas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buro_consultas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      buro_creditos_mov: {
+        Row: {
+          cantidad: number
+          consulta_id: string | null
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          nota: string | null
+          saldo: number
+          tipo: string
+        }
+        Insert: {
+          cantidad: number
+          consulta_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          nota?: string | null
+          saldo: number
+          tipo: string
+        }
+        Update: {
+          cantidad?: number
+          consulta_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          nota?: string | null
+          saldo?: number
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buro_creditos_mov_consulta_id_fkey"
+            columns: ["consulta_id"]
+            isOneToOne: false
+            referencedRelation: "buro_consultas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "buro_creditos_mov_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      buro_empresa_config: {
+        Row: {
+          creditos: number
+          empresa_id: string
+          habilitado: boolean
+          precio_consulta: number
+          updated_at: string
+        }
+        Insert: {
+          creditos?: number
+          empresa_id: string
+          habilitado?: boolean
+          precio_consulta?: number
+          updated_at?: string
+        }
+        Update: {
+          creditos?: number
+          empresa_id?: string
+          habilitado?: boolean
+          precio_consulta?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buro_empresa_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cajas: {
         Row: {
           activo: boolean
@@ -417,6 +584,45 @@ export type Database = {
           },
         ]
       }
+      circulo_config: {
+        Row: {
+          activo: boolean
+          api_key: string | null
+          api_url: string | null
+          cdc_public_key: string | null
+          certificado: string | null
+          id: number
+          password: string | null
+          private_key: string | null
+          updated_at: string
+          usuario: string | null
+        }
+        Insert: {
+          activo?: boolean
+          api_key?: string | null
+          api_url?: string | null
+          cdc_public_key?: string | null
+          certificado?: string | null
+          id?: number
+          password?: string | null
+          private_key?: string | null
+          updated_at?: string
+          usuario?: string | null
+        }
+        Update: {
+          activo?: boolean
+          api_key?: string | null
+          api_url?: string | null
+          cdc_public_key?: string | null
+          certificado?: string | null
+          id?: number
+          password?: string | null
+          private_key?: string | null
+          updated_at?: string
+          usuario?: string | null
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           activo: boolean | null
@@ -434,6 +640,13 @@ export type Database = {
           documento_identidad:
             | Database["public"]["Enums"]["documento_tipo"]
             | null
+          dom_calle: string | null
+          dom_ciudad: string | null
+          dom_colonia: string | null
+          dom_cp: string | null
+          dom_estado: string | null
+          dom_municipio: string | null
+          dom_numero: string | null
           empresa_id: string | null
           estado: Database["public"]["Enums"]["cliente_estado"] | null
           estado_civil: Database["public"]["Enums"]["estado_civil"] | null
@@ -448,17 +661,20 @@ export type Database = {
           lada_pais: string | null
           nombre_completo: string
           notas: string | null
+          razon_social: string | null
           ref1_nombre: string | null
           ref1_parentesco: string | null
           ref1_telefono: string | null
           ref2_nombre: string | null
           ref2_parentesco: string | null
           ref2_telefono: string | null
+          rfc: string | null
           sexo: Database["public"]["Enums"]["sexo_tipo"] | null
           situacion_laboral:
             | Database["public"]["Enums"]["situacion_laboral"]
             | null
           telefono: string | null
+          tipo_persona: string
           tipo_vivienda: string | null
           trabajo_antiguedad: string | null
           trabajo_cargo: string | null
@@ -481,6 +697,13 @@ export type Database = {
           documento_identidad?:
             | Database["public"]["Enums"]["documento_tipo"]
             | null
+          dom_calle?: string | null
+          dom_ciudad?: string | null
+          dom_colonia?: string | null
+          dom_cp?: string | null
+          dom_estado?: string | null
+          dom_municipio?: string | null
+          dom_numero?: string | null
           empresa_id?: string | null
           estado?: Database["public"]["Enums"]["cliente_estado"] | null
           estado_civil?: Database["public"]["Enums"]["estado_civil"] | null
@@ -495,17 +718,20 @@ export type Database = {
           lada_pais?: string | null
           nombre_completo: string
           notas?: string | null
+          razon_social?: string | null
           ref1_nombre?: string | null
           ref1_parentesco?: string | null
           ref1_telefono?: string | null
           ref2_nombre?: string | null
           ref2_parentesco?: string | null
           ref2_telefono?: string | null
+          rfc?: string | null
           sexo?: Database["public"]["Enums"]["sexo_tipo"] | null
           situacion_laboral?:
             | Database["public"]["Enums"]["situacion_laboral"]
             | null
           telefono?: string | null
+          tipo_persona?: string
           tipo_vivienda?: string | null
           trabajo_antiguedad?: string | null
           trabajo_cargo?: string | null
@@ -528,6 +754,13 @@ export type Database = {
           documento_identidad?:
             | Database["public"]["Enums"]["documento_tipo"]
             | null
+          dom_calle?: string | null
+          dom_ciudad?: string | null
+          dom_colonia?: string | null
+          dom_cp?: string | null
+          dom_estado?: string | null
+          dom_municipio?: string | null
+          dom_numero?: string | null
           empresa_id?: string | null
           estado?: Database["public"]["Enums"]["cliente_estado"] | null
           estado_civil?: Database["public"]["Enums"]["estado_civil"] | null
@@ -542,17 +775,20 @@ export type Database = {
           lada_pais?: string | null
           nombre_completo?: string
           notas?: string | null
+          razon_social?: string | null
           ref1_nombre?: string | null
           ref1_parentesco?: string | null
           ref1_telefono?: string | null
           ref2_nombre?: string | null
           ref2_parentesco?: string | null
           ref2_telefono?: string | null
+          rfc?: string | null
           sexo?: Database["public"]["Enums"]["sexo_tipo"] | null
           situacion_laboral?:
             | Database["public"]["Enums"]["situacion_laboral"]
             | null
           telefono?: string | null
+          tipo_persona?: string
           tipo_vivienda?: string | null
           trabajo_antiguedad?: string | null
           trabajo_cargo?: string | null
@@ -2228,6 +2464,17 @@ export type Database = {
     Functions: {
       actualizar_estados_prestamos: {
         Args: { p_empresa_id?: string }
+        Returns: number
+      }
+      buro_mover_creditos: {
+        Args: {
+          p_cantidad: number
+          p_consulta_id?: string
+          p_empresa_id: string
+          p_nota?: string
+          p_tipo: string
+          p_user?: string
+        }
         Returns: number
       }
       get_cobrador_by_user: {
