@@ -422,7 +422,7 @@
   .landing-nav-inner { height: 66px; }
   .landing-brand { width: 128px; }
   .landing-brand img { width: 148px; }
-  .landing-login { height: 38px; padding: 0 13px; font-size: .72rem; }
+  .landing-page a.landing-login { height: 38px; padding: 0 13px; font-size: .74rem; }
   .landing-pill-small { height: 38px; padding-inline: 16px; font-size: .72rem; }
   .landing-hero { padding-top: 66px; }
   .landing-hero-content { min-height: auto; padding-top: 65px; padding-bottom: 135px; }
