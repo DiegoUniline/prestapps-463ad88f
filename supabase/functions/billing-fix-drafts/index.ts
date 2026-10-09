@@ -127,7 +127,7 @@ serve(async (req) => {
           await syncLocalPaid(supabase, sub, paid);
           await supabase.from("intentos_cobro").insert({
             factura_id: null,
-            stripe_charge_id: typeof paid.charge === "string" ? paid.charge : null,
+            stripe_charge_id: typeof (paid as any).charge === "string" ? (paid as any).charge : null,
             monto: (paid.total || 0) / 100,
             estado: "exitoso",
           });
@@ -164,8 +164,8 @@ async function syncLocalPaid(supabase: any, sub: any, inv: Stripe.Invoice) {
     .limit(1);
 
   const now = new Date();
-  const charge = typeof inv.charge === "string" ? inv.charge : null;
-  const pi = typeof inv.payment_intent === "string" ? inv.payment_intent : null;
+  const charge = typeof (inv as any).charge === "string" ? (inv as any).charge : null;
+  const pi = typeof (inv as any).payment_intent === "string" ? (inv as any).payment_intent : null;
 
   if (facs && facs.length > 0) {
     await supabase.from("facturas").update({

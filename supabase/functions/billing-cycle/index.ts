@@ -347,7 +347,7 @@ serve(async (req) => {
                 }
 
                 if (inv.status === "paid") {
-                  const pi = typeof inv.payment_intent === "string" ? inv.payment_intent : null;
+                  const pi = typeof (inv as any).payment_intent === "string" ? (inv as any).payment_intent : null;
                   await supabase.from("facturas").update({
                     estado: "pagada",
                     stripe_invoice_id: inv.id,
@@ -364,7 +364,7 @@ serve(async (req) => {
 
                   await supabase.from("intentos_cobro").insert({
                     factura_id: facRow?.id ?? null,
-                    stripe_charge_id: typeof inv.charge === "string" ? inv.charge : null,
+                    stripe_charge_id: typeof (inv as any).charge === "string" ? (inv as any).charge : null,
                     monto: (inv.total || 0) / 100,
                     estado: "exitoso",
                   });
