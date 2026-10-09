@@ -145,7 +145,7 @@ serve(async (req) => {
       // ── Invoice paid: keep subscription active, log factura ──
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = (invoice as any).subscription as string;
         if (!subscriptionId) break;
 
         logStep("Invoice paid", { subscriptionId, amount: invoice.amount_paid });
@@ -197,7 +197,7 @@ serve(async (req) => {
           estado: "pagada",
           fecha_pago: now.toISOString(),
           stripe_invoice_id: invoice.id,
-          stripe_payment_intent_id: invoice.payment_intent as string || null,
+          stripe_payment_intent_id: (invoice as any).payment_intent as string || null,
         });
 
         logStep("Invoice recorded", { empresaId: sub.empresa_id });
@@ -300,7 +300,7 @@ serve(async (req) => {
           // Ignore charges coming from a duplicate / unlinked Stripe subscription
           let chargeSubId: string | null = null;
           try {
-            const invoiceId = (charge.invoice as string) || null;
+            const invoiceId = ((charge as any).invoice as string) || null;
             if (invoiceId) {
               const inv = await stripe.invoices.retrieve(invoiceId);
               chargeSubId = ((inv as any).subscription as string) ||
