@@ -147,7 +147,18 @@ function parseResponse(d: any) {
 
 async function callApi(payload: unknown, cred: Credenciales) {
   const body = JSON.stringify(payload);
-  const firma = await firmar(body, cred.private_key);
+  // Sandbox: solo x-api-key. Producción: usuario/contraseña + firma.
+  const produccion = !!(cred.usuario && cred.password);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    "x-api-key": cred.api_key,
+  };
+  if (produccion) {
+    headers.username = cred.usuario;
+    headers.password = cred.password;
+    headers["x-signature"] = await firmar(body, cred.private_key);
+  }
   let lastErr = "";
   for (let i = 1; i <= MAX_INTENTOS; i++) {
     const ctrl = new AbortController();
@@ -155,14 +166,7 @@ async function callApi(payload: unknown, cred: Credenciales) {
     try {
       const res = await fetch(cred.api_url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          "x-api-key": cred.api_key,
-          username: cred.usuario,
-          password: cred.password,
-          "x-signature": firma,
-        },
+        headers,
         body,
         signal: ctrl.signal,
       });
@@ -171,7 +175,7 @@ async function callApi(payload: unknown, cred: Credenciales) {
       let data: any;
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
-      if (res.ok && cred.cdc_public_key) {
+      if (res.ok && produccion && cred.cdc_public_key) {
         const sig = res.headers.get("x-signature");
         if (!sig || !(await verificar(text, sig, cred.cdc_public_key))) {
           return { ok: false as const, status: res.status, data, error: "Firma de respuesta inválida", intentos: i };
@@ -243,7 +247,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: cred } = await admin.from("circulo_config").select("*").eq("id", 1).maybeSingle();
-    if (!cred?.activo || !cred.api_url || !cred.api_key || !cred.usuario || !cred.password || !cred.private_key) {
+    if (!cred?.activo || !cred.api_url || !cred.api_key || (cred.usuario && cred.password && !cred.private_key)) {
       return json({ error: "Servicio de consulta no disponible" }, 503);
     }
 

@@ -121,7 +121,8 @@ export default function SuperAdminBuroPage() {
   }
 
   const cfg = data.config;
-  const listo = cfg.tiene_llave && cfg.tiene_cert_cdc && cfg.tiene_password && !!cfg.api_key_mask && !!cfg.api_url && !!cfg.usuario;
+  const produccion = !!cfg.usuario && cfg.tiene_password;
+  const listo = !!cfg.api_key_mask && !!cfg.api_url && (!produccion || (cfg.tiene_llave && cfg.tiene_cert_cdc));
   const totalMes = data.empresas.reduce((s, e) => s + e.importe_mes, 0);
   const consultasMes = data.empresas.reduce((s, e) => s + e.consultas_mes, 0);
 
@@ -175,11 +176,11 @@ export default function SuperAdminBuroPage() {
               <Input value={form.api_key} placeholder={cfg.api_key_mask || ""} onChange={(e) => setForm({ ...form, api_key: e.target.value })} />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Usuario</Label>
+              <Label className="text-xs text-muted-foreground">Usuario (vacío en sandbox)</Label>
               <Input value={form.usuario} onChange={(e) => setForm({ ...form, usuario: e.target.value })} />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Contraseña</Label>
+              <Label className="text-xs text-muted-foreground">Contraseña (vacío en sandbox)</Label>
               <Input type="password" value={form.password} placeholder={cfg.tiene_password ? "••••••••" : ""} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </div>
             <div className="flex items-end justify-between gap-3">
