@@ -1,3 +1,5 @@
+// Reporte de Crédito Consolidado Persona Moral — Círculo de Crédito (APIHub)
+// Firma: ECDSA P-384 + SHA-256 sobre el body, DER en hex, header x-signature.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -7,91 +9,135 @@ const corsHeaders = {
 };
 
 const RFC_PM = /^[A-ZÑ&]{3}\d{6}[A-Z0-9]{3}$/;
+const ESTADOS = new Set([
+  "AGS", "BCN", "BCS", "CAM", "CHS", "CHI", "COA", "COL", "CDMX", "DF", "DGO", "EM", "GTO", "GRO", "HGO", "JAL",
+  "MICH", "MOR", "NAY", "NL", "OAX", "PUE", "QRO", "QR", "SLP", "SIN", "SON", "TAB", "TAM", "TLA", "VER", "YUC", "ZAC",
+]);
 const REUSO_DIAS = 30;
 const TIMEOUT_MS = 30_000;
 const MAX_INTENTOS = 3;
 
-type Credenciales = { api_url: string; api_key: string; usuario: string; password: string };
+type Credenciales = {
+  api_url: string;
+  api_key: string;
+  usuario: string;
+  password: string;
+  private_key: string;
+  cdc_public_key: string | null;
+};
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
 const normRfc = (v: unknown) => String(v ?? "").toUpperCase().replace(/[\s-]/g, "");
 
-const limpio = (v: unknown, max = 40) =>
-  String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim().slice(0, max);
+const limpio = (v: unknown, max: number) =>
+  String(v ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim().slice(0, max);
 
-// ── Contrato Buró PM: ajustar llaves al layout entregado por Buró en el contrato ──
-function buildRequest(c: Record<string, any>, cred: Credenciales) {
+// ── Firma ECDSA ────────────────────────────────────────────────────────────────
+const pemToDer = (pem: string) =>
+  Uint8Array.from(atob(pem.replace(/\\n/g, "\n").replace(/-----[^-]+-----/g, "").replace(/\s+/g, "")), (c) => c.charCodeAt(0));
+
+const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+const fromHex = (h: string) => Uint8Array.from(h.match(/.{2}/g) ?? [], (x) => parseInt(x, 16));
+
+function derLen(n: number) {
+  return n < 0x80 ? [n] : [0x81, n];
+}
+
+function rawToDer(raw: Uint8Array) {
+  const n = raw.length / 2;
+  const int = (x: Uint8Array) => {
+    let i = 0;
+    while (i < x.length - 1 && x[i] === 0) i++;
+    const v = Array.from(x.slice(i));
+    if (v[0] & 0x80) v.unshift(0);
+    return [0x02, ...derLen(v.length), ...v];
+  };
+  const body = [...int(raw.slice(0, n)), ...int(raw.slice(n))];
+  return new Uint8Array([0x30, ...derLen(body.length), ...body]);
+}
+
+function derToRaw(der: Uint8Array, n = 48) {
+  let p = 2 + (der[1] & 0x80 ? der[1] & 0x7f : 0);
+  const read = () => {
+    if (der[p++] !== 0x02) throw new Error("Firma DER inválida");
+    const len = der[p++];
+    let v = der.slice(p, p + len);
+    p += len;
+    while (v.length > n && v[0] === 0) v = v.slice(1);
+    const out = new Uint8Array(n);
+    out.set(v, n - v.length);
+    return out;
+  };
+  const r = read();
+  const s = read();
+  return new Uint8Array([...r, ...s]);
+}
+
+async function firmar(body: string, privatePem: string) {
+  const key = await crypto.subtle.importKey("pkcs8", pemToDer(privatePem), { name: "ECDSA", namedCurve: "P-384" }, false, ["sign"]);
+  const raw = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(body)));
+  return toHex(rawToDer(raw));
+}
+
+async function verificar(body: string, firmaHex: string, publicPem: string) {
+  const key = await crypto.subtle.importKey("spki", pemToDer(publicPem), { name: "ECDSA", namedCurve: "P-384" }, false, ["verify"]);
+  return crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, derToRaw(fromHex(firmaHex)), new TextEncoder().encode(body));
+}
+
+// ── Mapeo Círculo de Crédito RCC PM ───────────────────────────────────────────
+function buildRequest(c: Record<string, any>, folioOtorgante: string) {
   return {
-    encabezado: {
-      usuario: cred.usuario,
-      producto: Deno.env.get("BURO_PRODUCTO_PM") ?? "INFORME_BURO_PM",
-      tipoConsulta: "PM",
-      referencia: c.id_cliente,
-    },
-    empresa: {
-      rfc: normRfc(c.rfc),
-      razonSocial: limpio(c.razon_social || c.nombre_completo, 150),
+    folioOtorgante,
+    persona: {
+      RFC: normRfc(c.rfc),
+      nombre: limpio(c.razon_social || c.nombre_completo, 75),
       domicilio: {
-        direccion: limpio(`${c.dom_calle ?? ""} ${c.dom_numero ?? ""}`, 80),
-        coloniaPoblacion: limpio(c.dom_colonia),
-        delegacionMunicipio: limpio(c.dom_municipio),
-        ciudad: limpio(c.dom_ciudad || c.dom_municipio),
+        direccion: limpio(`${c.dom_calle ?? ""} ${c.dom_numero ?? ""}`, 40),
+        coloniaPoblacion: limpio(c.dom_colonia, 60),
+        delegacionMunicipio: limpio(c.dom_municipio, 60),
+        ciudad: limpio(c.dom_ciudad || c.dom_municipio, 40),
         estado: limpio(c.dom_estado, 4),
-        codigoPostal: String(c.dom_cp ?? "").replace(/\D/g, "").padStart(5, "0"),
+        CP: String(c.dom_cp ?? "").replace(/\D/g, "").padStart(5, "0"),
         pais: "MX",
       },
     },
   };
 }
 
-function findKey(obj: any, re: RegExp, depth = 0): any {
-  if (!obj || typeof obj !== "object" || depth > 8) return undefined;
-  for (const [k, v] of Object.entries(obj)) {
-    if (re.test(k) && (typeof v === "string" || typeof v === "number")) return v;
-  }
-  for (const v of Object.values(obj)) {
-    const r = findKey(v, re, depth + 1);
-    if (r !== undefined) return r;
-  }
-  return undefined;
-}
+const num = (v: unknown) => (isNaN(Number(v)) ? 0 : Number(v));
+const BUCKETS_VENCIDO = ["29dias", "59dias", "89dias", "119dias", "179dias", "180MasDias"];
 
-function findArray(obj: any, re: RegExp, depth = 0): any[] {
-  if (!obj || typeof obj !== "object" || depth > 8) return [];
-  for (const [k, v] of Object.entries(obj)) {
-    if (re.test(k) && Array.isArray(v)) return v;
-  }
-  for (const v of Object.values(obj)) {
-    const r = findArray(v, re, depth + 1);
-    if (r.length) return r;
-  }
-  return [];
-}
-
-function parseResponse(data: any) {
-  const folio = findKey(data, /^folio/i);
-  const scoreRaw = findKey(data, /(score|calificacion)/i);
-  const score = scoreRaw != null && !isNaN(Number(scoreRaw)) ? Math.round(Number(scoreRaw)) : null;
-  const creditos = findArray(data, /(creditos|cuentas|creditoFinanciero)/i);
-  const num = (v: any) => (isNaN(Number(v)) ? 0 : Number(v));
-  const saldoTotal = creditos.reduce((s, cr) => s + num(findKey(cr, /saldo(Inicial|Vigente|Actual)?$/i)), 0);
-  const saldoVencido = creditos.reduce(
-    (s, cr) => s + num(findKey(cr, /saldoVencido|vencido(1a29|30a59|60a89|90|120|180)?/i)),
-    0,
-  );
-  const sinHit = /no\s*(se\s*)?encontr|sin\s*hit|no\s*hit/i.test(JSON.stringify(findKey(data, /(mensaje|descripcion|estatus)/i) ?? ""));
+function parseResponse(d: any) {
+  const fin: any[] = d?.credito?.cuentasFinancieras ?? [];
+  const com: any[] = d?.credito?.cuentasComerciales ?? [];
+  const cuentas = [...fin, ...com];
+  const califs: string[] = (d?.calificacionCartera ?? []).map((x: any) => String(x?.calificacion ?? "")).filter(Boolean);
+  const peor = califs.sort().at(-1) ?? null;
   return {
-    sinHit: sinHit && creditos.length === 0,
-    folio: folio != null ? String(folio) : null,
-    score,
-    resumen: { num_creditos: creditos.length, saldo_total: saldoTotal, saldo_vencido: saldoVencido },
+    folio: d?.folioConsulta != null ? String(d.folioConsulta) : null,
+    sinHit: cuentas.length === 0 && !(d?.consultasInstitucionales?.consultasFinancieras?.length),
+    resumen: {
+      clave_retorno: d?.claveRetorno ?? null,
+      num_creditos: cuentas.length,
+      num_financieras: fin.length,
+      num_comerciales: com.length,
+      saldo_total: cuentas.reduce((s, x) => s + num(x?.saldoTotal), 0),
+      saldo_vigente: cuentas.reduce((s, x) => s + num(x?.vigente), 0),
+      saldo_vencido: cuentas.reduce((s, x) => s + BUCKETS_VENCIDO.reduce((a, k) => a + num(x?.[k]), 0), 0),
+      atraso_mayor: cuentas.reduce((m, x) => Math.max(m, num(x?.atrasoMayor)), 0),
+      peor_calificacion: peor,
+      claves_prevencion: (d?.clavePrevenciones ?? []).length,
+      consultas_financieras: (d?.consultasInstitucionales?.consultasFinancieras ?? []).length,
+      consultas_comerciales: (d?.consultasInstitucionales?.consultasComerciales ?? []).length,
+    },
   };
 }
-// ───────────────────────────────────────────────────────────────────────────────
 
-async function callBuro(payload: unknown, cred: Credenciales) {
+async function callApi(payload: unknown, cred: Credenciales) {
+  const body = JSON.stringify(payload);
+  const firma = await firmar(body, cred.private_key);
   let lastErr = "";
   for (let i = 1; i <= MAX_INTENTOS; i++) {
     const ctrl = new AbortController();
@@ -105,16 +151,26 @@ async function callBuro(payload: unknown, cred: Credenciales) {
           "x-api-key": cred.api_key,
           username: cred.usuario,
           password: cred.password,
+          "x-signature": firma,
         },
-        body: JSON.stringify(payload),
+        body,
         signal: ctrl.signal,
       });
       const text = await res.text();
       let data: any;
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
-      if (res.ok) return { ok: true as const, data, intentos: i };
-      lastErr = `HTTP ${res.status}: ${text.slice(0, 500)}`;
-      if (res.status < 500 && res.status !== 429) return { ok: false as const, data, error: lastErr, intentos: i };
+
+      if (res.ok && cred.cdc_public_key) {
+        const sig = res.headers.get("x-signature");
+        if (!sig || !(await verificar(text, sig, cred.cdc_public_key))) {
+          return { ok: false as const, status: res.status, data, error: "Firma de respuesta inválida", intentos: i };
+        }
+      }
+      if (res.ok) return { ok: true as const, status: res.status, data, intentos: i };
+
+      const errs = (data?.errores ?? []).map((e: any) => `${e.codigo}: ${e.mensaje}`).join(" | ");
+      lastErr = `HTTP ${res.status}${errs ? ` — ${errs}` : `: ${text.slice(0, 300)}`}`;
+      if (res.status < 500 && res.status !== 429) return { ok: false as const, status: res.status, data, error: lastErr, intentos: i };
     } catch (e) {
       lastErr = e instanceof Error ? e.message : String(e);
     } finally {
@@ -122,7 +178,7 @@ async function callBuro(payload: unknown, cred: Credenciales) {
     }
     if (i < MAX_INTENTOS) await new Promise((r) => setTimeout(r, 1000 * 2 ** (i - 1)));
   }
-  return { ok: false as const, data: null, error: lastErr, intentos: MAX_INTENTOS };
+  return { ok: false as const, status: 0, data: null, error: lastErr, intentos: MAX_INTENTOS };
 }
 
 Deno.serve(async (req) => {
@@ -165,6 +221,7 @@ Deno.serve(async (req) => {
     const faltan = ["razon_social", "dom_calle", "dom_colonia", "dom_municipio", "dom_estado", "dom_cp"]
       .filter((k) => !String(c[k] ?? "").trim());
     if (faltan.length) return json({ error: `Faltan datos: ${faltan.join(", ")}` }, 400);
+    if (!ESTADOS.has(String(c.dom_estado).toUpperCase())) return json({ error: "Estado inválido para Círculo de Crédito" }, 400);
 
     if (!forzar) {
       const desde = new Date(Date.now() - REUSO_DIAS * 86400_000).toISOString();
@@ -176,19 +233,22 @@ Deno.serve(async (req) => {
 
     const { data: credRow } = await admin.from("buro_credenciales").select("*")
       .eq("empresa_id", profile.empresa_id).eq("activo", true).maybeSingle();
-    const cred: Credenciales | null = credRow ?? (Deno.env.get("BURO_API_URL")
+    const cred: Credenciales | null = credRow?.private_key ? credRow : (Deno.env.get("CDC_API_URL")
       ? {
-          api_url: Deno.env.get("BURO_API_URL")!,
-          api_key: Deno.env.get("BURO_API_KEY") ?? "",
-          usuario: Deno.env.get("BURO_USERNAME") ?? "",
-          password: Deno.env.get("BURO_PASSWORD") ?? "",
+          api_url: Deno.env.get("CDC_API_URL")!,
+          api_key: Deno.env.get("CDC_API_KEY") ?? "",
+          usuario: Deno.env.get("CDC_USERNAME") ?? "",
+          password: Deno.env.get("CDC_PASSWORD") ?? "",
+          private_key: Deno.env.get("CDC_PRIVATE_KEY") ?? "",
+          cdc_public_key: Deno.env.get("CDC_PUBLIC_KEY") ?? null,
         }
       : null);
-    if (!cred) return json({ error: "Buró de Crédito no configurado para esta empresa" }, 400);
+    if (!cred?.private_key) return json({ error: "Círculo de Crédito no configurado para esta empresa" }, 400);
 
     const { data: consulta, error: insErr } = await admin.from("buro_consultas").insert({
       empresa_id: profile.empresa_id,
       cliente_id,
+      proveedor: "circulo",
       tipo_persona: "moral",
       rfc,
       razon_social: c.razon_social,
@@ -199,7 +259,8 @@ Deno.serve(async (req) => {
     }).select("id").single();
     if (insErr) throw insErr;
 
-    const r = await callBuro(buildRequest(c, cred), cred);
+    const folioOtorgante = consulta.id.replace(/-/g, "").slice(0, 25);
+    const r = await callApi(buildRequest(c, folioOtorgante), cred);
 
     let update: Record<string, unknown>;
     if (r.ok) {
@@ -207,11 +268,12 @@ Deno.serve(async (req) => {
       update = {
         estatus: p.sinHit ? "sin_hit" : "exitosa",
         folio_consulta: p.folio,
-        score: p.score,
         resumen: p.resumen,
         respuesta: r.data,
         intentos: r.intentos,
       };
+    } else if (r.status === 404) {
+      update = { estatus: "sin_hit", error: r.error, respuesta: r.data, intentos: r.intentos };
     } else {
       update = { estatus: "error", error: r.error, respuesta: r.data, intentos: r.intentos };
     }

@@ -99,7 +99,7 @@ const emptyForm: ClienteInsert = {
   dom_municipio: null, dom_ciudad: null, dom_estado: null, dom_cp: null,
 };
 
-const ESTADOS_MX = ["AGS","BC","BCS","CAM","CHIS","CHIH","CDMX","COAH","COL","DGO","EM","GTO","GRO","HGO","JAL","MICH","MOR","NAY","NL","OAX","PUE","QRO","QR","SLP","SIN","SON","TAB","TAMP","TLAX","VER","YUC","ZAC"]
+const ESTADOS_MX = ["AGS","BCN","BCS","CAM","CHS","CHI","CDMX","COA","COL","DGO","EM","GTO","GRO","HGO","JAL","MICH","MOR","NAY","NL","OAX","PUE","QRO","QR","SLP","SIN","SON","TAB","TAM","TLA","VER","YUC","ZAC"]
   .map((e) => ({ value: e, label: e }));
 
 // ── Field helpers ────────────────────────────────────────────────

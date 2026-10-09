@@ -18,7 +18,7 @@ interface BuroConsulta {
   estatus: "pendiente" | "exitosa" | "sin_hit" | "error";
   folio_consulta: string | null;
   score: number | null;
-  resumen: { num_creditos?: number; saldo_total?: number; saldo_vencido?: number } | null;
+  resumen: { num_creditos?: number; saldo_total?: number; saldo_vencido?: number; atraso_mayor?: number; peor_calificacion?: string | null; claves_prevencion?: number } | null;
   error: string | null;
   autorizacion_fecha: string;
   autorizacion_path: string | null;
@@ -118,7 +118,7 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Nueva consulta Buró de Crédito (PM)</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Nueva consulta Círculo de Crédito (PM)</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
           <div>
             <Label className="text-xs text-muted-foreground">Fecha de autorización firmada</Label>
@@ -132,7 +132,7 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
             </Button>
           </div>
           <Button onClick={() => consultar(false)} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Consultar Buró
+            {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Consultar
           </Button>
           <label className="sm:col-span-3 flex items-start gap-2 text-xs text-muted-foreground">
             <Checkbox checked={acepto} onCheckedChange={(v) => setAcepto(!!v)} className="mt-0.5" />
@@ -157,8 +157,9 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
               {c.estatus === "error" ? (
                 <p className="text-xs text-destructive break-words">{c.error}</p>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-                  <div><span className="text-xs text-muted-foreground block">Score</span><b>{c.score ?? "—"}</b></div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
+                  <div><span className="text-xs text-muted-foreground block">Calificación</span><b>{c.resumen?.peor_calificacion ?? "—"}</b></div>
+                  <div><span className="text-xs text-muted-foreground block">Atraso mayor</span><b className={Number(c.resumen?.atraso_mayor) > 0 ? "text-destructive" : ""}>{c.resumen?.atraso_mayor ?? 0} días</b></div>
                   <div><span className="text-xs text-muted-foreground block">Créditos</span><b>{c.resumen?.num_creditos ?? 0}</b></div>
                   <div><span className="text-xs text-muted-foreground block">Saldo total</span><b>{$$(Number(c.resumen?.saldo_total || 0))}</b></div>
                   <div><span className="text-xs text-muted-foreground block">Saldo vencido</span>
