@@ -45,6 +45,7 @@ import GastosPage from "@/pages/GastosPage";
 const ReportesPage = lazy(() => import("@/pages/ReportesPage"));
 const UsuariosPage = lazy(() => import("@/pages/UsuariosPage"));
 const EmpresasPage = lazy(() => import("@/pages/EmpresasPage"));
+const SuperAdminBuroPage = lazy(() => import("@/pages/SuperAdminBuroPage"));
 const WhatsAppConfigPage = lazy(() => import("@/pages/WhatsAppConfigPage"));
 const CrmCobranzaPage = lazy(() => import("@/pages/CrmCobranzaPage"));
 const LeadScoringPage = lazy(() => import("@/pages/LeadScoringPage"));
@@ -148,6 +149,7 @@ const App = () => (
               <Route path="/empresas" element={<SuperAdminGuard><LazyPage><EmpresasPage /></LazyPage></SuperAdminGuard>} />
               <Route path="/sa-whatsapp" element={<SuperAdminGuard><LazyPage><SuperAdminWhatsAppPage /></LazyPage></SuperAdminGuard>} />
               <Route path="/sa-health" element={<SuperAdminGuard><LazyPage><SuperAdminHealthPage /></LazyPage></SuperAdminGuard>} />
+              <Route path="/sa-buro" element={<SuperAdminGuard><LazyPage><SuperAdminBuroPage /></LazyPage></SuperAdminGuard>} />
               <Route path="/whatsapp" element={<RoleGuard allowed={["admin"]} module="whatsapp"><LazyPage><WhatsAppConfigPage /></LazyPage></RoleGuard>} />
               <Route path="/crm" element={<RoleGuard allowed={["admin", "supervisor"]} module="crm"><LazyPage><CrmCobranzaPage /></LazyPage></RoleGuard>} />
               <Route path="/scoring" element={<RoleGuard allowed={["admin", "supervisor"]} module="scoring"><LazyPage><LeadScoringPage /></LazyPage></RoleGuard>} />

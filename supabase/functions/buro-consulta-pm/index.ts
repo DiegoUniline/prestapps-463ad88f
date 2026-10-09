@@ -58,7 +58,7 @@ function rawToDer(raw: Uint8Array) {
   return new Uint8Array([0x30, ...derLen(body.length), ...body]);
 }
 
-function derToRaw(der: Uint8Array, n = 48) {
+function derToRaw(der: Uint8Array, n: number) {
   let p = 2 + (der[1] & 0x80 ? der[1] & 0x7f : 0);
   const read = () => {
     if (der[p++] !== 0x02) throw new Error("Firma DER inválida");
@@ -81,9 +81,19 @@ async function firmar(body: string, privatePem: string) {
   return toHex(rawToDer(raw));
 }
 
+const CURVAS: [string, number][] = [["P-384", 48], ["P-256", 32], ["P-521", 66]];
+
 async function verificar(body: string, firmaHex: string, publicPem: string) {
-  const key = await crypto.subtle.importKey("spki", pemToDer(publicPem), { name: "ECDSA", namedCurve: "P-384" }, false, ["verify"]);
-  return crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, derToRaw(fromHex(firmaHex)), new TextEncoder().encode(body));
+  for (const [namedCurve, n] of CURVAS) {
+    let key: CryptoKey;
+    try {
+      key = await crypto.subtle.importKey("spki", pemToDer(publicPem), { name: "ECDSA", namedCurve }, false, ["verify"]);
+    } catch {
+      continue;
+    }
+    return crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, key, derToRaw(fromHex(firmaHex), n), new TextEncoder().encode(body));
+  }
+  throw new Error("Llave pública de Círculo no soportada");
 }
 
 // ── Mapeo Círculo de Crédito RCC PM ───────────────────────────────────────────
@@ -156,6 +166,7 @@ async function callApi(payload: unknown, cred: Credenciales) {
         body,
         signal: ctrl.signal,
       });
+      if (res.status === 204) return { ok: false as const, status: 204, data: null, error: "Sin historial", intentos: i };
       const text = await res.text();
       let data: any;
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
@@ -231,19 +242,15 @@ Deno.serve(async (req) => {
       if (previa) return json({ reutilizada: true, consulta: previa });
     }
 
-    const { data: credRow } = await admin.from("buro_credenciales").select("*")
-      .eq("empresa_id", profile.empresa_id).eq("activo", true).maybeSingle();
-    const cred: Credenciales | null = credRow?.private_key ? credRow : (Deno.env.get("CDC_API_URL")
-      ? {
-          api_url: Deno.env.get("CDC_API_URL")!,
-          api_key: Deno.env.get("CDC_API_KEY") ?? "",
-          usuario: Deno.env.get("CDC_USERNAME") ?? "",
-          password: Deno.env.get("CDC_PASSWORD") ?? "",
-          private_key: Deno.env.get("CDC_PRIVATE_KEY") ?? "",
-          cdc_public_key: Deno.env.get("CDC_PUBLIC_KEY") ?? null,
-        }
-      : null);
-    if (!cred?.private_key) return json({ error: "Círculo de Crédito no configurado para esta empresa" }, 400);
+    const { data: cred } = await admin.from("circulo_config").select("*").eq("id", 1).maybeSingle();
+    if (!cred?.activo || !cred.api_url || !cred.api_key || !cred.usuario || !cred.password || !cred.private_key) {
+      return json({ error: "Servicio de consulta no disponible" }, 503);
+    }
+
+    const { data: plan } = await admin.from("buro_empresa_config").select("*")
+      .eq("empresa_id", profile.empresa_id).maybeSingle();
+    if (!plan?.habilitado) return json({ error: "Tu empresa no tiene contratado el servicio de consultas" }, 403);
+    if (plan.creditos <= 0) return json({ error: "Sin créditos de consulta disponibles" }, 402);
 
     const { data: consulta, error: insErr } = await admin.from("buro_consultas").insert({
       empresa_id: profile.empresa_id,
@@ -256,8 +263,17 @@ Deno.serve(async (req) => {
       autorizacion_fecha,
       autorizacion_path: autorizacion_path ?? null,
       consultado_por: user.id,
+      precio: plan.precio_consulta,
     }).select("id").single();
     if (insErr) throw insErr;
+
+    const { data: saldo, error: credErr } = await admin.rpc("buro_mover_creditos", {
+      p_empresa_id: profile.empresa_id, p_cantidad: -1, p_tipo: "consumo", p_consulta_id: consulta.id, p_user: user.id,
+    });
+    if (credErr || saldo === null) {
+      await admin.from("buro_consultas").update({ estatus: "error", error: "Sin créditos", precio: null }).eq("id", consulta.id);
+      return json({ error: "Sin créditos de consulta disponibles" }, 402);
+    }
 
     const folioOtorgante = consulta.id.replace(/-/g, "").slice(0, 25);
     const r = await callApi(buildRequest(c, folioOtorgante), cred);
@@ -272,10 +288,13 @@ Deno.serve(async (req) => {
         respuesta: r.data,
         intentos: r.intentos,
       };
-    } else if (r.status === 404) {
+    } else if (r.status === 404 || r.status === 204) {
       update = { estatus: "sin_hit", error: r.error, respuesta: r.data, intentos: r.intentos };
     } else {
-      update = { estatus: "error", error: r.error, respuesta: r.data, intentos: r.intentos };
+      update = { estatus: "error", error: r.error, respuesta: r.data, intentos: r.intentos, precio: null };
+      await admin.rpc("buro_mover_creditos", {
+        p_empresa_id: profile.empresa_id, p_cantidad: 1, p_tipo: "reembolso", p_consulta_id: consulta.id, p_user: user.id,
+      });
     }
 
     const { data: final } = await admin.from("buro_consultas")

@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/collapsible";
 import {
   LayoutDashboard, CreditCard, Users, Wallet, Route, FileText, HandCoins,
-  CalendarCheck, Settings, UserCheck, ClipboardCheck, Building2, MessageSquare,
+  CalendarCheck, Settings, UserCheck, ClipboardCheck, Building2, MessageSquare, Landmark,
   Users2, Star, Receipt, Percent, MapPin, ClipboardList, BookOpen, Cog, BarChart3,
   FileInput, ShieldCheck, Bell, RefreshCw, PieChart, ScrollText, CalendarDays,
   ChevronRight, CheckCircle2, Clock, AlertTriangle, Send,
@@ -117,6 +117,7 @@ const modules: NavModule[] = [
     label: "Configuración",
     items: [
       { title: "Super Admin", url: "/super-admin", icon: Building2, roles: ["admin"], superAdminOnly: true },
+      { title: "Círculo de Crédito", url: "/sa-buro", icon: Landmark, roles: ["admin"], superAdminOnly: true },
       { title: "Config. Empresa", url: "/configuracion", icon: Cog, roles: ["admin"], permModule: "configuracion" },
       { title: "Catálogos", url: "/catalogos", icon: BookOpen, roles: ["admin"], permModule: "catalogos" },
       { title: "WhatsApp", url: "/whatsapp", icon: MessageSquare, roles: ["admin"], permModule: "whatsapp" },

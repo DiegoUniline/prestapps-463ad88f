@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.buro-consulta-pm]
 verify_jwt = false
+
+[functions.buro-admin]
+verify_jwt = false

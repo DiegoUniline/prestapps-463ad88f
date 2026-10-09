@@ -62,6 +62,15 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
     },
   });
 
+  const { data: plan } = useQuery({
+    queryKey: ["buro-plan"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tabla aún no está en types.ts generado
+      const { data } = await (supabase.from as any)("buro_empresa_config").select("habilitado, creditos").maybeSingle();
+      return (data as { habilitado: boolean; creditos: number } | null) ?? { habilitado: false, creditos: 0 };
+    },
+  });
+
   const consultar = async (forzar = false) => {
     if (!fecha) { toast.error("Captura la fecha de la autorización firmada"); return; }
     if (!archivo) { toast.error("Adjunta la autorización firmada por el representante legal"); return; }
@@ -94,6 +103,7 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
         setFecha(""); setArchivo(null); setAcepto(false);
       }
       qc.invalidateQueries({ queryKey: ["buro-consultas", clienteId] });
+      qc.invalidateQueries({ queryKey: ["buro-plan"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -118,7 +128,10 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Nueva consulta Círculo de Crédito (PM)</CardTitle></CardHeader>
+        <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Nueva consulta Círculo de Crédito (PM)</CardTitle>
+          <Badge variant={plan?.creditos ? "default" : "secondary"}>{plan?.creditos ?? 0} créditos</Badge>
+        </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
           <div>
             <Label className="text-xs text-muted-foreground">Fecha de autorización firmada</Label>
@@ -131,9 +144,14 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
               <Upload className="h-4 w-4 mr-2 shrink-0" /><span className="truncate">{archivo?.name || "Seleccionar archivo"}</span>
             </Button>
           </div>
-          <Button onClick={() => consultar(false)} disabled={loading}>
+          <Button onClick={() => consultar(false)} disabled={loading || !plan?.habilitado || !plan?.creditos}>
             {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Consultar
           </Button>
+          {plan && (!plan.habilitado || !plan.creditos) && (
+            <p className="sm:col-span-3 text-xs text-destructive">
+              {!plan.habilitado ? "Servicio no contratado. Contacta a soporte para activarlo." : "Sin créditos. Contacta a soporte para recargar."}
+            </p>
+          )}
           <label className="sm:col-span-3 flex items-start gap-2 text-xs text-muted-foreground">
             <Checkbox checked={acepto} onCheckedChange={(v) => setAcepto(!!v)} className="mt-0.5" />
             Confirmo que el representante legal firmó la autorización para consultar el historial crediticio de la empresa.
