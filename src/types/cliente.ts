@@ -42,6 +42,17 @@ export interface Cliente {
   aval_direccion: string | null;
   aval_dni: string | null;
   aval_parentesco: string | null;
+  // Persona moral / Buró
+  tipo_persona: "fisica" | "moral";
+  rfc: string | null;
+  razon_social: string | null;
+  dom_calle: string | null;
+  dom_numero: string | null;
+  dom_colonia: string | null;
+  dom_municipio: string | null;
+  dom_ciudad: string | null;
+  dom_estado: string | null;
+  dom_cp: string | null;
 }
 
 export type ClienteInsert = Omit<Cliente, "id" | "id_cliente" | "created_at"> & { id_cliente?: string };

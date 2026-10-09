@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Pencil, Save, X, Trash2, MapPin, Loader2, User, Briefcase, Users, ShieldCheck, FileText, CreditCard, Upload, Camera } from "lucide-react";
+import { ArrowLeft, Pencil, Save, X, Trash2, MapPin, Loader2, User, Briefcase, Users, ShieldCheck, FileText, CreditCard, Upload, Camera, Building2, Landmark } from "lucide-react";
 import { useCliente, useCreateCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useClientes";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,7 @@ import { fetchAllRows } from "@/lib/supabaseQuery";
 import { toast } from "sonner";
 import type { ClienteInsert } from "@/types/cliente";
 import { $$ } from "@/lib/utils";
+import BuroCreditoSection from "@/components/BuroCreditoSection";
 
 // ── Hooks ────────────────────────────────────────────────────────
 function useClientePrestamos(clienteId: string | undefined) {
@@ -94,7 +95,12 @@ const emptyForm: ClienteInsert = {
   ref1_nombre: null, ref1_telefono: null, ref1_parentesco: null,
   ref2_nombre: null, ref2_telefono: null, ref2_parentesco: null,
   aval_nombre: null, aval_telefono: null, aval_direccion: null, aval_dni: null, aval_parentesco: null,
+  tipo_persona: "fisica", rfc: null, razon_social: null, dom_calle: null, dom_numero: null, dom_colonia: null,
+  dom_municipio: null, dom_ciudad: null, dom_estado: null, dom_cp: null,
 };
+
+const ESTADOS_MX = ["AGS","BC","BCS","CAM","CHIS","CHIH","CDMX","COAH","COL","DGO","EM","GTO","GRO","HGO","JAL","MICH","MOR","NAY","NL","OAX","PUE","QRO","QR","SLP","SIN","SON","TAB","TAMP","TLAX","VER","YUC","ZAC"]
+  .map((e) => ({ value: e, label: e }));
 
 // ── Field helpers ────────────────────────────────────────────────
 function ReadOrInput({ label, value, formValue, onChange, editing, type = "text", placeholder }: {
@@ -212,6 +218,9 @@ export default function ClienteDetallePage() {
   const handleSave = async () => {
     const nombre = form.nombre_completo.trim();
     if (!nombre) { toast.error("El nombre es obligatorio"); return; }
+    if (form.tipo_persona === "moral" && form.rfc && !/^[A-ZÑ&]{3}\d{6}[A-Z0-9]{3}$/.test(form.rfc)) {
+      toast.error("RFC de persona moral inválido (12 caracteres)"); return;
+    }
 
     // ── Validación de duplicados ──
     try {
@@ -314,17 +323,38 @@ export default function ClienteDetallePage() {
 
       {/* Tabs */}
       <Tabs defaultValue="personal" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-3 md:grid-cols-6 h-auto">
+        <TabsList className="w-full grid grid-cols-4 md:grid-cols-7 h-auto">
           <TabsTrigger value="personal" className="text-xs gap-1.5 py-2"><User className="h-3.5 w-3.5" /><span className="hidden sm:inline">Personal</span><span className="sm:hidden">Datos</span></TabsTrigger>
           <TabsTrigger value="trabajo" className="text-xs gap-1.5 py-2"><Briefcase className="h-3.5 w-3.5" />Trabajo</TabsTrigger>
           <TabsTrigger value="referencias" className="text-xs gap-1.5 py-2"><Users className="h-3.5 w-3.5" /><span className="hidden sm:inline">Referencias</span><span className="sm:hidden">Refs</span></TabsTrigger>
           <TabsTrigger value="aval" className="text-xs gap-1.5 py-2"><ShieldCheck className="h-3.5 w-3.5" />Aval</TabsTrigger>
           {!isNew && <TabsTrigger value="prestamos" className="text-xs gap-1.5 py-2"><FileText className="h-3.5 w-3.5" />Préstamos</TabsTrigger>}
           {!isNew && <TabsTrigger value="pagos" className="text-xs gap-1.5 py-2"><CreditCard className="h-3.5 w-3.5" />Pagos</TabsTrigger>}
+          {!isNew && <TabsTrigger value="buro" className="text-xs gap-1.5 py-2"><Landmark className="h-3.5 w-3.5" />Buró</TabsTrigger>}
         </TabsList>
 
         {/* ── Tab: Personal ─────────────────────────────────── */}
         <TabsContent value="personal" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Building2 className="h-4 w-4" />Datos Fiscales</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <ReadOrSelect label="Tipo de Persona" value={form.tipo_persona === "moral" ? "Moral" : "Física"} formValue={form.tipo_persona} onChange={(v) => updateField("tipo_persona", v as any)} editing={editing}
+                options={[{ value: "fisica", label: "Física" }, { value: "moral", label: "Moral" }]} />
+              <ReadOrInput label="RFC" value={form.rfc || ""} formValue={form.rfc} onChange={(v) => updateField("rfc", v ? v.toUpperCase().trim() : null)} editing={editing} placeholder={form.tipo_persona === "moral" ? "ABC010101AB1" : "ABCD010101AB1"} />
+              {form.tipo_persona === "moral" && (
+                <div className="sm:col-span-2">
+                  <ReadOrInput label="Razón Social" value={form.razon_social || ""} formValue={form.razon_social} onChange={(v) => updateField("razon_social", v || null)} editing={editing} placeholder="Sin régimen (SA de CV, etc.)" />
+                </div>
+              )}
+              <ReadOrInput label="Calle" value={form.dom_calle || ""} formValue={form.dom_calle} onChange={(v) => updateField("dom_calle", v || null)} editing={editing} />
+              <ReadOrInput label="Número" value={form.dom_numero || ""} formValue={form.dom_numero} onChange={(v) => updateField("dom_numero", v || null)} editing={editing} />
+              <ReadOrInput label="Colonia" value={form.dom_colonia || ""} formValue={form.dom_colonia} onChange={(v) => updateField("dom_colonia", v || null)} editing={editing} />
+              <ReadOrInput label="C.P." value={form.dom_cp || ""} formValue={form.dom_cp} onChange={(v) => updateField("dom_cp", v ? v.replace(/\D/g, "").slice(0, 5) : null)} editing={editing} />
+              <ReadOrInput label="Municipio / Alcaldía" value={form.dom_municipio || ""} formValue={form.dom_municipio} onChange={(v) => updateField("dom_municipio", v || null)} editing={editing} />
+              <ReadOrInput label="Ciudad" value={form.dom_ciudad || ""} formValue={form.dom_ciudad} onChange={(v) => updateField("dom_ciudad", v || null)} editing={editing} />
+              <ReadOrSelect label="Estado" value={form.dom_estado || ""} formValue={form.dom_estado} onChange={(v) => updateField("dom_estado", v || null)} editing={editing} options={ESTADOS_MX} />
+            </CardContent>
+          </Card>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información Personal</CardTitle></CardHeader>
@@ -524,6 +554,13 @@ export default function ClienteDetallePage() {
         {!isNew && (
           <TabsContent value="pagos">
             <ClientePagosSection clienteId={id!} />
+          </TabsContent>
+        )}
+
+        {/* ── Tab: Buró ────────────────────────────────────── */}
+        {!isNew && (
+          <TabsContent value="buro">
+            <BuroCreditoSection clienteId={id!} tipoPersona={cliente?.tipo_persona || "fisica"} />
           </TabsContent>
         )}
       </Tabs>
