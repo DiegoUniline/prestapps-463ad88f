@@ -90,8 +90,10 @@ export function useUpdateCliente() {
       if (error) throw error;
       return data as unknown as Cliente;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(["cliente", data.id], data);
       queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      queryClient.invalidateQueries({ queryKey: ["cliente", data.id] });
     },
   });
 }
