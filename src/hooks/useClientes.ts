@@ -12,7 +12,9 @@ const CLIENTE_COLUMNS = `
   trabajo_empresa, trabajo_cargo, trabajo_telefono, trabajo_antiguedad, direccion_trabajo,
   ref1_nombre, ref1_telefono, ref1_parentesco,
   ref2_nombre, ref2_telefono, ref2_parentesco,
-  aval_nombre, aval_telefono, aval_direccion, aval_dni, aval_parentesco
+  aval_nombre, aval_telefono, aval_direccion, aval_dni, aval_parentesco,
+  tipo_persona, rfc, razon_social, dom_calle, dom_numero, dom_colonia,
+  dom_municipio, dom_ciudad, dom_estado, dom_cp
 `;
 
 export function useClientes(filters?: { estado?: string; search?: string; empresaId?: string }) {
