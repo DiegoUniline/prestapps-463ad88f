@@ -100,7 +100,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "generar_llaves") {
-      const alg = { name: "ECDSA", namedCurve: "P-384", hash: "SHA-256" };
+      // Círculo de Crédito: prime256v1 + SHA256withECDSA (Deno no soporta P-384 con SHA-256)
+      const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
       const keys = await crypto.subtle.generateKey(alg, true, ["sign", "verify"]) as CryptoKeyPair;
       const cert = await x509.X509CertificateGenerator.createSelfSigned({
         serialNumber: crypto.randomUUID().replace(/-/g, "").slice(0, 16),
