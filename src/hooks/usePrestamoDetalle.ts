@@ -8,7 +8,8 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
     queryFn: async () => {
       if (!prestamoId) throw new Error("No ID");
 
-      const { data: prestamo, error } = await (supabase.from as any)("prestamos")
+      const { data: prestamo, error } = await supabase
+        .from("prestamos")
         .select(`
           id, id_prestamo, cliente_id, monto_solicitado, monto_total_pagar, tasa_interes,
           num_cuotas, frecuencia, modalidad, fecha_primer_pago, fecha_registro,
@@ -30,10 +31,10 @@ export function usePrestamoDetalle(prestamoId: string | undefined) {
       try {
         const { data: extraData } = await supabase
           .from("prestamos")
-          .select("cobro_automatico_stripe" as any)
+          .select("cobro_automatico_stripe")
           .eq("id", prestamoId)
           .maybeSingle();
-        cobro_automatico_stripe = (extraData as any)?.cobro_automatico_stripe ?? false;
+        cobro_automatico_stripe = extraData?.cobro_automatico_stripe ?? false;
       } catch { /* column may not exist yet */ }
 
       return prestamo ? { ...prestamo, cobro_automatico_stripe } : null;

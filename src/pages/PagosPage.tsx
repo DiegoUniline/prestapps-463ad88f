@@ -268,7 +268,7 @@ export default function PagosPage() {
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       if (sortDir === "asc") setSortDir("desc");
-      else { setSortKey(null); setSortDir(null); }
+      else { setSortKey(""); setSortDir(""); }
     } else { setSortKey(key); setSortDir("asc"); }
   };
 
@@ -282,7 +282,7 @@ export default function PagosPage() {
 
   const clearAll = () => {
     setSearch(""); setSelMetodo(new Set()); setSelCaja(new Set()); setSelRuta(new Set());
-    setRegDesde(undefined); setRegHasta(undefined); setSortKey(null); setSortDir(null);
+    setRegDesde(undefined); setRegHasta(undefined); setSortKey(""); setSortDir("");
   };
 
   const debouncedSearch = useDebouncedValue(search, 300);

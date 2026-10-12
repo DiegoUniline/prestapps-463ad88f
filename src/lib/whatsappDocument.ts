@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { encolarWhatsApp } from "@/lib/whatsappCola";
+import { errorMessage } from "@/lib/utils";
 
 /**
  * Uploads a PDF blob to temporary storage and queues it for WhatsApp (whatsapp_cola).
@@ -16,7 +17,8 @@ export async function sendDocumentViaWhatsApp(
 
   try {
     // 1. Check WhatsApp config
-    const { data: waConfig } = await (supabase.from as any)("whatsapp_config")
+    const { data: waConfig } = await supabase
+      .from("whatsapp_config")
       .select("activo")
       .eq("empresa_id", empresaId)
       .maybeSingle();
@@ -49,12 +51,12 @@ export async function sendDocumentViaWhatsApp(
     });
     if (!result.success) throw new Error(result.error);
     return result;
-  } catch (e: any) {
+  } catch (e) {
     // Cleanup on error
     try {
       await supabase.storage.from("empresa-assets").remove([storagePath]);
     } catch { /* silent */ }
     console.error("sendDocumentViaWhatsApp error:", e);
-    return { success: false, error: e.message || "Error al enviar documento" };
+    return { success: false, error: errorMessage(e) || "Error al enviar documento" };
   }
 }

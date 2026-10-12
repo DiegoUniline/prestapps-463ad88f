@@ -496,7 +496,7 @@ export default function PrestamosPage() {
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       if (sortDir === "asc") setSortDir("desc");
-      else { setSortKey(null); setSortDir(null); }
+      else { setSortKey(""); setSortDir(""); }
     } else { setSortKey(key); setSortDir("asc"); }
   };
 
@@ -510,7 +510,7 @@ export default function PrestamosPage() {
 
   const clearAll = () => {
     setSearch(""); setSelEstado(new Set()); setSelCaja(new Set()); setSelRuta(new Set());
-    setRegDesde(undefined); setRegHasta(undefined); setSortKey(null); setSortDir(null);
+    setRegDesde(undefined); setRegHasta(undefined); setSortKey(""); setSortDir("");
   };
 
   const tabFiltered = useMemo(() => {

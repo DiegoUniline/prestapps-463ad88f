@@ -17,8 +17,8 @@ interface ReceiptData {
     fecha?: string;
     cobrador_nombre?: string;
   };
-  empresa: { nombre: string; telefono?: string; direccion?: string; logo_url?: string | null };
-  cliente: { nombre: string; dni?: string; telefono?: string };
+  empresa: { nombre: string; telefono?: string | null; direccion?: string | null; logo_url?: string | null };
+  cliente: { nombre: string; dni?: string | null; telefono?: string | null };
   prestamo: { folio: string; num_cuotas: number };
 }
 
@@ -59,7 +59,7 @@ const DEFAULT_CONFIG: TicketConfig = {
   },
 };
 
-import { getCurrencySymbol } from "@/lib/utils";
+import { getCurrencySymbol, errorMessage } from "@/lib/utils";
 
 const $$ = (n: number) =>
   `${getCurrencySymbol()}${(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -67,18 +67,21 @@ const $$ = (n: number) =>
 async function fetchTicketConfig(empresaId: string): Promise<TicketConfig> {
   try {
     const { data } = await supabase
-      .from("empresa_config" as any)
+      .from("empresa_config")
       .select("ticket_mostrar_logo, ticket_encabezado, ticket_pie, ticket_campos")
       .eq("empresa_id", empresaId)
       .maybeSingle();
 
     if (data) {
-      const d = data as any;
+      const d = data;
       return {
         ticket_mostrar_logo: d.ticket_mostrar_logo ?? true,
         ticket_encabezado: d.ticket_encabezado || "",
         ticket_pie: d.ticket_pie || "Gracias por su pago",
-        ticket_campos: { ...DEFAULT_CONFIG.ticket_campos, ...(d.ticket_campos || {}) },
+        ticket_campos: {
+          ...DEFAULT_CONFIG.ticket_campos,
+          ...(d.ticket_campos && typeof d.ticket_campos === "object" && !Array.isArray(d.ticket_campos) ? d.ticket_campos : {}),
+        },
       };
     }
   } catch {
@@ -317,7 +320,7 @@ export async function sendReceiptAsImage(
     if (invokeErr) {
       let errMsg = invokeErr.message || "Error al enviar por WhatsApp";
       try {
-        const ctx = (invokeErr as any).context;
+        const ctx = (invokeErr as { context?: { json?: () => Promise<{ error?: string } | null> } }).context;
         if (ctx && typeof ctx.json === "function") {
           const body = await ctx.json();
           if (body?.error) errMsg = body.error;
@@ -335,7 +338,7 @@ export async function sendReceiptAsImage(
     }, 30000);
 
     return result || { success: true };
-  } catch (e: any) {
+  } catch (e) {
     try {
       await supabase.storage.from("empresa-assets").remove([storagePath]);
     } catch {
@@ -343,6 +346,6 @@ export async function sendReceiptAsImage(
     }
 
     console.error("sendReceiptAsImage error:", e);
-    return { success: false, error: e.message || "Error generating receipt image" };
+    return { success: false, error: errorMessage(e) || "Error generating receipt image" };
   }
 }

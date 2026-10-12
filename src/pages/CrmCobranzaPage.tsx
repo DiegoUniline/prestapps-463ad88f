@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
+import { encolarWhatsApp } from "@/lib/whatsappCola";
 
 const TIPOS_GESTION = [
   { value: "llamada", label: "📞 Llamada", icon: Phone },
@@ -169,32 +170,28 @@ export default function CrmCobranzaPage() {
     if (!prestamo) return;
     setSendingWA(prestamo.id);
     try {
-      const { data, error } = await supabase.functions.invoke("whatsapp-sender", {
-        body: {
-          action: "send-text",
-          empresa_id: empresaId,
-          phone: prestamo.cliente.telefono,
-          message,
-          tipo: "cobranza",
-          referencia_id: prestamo.id,
-        },
+      const res = await encolarWhatsApp({
+        empresaId,
+        telefono: prestamo.cliente.telefono,
+        tipo: "cobranza",
+        mensaje: message,
+        referenciaId: prestamo.id,
       });
-      if (error) throw error;
-      if (data?.success) {
-        toast.success("Mensaje enviado");
+      if (res.success) {
+        toast.success("Mensaje en cola de envío");
         await (supabase.from as any)("crm_gestiones").insert({
           empresa_id: empresaId,
           prestamo_id: prestamo.id,
           cliente_id: prestamo.cliente.id,
           tipo_gestion: "whatsapp",
           resultado: "contactado",
-          notas: "Mensaje de cobranza enviado por WhatsApp",
+          notas: "Mensaje de cobranza encolado por WhatsApp",
           registrado_por: user?.id || null,
         });
         queryClient.invalidateQueries({ queryKey: ["crm-gestiones", empresaId] });
         queryClient.invalidateQueries({ queryKey: ["crm-cartera", empresaId] });
       } else {
-        toast.error("Error enviando: " + (data?.error || "desconocido"));
+        toast.error("Error enviando: " + (res.error || "desconocido"));
       }
     } catch (e: any) {
       toast.error("Error: " + e.message);

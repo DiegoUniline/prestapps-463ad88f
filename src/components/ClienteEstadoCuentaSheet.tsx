@@ -78,7 +78,7 @@ const TIPO_LABELS: Record<string, string> = {
 function useEstadoCuentaCliente(clienteId: string, empresaId: string) {
   return useQuery({
     queryKey: ["estado-cuenta", clienteId, empresaId],
-    queryFn: async () => {
+    queryFn: async (): Promise<CuentaCliente[]> => {
       // Get all active prestamos for this client
       const { data: prestamos, error } = await (supabase.from as any)("prestamos")
         .select(`

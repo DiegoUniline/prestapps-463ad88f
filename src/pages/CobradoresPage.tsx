@@ -46,19 +46,20 @@ function useCortes(empresaId: string) {
   return useQuery({
     queryKey: ["cortes", empresaId],
     queryFn: async () => {
-      const { data: cortes, error } = await (supabase.from as any)("cortes")
+      const { data: cortes, error } = await supabase
+        .from("cortes")
         .select("*, cajas ( nombre )")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
-      const cobIds: string[] = [...new Set((cortes || []).map((c: any) => c.cobrador_id).filter(Boolean))] as string[];
+      const cobIds = [...new Set((cortes || []).map((c) => c.cobrador_id).filter(Boolean))];
       const cobMap: Record<string, string> = {};
       if (cobIds.length) {
-        const { data: profs } = await (supabase.from as any)("profiles").select("id, nombre_completo").in("id", cobIds);
+        const { data: profs } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
         for (const p of profs || []) cobMap[p.id] = p.nombre_completo;
       }
-      return (cortes || []).map((c: any) => ({ ...c, cobrador_nombre: cobMap[c.cobrador_id] || "—" }));
+      return (cortes || []).map((c) => ({ ...c, cobrador_nombre: cobMap[c.cobrador_id] || "—" }));
     },
   });
 }
@@ -211,7 +212,7 @@ export default function CobradoresPage() {
   const totalEfectivo = cobradores.reduce((s, c) => s + c.efectivo_en_mano, 0);
   const totalCobradores = cobradores.filter(c => c.activo).length;
   const totalCortes = cortes.length;
-  const totalComisiones = cortes.reduce((s, c) => s + Number((c as any).monto_comision || 0), 0);
+  const totalComisiones = cortes.reduce((s, c) => s + Number(c.monto_comision || 0), 0);
 
   const kpis = [
     { label: "Usuarios Activos", value: String(totalCobradores), icon: UserCheck, accent: "text-primary" },

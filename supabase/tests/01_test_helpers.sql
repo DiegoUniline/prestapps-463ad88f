@@ -76,6 +76,11 @@ BEGIN
   RETURN n;
 END $$;
 
+-- Falla conocida (bug reportado, pendiente de corregir en una migración nueva): no rompe la suite
+-- pero se lista en el resumen. Si empieza a pasar, run.sh lo avisa para quitar la marca.
+CREATE FUNCTION tests.todo(p_resultado text, p_motivo text) RETURNS text
+LANGUAGE sql IMMUTABLE AS $$ SELECT p_resultado || ' # TODO ' || p_motivo $$;
+
 CREATE FUNCTION tests.skip(p_desc text, p_motivo text) RETURNS text
 LANGUAGE sql IMMUTABLE AS $$ SELECT 'ok - ' || p_desc || ' # SKIP ' || p_motivo $$;
 
@@ -117,6 +122,23 @@ BEGIN
   PERFORM set_config('role', 'none', true);
   PERFORM set_config('request.jwt.claim.sub', '', true);
   PERFORM set_config('request.jwt.claims', '', true);
+END $$;
+
+-- Huella del contenido de todas las tablas de public/auth: run.sh la compara antes y después de
+-- cada archivo de prueba para detectar uno que haya confirmado cambios (debe terminar en ROLLBACK).
+CREATE FUNCTION tests.huella() RETURNS text LANGUAGE plpgsql AS $$
+DECLARE
+  t record;
+  v text;
+  acc text := '';
+BEGIN
+  FOR t IN SELECT c.oid::regclass AS rel FROM pg_class c
+            WHERE c.relkind = 'r' AND c.relnamespace IN ('public'::regnamespace, 'auth'::regnamespace)
+            ORDER BY 1::text LOOP
+    EXECUTE format('SELECT md5(coalesce(string_agg(x::text, %L ORDER BY x::text), %L)) FROM %s x', '|', '', t.rel) INTO v;
+    acc := acc || t.rel::text || ':' || v || ';';
+  END LOOP;
+  RETURN md5(acc);
 END $$;
 
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tests TO anon, authenticated, service_role;

@@ -37,7 +37,7 @@ function useRutas(empresaId: string) {
       if (error) throw error;
 
       // Get cobrador names from profiles
-      const cobIds = [...new Set((rutas || []).map(r => r.cobrador_id).filter(Boolean))];
+      const cobIds = [...new Set((rutas || []).map(r => r.cobrador_id).filter((id): id is string => !!id))];
       const cobMap: Record<string, string> = {};
       if (cobIds.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);

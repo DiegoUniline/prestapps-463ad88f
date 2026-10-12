@@ -114,7 +114,7 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
         .neq("estado", "cancelada")
         .order("creado_en", { ascending: false });
       if (error) throw error;
-      const map: Record<string, { estado: string; num_usuarios: number; plan_nombre: string; precio: number; fecha_inicio: string | null; fecha_vencimiento: string | null }> = {};
+      const map: Record<string, { estado: string | null; num_usuarios: number; plan_nombre: string; precio: number; fecha_inicio: string | null; fecha_vencimiento: string | null }> = {};
       for (const s of data || []) {
         if (!map[s.empresa_id]) {
           map[s.empresa_id] = {

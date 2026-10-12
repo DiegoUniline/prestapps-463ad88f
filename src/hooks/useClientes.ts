@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tansta
 import { supabase } from "@/integrations/supabase/client";
 import { PAGE_SIZE, pageRange } from "@/hooks/usePaginacion";
 import type { Cliente, ClienteInsert } from "@/types/cliente";
+import type { Enums, TablesInsert } from "@/integrations/supabase/types";
 
 const CLIENTE_COLUMNS = `
   id, id_cliente, nombre_completo, telefono, correo,
@@ -44,14 +45,15 @@ export function useClientes(filters: { estado?: string; search?: string; empresa
     enabled: !!filters.empresaId,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      let query = (supabase.from as any)("clientes")
+      let query = supabase
+        .from("clientes")
         .select(CLIENTE_LIST_COLUMNS, { count: "exact" })
-        .eq("empresa_id", filters.empresaId)
+        .eq("empresa_id", filters.empresaId ?? "")
         .order("created_at", { ascending: false })
         .order("id", { ascending: true });
 
       if (filters.estado && filters.estado !== "todos") {
-        query = query.eq("estado", filters.estado);
+        query = query.eq("estado", filters.estado as Enums<"cliente_estado">);
       }
       if (filters.search) {
         const pattern = ilikeOrValue(filters.search);
@@ -93,7 +95,7 @@ export function useCreateCliente() {
     mutationFn: async (cliente: ClienteInsert & { empresa_id?: string }) => {
       const { data, error } = await supabase
         .from("clientes")
-        .insert(cliente as any)
+        .insert(cliente as TablesInsert<"clientes">)
         .select()
         .single();
       if (error) throw error;

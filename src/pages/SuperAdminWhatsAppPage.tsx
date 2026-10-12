@@ -215,7 +215,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   // Get unique tipos
   const tipos = useMemo(() => {
     if (!logs) return [];
-    return [...new Set(logs.map((l: any) => l.tipo))].sort();
+    return [...new Set<string>(logs.map((l: any) => l.tipo))].sort();
   }, [logs]);
 
   // Filter logs

@@ -40,7 +40,7 @@ export async function resendReceiptForPrestamo(opts: {
       .single(),
   ]);
 
-  const cliente = (prestamo as any)?.clientes;
+  const cliente = prestamo?.clientes;
   if (!cliente?.telefono) return { success: false, error: "Cliente sin teléfono" };
 
   // 3. Cuota num + remaining
@@ -61,7 +61,7 @@ export async function resendReceiptForPrestamo(opts: {
     .neq("status", "Pagada")
     .order("num_cuota");
   const saldoRestante = (remainingCuotas || []).reduce(
-    (s: number, c: any) => s + Number(c.saldo_total || 0),
+    (s, c) => s + Number(c.saldo_total || 0),
     0
   );
   const proxima = remainingCuotas?.[0];
@@ -77,7 +77,7 @@ export async function resendReceiptForPrestamo(opts: {
     cobradorNombre = cob?.nombre_completo || "";
   }
 
-  const folio = (prestamo as any)?.id_prestamo || `PRE-${prestamoId.slice(0, 8)}`;
+  const folio = prestamo?.id_prestamo || `PRE-${prestamoId.slice(0, 8)}`;
   const monto = Number(pago.monto_recibido || 0);
   const fechaStr = pago.fecha_pago
     ? new Date(pago.fecha_pago + "T12:00:00").toLocaleDateString("es-MX", {

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCreateSolicitud } from "@/hooks/useSolicitudes";
+import type { Enums } from "@/integrations/supabase/types";
 import { useFrecuenciasPagoActivas } from "@/hooks/useCatalogos";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 import { calcNextDate, calcularAmortizacion } from "@/lib/financial";
@@ -138,13 +139,13 @@ export default function SolicitudPrestamoPage() {
         monto_solicitado: monto,
         tasa_interes: tasa,
         num_cuotas: cuotas,
-        frecuencia,
-        modalidad,
+        frecuencia: frecuencia as Enums<"frecuencia_pago">,
+        modalidad: modalidad as Enums<"prestamo_modalidad">,
         fecha_primer_pago: format(fechaPrimerPago, "yyyy-MM-dd"),
         caja_id: cajaId || null,
         ruta_id: rutaId || null,
         gastos_legales: parseFloat(gastosLegales) || 0,
-        tipo_mora: tipoMora,
+        tipo_mora: tipoMora as Enums<"tipo_mora">,
         valor_mora: parseFloat(valorMora) || 0,
         notas: notas || null,
         solicitado_por: user?.id || null,

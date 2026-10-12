@@ -11,16 +11,16 @@ interface ExportColumn {
 interface ExportOptions {
   title: string;
   columns: ExportColumn[];
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
   totals?: Record<string, number>;
   dateRange?: { from: string; to: string };
   empresaNombre?: string;
 }
 
-function fmtCell(val: any, fmt?: string) {
+function fmtCell(val: unknown, fmt?: string) {
   if (val == null) return "";
   if (fmt === "money") return $$(Number(val));
-  if (fmt === "date") return val ? fmtDate(val) : "";
+  if (fmt === "date") return val ? fmtDate(val as string | Date) : "";
   if (fmt === "number") return Number(val).toLocaleString("en-US");
   return String(val);
 }

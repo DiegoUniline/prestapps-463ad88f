@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
 import { PAGE_SIZE, pageRange } from "@/hooks/usePaginacion";
+import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export interface Solicitud {
   id: string;
@@ -31,22 +31,6 @@ export interface Solicitud {
   clientes?: { nombre_completo: string; id_cliente: string } | null;
 }
 
-export function useSolicitudes(empresaId?: string, statusFilter?: string) {
-  return useQuery({
-    queryKey: ["solicitudes", empresaId, statusFilter],
-    queryFn: async () => {
-      let query = (supabase.from as any)("solicitudes_prestamo")
-        .select("*, clientes(nombre_completo, id_cliente)")
-        .order("created_at", { ascending: false });
-
-      if (empresaId) query = query.eq("empresa_id", empresaId);
-      if (statusFilter && statusFilter !== "todos") query = query.eq("status", statusFilter);
-
-      return await fetchAllRows<Solicitud>(query);
-    },
-  });
-}
-
 /**
  * Listado paginado en servidor: estado, búsqueda (nombre o ID del cliente) y orden en PostgREST.
  * Devuelve solo la página pedida + total filtrado.
@@ -60,9 +44,13 @@ export function useSolicitudesPaginadas(params: { empresaId?: string; status?: s
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const search = params.search?.trim();
-      let query = (supabase.from as any)("solicitudes_prestamo")
-        .select(`*, clientes${search ? "!inner" : ""}(nombre_completo, id_cliente)`, { count: "exact" })
-        .eq("empresa_id", params.empresaId)
+      const columns = search
+        ? "*, clientes!inner(nombre_completo, id_cliente)"
+        : "*, clientes(nombre_completo, id_cliente)";
+      let query = supabase
+        .from("solicitudes_prestamo")
+        .select(columns, { count: "exact" })
+        .eq("empresa_id", params.empresaId ?? "")
         .order("created_at", { ascending: false })
         .order("id", { ascending: true });
 
@@ -83,8 +71,9 @@ export function useSolicitudesPaginadas(params: { empresaId?: string; status?: s
 export function useCreateSolicitud() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (sol: Record<string, any>) => {
-      const { data, error } = await (supabase.from as any)("solicitudes_prestamo")
+    mutationFn: async (sol: TablesInsert<"solicitudes_prestamo">) => {
+      const { data, error } = await supabase
+        .from("solicitudes_prestamo")
         .insert(sol)
         .select("id")
         .single();
@@ -98,8 +87,9 @@ export function useCreateSolicitud() {
 export function useUpdateSolicitud() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
-      const { error } = await (supabase.from as any)("solicitudes_prestamo")
+    mutationFn: async ({ id, ...updates }: TablesUpdate<"solicitudes_prestamo"> & { id: string }) => {
+      const { error } = await supabase
+        .from("solicitudes_prestamo")
         .update(updates)
         .eq("id", id);
       if (error) throw error;

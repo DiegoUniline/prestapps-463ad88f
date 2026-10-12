@@ -252,7 +252,7 @@ export function MiRutaMap({
                 </div>
                 <div className="flex shrink-0 gap-1">
                   {stop.clienteTelefono && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(`tel:${stop.clienteTelefono}`, "_blank")}><Phone className="h-3.5 w-3.5" /></Button>}
-                  {stop.clienteTelefono && <Button variant="ghost" size="icon" className="h-8 w-8 text-success" onClick={() => window.open(`https://wa.me/${stop.clienteTelefono.replace(/\D/g, "")}`, "_blank")}><MessageSquare className="h-3.5 w-3.5" /></Button>}
+                  {stop.clienteTelefono && <Button variant="ghost" size="icon" className="h-8 w-8 text-success" onClick={() => window.open(`https://wa.me/${stop.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}><MessageSquare className="h-3.5 w-3.5" /></Button>}
                   <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => window.open(navigationUrl(stop), "_blank")}><Navigation className="h-3.5 w-3.5" /></Button>
                 </div>
               </CardContent>

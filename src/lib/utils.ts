@@ -70,3 +70,8 @@ export function fmtDateTime(date: string | Date | null | undefined): string {
 export function fmtNumber(n: number | null | undefined): string {
   return (n || 0).toLocaleString("en-US");
 }
+
+/** Mensaje de un error desconocido (Error, PostgrestError, objeto con `message`). */
+export function errorMessage(err: unknown): string | undefined {
+  return err && typeof err === "object" && "message" in err && typeof err.message === "string" ? err.message : undefined;
+}

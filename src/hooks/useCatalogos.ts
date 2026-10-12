@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresaStore } from "@/stores/empresaStore";
 import { toast } from "sonner";
+import type { Enums } from "@/integrations/supabase/types";
+
+type SimpleCatalogTable = "cat_frecuencias_pago" | "cat_tipos_documento" | "cat_estados_civiles" | "cat_situaciones_laborales";
 
 // ── Generic simple catalog (nombre, descripcion, activo) ──
 export interface CatalogoSimple {
@@ -11,12 +14,12 @@ export interface CatalogoSimple {
   activo: boolean;
 }
 
-function useSimpleCatalog(table: string, queryKey: string) {
+function useSimpleCatalog(table: SimpleCatalogTable, queryKey: string) {
   return useQuery({
     queryKey: [queryKey],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from(table as any)
+        .from(table)
         .select("id, nombre, descripcion, activo")
         .order("created_at");
       if (error) throw error;
@@ -25,38 +28,38 @@ function useSimpleCatalog(table: string, queryKey: string) {
   });
 }
 
-function useUpsertSimple(table: string, queryKey: string, label: string) {
+function useUpsertSimple(table: SimpleCatalogTable, queryKey: string, label: string) {
   const qc = useQueryClient();
   const empresaId = useEmpresaStore((s) => s.empresaId);
   return useMutation({
     mutationFn: async (item: Partial<CatalogoSimple> & { nombre: string }) => {
       if (item.id) {
         const { error } = await supabase
-          .from(table as any)
-          .update({ nombre: item.nombre, descripcion: item.descripcion, activo: item.activo } as any)
+          .from(table)
+          .update({ nombre: item.nombre, descripcion: item.descripcion, activo: item.activo })
           .eq("id", item.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from(table as any)
-          .insert({ nombre: item.nombre, descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
+          .from(table)
+          .insert({ nombre: item.nombre, descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId });
         if (error) throw error;
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: [queryKey] }); toast.success(`${label} guardado`); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
-function useDeleteSimple(table: string, queryKey: string, label: string) {
+function useDeleteSimple(table: SimpleCatalogTable, queryKey: string, label: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from(table as any).delete().eq("id", id);
+      const { error } = await supabase.from(table).delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: [queryKey] }); toast.success(`${label} eliminado`); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -74,7 +77,7 @@ export function useMetodosPago() {
     queryKey: ["cat-metodos-pago"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cat_metodos_pago" as any)
+        .from("cat_metodos_pago")
         .select("id, nombre, requiere_validacion, descripcion, activo")
         .order("created_at");
       if (error) throw error;
@@ -88,7 +91,7 @@ export function useMetodosPagoActivos() {
     queryKey: ["cat-metodos-pago-activos"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cat_metodos_pago" as any)
+        .from("cat_metodos_pago")
         .select("id, nombre, requiere_validacion")
         .eq("activo", true)
         .order("created_at");
@@ -105,14 +108,14 @@ export function useUpsertMetodoPago() {
     mutationFn: async (item: Partial<MetodoPago> & { nombre: string }) => {
       if (item.id) {
         const { error } = await supabase
-          .from("cat_metodos_pago" as any)
-          .update({ nombre: item.nombre, requiere_validacion: item.requiere_validacion, descripcion: item.descripcion, activo: item.activo } as any)
+          .from("cat_metodos_pago")
+          .update({ nombre: item.nombre, requiere_validacion: item.requiere_validacion, descripcion: item.descripcion, activo: item.activo })
           .eq("id", item.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("cat_metodos_pago" as any)
-          .insert({ nombre: item.nombre, requiere_validacion: item.requiere_validacion ?? false, descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
+          .from("cat_metodos_pago")
+          .insert({ nombre: item.nombre, requiere_validacion: item.requiere_validacion ?? false, descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId });
         if (error) throw error;
       }
     },
@@ -121,7 +124,7 @@ export function useUpsertMetodoPago() {
       qc.invalidateQueries({ queryKey: ["cat-metodos-pago-activos"] });
       toast.success("Método de pago guardado");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -129,7 +132,7 @@ export function useDeleteMetodoPago() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cat_metodos_pago" as any).delete().eq("id", id);
+      const { error } = await supabase.from("cat_metodos_pago").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -137,7 +140,7 @@ export function useDeleteMetodoPago() {
       qc.invalidateQueries({ queryKey: ["cat-metodos-pago-activos"] });
       toast.success("Método de pago eliminado");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -155,7 +158,7 @@ export function useEstadosPrestamo() {
     queryKey: ["cat-estados-prestamo"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cat_estados_prestamo" as any)
+        .from("cat_estados_prestamo")
         .select("id, nombre, color, descripcion, activo")
         .order("created_at");
       if (error) throw error;
@@ -171,19 +174,19 @@ export function useUpsertEstadoPrestamo() {
     mutationFn: async (item: Partial<EstadoPrestamo> & { nombre: string }) => {
       if (item.id) {
         const { error } = await supabase
-          .from("cat_estados_prestamo" as any)
-          .update({ nombre: item.nombre, color: item.color, descripcion: item.descripcion, activo: item.activo } as any)
+          .from("cat_estados_prestamo")
+          .update({ nombre: item.nombre, color: item.color, descripcion: item.descripcion, activo: item.activo })
           .eq("id", item.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("cat_estados_prestamo" as any)
-          .insert({ nombre: item.nombre, color: item.color ?? "", descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId } as any);
+          .from("cat_estados_prestamo")
+          .insert({ nombre: item.nombre, color: item.color ?? "", descripcion: item.descripcion ?? "", activo: item.activo ?? true, empresa_id: empresaId });
         if (error) throw error;
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cat-estados-prestamo"] }); toast.success("Estado guardado"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -191,11 +194,11 @@ export function useDeleteEstadoPrestamo() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cat_estados_prestamo" as any).delete().eq("id", id);
+      const { error } = await supabase.from("cat_estados_prestamo").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["cat-estados-prestamo"] }); toast.success("Estado eliminado"); },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -209,7 +212,7 @@ export function useFrecuenciasPagoActivas() {
     queryKey: ["cat-frecuencias-pago-activas"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cat_frecuencias_pago" as any)
+        .from("cat_frecuencias_pago")
         .select("id, nombre")
         .eq("activo", true)
         .order("created_at");
@@ -254,7 +257,7 @@ export function usePlanesCuotas() {
     queryKey: ["cat-planes-cuotas"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cat_cuotas" as any)
+        .from("cat_cuotas")
         .select("*")
         .order("created_at");
       if (error) throw error;
@@ -268,7 +271,7 @@ export function usePlanesCuotasActivos() {
     queryKey: ["cat-planes-cuotas-activos"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cat_cuotas" as any)
+        .from("cat_cuotas")
         .select("*")
         .eq("activo", true)
         .order("nombre");
@@ -289,17 +292,17 @@ export function useUpsertPlanCuota() {
         tasa_interes: item.tasa_interes ?? 0,
         comision_colocador: item.comision_colocador ?? 0,
         comision_cobrador: item.comision_cobrador ?? 0,
-        frecuencia: item.frecuencia ?? "semanal",
-        modalidad: item.modalidad ?? "fijo",
-        tipo_mora: item.tipo_mora ?? "porcentaje",
+        frecuencia: (item.frecuencia ?? "semanal") as Enums<"frecuencia_pago">,
+        modalidad: (item.modalidad ?? "fijo") as Enums<"prestamo_modalidad">,
+        tipo_mora: (item.tipo_mora ?? "porcentaje") as Enums<"tipo_mora">,
         valor_mora: item.valor_mora ?? 0,
         activo: item.activo ?? true,
       };
       if (item.id) {
-        const { error } = await supabase.from("cat_cuotas" as any).update(payload as any).eq("id", item.id);
+        const { error } = await supabase.from("cat_cuotas").update(payload).eq("id", item.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("cat_cuotas" as any).insert({ ...payload, empresa_id: empresaId } as any);
+        const { error } = await supabase.from("cat_cuotas").insert({ ...payload, empresa_id: empresaId });
         if (error) throw error;
       }
     },
@@ -308,7 +311,7 @@ export function useUpsertPlanCuota() {
       qc.invalidateQueries({ queryKey: ["cat-planes-cuotas-activos"] });
       toast.success("Plan de cuotas guardado");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -316,7 +319,7 @@ export function useDeletePlanCuota() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("cat_cuotas" as any).delete().eq("id", id);
+      const { error } = await supabase.from("cat_cuotas").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -324,6 +327,6 @@ export function useDeletePlanCuota() {
       qc.invalidateQueries({ queryKey: ["cat-planes-cuotas-activos"] });
       toast.success("Plan de cuotas eliminado");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }

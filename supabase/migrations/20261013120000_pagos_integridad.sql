@@ -359,6 +359,14 @@ BEGIN
     RAISE EXCEPTION 'Los valores no pueden ser negativos';
   END IF;
 
+  -- El saldo de la caja nueva se valida antes de reasignar el préstamo (caja_saldos ya
+  -- descuenta monto_solicitado de los préstamos que apuntan a la caja).
+  v_monto := coalesce(p.monto_solicitado, 0);
+  IF v_caja IS DISTINCT FROM p.caja_id AND v_caja IS NOT NULL AND v_monto > 0 THEN
+    c := public._integ_lock_caja(v_caja, v_emp);
+    PERFORM public._integ_check_saldo(c, v_monto);
+  END IF;
+
   UPDATE public.prestamos SET
     tasa_interes = CASE WHEN d ? 'tasa_interes' THEN (d->>'tasa_interes')::numeric ELSE tasa_interes END,
     tipo_mora = CASE WHEN d ? 'tipo_mora' THEN nullif(d->>'tipo_mora', '')::public.tipo_mora ELSE tipo_mora END,
@@ -373,7 +381,6 @@ BEGIN
 
   PERFORM public.rebuild_amortizacion(p.id);
 
-  v_monto := coalesce(p.monto_solicitado, 0);
   IF v_caja IS DISTINCT FROM p.caja_id AND v_monto > 0 THEN
     v_folio := coalesce(nullif(p.id_prestamo, ''), left(p.id::text, 8));
     IF p.caja_id IS NOT NULL THEN
@@ -383,8 +390,6 @@ BEGIN
               format('Corrección desembolso %s — salida de caja anterior', v_folio), v_emp, auth.uid());
     END IF;
     IF v_caja IS NOT NULL THEN
-      c := public._integ_lock_caja(v_caja, v_emp);
-      PERFORM public._integ_check_saldo(c, v_monto);
       INSERT INTO public.movimientos_caja (caja_id, tipo, monto, prestamo_id, concepto, empresa_id, registrado_por)
       VALUES (v_caja, 'salida', v_monto, p.id,
               format('Corrección desembolso %s — cambio de caja', v_folio), v_emp, auth.uid());

@@ -75,21 +75,29 @@ done
 echo "== Datos fijos"
 load "$DIR/05_fixtures.sql"
 
-PASS=0; FAIL=0; SKIP=0; FILE_ERRORS=0
-FAILED_LINES=()
+PASS=0; FAIL=0; SKIP=0; TODO=0; FILE_ERRORS=0
+FAILED_LINES=(); TODO_LINES=()
 shopt -s nullglob
 TEST_FILES=("$DIR"/[1-9][0-9]_*.sql)
 [ "${#TEST_FILES[@]}" -gt 0 ] || die "no hay archivos de prueba"
+
+HUELLA="$("${PSQL[@]}" -At -c 'SELECT tests.huella()')" || die "no se pudo calcular la huella de datos"
 
 for f in "${TEST_FILES[@]}"; do
   name="$(basename "$f")"
   echo "== $name"
   out="$("${PSQL[@]}" -At -f "$f" 2>&1)"
   status=$?
+  if [ "$("${PSQL[@]}" -At -c 'SELECT tests.huella()')" != "$HUELLA" ]; then
+    out="$out"$'\n'"not ok - $name dejó cambios confirmados en los datos fijos (debe terminar en ROLLBACK y limpiar lo que confirme)"
+    HUELLA="$("${PSQL[@]}" -At -c 'SELECT tests.huella()')"
+  fi
   n_ok=0; n_fail=0
   while IFS= read -r line; do
     case "$line" in
       "ok - "*"# SKIP"*) SKIP=$((SKIP + 1)); n_ok=$((n_ok + 1)); echo "   ${YELLOW}${line}${RESET}" ;;
+      "not ok - "*"# TODO"*) TODO=$((TODO + 1)); TODO_LINES+=("$name: $line"); echo "   ${YELLOW}${line}${RESET}" ;;
+      "ok - "*"# TODO"*) PASS=$((PASS + 1)); n_ok=$((n_ok + 1)); echo "   ${YELLOW}${line}  <- ya pasa: quita tests.todo()${RESET}" ;;
       "ok - "*) PASS=$((PASS + 1)); n_ok=$((n_ok + 1)); [ -n "${SQLTEST_VERBOSE:-}" ] && echo "   $line" ;;
       "not ok - "*) FAIL=$((FAIL + 1)); n_fail=$((n_fail + 1)); FAILED_LINES+=("$name: $line"); echo "   ${RED}${line}${RESET}" ;;
       "") ;;
@@ -104,9 +112,10 @@ for f in "${TEST_FILES[@]}"; do
   echo "   $n_ok ok, $n_fail fallidas"
 done
 
-TOTAL=$((PASS + FAIL + SKIP))
+TOTAL=$((PASS + FAIL + SKIP + TODO))
 echo
-echo "== Resumen: $TOTAL pruebas, ${GREEN}$PASS ok${RESET}, ${RED}$FAIL fallidas${RESET}, ${YELLOW}$SKIP omitidas${RESET}, $FILE_ERRORS archivos con error"
+echo "== Resumen: $TOTAL pruebas, ${GREEN}$PASS ok${RESET}, ${RED}$FAIL fallidas${RESET}, ${YELLOW}$SKIP omitidas, $TODO TODO (bugs conocidos)${RESET}, $FILE_ERRORS archivos con error"
+for l in "${TODO_LINES[@]}"; do echo "   ${YELLOW}$l${RESET}"; done
 if [ "$FAIL" -gt 0 ] || [ "$FILE_ERRORS" -gt 0 ] || [ "$TOTAL" -eq 0 ]; then
   for l in "${FAILED_LINES[@]}"; do echo "   ${RED}$l${RESET}"; done
   exit 1

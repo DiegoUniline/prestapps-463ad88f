@@ -34,3 +34,33 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  sql-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: prestapp_sql_tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql
+        run: command -v psql || (sudo apt-get update && sudo apt-get install -y postgresql-client)
+
+      - name: SQL tests (mock schema + migrations x2 + tests)
+        run: bash supabase/tests/run.sh

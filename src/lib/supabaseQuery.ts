@@ -16,14 +16,20 @@ interface QueryResult<T> {
  * (default "id"), it is appended as the LAST order column, so the caller's order is preserved.
  * Pass `{ tiebreaker: null }` only for builders whose result has no unique column.
  */
-export async function fetchAllRows<T = any>(
-  queryBuilder: any,
+export interface PageableQuery<T> {
+  range(from: number, to: number): PromiseLike<{ data: T[] | null; error: unknown }>;
+  order(column: string, options?: { ascending?: boolean }): PageableQuery<T>;
+}
+
+export async function fetchAllRows<T>(
+  queryBuilder: PageableQuery<T>,
   pageSize = 1000,
   opts: { tiebreaker?: string | null } = {}
 ): Promise<T[]> {
   const tiebreaker = opts.tiebreaker === undefined ? "id" : opts.tiebreaker;
   if (tiebreaker && typeof queryBuilder?.order === "function") {
-    const current: string = queryBuilder.url?.searchParams?.get("order") || "";
+    const url = (queryBuilder as unknown as { url?: URL }).url;
+    const current: string = url?.searchParams?.get("order") || "";
     const ordered = current.split(",").some((part) => part.split(".")[0] === tiebreaker);
     if (!ordered) queryBuilder = queryBuilder.order(tiebreaker, { ascending: true });
   }
@@ -50,8 +56,9 @@ export async function fetchAllRows<T = any>(
 /**
  * Calls a Postgres RPC that is not (yet) in the generated Database types.
  */
-export function rpc<T = any>(fn: string, args?: Record<string, unknown>): PromiseLike<{ data: T | null; error: { message: string } | null }> {
-  return (supabase as any).rpc(fn, args);
+export function rpc<T = unknown>(fn: string, args?: Record<string, unknown>): PromiseLike<{ data: T | null; error: { message: string } | null }> {
+  type UntypedRpc = { rpc(fn: string, args?: Record<string, unknown>): PromiseLike<{ data: T | null; error: { message: string } | null }> };
+  return (supabase as unknown as UntypedRpc).rpc(fn, args);
 }
 
 /**

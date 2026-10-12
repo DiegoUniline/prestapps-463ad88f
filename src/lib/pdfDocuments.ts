@@ -2,6 +2,11 @@ import type { jsPDF } from "jspdf";
 import { format } from "date-fns";
 import { $$, fmtDate, fmtDateTime } from "@/lib/utils";
 
+/** Y final de la última tabla dibujada por jspdf-autotable (propiedad sin tipos). */
+function lastTableY(doc: jsPDF): number {
+  return (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+}
+
 const GRAY: [number, number, number] = [107, 114, 128];
 const DARK: [number, number, number] = [17, 24, 39];
 const BLACK: [number, number, number] = [0, 0, 0];
@@ -245,7 +250,7 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
     },
   });
 
-  y = (doc as any).lastAutoTable.finalY + 10;
+  y = lastTableY(doc) + 10;
 
   // Payments table
   if (pagos.length > 0) {
@@ -390,7 +395,7 @@ ${prestamo.notas ? `Notas: ${prestamo.notas}` : ""}`;
     ...cleanTableStyles,
   });
 
-  y = (doc as any).lastAutoTable.finalY + 30;
+  y = lastTableY(doc) + 30;
 
   // Signatures
   if (y > 240) { doc.addPage(); y = 20; }

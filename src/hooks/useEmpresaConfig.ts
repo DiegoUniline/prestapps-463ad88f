@@ -2,8 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
+import type { Json } from "@/integrations/supabase/types";
 
-export interface TicketCampos {
+export type TicketCampos = {
   cliente_nombre: boolean;
   cliente_dni: boolean;
   cliente_telefono: boolean;
@@ -18,9 +19,9 @@ export interface TicketCampos {
   cobrador: boolean;
   firma_cliente: boolean;
   firma_cobrador: boolean;
-}
+};
 
-export interface ContratoCampos {
+export type ContratoCampos = {
   datos_cliente: boolean;
   datos_prestamo: boolean;
   tabla_amortizacion: boolean;
@@ -28,7 +29,7 @@ export interface ContratoCampos {
   firma_cliente: boolean;
   firma_empresa: boolean;
   notas: boolean;
-}
+};
 
 export interface EmpresaConfig {
   id: string;
@@ -64,6 +65,11 @@ El presente contrato se firma en la ciudad de ______________ a los ____ días de
 
 {{notas}}`;
 
+/** Objeto JSON guardado en la columna (o vacío si es nulo/no-objeto). */
+function asObject(v: Json | null): Record<string, Json | undefined> {
+  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+}
+
 const CONFIG_COLUMNS = `
   id, empresa_id, ticket_mostrar_logo, ticket_encabezado, ticket_pie,
   ticket_campos, contrato_plantilla, contrato_campos
@@ -75,22 +81,22 @@ export function useEmpresaConfig() {
     queryKey: ["empresa-config", empresaId],
     queryFn: async (): Promise<EmpresaConfig> => {
       const { data, error } = await supabase
-        .from("empresa_config" as any)
+        .from("empresa_config")
         .select(CONFIG_COLUMNS)
         .eq("empresa_id", empresaId)
         .maybeSingle();
       if (error) throw error;
       if (data) {
-        const d = data as any;
+        const d = data;
         return {
           id: d.id,
           empresa_id: d.empresa_id,
           ticket_mostrar_logo: d.ticket_mostrar_logo ?? true,
           ticket_encabezado: d.ticket_encabezado || "",
           ticket_pie: d.ticket_pie || "Gracias por su pago",
-          ticket_campos: { ...DEFAULT_TICKET_CAMPOS, ...(d.ticket_campos || {}) },
+          ticket_campos: { ...DEFAULT_TICKET_CAMPOS, ...asObject(d.ticket_campos) },
           contrato_plantilla: d.contrato_plantilla || DEFAULT_CONTRATO_PLANTILLA,
-          contrato_campos: { ...DEFAULT_CONTRATO_CAMPOS, ...(d.contrato_campos || {}) },
+          contrato_campos: { ...DEFAULT_CONTRATO_CAMPOS, ...asObject(d.contrato_campos) },
         };
       }
       return {
@@ -125,14 +131,14 @@ export function useSaveEmpresaConfig() {
 
       if (config.id) {
         const { error } = await supabase
-          .from("empresa_config" as any)
-          .update(payload as any)
+          .from("empresa_config")
+          .update(payload)
           .eq("id", config.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from("empresa_config" as any)
-          .insert(payload as any);
+          .from("empresa_config")
+          .insert(payload);
         if (error) throw error;
       }
     },
@@ -140,7 +146,7 @@ export function useSaveEmpresaConfig() {
       qc.invalidateQueries({ queryKey: ["empresa-config", config.empresa_id] });
       toast.success("Configuración guardada");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -172,6 +178,6 @@ export function useUploadLogo() {
       qc.invalidateQueries({ queryKey: ["empresa-datos"] });
       toast.success("Logo actualizado");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }

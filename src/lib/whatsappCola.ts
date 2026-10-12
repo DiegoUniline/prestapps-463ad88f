@@ -11,13 +11,20 @@ export interface MensajeCola {
   referenciaId?: string | null;
 }
 
+/** whatsapp_cola aún no está en los tipos generados. */
+interface ColaClient {
+  from(table: "whatsapp_cola"): {
+    insert(row: Record<string, unknown>): PromiseLike<{ error: { message: string } | null }>;
+  };
+}
+
 /**
  * Encola un mensaje de WhatsApp (tabla whatsapp_cola). El envío, los reintentos y el
  * registro en whatsapp_log los hace la Edge Function whatsapp-sender ("process-queue"),
  * que también corre periódicamente; aquí solo se le avisa sin esperar respuesta.
  */
 export async function encolarWhatsApp(m: MensajeCola): Promise<{ success: boolean; queued?: boolean; error?: string }> {
-  const { error } = await (supabase.from as any)("whatsapp_cola").insert({
+  const { error } = await (supabase as unknown as ColaClient).from("whatsapp_cola").insert({
     empresa_id: m.empresaId,
     telefono: m.telefono,
     tipo: m.tipo,

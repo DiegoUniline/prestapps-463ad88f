@@ -5,7 +5,10 @@ import { useNavigate } from "react-router-dom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
-import { useSolicitudes, useUpdateSolicitud } from "@/hooks/useSolicitudes";
+import { useSolicitudesPaginadas, useUpdateSolicitud } from "@/hooks/useSolicitudes";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { calcNextDate, validarCuotaRedondeada } from "@/lib/financial";
@@ -51,7 +54,15 @@ export default function SolicitudesPage() {
   const { role } = useCurrentUserRole();
   const [statusFilter, setStatusFilter] = useState("todos");
   const [search, setSearch] = useState("");
-  const { data: solicitudes = [], isLoading } = useSolicitudes(empresaId, statusFilter);
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const [page, setPage] = usePaginacion(`${empresaId}|${statusFilter}|${debouncedSearch}`);
+  const { data: solicitudesPage, isLoading, isFetching } = useSolicitudesPaginadas({
+    empresaId,
+    status: statusFilter,
+    search: debouncedSearch,
+    page,
+  });
+  const solicitudes = solicitudesPage?.rows ?? [];
   const updateSolicitud = useUpdateSolicitud();
   const queryClient = useQueryClient();
 
@@ -63,12 +74,7 @@ export default function SolicitudesPage() {
   // Only admin and supervisor can approve/reject
   const canApprove = role === "admin" || role === "supervisor";
 
-  const filtered = solicitudes.filter((s) => {
-    if (!search) return true;
-    const cliente = s.clientes?.nombre_completo?.toLowerCase() || "";
-    const idCliente = s.clientes?.id_cliente?.toLowerCase() || "";
-    return cliente.includes(search.toLowerCase()) || idCliente.includes(search.toLowerCase());
-  });
+  const filtered = solicitudes;
 
   // Approve: create the prestamo + amortization + validate caja balance + optional WhatsApp
   const approveMutation = useMutation({
@@ -336,6 +342,14 @@ export default function SolicitudesPage() {
                   </TableBody>
                 </Table>
               </div>
+              <PaginacionControles
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={solicitudesPage?.total}
+                onPageChange={setPage}
+                isFetching={isFetching}
+                className="mt-3"
+              />
             </>
           )}
         </CardContent>

@@ -104,7 +104,7 @@ function useClienteInfo(clienteId: string | undefined) {
 function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
   return useQuery({
     queryKey: ["cobranza-cuentas", clienteId, empresaId],
-    queryFn: async () => {
+    queryFn: async (): Promise<CuentaCliente[]> => {
       if (!clienteId) return [];
       const { data: prestamos, error } = await (supabase.from as any)("prestamos")
         .select(`

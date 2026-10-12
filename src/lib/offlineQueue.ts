@@ -4,6 +4,7 @@
  */
 import { get, set, del, keys, createStore } from "idb-keyval";
 import { supabase } from "@/integrations/supabase/client";
+import { errorMessage } from "@/lib/utils";
 
 const store = createStore("prestapp-offline", "queue");
 
@@ -69,6 +70,23 @@ export async function clearAll() {
   window.dispatchEvent(new Event("offline-queue-change"));
 }
 
+type MutationResult = PromiseLike<{ error: { message: string } | null }>;
+
+/** Tabla elegida en tiempo de ejecución: fuera de los tipos generados de Database. */
+interface UntypedTable {
+  insert(values: Record<string, unknown>): MutationResult;
+  upsert(values: Record<string, unknown>): MutationResult;
+  update(values: Record<string, unknown>): { eq(column: string, value: string): MutationResult };
+}
+
+function buildMutation(m: Pick<QueuedMutation, "table" | "operation" | "payload" | "matchColumn" | "matchValue">): MutationResult | null {
+  const table = (supabase as unknown as { from(table: string): UntypedTable }).from(m.table);
+  if (m.operation === "insert") return table.insert(m.payload);
+  if (m.operation === "update" && m.matchColumn && m.matchValue) return table.update(m.payload).eq(m.matchColumn, m.matchValue);
+  if (m.operation === "upsert") return table.upsert(m.payload);
+  return null;
+}
+
 /** Sync all pending items — returns { synced, failed } */
 export async function syncAll(): Promise<{ synced: number; failed: number }> {
   const items = await getAll();
@@ -84,20 +102,8 @@ export async function syncAll(): Promise<{ synced: number; failed: number }> {
     window.dispatchEvent(new Event("offline-queue-change"));
 
     try {
-      let query: any;
-
-      if (item.operation === "insert") {
-        query = supabase.from(item.table as any).insert(item.payload as any);
-      } else if (item.operation === "update" && item.matchColumn && item.matchValue) {
-        query = supabase
-          .from(item.table as any)
-          .update(item.payload as any)
-          .eq(item.matchColumn, item.matchValue);
-      } else if (item.operation === "upsert") {
-        query = supabase.from(item.table as any).upsert(item.payload as any);
-      } else {
-        throw new Error("Operación no soportada");
-      }
+      const query = buildMutation(item);
+      if (!query) throw new Error("Operación no soportada");
 
       const { error } = await query;
       if (error) throw error;
@@ -105,9 +111,9 @@ export async function syncAll(): Promise<{ synced: number; failed: number }> {
       // Success — remove from queue
       await del(item.id, store);
       synced++;
-    } catch (err: any) {
+    } catch (err) {
       item.status = "error";
-      item.error = err?.message || "Error desconocido";
+      item.error = errorMessage(err) || "Error desconocido";
       await set(item.id, item, store);
       failed++;
     }
@@ -137,27 +143,18 @@ export async function smartMutation(opts: {
   if (isOnline()) {
     // Try direct
     try {
-      let query: any;
-      if (opts.operation === "insert") {
-        query = supabase.from(opts.table as any).insert(opts.payload as any);
-      } else if (opts.operation === "update" && opts.matchColumn && opts.matchValue) {
-        query = supabase
-          .from(opts.table as any)
-          .update(opts.payload as any)
-          .eq(opts.matchColumn, opts.matchValue);
-      } else if (opts.operation === "upsert") {
-        query = supabase.from(opts.table as any).upsert(opts.payload as any);
-      }
+      const query = buildMutation(opts);
+      if (!query) throw new TypeError("Operación no soportada");
       const { error } = await query;
       if (error) throw error;
       return { queued: false };
-    } catch (err: any) {
+    } catch (err) {
       // If network error, queue it
-      if (!navigator.onLine || err?.message?.includes("fetch")) {
+      if (!navigator.onLine || errorMessage(err)?.includes("fetch")) {
         await enqueue(opts);
         return { queued: true };
       }
-      return { queued: false, error: err.message };
+      return { queued: false, error: errorMessage(err) };
     }
   } else {
     await enqueue(opts);

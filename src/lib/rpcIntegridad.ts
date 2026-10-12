@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { rpc } from "@/lib/supabaseQuery";
 
 /**
  * Wrappers de las RPC transaccionales (supabase/migrations/20261012150000_rpc_integridad.sql).
@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
  * Lanzan Error con el mensaje (en español) que devuelve la base de datos.
  */
 async function callRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
-  const { data, error } = await (supabase.rpc as any)(fn, args);
+  const { data, error } = await rpc<T>(fn, args);
   if (error) throw new Error(error.message || "Error en el servidor");
   return data as T;
 }

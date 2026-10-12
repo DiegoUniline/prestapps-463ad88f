@@ -67,7 +67,7 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
   // Fetch dias_gracia for the empresa
   let diasGracia = 0;
   if (filters?.empresaId) {
-    const { data: empData } = await (supabase as any)
+    const { data: empData } = await supabase
       .from("empresas")
       .select("dias_gracia")
       .eq("id", filters.empresaId)
@@ -75,7 +75,8 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
     diasGracia = empData?.dias_gracia ?? 0;
   }
 
-  let query = (supabase.from as any)("prestamos")
+  let query = supabase
+    .from("prestamos")
     .select(
       "id, id_prestamo, codigo_interno, tipo_cuenta, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro, fecha_primer_pago, cliente_id, caja_id, ruta_id, cobrador_id"
     )

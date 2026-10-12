@@ -131,7 +131,7 @@ export function usePermisosRead() {
     queryFn: async () => {
       if (!empresaId) return [];
       const { data, error } = await supabase
-        .from("role_permissions" as any)
+        .from("role_permissions")
         .select("*")
         .eq("empresa_id", empresaId);
       if (error) throw error;
@@ -177,7 +177,7 @@ export function usePermisos() {
       }));
 
       const { error } = await supabase
-        .from("role_permissions" as any)
+        .from("role_permissions")
         .upsert(rows, { onConflict: "empresa_id,role,module,action" });
       if (error) throw error;
     },
