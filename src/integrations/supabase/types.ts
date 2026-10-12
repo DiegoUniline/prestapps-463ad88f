@@ -2364,6 +2364,71 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_cola: {
+        Row: {
+          creado_por: string | null
+          created_at: string
+          empresa_id: string
+          enviado_at: string | null
+          estado: string
+          id: string
+          intentos: number
+          media_nombre: string | null
+          media_tipo: string | null
+          media_url: string | null
+          mensaje: string | null
+          proximo_intento: string
+          referencia_id: string | null
+          telefono: string
+          tipo: string
+          ultimo_error: string | null
+        }
+        Insert: {
+          creado_por?: string | null
+          created_at?: string
+          empresa_id: string
+          enviado_at?: string | null
+          estado?: string
+          id?: string
+          intentos?: number
+          media_nombre?: string | null
+          media_tipo?: string | null
+          media_url?: string | null
+          mensaje?: string | null
+          proximo_intento?: string
+          referencia_id?: string | null
+          telefono: string
+          tipo?: string
+          ultimo_error?: string | null
+        }
+        Update: {
+          creado_por?: string | null
+          created_at?: string
+          empresa_id?: string
+          enviado_at?: string | null
+          estado?: string
+          id?: string
+          intentos?: number
+          media_nombre?: string | null
+          media_tipo?: string | null
+          media_url?: string | null
+          mensaje?: string | null
+          proximo_intento?: string
+          referencia_id?: string | null
+          telefono?: string
+          tipo?: string
+          ultimo_error?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_cola_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_config: {
         Row: {
           activo: boolean
@@ -2545,6 +2610,33 @@ export type Database = {
         Args: { p: Json; p_empresa: string }
         Returns: undefined
       }
+      _pagos_promesa: {
+        Args: {
+          p_cuota_id: string
+          p_emp: string
+          p_fecha: string
+          p_monto: number
+          p_notas: string
+          p_prestamo_id: string
+        }
+        Returns: string
+      }
+      _pagos_registrar_pago: {
+        Args: {
+          p_caja_id: string
+          p_cobrador_id: string
+          p_distribution: Json
+          p_empresa_id: string
+          p_fecha_pago: string
+          p_gps_lat: number
+          p_gps_lng: number
+          p_metodo: string
+          p_monto: number
+          p_prestamo_id: string
+          p_ruta_id: string
+        }
+        Returns: Json
+      }
       actualizar_estados_prestamos: {
         Args: { p_empresa_id?: string }
         Returns: number
@@ -2600,6 +2692,10 @@ export type Database = {
         }
         Returns: Json
       }
+      editar_prestamo: {
+        Args: { p_datos: Json; p_prestamo_id: string }
+        Returns: Json
+      }
       estados_cuenta_clientes: { Args: never; Returns: Json }
       gestiones_resumen: { Args: { p_prestamo_ids: string[] }; Returns: Json }
       get_cobrador_by_user: {
@@ -2617,6 +2713,23 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: never; Returns: boolean }
+      liquidar_prestamo: {
+        Args: {
+          p_caja_id: string
+          p_cobrador_id?: string
+          p_desc_interes_pct?: number
+          p_desc_mora_pct?: number
+          p_fecha_pago?: string
+          p_gps_lat?: number
+          p_gps_lng?: number
+          p_modo: string
+          p_monto_esperado?: number
+          p_nota?: string
+          p_prestamo_id: string
+          p_ruta_id?: string
+        }
+        Returns: Json
+      }
       liquidar_ruta: {
         Args: {
           p_caja_id: string
@@ -2729,13 +2842,61 @@ export type Database = {
         }
         Returns: Json
       }
+      registrar_pago_completo: {
+        Args: {
+          p_caja_id: string
+          p_cobrador_id: string
+          p_descuentos?: Json
+          p_distribution?: Json
+          p_empresa_id: string
+          p_fecha_pago: string
+          p_gps_lat?: number
+          p_gps_lng?: number
+          p_metodo: string
+          p_monto: number
+          p_prestamo_id: string
+          p_registrado_por: string
+          p_ruta_id: string
+        }
+        Returns: Json
+      }
+      registrar_promesa_pago: {
+        Args: {
+          p_cuota_id: string
+          p_fecha: string
+          p_monto: number
+          p_notas?: string
+          p_prestamo_id: string
+        }
+        Returns: Json
+      }
+      registrar_visita: {
+        Args: {
+          p_cliente_id: string
+          p_cuota_id?: string
+          p_fecha_promesa?: string
+          p_monto_promesa?: number
+          p_notas?: string
+          p_prestamo_id: string
+          p_resultado: string
+        }
+        Returns: Json
+      }
       rentabilidad_resumen: { Args: never; Returns: Json }
       revertir_pago: {
         Args: { p_motivo: string; p_pago_id: string; p_user_id?: string }
         Returns: undefined
       }
+      rol_actual: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       siguiente_id_cliente: { Args: never; Returns: string }
       switch_empresa: { Args: { p_empresa_id: string }; Returns: undefined }
+      tiene_permiso: {
+        Args: { p_action: string; p_module: string }
+        Returns: boolean
+      }
       transferir_caja: {
         Args: {
           p_concepto?: string
@@ -2744,6 +2905,43 @@ export type Database = {
           p_origen: string
         }
         Returns: Json
+      }
+      whatsapp_cola_claim: {
+        Args: { p_empresa?: string; p_limit?: number }
+        Returns: {
+          creado_por: string | null
+          created_at: string
+          empresa_id: string
+          enviado_at: string | null
+          estado: string
+          id: string
+          intentos: number
+          media_nombre: string | null
+          media_tipo: string | null
+          media_url: string | null
+          mensaje: string | null
+          proximo_intento: string
+          referencia_id: string | null
+          telefono: string
+          tipo: string
+          ultimo_error: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "whatsapp_cola"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      whatsapp_cola_liberar: { Args: { p_ids: string[] }; Returns: number }
+      whatsapp_cola_resultado: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_ok: boolean
+          p_permanente?: boolean
+        }
+        Returns: string
       }
     }
     Enums: {
