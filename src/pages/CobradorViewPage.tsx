@@ -1,27 +1,17 @@
 import { lazy, Suspense, useState, useMemo, useCallback } from "react";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows, mapChunks } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { format, parseISO, startOfDay, endOfDay, isToday, addDays, subDays, startOfWeek, endOfWeek } from "date-fns";
-import { es } from "date-fns/locale";
-import { cn, $$, fmtDate, fmtDateTime } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
+import { format, startOfWeek, endOfWeek } from "date-fns";
+import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
-
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PagoModal } from "@/components/PagoModal";
 import { VisitaModal } from "@/components/VisitaModal";
 import { PromesaModal } from "@/components/PromesaModal";
@@ -29,425 +19,22 @@ import { HistorialPagosModal } from "@/components/cobranza/HistorialPagosModal";
 import { PrestamoQuickDrawer } from "@/components/cobranza/PrestamoQuickDrawer";
 import type { RouteStop } from "@/components/cobranza/MiRutaMap";
 import { resendReceiptForPrestamo } from "@/lib/resendReceipt";
+import { Search, CheckCircle2, Clock, AlertTriangle, TrendingUp, X, Receipt, History, Navigation } from "lucide-react";
+import type { CuotaCobrador, RangePreset, PendienteGrupo } from "@/pages/cobrador-view/types";
 import {
-  CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
-  HandCoins, ChevronLeft, ChevronRight, DollarSign, TrendingUp,
-  Eye, Phone, MapPin, Filter, X, Receipt, History, MessageSquare, CalendarCheck,
-  User, Lock, Wallet, FileText, Briefcase, Send, ChevronDown, ChevronUp, Loader2, Navigation,
-} from "lucide-react";
+  useCobranzaRango, usePagosCobrador, useEmpresaSemana, useResumenSemanal, useCajasAll,
+  usePerfilCobrador, useProfileEmpresa,
+} from "@/pages/cobrador-view/hooks";
+import { KPICard, CuotaCard, PagoCard, EmptyCard, LoadingCards, ResumenSemanalCard } from "@/pages/cobrador-view/cards";
+import { TabCobranza } from "@/pages/cobrador-view/TabCobranza";
+import { TabCartera } from "@/pages/cobrador-view/TabCartera";
+import { TabResumen } from "@/pages/cobrador-view/TabResumen";
+import { TabPerfil } from "@/pages/cobrador-view/TabPerfil";
+import { MobileBottomNav } from "@/pages/cobrador-view/MobileBottomNav";
+import { RangoFechas } from "@/pages/cobrador-view/RangoFechas";
 
 const MiRutaMap = lazy(() => import("@/components/cobranza/MiRutaMap").then((module) => ({ default: module.MiRutaMap })));
 
-
-
-// ── Types ───────────────────────────────────────────────────────
-interface CuotaCobrador {
-  cuotaId: string;
-  prestamoId: string;
-  clienteNombre: string;
-  clienteId: string;
-  clienteTelefono: string | null;
-  clienteDireccion: string | null;
-  gpsLat: number | null;
-  gpsLng: number | null;
-  numCuota: number;
-  totalCuotas: number;
-  capitalInteres: number;
-  saldoTotal: number;
-  saldoMora: number;
-  saldoCapital: number;
-  saldoInteres: number;
-  moraPagada: number;
-  interesPagado: number;
-  capitalPagado: number;
-  fechaVencimiento: string;
-  status: string;
-  diasAtraso: number;
-  ruta: string;
-  rutaId: string | null;
-  cobradorId: string | null;
-  cajaId: string | null;
-  pagada: boolean;
-  cobradaEnRango: boolean;
-  montoPagado: number;
-}
-
-interface PagoHistorial {
-  id: string;
-  prestamoId: string;
-  clienteNombre: string;
-  montoRecibido: number;
-  aplicadoCapital: number;
-  aplicadoInteres: number;
-  aplicadoMora: number;
-  metodoPago: string;
-  fechaPago: string;
-  anulado: boolean;
-  numCuota: number | null;
-}
-
-// ── Hooks ───────────────────────────────────────────────────────
-function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null, enabled = true) {
-  return useQuery({
-    queryKey: ["cobrador-cobranza", fechaDesde, fechaHasta, empresaId, cobradorId],
-    enabled: enabled && !!empresaId,
-    queryFn: async () => {
-      // Cuotas con su préstamo (cliente/ruta) y sus pagos embebidos; el filtro por cobrador
-      // se aplica en el servidor sobre el préstamo (prestamos!inner), sin listas .in() gigantes.
-      const amortizacionSelect = `
-        id, prestamo_id, num_cuota, capital_interes, saldo_total, saldo_mora,
-        saldo_capital, saldo_interes, mora_pagada, interes_pagado, capital_pagado,
-        fecha_vencimiento, status, dias_atraso, fecha_pagada,
-        prestamos!amortizacion_prestamo_id_fkey!inner (
-          id, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, empresa_id,
-          clientes ( nombre_completo, telefono, direccion, gps_lat, gps_lng ),
-          rutas ( nombre )
-        ),
-        pagos!pagos_cuota_id_fkey ( monto_recibido, anulado )
-      `;
-      const rangoFilter =
-        `and(fecha_vencimiento.gte.${fechaDesde},fecha_vencimiento.lte.${fechaHasta}),` +
-        `and(fecha_vencimiento.lt.${fechaDesde},status.neq.Pagada),` +
-        `and(fecha_pagada.gte.${fechaDesde},fecha_pagada.lte.${fechaHasta})`;
-      const presMap: Record<string, any> = {};
-      const pagosByPrestamo: Record<string, number> = {};
-
-      const cuotasQuery = () => {
-        let q = (supabase.from as any)("amortizacion").select(amortizacionSelect);
-        if (cobradorId) {
-          q = q.eq("prestamos.empresa_id", empresaId).eq("prestamos.cobrador_id", cobradorId);
-        } else {
-          q = q.eq("empresa_id", empresaId);
-        }
-        return q;
-      };
-
-      // Pagos del rango (por préstamo) para repartir montos en cuotas sin pago directo
-      let pagosRangoQuery = (supabase.from as any)("pagos")
-        .select("id, prestamo_id, monto_recibido, prestamos!pagos_prestamo_id_fkey!inner ( cobrador_id, empresa_id )")
-        .eq("empresa_id", empresaId)
-        .eq("anulado", false)
-        .gte("fecha_pago", fechaDesde)
-        .lte("fecha_pago", fechaHasta);
-      if (cobradorId) {
-        pagosRangoQuery = pagosRangoQuery
-          .eq("cobrador_id", cobradorId)
-          .eq("prestamos.cobrador_id", cobradorId)
-          .eq("prestamos.empresa_id", empresaId);
-      }
-
-      const [cuotasRango, pagosRango] = await Promise.all([
-        fetchAllRows<any>(cuotasQuery().or(rangoFilter).order("fecha_vencimiento", { ascending: true })),
-        fetchAllRows<any>(pagosRangoQuery),
-      ]);
-      let cuotas: any[] = cuotasRango;
-      for (const c of cuotas) presMap[c.prestamo_id] = c.prestamos;
-      for (const p of pagosRango) {
-        if (!p.prestamo_id) continue;
-        pagosByPrestamo[p.prestamo_id] = (pagosByPrestamo[p.prestamo_id] || 0) + Number(p.monto_recibido || 0);
-      }
-      if (!cobradorId && cuotas.length === 0) return [];
-
-      if (cobradorId) {
-        const prestamosConPago = Object.keys(pagosByPrestamo);
-        if (prestamosConPago.length > 0) {
-          const cuotasTocadas = await mapChunks(prestamosConPago, 150, (chunk) =>
-            fetchAllRows<any>(cuotasQuery()
-              .in("prestamo_id", chunk)
-              .or("status.eq.Pagada,status.eq.Parcial,capital_pagado.gt.0,interes_pagado.gt.0,mora_pagada.gt.0")
-              .order("fecha_vencimiento", { ascending: true }))
-          );
-
-          const cuotasById = new Map(cuotas.map((c) => [c.id, c]));
-          for (const c of cuotasTocadas) {
-            cuotasById.set(c.id, c);
-            presMap[c.prestamo_id] = c.prestamos;
-          }
-          cuotas = Array.from(cuotasById.values()).sort((a, b) => String(a.fecha_vencimiento).localeCompare(String(b.fecha_vencimiento)));
-        }
-      }
-
-      if (!cuotas.length) return [];
-
-      // Payments for these cuotas (embebidos, no anulados)
-      const pagosByCuota: Record<string, number> = {};
-      for (const c of cuotas) {
-        for (const p of (c.pagos || []) as { monto_recibido: number; anulado: boolean }[]) {
-          if (p.anulado) continue;
-          pagosByCuota[c.id] = (pagosByCuota[c.id] || 0) + Number(p.monto_recibido);
-        }
-      }
-
-      const pagoRestanteByPrestamo = { ...pagosByPrestamo };
-
-      return cuotas
-        .filter((c) => presMap[c.prestamo_id]) // only cuotas belonging to this cobrador's prestamos
-        .map((c): CuotaCobrador => {
-          const pres = presMap[c.prestamo_id];
-          const cliente = pres.clientes as any;
-          const ruta = pres.rutas as any;
-          const pagadoHistorico = Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0);
-          const fechaPagadaEnRango = c.fecha_pagada && c.fecha_pagada >= fechaDesde && c.fecha_pagada <= fechaHasta;
-          let montoPagado = pagosByCuota[c.id] || 0;
-          if (montoPagado <= 0 && pagoRestanteByPrestamo[c.prestamo_id] > 0 && (fechaPagadaEnRango || c.status === "Parcial")) {
-            const referencia = Math.max(pagadoHistorico, Number(c.capital_interes || 0) - Number(c.saldo_total || 0), 0);
-            montoPagado = Math.min(pagoRestanteByPrestamo[c.prestamo_id], referencia > 0 ? referencia : pagoRestanteByPrestamo[c.prestamo_id]);
-            pagoRestanteByPrestamo[c.prestamo_id] = Math.max(0, pagoRestanteByPrestamo[c.prestamo_id] - montoPagado);
-          }
-          const cobradaEnRango = montoPagado > 0 || Boolean(fechaPagadaEnRango);
-          return {
-            cuotaId: c.id,
-            prestamoId: c.prestamo_id,
-            clienteNombre: cliente?.nombre_completo || "—",
-            clienteId: pres.cliente_id || "",
-            clienteTelefono: cliente?.telefono || null,
-            clienteDireccion: cliente?.direccion || null,
-            gpsLat: cliente?.gps_lat ? Number(cliente.gps_lat) : null,
-            gpsLng: cliente?.gps_lng ? Number(cliente.gps_lng) : null,
-            numCuota: c.num_cuota,
-            totalCuotas: pres.num_cuotas || 0,
-            capitalInteres: Number(c.capital_interes || 0),
-            saldoTotal: Number(c.saldo_total || 0),
-            saldoMora: Number(c.saldo_mora || 0),
-            saldoCapital: Number(c.saldo_capital || 0),
-            saldoInteres: Number(c.saldo_interes || 0),
-            moraPagada: Number(c.mora_pagada || 0),
-            interesPagado: Number(c.interes_pagado || 0),
-            capitalPagado: Number(c.capital_pagado || 0),
-            fechaVencimiento: c.fecha_vencimiento,
-            status: c.status || "Pendiente",
-            diasAtraso: Number(c.dias_atraso || 0),
-            ruta: ruta?.nombre || "Sin ruta",
-            rutaId: pres.ruta_id || null,
-            cobradorId: pres.cobrador_id || null,
-            cajaId: pres.caja_id || null,
-            pagada: c.status === "Pagada",
-            cobradaEnRango,
-            montoPagado,
-          };
-        });
-    },
-  });
-}
-
-function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: string, cobradorId: string | null, enabled = true) {
-  return useQuery({
-    queryKey: ["cobrador-pagos", fechaDesde, fechaHasta, empresaId, cobradorId],
-    enabled: enabled && !!empresaId,
-    queryFn: async () => {
-      let pagosQuery = supabase
-        .from("pagos")
-        .select(`
-          id, prestamo_id, monto_recibido, aplicado_capital, aplicado_interes,
-          aplicado_mora, metodo_pago, created_at, fecha_pago, anulado, cuota_id,
-          prestamos!inner ( cliente_id, clientes ( nombre_completo ) ),
-          amortizacion:cuota_id ( num_cuota )
-        `)
-        .eq("empresa_id", empresaId)
-        .gte("fecha_pago", fechaDesde)
-        .lte("fecha_pago", fechaHasta)
-        .order("fecha_pago", { ascending: false })
-        .order("created_at", { ascending: false });
-
-      if (cobradorId) {
-        pagosQuery = pagosQuery.eq("cobrador_id", cobradorId);
-      }
-
-      const data = await fetchAllRows<any>(pagosQuery);
-
-      return data.map((p: any): PagoHistorial => ({
-        id: p.id,
-        prestamoId: p.prestamo_id,
-        clienteNombre: p.prestamos?.clientes?.nombre_completo || "—",
-        montoRecibido: Number(p.monto_recibido || 0),
-        aplicadoCapital: Number(p.aplicado_capital || 0),
-        aplicadoInteres: Number(p.aplicado_interes || 0),
-        aplicadoMora: Number(p.aplicado_mora || 0),
-        metodoPago: p.metodo_pago || "Efectivo",
-        fechaPago: p.fecha_pago || p.created_at || "",
-        anulado: p.anulado || false,
-        numCuota: (p.amortizacion as any)?.num_cuota || null,
-      }));
-    },
-  });
-}
-
-// ── Get empresa week start day ──────────────────────────────────
-function useEmpresaSemana(empresaId: string) {
-  return useQuery({
-    queryKey: ["empresa-semana", empresaId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("empresas")
-        .select("corte_dia_semana")
-        .eq("id", empresaId)
-        .single();
-      return (data?.corte_dia_semana ?? 1) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-    },
-    staleTime: 10 * 60 * 1000,
-  });
-}
-
-function getWeekRange(weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6) {
-  const start = startOfWeek(new Date(), { weekStartsOn });
-  const end = endOfWeek(new Date(), { weekStartsOn });
-  return { start, end };
-}
-
-// ── Weekly summary hook ─────────────────────────────────────────
-function useResumenSemanal(empresaId: string, cobradorId: string | null, weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6, enabled = true) {
-  const { start, end } = getWeekRange(weekStartsOn);
-  const desde = format(start, "yyyy-MM-dd");
-  const hasta = format(end, "yyyy-MM-dd");
-
-  return useQuery({
-    queryKey: ["cobrador-resumen-semanal", desde, hasta, empresaId, cobradorId],
-    enabled: enabled && !!empresaId,
-    queryFn: async () => {
-      // Cuotas de la semana con pagos embebidos (no anulados, de la empresa); filtro por cobrador en servidor.
-      let cuotasQuery = (supabase.from as any)("amortizacion")
-        .select(`id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento,
-          ${cobradorId ? "prestamos!amortizacion_prestamo_id_fkey!inner ( cobrador_id, empresa_id )," : ""}
-          pagos!pagos_cuota_id_fkey ( monto_recibido )`)
-        .gte("fecha_vencimiento", desde)
-        .lte("fecha_vencimiento", hasta)
-        .eq("pagos.anulado", false)
-        .eq("pagos.empresa_id", empresaId);
-      cuotasQuery = cobradorId
-        ? cuotasQuery.eq("prestamos.empresa_id", empresaId).eq("prestamos.cobrador_id", cobradorId)
-        : cuotasQuery.eq("empresa_id", empresaId);
-      const cuotas = await fetchAllRows<any>(cuotasQuery);
-      if (!cuotas.length) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
-      const filtered = cuotas;
-
-      // Payments received for these cuotas
-      let pagadoTotal = 0;
-      for (const c of filtered) {
-        for (const p of (c.pagos || []) as { monto_recibido: number }[]) pagadoTotal += Number(p.monto_recibido || 0);
-      }
-
-      const totalEsperado = filtered.reduce((s, c) => s + Number(c.capital_interes || 0), 0);
-      const porCobrar = Math.max(0, totalEsperado - pagadoTotal);
-      const pct = totalEsperado > 0 ? Math.min(100, (pagadoTotal / totalEsperado) * 100) : 0;
-
-      return { porCobrar, cobrado: pagadoTotal, total: totalEsperado, pct, start, end };
-    },
-    staleTime: 30 * 1000,
-  });
-}
-
-function useCajasAll(empresaId: string) {
-  return useQuery({
-    queryKey: ["cajas-all", empresaId, "nombres"],
-    queryFn: async () => {
-      const { data } = await supabase.from("cajas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
-      return data || [];
-    },
-  });
-}
-
-// Profile data for cobrador
-function usePerfilCobrador(cobradorId: string | null, empresaId: string, enabled = true) {
-  return useQuery({
-    queryKey: ["cobrador-perfil", cobradorId, empresaId],
-    enabled: enabled && !!empresaId,
-    queryFn: async () => {
-      // Profile info
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("nombre_completo, telefono, direccion, foto_url, porcentaje_comision, efectivo_en_mano, comision_tipo, comision_prestamos, comision_cobros_equipo, bono_meta_objetivo, bono_meta_monto")
-        .eq("id", cobradorId!)
-        .single();
-
-      // Comisiones ganadas (cortes)
-      const { data: cortes } = await supabase
-        .from("cortes")
-        .select("id, monto_comision, monto_efectivo, monto_depositado, total_cobrado, created_at")
-        .eq("cobrador_id", cobradorId!)
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      const totalComisionesGanadas = (cortes || []).reduce((s, c) => s + Number(c.monto_comision || 0), 0);
-      const totalCobrado = (cortes || []).reduce((s, c) => s + Number(c.total_cobrado || 0), 0);
-
-      // All assigned loans (active) con su amortización embebida (sin .in() de prestamo_ids)
-      const prestamos = await fetchAllRows<any>((supabase.from as any)("prestamos")
-        .select(`
-          id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro,
-          frecuencia, fecha_primer_pago,
-          clientes ( nombre_completo ),
-          rutas ( nombre ),
-          amortizacion!amortizacion_prestamo_id_fkey ( status, saldo_total, saldo_mora )
-        `)
-        .eq("cobrador_id", cobradorId!)
-        .eq("empresa_id", empresaId)
-        .in("estado", ["Activo", "Al día", "Vencido"])
-        .order("created_at", { ascending: false }));
-
-      // Amortization summary for each loan
-      const amortSummary: Record<string, { pagadas: number; saldo: number; mora: number }> = {};
-      for (const p of prestamos) {
-        const sum = { pagadas: 0, saldo: 0, mora: 0 };
-        for (const a of (p.amortizacion || []) as { status: string | null; saldo_total: number | null; saldo_mora: number | null }[]) {
-          if (a.status === "Pagada") sum.pagadas += 1;
-          sum.saldo += Number(a.saldo_total || 0);
-          sum.mora += Number(a.saldo_mora || 0);
-        }
-        amortSummary[p.id] = sum;
-      }
-
-      return {
-        profile,
-        cortes: cortes || [],
-        totalComisionesGanadas,
-        totalCobrado,
-        prestamos: (prestamos || []).map((p: any) => ({
-          id: p.id,
-          cliente: p.clientes?.nombre_completo || "—",
-          ruta: p.rutas?.nombre || "Sin ruta",
-          monto: Number(p.monto_solicitado || 0),
-          montoPagar: Number(p.monto_total_pagar || 0),
-          cuotas: p.num_cuotas,
-          estado: p.estado,
-          frecuencia: p.frecuencia,
-          pagadas: amortSummary[p.id]?.pagadas || 0,
-          saldo: amortSummary[p.id]?.saldo || 0,
-          mora: amortSummary[p.id]?.mora || 0,
-        })),
-      };
-    },
-  });
-}
-
-function useProfileEmpresa(userId: string | undefined) {
-  return useQuery({
-    queryKey: ["current-profile-empresa", userId],
-    enabled: !!userId,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("empresa_id")
-        .eq("id", userId!)
-        .single();
-      return data?.empresa_id || "";
-    },
-    staleTime: 10 * 60 * 1000,
-  });
-}
-
-// ── Quick Date Range Presets ────────────────────────────────────
-type RangePreset = "hoy" | "semana" | "custom";
-
-// ── Status helpers ──────────────────────────────────────────────
-function getStatusInfo(item: CuotaCobrador) {
-  if (item.pagada) return { label: "Cobrada", color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400", icon: CheckCircle2 };
-  if (item.status === "Parcial") return { label: "Parcial", color: "bg-amber-500/15 text-amber-700 dark:text-amber-400", icon: Clock };
-  if (item.diasAtraso > 0) return { label: `Vencida ${item.diasAtraso}d`, color: "bg-red-500/15 text-red-700 dark:text-red-400", icon: AlertTriangle };
-  return { label: "Pendiente", color: "bg-blue-500/15 text-blue-700 dark:text-blue-400", icon: Clock };
-}
-
-// ── Page Component ──────────────────────────────────────────────
 export default function CobradorViewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -573,24 +160,7 @@ export default function CobradorViewPage() {
 
   // Group "por cobrar" by préstamo (= por cliente con su crédito)
   const pendientesGrupos = useMemo(() => {
-    const groups = new Map<string, {
-      prestamoId: string;
-      clienteNombre: string;
-      clienteId: string;
-      clienteTelefono: string | null;
-      clienteDireccion: string | null;
-      gpsLat: number | null;
-      gpsLng: number | null;
-      ruta: string;
-      rutaId: string | null;
-      cobradorId: string | null;
-      cuotas: CuotaCobrador[];
-      saldoTotal: number;
-      saldoMora: number;
-      diasAtrasoMax: number;
-      proximaCuota: number;
-      totalCuotas: number;
-    }>();
+    const groups = new Map<string, PendienteGrupo>();
     for (const c of pendientes) {
       let g = groups.get(c.prestamoId);
       if (!g) {
@@ -737,112 +307,26 @@ export default function CobradorViewPage() {
         <h1 className="hidden text-2xl font-bold sm:block">Mi Cobranza</h1>
 
         {/* Date range controls */}
-        <div className={cn("flex flex-wrap items-center gap-2", ["resumen", "perfil"].includes(activeTab) && "hidden sm:flex")}>
-          <Button
-            variant={rangePreset === "hoy" ? "default" : "outline"}
-            size="sm"
-            className="h-9 rounded-full px-4 text-xs"
-            onClick={setHoy}
-          >
-            Hoy
-          </Button>
-          <Button
-            variant={rangePreset === "semana" ? "default" : "outline"}
-            size="sm"
-            className="h-9 rounded-full px-4 text-xs"
-            onClick={setSemana}
-          >
-            Esta semana
-          </Button>
-
-          {/* Custom range */}
-          <div className="hidden items-center gap-1 sm:flex">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-                  <CalendarIcon className="h-3 w-3" />
-                  {format(fechaDesde, "dd/MM", { locale: es })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={fechaDesde}
-                  onSelect={(d) => { if (d) { setFechaDesde(d); setRangePreset("custom"); if (d > fechaHasta) setFechaHasta(d); } }}
-                  className="p-3 pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-            <span className="text-xs text-muted-foreground">—</span>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
-                  <CalendarIcon className="h-3 w-3" />
-                  {format(fechaHasta, "dd/MM", { locale: es })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={fechaHasta}
-                  onSelect={(d) => { if (d) { setFechaHasta(d); setRangePreset("custom"); if (d < fechaDesde) setFechaDesde(d); } }}
-                  className="p-3 pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
+        <RangoFechas
+          activeTab={activeTab}
+          rangePreset={rangePreset}
+          setRangePreset={setRangePreset}
+          setHoy={setHoy}
+          setSemana={setSemana}
+          fechaDesde={fechaDesde}
+          setFechaDesde={setFechaDesde}
+          fechaHasta={fechaHasta}
+          setFechaHasta={setFechaHasta}
+        />
       </div>
 
       {/* ── Resumen Semanal ────────────────────────────────── */}
-      <Card className="hidden sm:block border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CalendarCheck className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">Resumen Semanal</span>
-            </div>
-            {resumenSemanal && (
-              <span className="text-[10px] text-muted-foreground">
-                {format(resumenSemanal.start, "dd/MM", { locale: es })} — {format(resumenSemanal.end, "dd/MM", { locale: es })}
-              </span>
-            )}
-          </div>
+      <ResumenSemanalCard
+        resumenSemanal={resumenSemanal}
+        loadingResumen={loadingResumen}
+        className="hidden sm:block border-primary/20 bg-gradient-to-br from-primary/5 to-transparent"
+      />
 
-          {loadingResumen ? (
-            <Skeleton className="h-16 w-full" />
-          ) : resumenSemanal ? (
-            <>
-              <div className="flex items-end justify-between gap-4">
-                <div className="flex-1 space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Cobrado</span>
-                    <span className="font-bold text-primary">{$$(resumenSemanal.cobrado)}</span>
-                  </div>
-                  <Progress value={resumenSemanal.pct} className="h-3" />
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Meta semanal</span>
-                    <span className="font-semibold">{$$(resumenSemanal.total)}</span>
-                  </div>
-                </div>
-                <div className="text-center shrink-0">
-                  <span className="text-3xl" role="img" aria-label="estado">
-                    {resumenSemanal.pct >= 100 ? "🎉" : resumenSemanal.pct >= 70 ? "😊" : resumenSemanal.pct >= 40 ? "😐" : "😟"}
-                  </span>
-                  <p className="text-[10px] font-bold text-primary mt-0.5">{resumenSemanal.pct.toFixed(0)}%</p>
-                </div>
-              </div>
-              {resumenSemanal.porCobrar > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Falta por cobrar: <span className="font-semibold text-foreground">{$$(resumenSemanal.porCobrar)}</span>
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground text-center py-2">Sin datos para esta semana</p>
-          )}
-        </CardContent>
-      </Card>
 
       {/* ── KPI Cards (mobile: 2 cols) ─────────────────────── */}
       <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -927,168 +411,43 @@ export default function CobradorViewPage() {
 
         {/* ── Tab: Cobranza ─────────────────────────────────── */}
         <TabsContent value="cobranza" className="mt-3 space-y-3">
-          <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,.45)] sm:hidden">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary">Cobranza del periodo</p>
-                <p className="mt-1 text-2xl font-bold tracking-tight">{$$(kpis.porCobrar)}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">{pendientesGrupos.length} clientes pendientes</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-muted-foreground">Recuperado</p>
-                <p className="text-sm font-bold text-success">{$$(kpis.cobrado)}</p>
-                <p className="mt-1 text-[10px] font-semibold text-destructive">{$$(kpis.mora)} en mora</p>
-              </div>
-            </div>
-          </section>
-          <div className="relative sm:hidden">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="h-11 rounded-xl border-border/70 bg-card pl-9 pr-9 shadow-sm"
-            />
-            {search && (
-              <button className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setSearch("")}>
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
-          </div>
-          {loadingCuotas ? (
-            <LoadingCards />
-          ) : filtered.length === 0 ? (
-            <EmptyCard icon={CheckCircle2} title="Sin cuotas en este rango" subtitle="No hay cuotas asignadas para este periodo." />
-          ) : (
-            <Tabs value={cobranzaSubTab} onValueChange={(v) => setCobranzaSubTab(v as "por-cobrar" | "cobradas")} className="w-full">
-              <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-muted/70 p-1">
-                <TabsTrigger value="por-cobrar" className="gap-1 rounded-lg text-xs data-[state=active]:shadow-sm">
-                  <Clock className="h-3 w-3" />
-                  Por cobrar
-                  {pendientesGrupos.length > 0 && (
-                    <Badge variant="destructive" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{pendientesGrupos.length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="cobradas" className="gap-1 rounded-lg text-xs data-[state=active]:shadow-sm">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Cobradas
-                  {collectedStopsCount > 0 && (
-                    <Badge variant="secondary" className="ml-0.5 h-4 min-w-4 text-[9px] px-1">{collectedStopsCount}</Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="por-cobrar" className="mt-3 space-y-3">
-                {pendientesGrupos.length === 0 ? (
-                  <EmptyCard icon={CheckCircle2} title="¡Todo cobrado!" subtitle="No tienes cuotas pendientes en este rango." />
-                ) : pendientesGrupos.map((g) => (
-                  <PrestamoGroupCard
-                    key={g.prestamoId}
-                    grupo={g}
-                    expanded={grupoExpanded.has(g.prestamoId)}
-                    onToggleExpand={() => toggleGrupo(g.prestamoId)}
-                    onCobrar={() => openPagoGrupo(g)}
-                    onNavigate={navigate}
-                    onDrawer={() => { setDrawerPrestamoId(g.prestamoId); setDrawerOpen(true); }}
-                    onHistorial={() => { setHistorialPrestamoId(g.prestamoId); setHistorialNombre(g.clienteNombre); setHistorialOpen(true); }}
-                    onVisita={() => { setVisitaItem(g.cuotas[0]); setVisitaOpen(true); }}
-                    onPromesa={() => { setPromesaItem(g.cuotas[0]); setPromesaOpen(true); }}
-                  />
-                ))}
-              </TabsContent>
-
-              <TabsContent value="cobradas" className="mt-3 space-y-2">
-                {cobradas.length === 0 ? (
-                  <EmptyCard icon={Clock} title="Aún no cobras nada" subtitle="Las cuotas que cobres aparecerán aquí." />
-                ) : cobradas.map((item) => (
-                  <CuotaCard
-                    key={item.cuotaId}
-                    item={item}
-                    expanded={expanded.has(item.cuotaId)}
-                    onToggleExpand={() => toggleExpand(item.cuotaId)}
-                    onCobrar={openPago}
-                    onNavigate={navigate}
-                    onVisita={(i) => { setVisitaItem(i); setVisitaOpen(true); }}
-                    onPromesa={(i) => { setPromesaItem(i); setPromesaOpen(true); }}
-                    onHistorial={openHistorial}
-                    onDrawer={openDrawer}
-                    onResend={handleResend}
-                  resending={resending === item.prestamoId}
-                />
-              ))}
-              </TabsContent>
-            </Tabs>
-          )}
+          <TabCobranza
+            kpis={kpis}
+            pendientesGrupos={pendientesGrupos}
+            search={search}
+            setSearch={setSearch}
+            loadingCuotas={loadingCuotas}
+            filtered={filtered}
+            cobranzaSubTab={cobranzaSubTab}
+            setCobranzaSubTab={setCobranzaSubTab}
+            collectedStopsCount={collectedStopsCount}
+            grupoExpanded={grupoExpanded}
+            toggleGrupo={toggleGrupo}
+            openPagoGrupo={openPagoGrupo}
+            navigate={navigate}
+            setDrawerPrestamoId={setDrawerPrestamoId}
+            setDrawerOpen={setDrawerOpen}
+            setHistorialPrestamoId={setHistorialPrestamoId}
+            setHistorialNombre={setHistorialNombre}
+            setHistorialOpen={setHistorialOpen}
+            setVisitaItem={setVisitaItem}
+            setVisitaOpen={setVisitaOpen}
+            setPromesaItem={setPromesaItem}
+            setPromesaOpen={setPromesaOpen}
+            cobradas={cobradas}
+            expanded={expanded}
+            toggleExpand={toggleExpand}
+            openPago={openPago}
+            openHistorial={openHistorial}
+            openDrawer={openDrawer}
+            handleResend={handleResend}
+            resending={resending}
+          />
         </TabsContent>
 
         {/* ── Tab: Cartera (todos los préstamos asignados) ──── */}
         <TabsContent value="cartera" className="mt-3 space-y-2">
-          {loadingPerfil ? (
-            <LoadingCards />
-          ) : (perfil?.prestamos || []).length === 0 ? (
-            <EmptyCard icon={Briefcase} title="Sin préstamos" subtitle="No tienes préstamos asignados." />
-          ) : (
-            <>
-              {/* Summary */}
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                <div className="bg-primary/10 rounded-lg p-3 text-center">
-                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Préstamos</p>
-                  <p className="text-lg font-bold text-primary">{perfil!.prestamos.length}</p>
-                </div>
-                <div className="bg-secondary rounded-lg p-3 text-center">
-                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Saldo total</p>
-                  <p className="text-lg font-bold">{$$(perfil!.prestamos.reduce((s: number, p: any) => s + p.saldo, 0))}</p>
-                </div>
-                <div className="bg-destructive/10 rounded-lg p-3 text-center">
-                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Mora total</p>
-                  <p className="text-lg font-bold text-destructive">{$$(perfil!.prestamos.reduce((s: number, p: any) => s + p.mora, 0))}</p>
-                </div>
-              </div>
-
-              {/* Loan cards */}
-              {perfil!.prestamos
-                .filter((p: any) => !search || p.cliente.toLowerCase().includes(search.toLowerCase()))
-                .map((p: any) => (
-                <Card key={p.id} className="border-border/50">
-                  <CardContent className="p-3 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{p.cliente}</p>
-                        <p className="text-[11px] text-muted-foreground">{p.ruta} • {p.frecuencia}</p>
-                      </div>
-                      <Badge variant={p.estado === "Vencido" ? "destructive" : "secondary"} className="text-[10px] shrink-0">
-                        {p.estado}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1 text-center bg-secondary/50 rounded-md p-2">
-                      <div>
-                        <p className="text-[9px] uppercase text-muted-foreground">Monto</p>
-                        <p className="text-xs font-semibold">{$$(p.monto)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase text-muted-foreground">Total</p>
-                        <p className="text-xs font-semibold">{$$(p.montoPagar)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase text-muted-foreground">Saldo</p>
-                        <p className="text-xs font-semibold">{$$(p.saldo)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase text-muted-foreground">Cuotas</p>
-                        <p className="text-xs font-semibold">{p.pagadas}/{p.cuotas}</p>
-                      </div>
-                    </div>
-                    {p.mora > 0 && (
-                      <p className="text-[11px] text-destructive font-medium">Mora: {$$(p.mora)}</p>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={() => navigate(`/prestamos/${p.id}`)}>
-                      <Eye className="h-3 w-3 mr-1" /> Ver detalle
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </>
-          )}
+          <TabCartera loadingPerfil={loadingPerfil} perfil={perfil} search={search} navigate={navigate} />
         </TabsContent>
 
         {/* ── Tab: Historial ─────────────────────────────────── */}
@@ -1124,267 +483,31 @@ export default function CobradorViewPage() {
 
         {/* ── Tab: Resumen (mobile) ───────────────────────── */}
         <TabsContent value="resumen" className="mt-3 space-y-3">
-          <section className="relative overflow-hidden rounded-2xl bg-[#111217] p-5 text-white shadow-[0_26px_55px_-34px_rgba(15,23,42,.8)] sm:hidden">
-            <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-primary/25 blur-3xl" />
-            <div className="relative">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-                {new Date().getHours() < 12 ? "Buenos días" : new Date().getHours() < 19 ? "Buenas tardes" : "Buenas noches"}
-              </p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight">
-                {perfil?.profile?.nombre_completo?.split(" ")[0] || "Tu cobranza"}
-              </h2>
-              <p className="mt-1 text-xs text-white/55">Todo lo que necesitas para completar tu día.</p>
-
-              <div className="mt-5 grid grid-cols-3 gap-2">
-                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
-                  <p className="text-[9px] uppercase tracking-wider text-white/45">Pendientes</p>
-                  <p className="mt-1 text-xl font-bold">{pendientesGrupos.length}</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
-                  <p className="text-[9px] uppercase tracking-wider text-white/45">Cobrado</p>
-                  <p className="mt-1 truncate text-sm font-bold text-emerald-400">{$$(kpis.cobrado)}</p>
-                </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
-                  <p className="text-[9px] uppercase tracking-wider text-white/45">En mano</p>
-                  <p className="mt-1 truncate text-sm font-bold">{$$(Number(perfil?.profile?.efectivo_en_mano || 0))}</p>
-                </div>
-              </div>
-
-              <Button
-                className="mt-4 h-12 w-full rounded-xl bg-primary text-primary-foreground shadow-[0_12px_28px_-14px_rgba(240,20,77,.9)]"
-                onClick={() => { setHoy(); setActiveTab("ruta"); }}
-              >
-                <Navigation className="mr-2 h-4 w-4" />Iniciar mi ruta
-              </Button>
-            </div>
-          </section>
-
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CalendarCheck className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold">Resumen Semanal</span>
-                </div>
-                {resumenSemanal && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {format(resumenSemanal.start, "dd/MM", { locale: es })} — {format(resumenSemanal.end, "dd/MM", { locale: es })}
-                  </span>
-                )}
-              </div>
-              {loadingResumen ? (
-                <Skeleton className="h-16 w-full" />
-              ) : resumenSemanal ? (
-                <>
-                  <div className="flex items-end justify-between gap-4">
-                    <div className="flex-1 space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Cobrado</span>
-                        <span className="font-bold text-primary">{$$(resumenSemanal.cobrado)}</span>
-                      </div>
-                      <Progress value={resumenSemanal.pct} className="h-3" />
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Meta semanal</span>
-                        <span className="font-semibold">{$$(resumenSemanal.total)}</span>
-                      </div>
-                    </div>
-                    <div className="text-center shrink-0">
-                      <span className="text-3xl" role="img" aria-label="estado">
-                        {resumenSemanal.pct >= 100 ? "🎉" : resumenSemanal.pct >= 70 ? "😊" : resumenSemanal.pct >= 40 ? "😐" : "😟"}
-                      </span>
-                      <p className="text-[10px] font-bold text-primary mt-0.5">{resumenSemanal.pct.toFixed(0)}%</p>
-                    </div>
-                  </div>
-                  {resumenSemanal.porCobrar > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Falta por cobrar: <span className="font-semibold text-foreground">{$$(resumenSemanal.porCobrar)}</span>
-                    </p>
-                  )}
-                </>
-              ) : (
-                <p className="text-xs text-muted-foreground text-center py-2">Sin datos para esta semana</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-2 gap-2">
-            <KPICard label="Pendientes" value={kpis.pendientes.toString()} sub={$$(kpis.porCobrar)} icon={Clock} color="text-warning" />
-            <KPICard label="Cobradas" value={kpis.cobradas.toString()} sub={$$(kpis.cobrado)} icon={CheckCircle2} color="text-emerald-600 dark:text-emerald-400" />
-            <KPICard label="Mora" value={$$(kpis.mora)} icon={AlertTriangle} color="text-destructive" />
-            <KPICard label="Eficiencia" value={`${kpis.pct.toFixed(0)}%`} icon={TrendingUp} color="text-primary" />
-          </div>
+          <TabResumen
+            perfil={perfil}
+            pendientesGrupos={pendientesGrupos}
+            kpis={kpis}
+            setHoy={setHoy}
+            setActiveTab={setActiveTab}
+            resumenSemanal={resumenSemanal}
+            loadingResumen={loadingResumen}
+          />
         </TabsContent>
 
         {/* ── Tab: Perfil ─────────────────────────────────── */}
         <TabsContent value="perfil" className="mt-3 space-y-4">
-          {loadingPerfil ? (
-            <LoadingCards />
-          ) : (
-            <>
-              {/* Profile info */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{perfil?.profile?.nombre_completo || "—"}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email || "—"}</p>
-                      {perfil?.profile?.telefono && (
-                        <p className="text-xs text-muted-foreground">{perfil.profile.telefono}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-center bg-secondary/50 rounded-md p-3">
-                    <div>
-                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Comisión</p>
-                      <p className="text-sm font-bold">{perfil?.profile?.porcentaje_comision || 0}%</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Efectivo en mano</p>
-                      <p className="text-sm font-bold">{$$(Number(perfil?.profile?.efectivo_en_mano || 0))}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Commissions summary */}
-              <Card>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-primary" />
-                    Comisiones
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-primary/10 rounded-lg p-3 text-center">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total ganadas</p>
-                      <p className="text-lg font-bold text-primary">{$$(perfil?.totalComisionesGanadas || 0)}</p>
-                    </div>
-                    <div className="bg-secondary rounded-lg p-3 text-center">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total cobrado</p>
-                      <p className="text-lg font-bold">{$$(perfil?.totalCobrado || 0)}</p>
-                    </div>
-                  </div>
-
-                  {/* Recent cortes */}
-                  {(perfil?.cortes || []).length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">Últimos cortes</p>
-                      <div className="space-y-1.5">
-                        {perfil!.cortes.slice(0, 5).map((c: any) => (
-                          <div key={c.id} className="flex items-center justify-between bg-secondary/50 rounded-md px-3 py-2">
-                            <span className="text-xs text-muted-foreground">
-                              {fmtDate(c.created_at)}
-                            </span>
-                            <div className="text-right">
-                              <span className="text-xs font-semibold text-primary">{$$(Number(c.monto_comision))}</span>
-                              <span className="text-[10px] text-muted-foreground ml-2">de {$$(Number(c.total_cobrado))}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Change password */}
-              <Card>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Lock className="h-4 w-4 text-primary" />
-                    Cambiar contraseña
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0 space-y-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Nueva contraseña</Label>
-                    <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Confirmar contraseña</Label>
-                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repetir contraseña" />
-                  </div>
-                  <Button
-                    className="w-full"
-                    disabled={changingPw || !newPassword || newPassword.length < 6 || newPassword !== confirmPassword}
-                    onClick={async () => {
-                      setChangingPw(true);
-                      const { error } = await supabase.auth.updateUser({ password: newPassword });
-                      setChangingPw(false);
-                      if (error) {
-                        toast.error("Error al cambiar contraseña: " + error.message);
-                      } else {
-                        toast.success("Contraseña actualizada correctamente");
-                        setNewPassword("");
-                        setConfirmPassword("");
-                      }
-                    }}
-                  >
-                    {changingPw ? "Guardando..." : "Actualizar contraseña"}
-                  </Button>
-                  {newPassword && newPassword.length < 6 && (
-                    <p className="text-xs text-destructive">La contraseña debe tener al menos 6 caracteres</p>
-                  )}
-                  {confirmPassword && newPassword !== confirmPassword && (
-                    <p className="text-xs text-destructive">Las contraseñas no coinciden</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Assigned loans */}
-              <Card>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-primary" />
-                    Préstamos asignados ({perfil?.prestamos?.length || 0})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0 space-y-2">
-                  {(perfil?.prestamos || []).length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">Sin préstamos asignados</p>
-                  ) : (
-                    perfil!.prestamos.map((p: any) => (
-                      <div key={p.id} className="border rounded-lg p-3 space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium truncate">{p.cliente}</p>
-                            <p className="text-[11px] text-muted-foreground">{p.ruta} • {p.frecuencia}</p>
-                          </div>
-                          <Badge variant={p.estado === "Vencido" ? "destructive" : "secondary"} className="text-[10px] shrink-0">
-                            {p.estado}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-center bg-secondary/50 rounded-md p-2">
-                          <div>
-                            <p className="text-[9px] uppercase text-muted-foreground">Monto</p>
-                            <p className="text-xs font-semibold">{$$(p.monto)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] uppercase text-muted-foreground">Saldo</p>
-                            <p className="text-xs font-semibold">{$$(p.saldo)}</p>
-                          </div>
-                          <div>
-                            <p className="text-[9px] uppercase text-muted-foreground">Cuotas</p>
-                            <p className="text-xs font-semibold">{p.pagadas}/{p.cuotas}</p>
-                          </div>
-                        </div>
-                        {p.mora > 0 && (
-                          <p className="text-[11px] text-destructive font-medium">Mora: {$$(p.mora)}</p>
-                        )}
-                        <Button variant="ghost" size="sm" className="h-7 text-xs w-full" onClick={() => navigate(`/prestamos/${p.id}`)}>
-                          <Eye className="h-3 w-3 mr-1" /> Ver detalle
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            </>
-          )}
+          <TabPerfil
+            loadingPerfil={loadingPerfil}
+            perfil={perfil}
+            userEmail={user?.email}
+            newPassword={newPassword}
+            setNewPassword={setNewPassword}
+            confirmPassword={confirmPassword}
+            setConfirmPassword={setConfirmPassword}
+            changingPw={changingPw}
+            setChangingPw={setChangingPw}
+            navigate={navigate}
+          />
         </TabsContent>
       </Tabs>
 
@@ -1425,465 +548,7 @@ export default function CobradorViewPage() {
       )}
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border/70 bg-background/95 shadow-[0_-12px_35px_-28px_rgba(15,23,42,.55)] backdrop-blur-xl sm:hidden safe-area-bottom">
-        <div className="grid grid-cols-5 px-1">
-          {[
-            { val: "resumen", label: "Inicio", icon: TrendingUp },
-            { val: "ruta", label: "Ruta", icon: Navigation },
-            { val: "cobranza", label: "Cobrar", icon: HandCoins, main: true },
-            { val: "pagos", label: "Pagos", icon: Receipt },
-            { val: "perfil", label: "Perfil", icon: User },
-          ].map(({ val, label, icon: Icon, main }) => {
-            const active = activeTab === val;
-            return (
-              <button
-                key={val}
-                onClick={() => {
-                  if (val === "ruta") setHoy();
-                  setActiveTab(val);
-                }}
-                className={cn(
-                  "relative flex min-h-[60px] flex-col items-center justify-center gap-0.5 py-2 transition-colors",
-                  active ? "text-primary" : "text-muted-foreground"
-                )}
-              >
-                <span className={cn(
-                  "flex items-center justify-center transition-all",
-                  main ? "-mt-7 h-[52px] w-[52px] rounded-2xl border-4 border-background bg-primary text-primary-foreground shadow-[0_10px_25px_-10px_rgba(240,20,77,.8)]" : "h-7 w-9 rounded-xl",
-                  !main && active && "bg-primary/10",
-                )}>
-                  <Icon className={cn(main ? "h-5 w-5" : "h-[18px] w-[18px]", active && !main && "scale-105")} />
-                </span>
-                <span className={cn("text-[9px] font-semibold", main && "-mt-0.5")}>{label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
+      <MobileBottomNav activeTab={activeTab} setHoy={setHoy} setActiveTab={setActiveTab} />
     </div>
-  );
-}
-
-// ── Sub-components ──────────────────────────────────────────────
-
-function KPICard({ label, value, sub, icon: Icon, color }: {
-  label: string; value: string; sub?: string; icon: any; color: string;
-}) {
-  return (
-    <Card className="border-border/50">
-      <CardContent className="p-3">
-        <div className="flex items-center justify-between mb-0.5">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
-          <Icon className={cn("h-3.5 w-3.5", color)} />
-        </div>
-        <p className={cn("text-lg font-bold leading-tight", color)}>{value}</p>
-        {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
-function CuotaCard({
-  item, onCobrar, onNavigate, onVisita, onPromesa, showDate,
-  expanded, onToggleExpand, onHistorial, onDrawer, onResend, resending,
-}: {
-  item: CuotaCobrador;
-  onCobrar: (item: CuotaCobrador) => void;
-  onNavigate: (path: string) => void;
-  onVisita?: (item: CuotaCobrador) => void;
-  onPromesa?: (item: CuotaCobrador) => void;
-  showDate?: boolean;
-  expanded?: boolean;
-  onToggleExpand?: () => void;
-  onHistorial?: (item: CuotaCobrador) => void;
-  onDrawer?: (item: CuotaCobrador) => void;
-  onResend?: (item: CuotaCobrador) => void;
-  resending?: boolean;
-}) {
-  const status = getStatusInfo(item);
-  const isOverdue = item.diasAtraso > 0 && !item.pagada;
-
-  return (
-    <Card className={cn(
-      "border-border/50 transition-colors",
-      item.pagada && "opacity-70",
-      isOverdue && "border-destructive/30 bg-destructive/5",
-    )}>
-      <CardContent className="p-3">
-        {/* Row 1: Client + Status */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="min-w-0 flex-1">
-            <button
-              className="font-semibold text-sm truncate hover:text-primary hover:underline text-left block w-full"
-              onClick={() => onNavigate(`/clientes/${item.clienteId}`)}
-            >
-              {item.clienteNombre}
-            </button>
-            <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-              <span className="text-[11px] text-muted-foreground">
-                Cuota <span className="font-medium">#{item.numCuota}</span>/{item.totalCuotas}
-              </span>
-              <span className="text-[11px] text-muted-foreground">• {item.ruta}</span>
-              {showDate && (
-                <span className="text-[11px] text-muted-foreground">
-                  • {format(parseISO(item.fechaVencimiento), "dd/MM")}
-                </span>
-              )}
-            </div>
-          </div>
-          <Badge className={cn("text-[10px] shrink-0 h-5", status.color)}>
-            {status.label}
-          </Badge>
-        </div>
-
-        {/* Row 2: Amounts */}
-        <div className="grid grid-cols-3 gap-2 text-center bg-secondary/50 rounded-md p-2 mb-2">
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Cuota</p>
-            <p className="text-xs font-semibold">{$$(item.capitalInteres)}</p>
-          </div>
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Mora</p>
-            <p className={cn("text-xs font-semibold", item.saldoMora > 0 ? "text-destructive" : "text-muted-foreground")}>
-              {item.saldoMora > 0 ? $$(item.saldoMora) : "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Total</p>
-            <p className="text-xs font-bold">{$$(item.saldoTotal)}</p>
-          </div>
-        </div>
-
-        {/* Row 3: Actions */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {!item.pagada ? (
-            <>
-              <Button
-                size="sm"
-                className="h-8 text-[11px] font-medium min-w-0 flex-1"
-                onClick={() => onCobrar(item)}
-              >
-                <HandCoins className="h-3.5 w-3.5 mr-1 shrink-0" />
-                <span className="truncate">Cobrar {$$(item.saldoTotal)}</span>
-              </Button>
-              <div className="flex items-center gap-1 shrink-0">
-                {item.clienteTelefono && (
-                  <>
-                    <Button variant="outline" size="icon" className="h-8 w-8"
-                      onClick={() => window.open(`tel:${item.clienteTelefono}`, "_blank")}>
-                      <Phone className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8 text-green-600"
-                      onClick={() => window.open(`https://wa.me/${item.clienteTelefono?.replace(/\D/g, "")}`, "_blank")}>
-                      <MessageSquare className="h-3.5 w-3.5" />
-                    </Button>
-                  </>
-                )}
-                {onVisita && (
-                  <Button variant="outline" size="icon" className="h-8 w-8" title="Registrar visita"
-                    onClick={() => onVisita(item)}>
-                    <MapPin className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                {onPromesa && item.status !== "Prometida" && (
-                  <Button variant="outline" size="icon" className="h-8 w-8" title="Promesa de pago"
-                    onClick={() => onPromesa(item)}>
-                    <CalendarCheck className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                <Button variant="outline" size="icon" className="h-8 w-8" title="Ver préstamo"
-                  onClick={() => onDrawer ? onDrawer(item) : onNavigate(`/prestamos/${item.prestamoId}`)}>
-                  <Eye className="h-3.5 w-3.5" />
-                </Button>
-                {onToggleExpand && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Más"
-                    onClick={onToggleExpand}>
-                    {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  </Button>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-between w-full gap-2 flex-wrap">
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Cobrado {$$(item.montoPagado || item.capitalInteres)}
-              </span>
-              <div className="flex items-center gap-1">
-                {onResend && (
-                  <Button variant="outline" size="sm" className="h-7 text-[11px]" disabled={resending}
-                    onClick={() => onResend(item)} title="Reenviar último ticket">
-                    {resending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                    Reenviar
-                  </Button>
-                )}
-                {onHistorial && (
-                  <Button variant="outline" size="sm" className="h-7 text-[11px]"
-                    onClick={() => onHistorial(item)}>
-                    <Receipt className="h-3 w-3 mr-1" /> Pagos
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" className="h-7 text-xs"
-                  onClick={() => onDrawer ? onDrawer(item) : onNavigate(`/prestamos/${item.prestamoId}`)}>
-                  <Eye className="h-3 w-3 mr-1" /> Ver
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Expanded actions panel */}
-        {expanded && (
-          <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {onDrawer && (
-              <Button variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => onDrawer(item)}>
-                <FileText className="h-3 w-3 mr-1" /> Préstamo
-              </Button>
-            )}
-            {onHistorial && (
-              <Button variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => onHistorial(item)}>
-                <Receipt className="h-3 w-3 mr-1" /> Pagos
-              </Button>
-            )}
-            {onResend && (
-              <Button variant="outline" size="sm" className="h-8 text-[11px]" disabled={resending}
-                onClick={() => onResend(item)}>
-                {resending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Send className="h-3 w-3 mr-1" />}
-                Reenviar ticket
-              </Button>
-            )}
-            {item.clienteDireccion && (
-              <Button variant="outline" size="sm" className="h-8 text-[11px]"
-                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.clienteDireccion!)}`, "_blank")}>
-                <MapPin className="h-3 w-3 mr-1" /> Mapa
-              </Button>
-            )}
-          </div>
-        )}
-
-        {/* Client address if available */}
-        {item.clienteDireccion && !item.pagada && (
-          <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-border/50">
-            <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground leading-tight">{item.clienteDireccion}</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function PagoCard({ pago, onNavigate }: { pago: PagoHistorial; onNavigate: (path: string) => void }) {
-  return (
-    <Card className={cn("border-border/50", pago.anulado && "opacity-50")}>
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium truncate">{pago.clienteNombre}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              {pago.numCuota && <span className="text-[11px] text-muted-foreground">Cuota #{pago.numCuota}</span>}
-              <span className="text-[11px] text-muted-foreground">{pago.metodoPago}</span>
-              <span className="text-[11px] text-muted-foreground">
-                {fmtDateTime(pago.fechaPago)}
-              </span>
-            </div>
-          </div>
-          <div className="text-right shrink-0">
-            <p className={cn("text-sm font-bold", pago.anulado ? "text-muted-foreground line-through" : "text-emerald-600 dark:text-emerald-400")}>
-              {$$(pago.montoRecibido)}
-            </p>
-            {pago.anulado && <Badge variant="destructive" className="text-[9px] mt-0.5">Anulado</Badge>}
-          </div>
-        </div>
-
-        {/* Breakdown */}
-        <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-border/30 text-center">
-          <div>
-            <p className="text-[9px] uppercase text-muted-foreground">Capital</p>
-            <p className="text-[11px] font-medium">{$$(pago.aplicadoCapital)}</p>
-          </div>
-          <div>
-            <p className="text-[9px] uppercase text-muted-foreground">Interés</p>
-            <p className="text-[11px] font-medium">{$$(pago.aplicadoInteres)}</p>
-          </div>
-          <div>
-            <p className="text-[9px] uppercase text-muted-foreground">Mora</p>
-            <p className="text-[11px] font-medium">{$$(pago.aplicadoMora)}</p>
-          </div>
-        </div>
-
-        <button
-          className="text-[11px] text-primary hover:underline mt-2 block"
-          onClick={() => onNavigate(`/prestamos/${pago.prestamoId}`)}
-        >
-          Ver préstamo →
-        </button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function EmptyCard({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
-  return (
-    <Card className="border-border/50">
-      <CardContent className="p-8 text-center">
-        <Icon className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
-        <p className="font-semibold text-sm">{title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function LoadingCards() {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Skeleton key={i} className="h-32 w-full rounded-lg" />
-      ))}
-    </div>
-  );
-}
-
-// ── Prestamo Group Card ─────────────────────────────────────────
-// Shows one card per loan with the TOTAL outstanding (saldo + mora).
-// Click "Cobrar" → opens PagoModal preloaded with the full grouped amount.
-// The waterfall (Mora → Interés → Capital) settles cuotas oldest-first automatically.
-function PrestamoGroupCard({
-  grupo, expanded, onToggleExpand, onCobrar, onNavigate, onDrawer, onHistorial, onVisita, onPromesa,
-}: {
-  grupo: {
-    prestamoId: string; clienteNombre: string; clienteId: string;
-    clienteTelefono: string | null; clienteDireccion: string | null;
-    ruta: string; cuotas: CuotaCobrador[]; saldoTotal: number; saldoMora: number;
-    diasAtrasoMax: number; proximaCuota: number; totalCuotas: number;
-  };
-  expanded: boolean;
-  onToggleExpand: () => void;
-  onCobrar: () => void;
-  onNavigate: (path: string) => void;
-  onDrawer: () => void;
-  onHistorial: () => void;
-  onVisita: () => void;
-  onPromesa: () => void;
-}) {
-  const isOverdue = grupo.diasAtrasoMax > 0;
-  return (
-    <Card className={cn(
-      "relative overflow-hidden rounded-2xl border-border/70 bg-card shadow-[0_18px_38px_-34px_rgba(15,23,42,.5)] transition-all",
-      isOverdue && "border-destructive/20",
-    )}>
-      {isOverdue && <span className="absolute inset-y-0 left-0 w-1 bg-destructive" />}
-      <CardContent className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <button
-              className="block w-full truncate text-left text-[15px] font-bold leading-tight tracking-tight hover:text-primary"
-              onClick={() => onNavigate(`/clientes/${grupo.clienteId}`)}
-            >
-              {grupo.clienteNombre}
-            </button>
-            <p className="mt-1 truncate text-[11px] text-muted-foreground">{grupo.ruta} · {grupo.cuotas.length} cuotas pendientes</p>
-          </div>
-          <Badge className={cn(
-            "h-6 shrink-0 rounded-full px-2.5 text-[10px] font-bold",
-            isOverdue ? "bg-destructive/10 text-destructive hover:bg-destructive/10" : "bg-warning/10 text-warning hover:bg-warning/10",
-          )}>
-            {isOverdue ? `${grupo.diasAtrasoMax} días tarde` : "Pendiente"}
-          </Badge>
-        </div>
-
-        <div className="flex items-end justify-between gap-3 rounded-xl bg-muted/45 px-3 py-2.5">
-          <div>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Total por cobrar</p>
-            <p className="mt-0.5 text-xl font-bold tracking-tight">{$$(grupo.saldoTotal)}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-muted-foreground">Cuota próxima #{grupo.proximaCuota}/{grupo.totalCuotas}</p>
-            {grupo.saldoMora > 0 && <p className="mt-0.5 text-[11px] font-semibold text-destructive">Mora {$$(grupo.saldoMora)}</p>}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-2">
-          <Button
-            className="h-11 min-w-0 rounded-xl text-xs font-semibold shadow-[0_10px_24px_-15px_rgba(240,20,77,.8)]"
-            onClick={onCobrar}
-          >
-            <HandCoins className="mr-1.5 h-4 w-4 shrink-0" />
-            <span className="truncate">Registrar pago</span>
-          </Button>
-          <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl" disabled={!grupo.clienteTelefono}
-            onClick={() => grupo.clienteTelefono && window.open(`tel:${grupo.clienteTelefono}`, "_blank")} aria-label="Llamar al cliente">
-            <Phone className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl text-success" disabled={!grupo.clienteTelefono}
-            onClick={() => grupo.clienteTelefono && window.open(`https://wa.me/${grupo.clienteTelefono.replace(/\D/g, "")}`, "_blank")} aria-label="Enviar WhatsApp">
-            <MessageSquare className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl text-primary" disabled={!grupo.clienteDireccion}
-            onClick={() => grupo.clienteDireccion && window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(grupo.clienteDireccion)}`, "_blank")} aria-label="Abrir navegación">
-            <Navigation className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <button onClick={onToggleExpand} className="flex w-full items-center justify-center gap-1.5 border-t border-border/50 pt-2 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-foreground">
-          {expanded ? "Ocultar detalles" : `Ver detalles y ${grupo.cuotas.length} cuotas`}
-          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-        </button>
-
-        {/* Expanded: list of pending cuotas + extra actions */}
-        {expanded && (
-          <div className="space-y-3 border-t border-border/50 pt-3">
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px]" onClick={onDrawer}>
-                <Eye className="mr-1.5 h-3.5 w-3.5" /> Préstamo
-              </Button>
-              <Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px]" onClick={onHistorial}>
-                <Receipt className="mr-1.5 h-3.5 w-3.5" /> Historial
-              </Button>
-              <Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px]" onClick={onVisita}>
-                <MapPin className="mr-1.5 h-3.5 w-3.5" /> Registrar visita
-              </Button>
-              <Button variant="outline" size="sm" className="h-9 rounded-lg text-[11px]" onClick={onPromesa}>
-                <CalendarCheck className="mr-1.5 h-3.5 w-3.5" /> Crear promesa
-              </Button>
-            </div>
-            <p className="text-[9px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-              Cuotas pendientes
-            </p>
-            <div className="space-y-1.5">
-              {grupo.cuotas.map((c) => (
-                <div key={c.cuotaId} className={cn(
-                  "flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs",
-                  c.diasAtraso > 0 ? "bg-destructive/[0.06]" : "bg-muted/45",
-                )}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-medium shrink-0">#{c.numCuota}/{c.totalCuotas}</span>
-                    <span className="text-muted-foreground text-[11px] shrink-0">
-                      {format(parseISO(c.fechaVencimiento), "dd/MM")}
-                    </span>
-                    {c.diasAtraso > 0 && (
-                      <span className="text-destructive text-[10px] shrink-0">+{c.diasAtraso}d</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {c.saldoMora > 0 && (
-                      <span className="text-destructive text-[10px]">M: {$$(c.saldoMora)}</span>
-                    )}
-                    <span className="font-semibold">{$$(c.saldoTotal)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {grupo.clienteDireccion && (
-              <div className="flex items-start gap-1.5 border-t border-border/50 pt-3">
-                <MapPin className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
-                <p className="text-[11px] text-muted-foreground leading-tight">{grupo.clienteDireccion}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }
