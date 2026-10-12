@@ -8,6 +8,7 @@ import { generarReciboPagos } from "@/lib/pdfDocuments";
 import type { ComponentProps } from "react";
 import { dash, type PagoRow, type DocType, type PdfPrestamo, type PdfPagos } from "./utils";
 import { MetodoDot } from "./ui";
+import { useCan } from "@/hooks/usePermisos";
 
 interface TabPagosProps {
   pagosRaw: PagoRow[];
@@ -32,6 +33,8 @@ export function TabPagos({
   setEditPagoData, setEditPagoOpen, setSelectedPago, setAnularPagoOpen, totalPagosMonto,
   totalPagosMora, totalPagosInteres, totalPagosCapital,
 }: TabPagosProps) {
+  const canAnularPago = useCan("pagos", "anular_pago");
+  const canEditarPago = useCan("pagos", "editar");
   return (
     <>
       {/* Mobile: Cards */}
@@ -75,7 +78,7 @@ export function TabPagos({
                       <div className="flex items-center gap-1">
                         <button title="Ver" onClick={() => setDocPreview({ open: true, type: "pagos" })} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"><Eye className="h-3.5 w-3.5" /></button>
                         <button title="Descargar" onClick={async () => { try { const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]); doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`); } catch (err: any) { toast.error("Error: " + err.message); } }} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"><Download className="h-3.5 w-3.5" /></button>
-                        {!isCancelado && (
+                        {!isCancelado && canAnularPago && (
                           <button title="Anular" onClick={() => { setSelectedPago({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id }); setAnularPagoOpen(true); }} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Ban className="h-3.5 w-3.5" /></button>
                         )}
                       </div>
@@ -144,7 +147,7 @@ export function TabPagos({
                       <TableCell className="px-3">
                         {!isAnulado && (
                           <div className="flex items-center gap-0.5">
-                            {!isCancelado && (
+                            {!isCancelado && canEditarPago && (
                               <button title="Editar pago" onClick={() => { setEditPagoData({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), metodo_pago: pg.metodo_pago || "Efectivo", caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id, fecha_pago: (pg as any).fecha_pago }); setEditPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
@@ -162,7 +165,7 @@ export function TabPagos({
                             <button title="Descargar" onClick={async () => { try { const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]); doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`); } catch (err: any) { toast.error("Error: " + err.message); } }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                               <Download className="h-3.5 w-3.5" />
                             </button>
-                            {!isCancelado && (
+                            {!isCancelado && canAnularPago && (
                               <button title="Anular pago" onClick={() => { setSelectedPago({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id }); setAnularPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                                 <Ban className="h-3.5 w-3.5" />
                               </button>

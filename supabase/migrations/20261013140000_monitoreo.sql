@@ -320,12 +320,12 @@ BEGIN
     WHERE c.created_at >= now() - interval '24 hours' AND c.empresa_id IS NOT NULL
     GROUP BY c.empresa_id
   )
-  SELECT e.id, e.nombre, e.activa, e.plan,
+  SELECT e.id, e.nombre::text, e.activa, e.plan::text,
          coalesce(pr.activos, 0), coalesce(pr.total, 0),
          coalesce(pg.n, 0), coalesce(pg.monto, 0),
          coalesce(us.n, 0), coalesce(us.activos, 0),
-         coalesce(wac.activo, false), coalesce(wal.errores, 0), wal.ultimo, wau.status,
-         coalesce(st.ok, false), su.estado,
+         coalesce(wac.activo, false), coalesce(wal.errores, 0), wal.ultimo, wau.status::text,
+         coalesce(st.ok, false), su.estado::text,
          coalesce(ce.n, 0)
   FROM empresas e
   LEFT JOIN pr ON pr.empresa_id = e.id

@@ -41,8 +41,11 @@ SELECT tests.ok(public.tiene_permiso('cajas', 'editar'), 'service_role: permitid
 -- saldo_actual de cajas no se puede escribir desde el cliente.
 SELECT tests.as_user(tests.id('admin_a'));
 SELECT tests.throws(format($$UPDATE public.cajas SET saldo_actual = 999999 WHERE id = %L$$, tests.id('caja_a1')),
-                    '42501', '%permission denied%', 'cliente no puede escribir cajas.saldo_actual');
+                    '42501', '%solo cambia con movimientos%', 'cliente no puede escribir cajas.saldo_actual');
 SELECT tests.lives(format($$UPDATE public.cajas SET nombre = nombre WHERE id = %L$$, tests.id('caja_a1')),
                    'cliente sí puede renombrar caja');
+SELECT tests.lives(format($$INSERT INTO public.movimientos_caja (caja_id, empresa_id, tipo, monto, concepto) VALUES (%L, %L, 'entrada', 10, 'Depósito')$$,
+                          tests.id('caja_a1'), tests.id('emp_a')),
+                   'insertar movimiento como cliente sigue actualizando saldo por trigger');
 
 ROLLBACK;

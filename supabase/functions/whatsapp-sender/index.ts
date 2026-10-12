@@ -415,7 +415,8 @@ Deno.serve(withCors(async (req) => {
 
 // ── Cola (whatsapp_cola) ───────────────────────────
 const QUEUE_BATCH = 50;
-const QUEUE_BUDGET_MS = 100_000;
+// Límite de Edge Functions ~150 s; un envío puede tardar ~65 s (3 intentos × 20 s + backoff).
+const QUEUE_BUDGET_MS = 60_000;
 
 async function processQueue(supabase: any, supabaseUrl: string, empresaId: string | null) {
   const started = Date.now();

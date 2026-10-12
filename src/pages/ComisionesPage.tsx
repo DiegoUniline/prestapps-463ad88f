@@ -3,6 +3,7 @@ import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, rpc } from "@/lib/supabaseQuery";
+import { rpcRegistrarMovimientoCaja } from "@/lib/rpcIntegridad";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -290,13 +291,7 @@ export default function ComisionesPage() {
       const conceptoFull = `[Comisiones] Comisión ${tipoComision}: ${nombre} — ${$$(comisionCalculada)}`;
 
       // 1) Movimiento de salida
-      await supabase.from("movimientos_caja").insert({
-        caja_id: cajaId,
-        tipo: "salida" as const,
-        monto: comisionCalculada,
-        concepto: conceptoFull,
-        empresa_id: empresaId,
-      });
+      await rpcRegistrarMovimientoCaja(cajaId, "salida", comisionCalculada, conceptoFull);
 
       // saldo_actual se sincroniza automáticamente via trigger
 

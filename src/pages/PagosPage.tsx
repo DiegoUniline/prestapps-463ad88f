@@ -27,6 +27,7 @@ import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 import { generarReciboPagos } from "@/lib/pdfDocuments";
 import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
 import { toast } from "sonner";
+import { useCan } from "@/hooks/usePermisos";
 
 // ── Types ─────────────────────────────────────────────────────────
 interface PagoListItem {
@@ -222,6 +223,8 @@ function MetodoDot({ metodo }: { metodo: string }) {
 
 // ── Component ─────────────────────────────────────────────────────
 export default function PagosPage() {
+  const canAnularPago = useCan("pagos", "anular_pago");
+  const canEditarPago = useCan("pagos", "editar");
   const { empresaId } = useEmpresa();
   const queryClient = useQueryClient();
   const { data: cajasRaw = [] } = useCajasOptions(empresaId);
@@ -450,11 +453,11 @@ export default function PagosPage() {
           Descargar ticket
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => handleEdit(p)} disabled={p.anulado}>
+        <DropdownMenuItem onClick={() => handleEdit(p)} disabled={p.anulado || !canEditarPago}>
           <Pencil className="h-3.5 w-3.5 mr-2" />
           Editar pago
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleAnular(p)} disabled={p.anulado} className="text-destructive focus:text-destructive">
+        <DropdownMenuItem onClick={() => handleAnular(p)} disabled={p.anulado || !canAnularPago} className="text-destructive focus:text-destructive">
           <XCircle className="h-3.5 w-3.5 mr-2" />
           Anular pago
         </DropdownMenuItem>
@@ -706,7 +709,7 @@ export default function PagosPage() {
                 size="sm"
                 className="h-7 text-[11px] gap-1"
                 onClick={() => handleEdit(p)}
-                disabled={p.anulado}
+                disabled={p.anulado || !canEditarPago}
               >
                 <Pencil className="h-3 w-3" />
               </Button>
@@ -715,7 +718,7 @@ export default function PagosPage() {
                 size="sm"
                 className="h-7 text-[11px] gap-1 text-destructive hover:text-destructive"
                 onClick={() => handleAnular(p)}
-                disabled={p.anulado}
+                disabled={p.anulado || !canAnularPago}
               >
                 <XCircle className="h-3 w-3" />
               </Button>

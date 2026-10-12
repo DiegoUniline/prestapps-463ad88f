@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { PhotoLightbox } from "@/components/shared/PhotoLightbox";
 import type { AppRole } from "@/hooks/useCurrentUserRole";
+import { useCan } from "@/hooks/usePermisos";
 import { estadoBadge, type PrestamoDetalle, type CuotaAmort, type DocType } from "./utils";
 
 interface PrestamoHeaderProps {
@@ -42,6 +43,10 @@ export function PrestamoHeader({
   setLiquidarOpen, setPagoOpen, setReasignarOpen, setReestructurarOpen, setSelectedCuota,
 }: PrestamoHeaderProps) {
   const queryClient = useQueryClient();
+  const canEditar = useCan("prestamos", "editar");
+  const canReasignar = useCan("prestamos", "reasignar");
+  const canReestructurar = useCan("prestamos", "reestructurar");
+  const canCancelar = useCan("prestamos", "cancelar_prestamo");
   return (
     <div className="bg-card px-4 md:px-6 py-4 md:py-5 border-b border-border">
       {/* Breadcrumb */}
@@ -127,9 +132,9 @@ export function PrestamoHeader({
             queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] });
           }}
         />}
-        <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => setEditarOpen(true)} disabled={isCancelado}>
+        {canEditar && <Button variant="outline" size="sm" className="h-8 text-[12px]" onClick={() => setEditarOpen(true)} disabled={isCancelado}>
           <Pencil className="h-3.5 w-3.5 md:mr-1" /><span className="hidden md:inline">Editar</span>
-        </Button>
+        </Button>}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="icon" className="h-8 w-8">
@@ -137,23 +142,23 @@ export function PrestamoHeader({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setReasignarOpen(true)} disabled={isCancelado}>
+            {canReasignar && <DropdownMenuItem onClick={() => setReasignarOpen(true)} disabled={isCancelado}>
               <Route className="h-3.5 w-3.5 mr-2" />Reasignar Ruta / Cobrador
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setReestructurarOpen(true)} disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}>
+            </DropdownMenuItem>}
+            {canReestructurar && <DropdownMenuItem onClick={() => setReestructurarOpen(true)} disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}>
               <RefreshCw className="h-3.5 w-3.5 mr-2" />Reestructurar Préstamo
-            </DropdownMenuItem>
+            </DropdownMenuItem>}
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={isCancelado}>Imprimir tabla</DropdownMenuItem>
             <DropdownMenuItem disabled={isCancelado}>Exportar PDF</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
+            {canCancelar && <DropdownMenuItem
               className="text-destructive"
               onClick={() => setCancelarOpen(true)}
               disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
             >
               <Ban className="h-3.5 w-3.5 mr-2" />Cancelar préstamo
-            </DropdownMenuItem>
+            </DropdownMenuItem>}
             {role === "admin" && (
               <DropdownMenuItem
                 className="text-destructive"

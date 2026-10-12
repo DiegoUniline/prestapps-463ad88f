@@ -85,7 +85,23 @@ BEGIN
   END LOOP;
 END $$;
 
--- cajas.saldo_actual solo lo escribe el trigger/RPCs: el cliente solo puede crear y renombrar/activar cajas.
-REVOKE INSERT, UPDATE ON public.cajas FROM anon, authenticated;
-GRANT INSERT (nombre, descripcion, empresa_id, activo) ON public.cajas TO authenticated;
-GRANT UPDATE (nombre, descripcion, activo) ON public.cajas TO authenticated;
+-- cajas.saldo_actual solo lo escriben triggers y RPCs: una escritura directa del cliente
+-- (pg_trigger_depth() = 1 como authenticated/anon) se rechaza; los triggers anidados y las
+-- funciones SECURITY DEFINER no se ven afectados.
+CREATE OR REPLACE FUNCTION public.trg_cajas_proteger_saldo()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF pg_trigger_depth() = 1 AND current_user IN ('authenticated', 'anon') THEN
+    IF TG_OP = 'INSERT' THEN
+      NEW.saldo_actual := 0;
+    ELSIF NEW.saldo_actual IS DISTINCT FROM OLD.saldo_actual THEN
+      RAISE EXCEPTION 'El saldo de la caja solo cambia con movimientos' USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS cajas_proteger_saldo ON public.cajas;
+CREATE TRIGGER cajas_proteger_saldo BEFORE INSERT OR UPDATE ON public.cajas
+  FOR EACH ROW EXECUTE FUNCTION public.trg_cajas_proteger_saldo();
+REVOKE ALL ON FUNCTION public.trg_cajas_proteger_saldo() FROM PUBLIC, anon, authenticated;
