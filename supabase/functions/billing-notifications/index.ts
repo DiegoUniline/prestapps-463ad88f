@@ -3,9 +3,74 @@ import Stripe from "npm:stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((o) => o.trim()).filter(Boolean);
+
+const withCors = (handler: (req: Request) => Response | Promise<Response>) => async (req: Request) => {
+  const res = await handler(req);
+  const origin = req.headers.get("Origin") || "";
+  const headers = new Headers(res.headers);
+  if (!ALLOWED_ORIGINS.length) {
+    headers.set("Access-Control-Allow-Origin", "*");
+  } else {
+    if (ALLOWED_ORIGINS.includes(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    else headers.delete("Access-Control-Allow-Origin");
+    headers.append("Vary", "Origin");
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+};
+
+const SUPER_ADMIN_EMAIL = (Deno.env.get("SUPER_ADMIN_EMAIL") || "diego.leon@uniline.mx").trim().toLowerCase();
+
+type Caller = {
+  service: boolean;
+  userId: string | null;
+  email: string | null;
+  empresaId: string | null;
+  roles: string[];
+  superAdmin: boolean;
+};
+
+async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceKey && token === serviceKey) {
+    return { service: true, userId: null, email: null, empresaId: null, roles: [], superAdmin: false };
+  }
+  const { data, error } = await admin.auth.getUser(token);
+  const user = data?.user;
+  if (error || !user) return null;
+  const [{ data: profile }, { data: roleRows }] = await Promise.all([
+    admin.from("profiles").select("empresa_id").eq("id", user.id).maybeSingle(),
+    admin.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+  const email = String(user.email || "").toLowerCase();
+  return {
+    service: false,
+    userId: user.id,
+    email,
+    empresaId: profile?.empresa_id ?? null,
+    roles: (roleRows || []).map((r: any) => r.role),
+    superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
+  };
+}
+
+// Service role and super admin run freely; any other caller (e.g. pg_cron with the anon key) is throttled.
+async function cronGate(req: Request, admin: any, nombre: string): Promise<Response | null> {
+  const caller = await getCaller(req, admin);
+  if (caller?.service || caller?.superAdmin) return null;
+  const { data: claimed, error } = await admin.rpc("cron_claim", { p_nombre: nombre, p_min_minutes: 50 });
+  if (error) console.error(`[${nombre}] cron_claim error:`, error.message);
+  if (error || claimed !== true) {
+    return new Response(JSON.stringify({ skipped: true }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  return null;
+}
 
 const logStep = (step: string, details?: any) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
@@ -17,13 +82,26 @@ const SUPERADMIN_PHONE = "523171035768";
 
 // ── Notify Super Admin directly ──
 async function notifySuperAdmin(
+  supabase: any,
   apiUrl: string,
   apiToken: string,
   mensaje: string,
 ) {
-  const candidates = getPhoneCandidates(SUPERADMIN_PHONE);
-  const result = await sendWhatsAppWithFallback(apiUrl, apiToken, mensaje, candidates);
-  logStep("SuperAdmin WA", { success: result.success });
+  try {
+    const candidates = getPhoneCandidates(SUPERADMIN_PHONE);
+    const result = await sendWhatsAppWithFallback(apiUrl, apiToken, mensaje, candidates);
+    logStep("SuperAdmin WA", { success: result.success });
+    await supabase.from("whatsapp_log").insert({
+      empresa_id: null,
+      telefono: result.phoneUsed || SUPERADMIN_PHONE,
+      tipo: "alerta_superadmin",
+      mensaje,
+      status: result.success ? "enviado" : "error",
+      error_detalle: result.success ? null : (result.error || "No se pudo entregar"),
+    });
+  } catch (e: any) {
+    logStep("notifySuperAdmin error", { error: e?.message });
+  }
 }
 
 function getPhoneCandidates(phone: string): string[] {
@@ -43,28 +121,78 @@ function getPhoneCandidates(phone: string): string[] {
   return Array.from(candidates);
 }
 
+const WA_BACKOFFS_MS = [0, 1500, 4000];
+
+// Retries transient failures (network, 5xx, 429, connection closed) with backoff; never throws.
+async function postWhatsApp(apiUrl: string, apiToken: string, phone: string, message: string) {
+  let lastError: string | null = null;
+  let transient = false;
+  for (let attempt = 0; attempt < WA_BACKOFFS_MS.length; attempt++) {
+    if (WA_BACKOFFS_MS[attempt] > 0) await new Promise((r) => setTimeout(r, WA_BACKOFFS_MS[attempt]));
+    try {
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "x-api-token": apiToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send-text", phone, message }),
+      });
+      const raw = await res.text().catch(() => "");
+      if (res.ok) return { success: true, error: null, transient: false };
+      lastError = `HTTP ${res.status}: ${raw.slice(0, 300)}`;
+      const errStr = raw.toLowerCase();
+      transient = res.status >= 500 || res.status === 429 ||
+        errStr.includes("connection closed") || errStr.includes("timeout") || errStr.includes("econn");
+      if (!transient) break;
+    } catch (e: any) {
+      lastError = e?.message || "Network error";
+      transient = true;
+    }
+  }
+  return { success: false, error: lastError, transient };
+}
+
 async function sendWhatsAppWithFallback(
   apiUrl: string,
   apiToken: string,
   mensaje: string,
   candidates: string[],
 ) {
+  let lastError: string | null = null;
   for (const candidate of candidates) {
-    try {
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "x-api-token": apiToken, "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send-text", phone: candidate, message: mensaje }),
-      });
-      const raw = await res.text();
-      let response: any = raw;
-      try { response = JSON.parse(raw); } catch { /* keep raw */ }
-      if (res.ok) return { success: true, phoneUsed: candidate, response };
-    } catch (e: any) {
-      logStep("WA attempt exception", { phone: candidate, error: e?.message });
-    }
+    const r = await postWhatsApp(apiUrl, apiToken, candidate, mensaje);
+    if (r.success) return { success: true, phoneUsed: candidate, error: null };
+    lastError = r.error;
+    logStep("WA attempt failed", { phone: candidate, error: r.error });
+    if (r.transient) break;
   }
-  return { success: false, phoneUsed: candidates[0] || null };
+  return { success: false, phoneUsed: candidates[0] || null, error: lastError };
+}
+
+async function getEmpresaAdmins(supabase: any, empresaId: string) {
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, telefono, nombre_completo")
+    .eq("empresa_id", empresaId);
+  const ids = (profiles || []).map((p: any) => p.id);
+  if (!ids.length) return [];
+  const { data: admins } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin")
+    .in("user_id", ids);
+  const adminSet = new Set((admins || []).map((a: any) => a.user_id));
+  return (profiles || []).filter((p: any) => adminSet.has(p.id));
+}
+
+async function alreadyNotifiedToday(supabase: any, empresaId: string, tipo: string, today: string) {
+  const { data } = await supabase
+    .from("whatsapp_log")
+    .select("id")
+    .eq("empresa_id", empresaId)
+    .eq("tipo", tipo)
+    .eq("status", "enviado")
+    .gte("created_at", today)
+    .limit(1);
+  return !!data?.length;
 }
 
 async function getSystemWaConfig(supabase: any) {
@@ -92,20 +220,9 @@ async function notifyEmpresaAdmins(
     const waConfig = await getSystemWaConfig(supabase);
     if (!waConfig) { logStep("No WA config found"); return; }
 
-    const { data: admins } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
-    if (!admins?.length) return;
+    const profiles = await getEmpresaAdmins(supabase, empresaId);
 
-    const adminIds = admins.map((a: any) => a.user_id);
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("telefono, nombre_completo")
-      .eq("empresa_id", empresaId)
-      .in("id", adminIds);
-
-    for (const profile of (profiles || [])) {
+    for (const profile of profiles) {
       if (!profile.telefono) continue;
       const candidates = getPhoneCandidates(profile.telefono);
       const result = await sendWhatsAppWithFallback(waConfig.api_url, waConfig.api_token, mensaje, candidates);
@@ -116,7 +233,7 @@ async function notifyEmpresaAdmins(
         tipo,
         mensaje,
         status: result.success ? "enviado" : "error",
-        error_detalle: result.success ? null : "No se pudo entregar",
+        error_detalle: result.success ? null : (result.error || "No se pudo entregar"),
       });
     }
   } catch (e: any) {
@@ -129,7 +246,7 @@ const formatMXN = (n: number) =>
 const formatDate = (d: Date) =>
   d.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 
-serve(async (req) => {
+serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -139,6 +256,9 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { persistSession: false } },
   );
+
+  const gate = await cronGate(req, supabase, "billing-notifications");
+  if (gate) return gate;
 
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
   const stripe = stripeKey ? new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" }) : null;
@@ -174,15 +294,7 @@ serve(async (req) => {
       const isStripeBilled = !!sub.stripe_subscription_id;
 
       // Check if we already notified for this invoice today
-      const { data: alreadyNotified } = await supabase
-        .from("whatsapp_log")
-        .select("id")
-        .eq("empresa_id", factura.empresa_id)
-        .eq("tipo", "factura_generada")
-        .gte("created_at", today)
-        .limit(1);
-
-      if (alreadyNotified?.length) continue;
+      if (await alreadyNotifiedToday(supabase, factura.empresa_id, "factura_generada", today)) continue;
 
       if (isStripeBilled) {
         await notifyEmpresaAdmins(supabase, factura.empresa_id,
@@ -229,15 +341,7 @@ serve(async (req) => {
       if (!sub) continue;
 
       // Check if we already sent pago_exitoso today for this empresa
-      const { data: alreadyNotified } = await supabase
-        .from("whatsapp_log")
-        .select("id")
-        .eq("empresa_id", factura.empresa_id)
-        .eq("tipo", "pago_exitoso")
-        .gte("created_at", today)
-        .limit(1);
-
-      if (alreadyNotified?.length) continue;
+      if (await alreadyNotifiedToday(supabase, factura.empresa_id, "pago_exitoso", today)) continue;
 
       const { data: empData } = await supabase
         .from("empresas")
@@ -263,7 +367,7 @@ serve(async (req) => {
       // Notify Super Admin about this payment
       const waConfig = await getSystemWaConfig(supabase);
       if (waConfig) {
-        await notifySuperAdmin(waConfig.api_url, waConfig.api_token,
+        await notifySuperAdmin(supabase, waConfig.api_url, waConfig.api_token,
           `💰 *Cobro exitoso*\n\n` +
           `🏢 *${empresaNombre}*\n` +
           `🧾 ${factura.numero_factura}\n` +
@@ -291,6 +395,7 @@ serve(async (req) => {
       const daysLeft = DIAS_GRACIA - daysSinceGracia;
 
       if (daysLeft > 0) {
+        if (await alreadyNotifiedToday(supabase, sub.empresa_id, "recordatorio_gracia", today)) continue;
         const { data: empData } = await supabase
           .from("empresas")
           .select("nombre")
@@ -319,15 +424,7 @@ serve(async (req) => {
 
     for (const sub of (suspendedSubs || [])) {
       // Check if we already notified suspension today
-      const { data: alreadyNotified } = await supabase
-        .from("whatsapp_log")
-        .select("id")
-        .eq("empresa_id", sub.empresa_id)
-        .eq("tipo", "suscripcion_suspendida")
-        .gte("created_at", today)
-        .limit(1);
-
-      if (alreadyNotified?.length) continue;
+      if (await alreadyNotifiedToday(supabase, sub.empresa_id, "suscripcion_suspendida", today)) continue;
 
       const { data: empData } = await supabase
         .from("empresas")
@@ -350,7 +447,7 @@ serve(async (req) => {
       // Notify Super Admin about suspension
       const waConfig3 = await getSystemWaConfig(supabase);
       if (waConfig3) {
-        await notifySuperAdmin(waConfig3.api_url, waConfig3.api_token,
+        await notifySuperAdmin(supabase, waConfig3.api_url, waConfig3.api_token,
           `🚫 *Empresa suspendida*\n\n` +
           `🏢 *${empData?.nombre || "—"}*\n` +
           `No pagó a tiempo y su servicio fue pausado.\n\n` +
@@ -375,6 +472,7 @@ serve(async (req) => {
 
     for (const sub of (expiringSubs || [])) {
       try {
+        if (await alreadyNotifiedToday(supabase, sub.empresa_id, "recordatorio_vencimiento", today)) continue;
         const { data: empData } = await supabase
           .from("empresas")
           .select("nombre")
@@ -383,17 +481,7 @@ serve(async (req) => {
         const empresaNombre = empData?.nombre || "tu empresa";
 
         // Get admin for Stripe checkout
-        const { data: adminRoles } = await supabase
-          .from("user_roles")
-          .select("user_id")
-          .eq("role", "admin");
-        const adminIds = (adminRoles || []).map((a: any) => a.user_id);
-        const { data: adminProfiles } = await supabase
-          .from("profiles")
-          .select("id, nombre_completo, telefono")
-          .eq("empresa_id", sub.empresa_id)
-          .in("id", adminIds);
-        const adminProfile = (adminProfiles || [])[0];
+        const adminProfile = (await getEmpresaAdmins(supabase, sub.empresa_id))[0];
         if (!adminProfile) continue;
 
         const { data: authData } = await supabase.auth.admin.getUserById(adminProfile.id);
@@ -515,14 +603,7 @@ serve(async (req) => {
 
     for (const [empresaId, charges] of failedByEmpresa) {
       // Check if already notified
-      const { data: alreadyNotified } = await supabase
-        .from("whatsapp_log")
-        .select("id")
-        .eq("empresa_id", empresaId)
-        .eq("tipo", "alerta_cobro_fallido")
-        .gte("created_at", today)
-        .limit(1);
-      if (alreadyNotified?.length) continue;
+      if (await alreadyNotifiedToday(supabase, empresaId, "alerta_cobro_fallido", today)) continue;
 
       const { data: empData } = await supabase
         .from("empresas")
@@ -544,7 +625,7 @@ serve(async (req) => {
       // Notify Super Admin about failed charges
       const waConfig2 = await getSystemWaConfig(supabase);
       if (waConfig2) {
-        await notifySuperAdmin(waConfig2.api_url, waConfig2.api_token,
+        await notifySuperAdmin(supabase, waConfig2.api_url, waConfig2.api_token,
           `❌ *Cobros fallidos*\n\n` +
           `🏢 *${empData?.nombre || empresaId}*\n` +
           `📊 ${charges.length} cobro${charges.length > 1 ? "s" : ""} fallido${charges.length > 1 ? "s" : ""}\n\n` +
@@ -569,4 +650,4 @@ serve(async (req) => {
       status: 500,
     });
   }
-});
+}));

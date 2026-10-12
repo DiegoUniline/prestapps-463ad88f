@@ -5,12 +5,27 @@ import * as x509 from "npm:@peculiar/x509@1.12.3";
 x509.cryptoProvider.set(crypto);
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SUPER_ADMIN_EMAIL = "diego.leon@uniline.mx";
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((o) => o.trim()).filter(Boolean);
+
+const withCors = (handler: (req: Request) => Response | Promise<Response>) => async (req: Request) => {
+  const res = await handler(req);
+  const origin = req.headers.get("Origin") || "";
+  const headers = new Headers(res.headers);
+  if (!ALLOWED_ORIGINS.length) {
+    headers.set("Access-Control-Allow-Origin", "*");
+  } else {
+    if (ALLOWED_ORIGINS.includes(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    else headers.delete("Access-Control-Allow-Origin");
+    headers.append("Vary", "Origin");
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+};
+
+const SUPER_ADMIN_EMAIL = (Deno.env.get("SUPER_ADMIN_EMAIL") || "diego.leon@uniline.mx").trim().toLowerCase();
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -22,7 +37,7 @@ const toPem = (der: ArrayBuffer, label: string) => {
 
 const mask = (v: string | null) => (v ? `••••${v.slice(-4)}` : null);
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -35,7 +50,7 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user } } = await userClient.auth.getUser();
-    if (!user || user.email !== SUPER_ADMIN_EMAIL) return json({ error: "Solo super admin" }, 403);
+    if (!user?.email || user.email.toLowerCase() !== SUPER_ADMIN_EMAIL) return json({ error: "Solo super admin" }, 403);
 
     const body = await req.json().catch(() => ({}));
     const action = body.action as string;
@@ -170,4 +185,4 @@ Deno.serve(async (req) => {
     console.error("buro-admin error:", msg);
     return json({ error: msg }, 500);
   }
-});
+}));

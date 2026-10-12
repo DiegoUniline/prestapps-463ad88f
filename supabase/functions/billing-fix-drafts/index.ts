@@ -3,10 +3,61 @@ import Stripe from "npm:stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((o) => o.trim()).filter(Boolean);
+
+const withCors = (handler: (req: Request) => Response | Promise<Response>) => async (req: Request) => {
+  const res = await handler(req);
+  const origin = req.headers.get("Origin") || "";
+  const headers = new Headers(res.headers);
+  if (!ALLOWED_ORIGINS.length) {
+    headers.set("Access-Control-Allow-Origin", "*");
+  } else {
+    if (ALLOWED_ORIGINS.includes(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    else headers.delete("Access-Control-Allow-Origin");
+    headers.append("Vary", "Origin");
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+};
+
+const SUPER_ADMIN_EMAIL = (Deno.env.get("SUPER_ADMIN_EMAIL") || "diego.leon@uniline.mx").trim().toLowerCase();
+
+type Caller = {
+  service: boolean;
+  userId: string | null;
+  email: string | null;
+  empresaId: string | null;
+  roles: string[];
+  superAdmin: boolean;
+};
+
+async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceKey && token === serviceKey) {
+    return { service: true, userId: null, email: null, empresaId: null, roles: [], superAdmin: false };
+  }
+  const { data, error } = await admin.auth.getUser(token);
+  const user = data?.user;
+  if (error || !user) return null;
+  const [{ data: profile }, { data: roleRows }] = await Promise.all([
+    admin.from("profiles").select("empresa_id").eq("id", user.id).maybeSingle(),
+    admin.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+  const email = String(user.email || "").toLowerCase();
+  return {
+    service: false,
+    userId: user.id,
+    email,
+    empresaId: profile?.empresa_id ?? null,
+    roles: (roleRows || []).map((r: any) => r.role),
+    superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
+  };
+}
 
 const log = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
@@ -25,7 +76,7 @@ const log = (step: string, details?: unknown) => {
  * Optional body: { "suscripcion_id": "<uuid>" } to target a single sub.
  * Optional body: { "dry_run": true } to only report without charging.
  */
-serve(async (req) => {
+serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -35,6 +86,14 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { persistSession: false } },
   );
+
+  const caller = await getCaller(req, supabase);
+  if (!caller?.service && !caller?.superAdmin) {
+    return new Response(
+      JSON.stringify({ error: "No autorizado" }),
+      { status: caller ? 403 : 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeKey) {
@@ -151,7 +210,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));
 
 async function syncLocalPaid(supabase: any, sub: any, inv: Stripe.Invoice) {
   // Find local factura matching this period (most recent procesando/pendiente)
@@ -168,12 +227,12 @@ async function syncLocalPaid(supabase: any, sub: any, inv: Stripe.Invoice) {
   const pi = typeof (inv as any).payment_intent === "string" ? (inv as any).payment_intent : null;
 
   if (facs && facs.length > 0) {
-    await supabase.from("facturas").update({
-      estado: "pagada",
-      stripe_invoice_id: inv.id,
-      stripe_payment_intent_id: pi,
-      fecha_pago: now.toISOString(),
-    }).eq("id", facs[0].id);
+    const facPagada = { estado: "pagada", stripe_payment_intent_id: pi, fecha_pago: now.toISOString() };
+    const { error: upErr } = await supabase.from("facturas")
+      .update({ ...facPagada, stripe_invoice_id: inv.id }).eq("id", facs[0].id);
+    if (upErr?.code === "23505") {
+      await supabase.from("facturas").update(facPagada).eq("id", facs[0].id);
+    }
   }
 
   // Advance next billing date to the 1st of the following month (relative to now)

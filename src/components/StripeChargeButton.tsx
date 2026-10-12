@@ -92,17 +92,18 @@ export function StripeChargeButton({
 
         if (data?.success) {
           setResult("success");
-          toast.success(`Cobro de ${$$(monto)} realizado a tarjeta ${paymentMethod.brand} ****${paymentMethod.last4}`);
+          const montoCobrado = Number(data.monto ?? monto);
+          toast.success(`Cobro de ${$$(montoCobrado)} realizado a tarjeta ${paymentMethod.brand} ****${paymentMethod.last4}`);
 
           // Send WhatsApp notification
           if (clienteTelefono) {
             try {
               await supabase.functions.invoke("whatsapp-sender", {
                 body: {
-                  action: "send-message",
+                  action: "send-text",
                   empresa_id: empresaId,
                   phone: clienteTelefono,
-                  message: `✅ Se ha procesado un cobro de ${$$(monto)} a su tarjeta ${paymentMethod.brand} ****${paymentMethod.last4} para la cuota${cuotaNum ? ` #${cuotaNum}` : ""} del préstamo PRE-${prestamoId.slice(0, 8)}. Gracias por su pago.`,
+                  message: `✅ Se ha procesado un cobro de ${$$(montoCobrado)} a su tarjeta ${paymentMethod.brand} ****${paymentMethod.last4} para la cuota${cuotaNum ? ` #${cuotaNum}` : ""} del préstamo PRE-${prestamoId.slice(0, 8)}. Gracias por su pago.`,
                 },
               });
             } catch { /* silent */ }
@@ -129,14 +130,15 @@ export function StripeChargeButton({
           // Send link via WhatsApp if client has phone
           if (clienteTelefono) {
             try {
-              await supabase.functions.invoke("whatsapp-sender", {
+              const { data: waData, error: waError } = await supabase.functions.invoke("whatsapp-sender", {
                 body: {
-                  action: "send-message",
+                  action: "send-text",
                   empresa_id: empresaId,
                   phone: clienteTelefono,
                   message: `💳 Hola ${clienteNombre}, para facilitar sus pagos le invitamos a registrar su tarjeta de forma segura en el siguiente enlace:\n\n${data.url}\n\nEste enlace es 100% seguro y procesado por Stripe.`,
                 },
               });
+              if (waError || !waData?.success) throw new Error("WhatsApp no disponible");
               toast.success("Enlace de registro de tarjeta enviado por WhatsApp");
               setResult("link_sent");
             } catch {

@@ -1,11 +1,76 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((o) => o.trim()).filter(Boolean);
+
+const withCors = (handler: (req: Request) => Response | Promise<Response>) => async (req: Request) => {
+  const res = await handler(req);
+  const origin = req.headers.get("Origin") || "";
+  const headers = new Headers(res.headers);
+  if (!ALLOWED_ORIGINS.length) {
+    headers.set("Access-Control-Allow-Origin", "*");
+  } else {
+    if (ALLOWED_ORIGINS.includes(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    else headers.delete("Access-Control-Allow-Origin");
+    headers.append("Vary", "Origin");
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+};
+
+const SUPER_ADMIN_EMAIL = (Deno.env.get("SUPER_ADMIN_EMAIL") || "diego.leon@uniline.mx").trim().toLowerCase();
+
+type Caller = {
+  service: boolean;
+  userId: string | null;
+  email: string | null;
+  empresaId: string | null;
+  roles: string[];
+  superAdmin: boolean;
+};
+
+async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceKey && token === serviceKey) {
+    return { service: true, userId: null, email: null, empresaId: null, roles: [], superAdmin: false };
+  }
+  const { data, error } = await admin.auth.getUser(token);
+  const user = data?.user;
+  if (error || !user) return null;
+  const [{ data: profile }, { data: roleRows }] = await Promise.all([
+    admin.from("profiles").select("empresa_id").eq("id", user.id).maybeSingle(),
+    admin.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+  const email = String(user.email || "").toLowerCase();
+  return {
+    service: false,
+    userId: user.id,
+    email,
+    empresaId: profile?.empresa_id ?? null,
+    roles: (roleRows || []).map((r: any) => r.role),
+    superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
+  };
+}
+
+// Service role and super admin run freely; any other caller (e.g. pg_cron with the anon key) is throttled.
+async function cronGate(req: Request, admin: any, nombre: string): Promise<Response | null> {
+  const caller = await getCaller(req, admin);
+  if (caller?.service || caller?.superAdmin) return null;
+  const { data: claimed, error } = await admin.rpc("cron_claim", { p_nombre: nombre, p_min_minutes: 50 });
+  if (error) console.error(`[${nombre}] cron_claim error:`, error.message);
+  if (error || claimed !== true) {
+    return new Response(JSON.stringify({ skipped: true }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  return null;
+}
+
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -14,6 +79,9 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    const gate = await cronGate(req, supabase, "whatsapp-cron");
+    if (gate) return gate;
 
     // Get all empresas with active WhatsApp and at least one reminder enabled
     const { data: configs, error: cfgErr } = await supabase
@@ -95,4 +163,4 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

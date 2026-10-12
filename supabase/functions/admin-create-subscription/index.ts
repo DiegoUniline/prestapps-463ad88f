@@ -1,9 +1,25 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "npm:stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((o) => o.trim()).filter(Boolean);
+
+const withCors = (handler: (req: Request) => Response | Promise<Response>) => async (req: Request) => {
+  const res = await handler(req);
+  const origin = req.headers.get("Origin") || "";
+  const headers = new Headers(res.headers);
+  if (!ALLOWED_ORIGINS.length) {
+    headers.set("Access-Control-Allow-Origin", "*");
+  } else {
+    if (ALLOWED_ORIGINS.includes(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    else headers.delete("Access-Control-Allow-Origin");
+    headers.append("Vary", "Origin");
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
 const logStep = (step: string, details?: any) => {
@@ -11,9 +27,9 @@ const logStep = (step: string, details?: any) => {
   console.log(`[ADMIN-CREATE-SUB] ${step}${d}`);
 };
 
-const SUPER_ADMIN_EMAIL = "diego.leon@uniline.mx";
+const SUPER_ADMIN_EMAIL = (Deno.env.get("SUPER_ADMIN_EMAIL") || "diego.leon@uniline.mx").trim().toLowerCase();
 
-serve(async (req) => {
+serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -34,7 +50,7 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError) throw new Error(`Auth error: ${userError.message}`);
     const user = userData.user;
-    if (user?.email !== SUPER_ADMIN_EMAIL) throw new Error("Not authorized - superadmin only");
+    if (!user?.email || user.email.toLowerCase() !== SUPER_ADMIN_EMAIL) throw new Error("Not authorized - superadmin only");
 
     const body = await req.json();
     const {
@@ -59,6 +75,7 @@ serve(async (req) => {
       // Get plan info
       let precioBase = 0;
       let precioExtra = 0;
+      let usuariosIncluidos = 0;
       if (plan_id) {
         const { data: plan } = await supabaseClient
           .from("planes")
@@ -68,6 +85,7 @@ serve(async (req) => {
         if (plan) {
           precioBase = plan.precio_base_mes;
           precioExtra = plan.precio_usuario_extra;
+          usuariosIncluidos = plan.usuarios_incluidos || 1;
         }
       }
 
@@ -104,11 +122,40 @@ serve(async (req) => {
         result = data;
         logStep("Updated subscription", { id: suscripcion_id });
       } else {
+        // Cancel any Stripe subscription before deleting the local rows (avoids orphaned billing)
+        const { data: existentes, error: exErr } = await supabaseClient
+          .from("suscripciones")
+          .select("id, stripe_subscription_id")
+          .eq("empresa_id", empresa_id)
+          .not("stripe_subscription_id", "is", null);
+        if (exErr) throw exErr;
+        if (existentes?.length) {
+          const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+          if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured: no se puede cancelar la suscripción de Stripe existente");
+          const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+          for (const ex of existentes) {
+            try {
+              const stripeSub = await stripe.subscriptions.retrieve(ex.stripe_subscription_id!);
+              if (stripeSub.status !== "canceled" && stripeSub.status !== "incomplete_expired") {
+                await stripe.subscriptions.cancel(ex.stripe_subscription_id!);
+              }
+              logStep("Stripe subscription cancelled", { id: ex.stripe_subscription_id });
+            } catch (e: any) {
+              if (e?.code === "resource_missing") {
+                logStep("Stripe subscription not found, skipping", { id: ex.stripe_subscription_id });
+              } else {
+                throw new Error(`No se pudo cancelar la suscripción de Stripe ${ex.stripe_subscription_id}: ${e?.message || e}`);
+              }
+            }
+          }
+        }
+
         // Delete existing subs for this empresa first
-        await supabaseClient
+        const { error: delErr } = await supabaseClient
           .from("suscripciones")
           .delete()
           .eq("empresa_id", empresa_id);
+        if (delErr) logStep("Could not delete previous subscriptions", { error: delErr.message });
 
         const { data, error } = await supabaseClient
           .from("suscripciones")
@@ -121,7 +168,7 @@ serve(async (req) => {
 
         // Create initial invoice if needed
         if (descuento_porcentaje < 100) {
-          const extraUsers = Math.max(0, num_usuarios - (plan_id ? 0 : 0));
+          const extraUsers = Math.max(0, num_usuarios - usuariosIncluidos);
           const subtotal = precioBase + (extraUsers * precioExtra);
           const total = subtotal * (1 - descuento_porcentaje / 100);
 
@@ -214,4 +261,4 @@ serve(async (req) => {
       status: 500,
     });
   }
-});
+}));

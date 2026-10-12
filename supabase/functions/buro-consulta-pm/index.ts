@@ -1,11 +1,28 @@
 // Reporte de Crédito Consolidado Persona Moral — Círculo de Crédito (APIHub)
-// Firma: ECDSA P-384 + SHA-256 sobre el body, DER en hex, header x-signature.
+// Firma: ECDSA + SHA-256 sobre el body, DER en hex, header x-signature.
+// buro-admin genera llaves P-256 (prime256v1: Deno no firma P-384 con SHA-256); la curva se detecta
+// desde la llave guardada para seguir aceptando llaves P-384 cargadas antes.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((o) => o.trim()).filter(Boolean);
+
+const withCors = (handler: (req: Request) => Response | Promise<Response>) => async (req: Request) => {
+  const res = await handler(req);
+  const origin = req.headers.get("Origin") || "";
+  const headers = new Headers(res.headers);
+  if (!ALLOWED_ORIGINS.length) {
+    headers.set("Access-Control-Allow-Origin", "*");
+  } else {
+    if (ALLOWED_ORIGINS.includes(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    else headers.delete("Access-Control-Allow-Origin");
+    headers.append("Vary", "Origin");
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
 const RFC_PM = /^[A-ZÑ&]{3}\d{6}[A-Z0-9]{3}$/;
@@ -75,13 +92,22 @@ function derToRaw(der: Uint8Array, n: number) {
   return new Uint8Array([...r, ...s]);
 }
 
-async function firmar(body: string, privatePem: string) {
-  const key = await crypto.subtle.importKey("pkcs8", pemToDer(privatePem), { name: "ECDSA", namedCurve: "P-384" }, false, ["sign"]);
-  const raw = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(body)));
-  return toHex(rawToDer(raw));
-}
+const CURVAS: [string, number][] = [["P-256", 32], ["P-384", 48], ["P-521", 66]];
 
-const CURVAS: [string, number][] = [["P-384", 48], ["P-256", 32], ["P-521", 66]];
+async function firmar(body: string, privatePem: string) {
+  const der = pemToDer(privatePem);
+  for (const [namedCurve] of CURVAS) {
+    let key: CryptoKey;
+    try {
+      key = await crypto.subtle.importKey("pkcs8", der, { name: "ECDSA", namedCurve }, false, ["sign"]);
+    } catch {
+      continue;
+    }
+    const raw = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(body)));
+    return toHex(rawToDer(raw));
+  }
+  throw new Error("Llave privada no soportada (se espera EC P-256)");
+}
 
 async function verificar(body: string, firmaHex: string, publicPem: string) {
   for (const [namedCurve, n] of CURVAS) {
@@ -196,7 +222,7 @@ async function callApi(payload: unknown, cred: Credenciales) {
   return { ok: false as const, status: 0, data: null, error: lastErr, intentos: MAX_INTENTOS };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -286,25 +312,35 @@ Deno.serve(async (req) => {
     }
 
     const folioOtorgante = consulta.id.replace(/-/g, "").slice(0, 25);
-    const r = await callApi(buildRequest(c, folioOtorgante), cred);
 
     let update: Record<string, unknown>;
-    if (r.ok) {
-      const p = parseResponse(r.data);
-      update = {
-        estatus: p.sinHit ? "sin_hit" : "exitosa",
-        folio_consulta: p.folio,
-        resumen: p.resumen,
-        respuesta: r.data,
-        intentos: r.intentos,
-      };
-    } else if (r.status === 404 || r.status === 204) {
-      update = { estatus: "sin_hit", error: r.error, respuesta: r.data, intentos: r.intentos };
-    } else {
-      update = { estatus: "error", error: r.error, respuesta: r.data, intentos: r.intentos, precio: null };
-      await admin.rpc("buro_mover_creditos", {
+    try {
+      const r = await callApi(buildRequest(c, folioOtorgante), cred);
+      if (r.ok) {
+        const p = parseResponse(r.data);
+        update = {
+          estatus: p.sinHit ? "sin_hit" : "exitosa",
+          folio_consulta: p.folio,
+          resumen: p.resumen,
+          respuesta: r.data,
+          intentos: r.intentos,
+        };
+      } else if (r.status === 404 || r.status === 204) {
+        update = { estatus: "sin_hit", error: r.error, respuesta: r.data, intentos: r.intentos };
+      } else {
+        update = { estatus: "error", error: r.error, respuesta: r.data, intentos: r.intentos, precio: null };
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("buro-consulta-pm callApi error:", msg);
+      update = { estatus: "error", error: msg, precio: null };
+    }
+
+    if (update.estatus === "error") {
+      const { error: refundErr } = await admin.rpc("buro_mover_creditos", {
         p_empresa_id: profile.empresa_id, p_cantidad: 1, p_tipo: "reembolso", p_consulta_id: consulta.id, p_user: user.id,
       });
+      if (refundErr) console.error("buro-consulta-pm reembolso error:", refundErr.message);
     }
 
     const { data: final } = await admin.from("buro_consultas")
@@ -317,4 +353,4 @@ Deno.serve(async (req) => {
     console.error("buro-consulta-pm error:", msg);
     return json({ error: msg }, 500);
   }
-});
+}));

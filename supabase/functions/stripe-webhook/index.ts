@@ -3,8 +3,23 @@ import Stripe from "npm:stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((o) => o.trim()).filter(Boolean);
+
+const withCors = (handler: (req: Request) => Response | Promise<Response>) => async (req: Request) => {
+  const res = await handler(req);
+  const origin = req.headers.get("Origin") || "";
+  const headers = new Headers(res.headers);
+  if (!ALLOWED_ORIGINS.length) {
+    headers.set("Access-Control-Allow-Origin", "*");
+  } else {
+    if (ALLOWED_ORIGINS.includes(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    else headers.delete("Access-Control-Allow-Origin");
+    headers.append("Vary", "Origin");
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
 const logStep = (step: string, details?: any) => {
@@ -42,7 +57,7 @@ async function hasPaidCurrentPeriod(supabase: any, suscripcionId: string): Promi
   return Array.isArray(data) && data.length > 0;
 }
 
-serve(async (req) => {
+serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -78,6 +93,21 @@ serve(async (req) => {
   }
 
   logStep("Event received", { type: event.type, id: event.id });
+
+  // Dedupe: Stripe delivers at-least-once
+  let eventRecorded = false;
+  const { error: evErr } = await supabase.from("stripe_events").insert({ event_id: event.id, tipo: event.type });
+  if (evErr) {
+    if (evErr.code === "23505") {
+      logStep("Duplicate event, skipping", { id: event.id });
+      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    logStep("Could not record event (continuing)", { error: evErr.message });
+  } else {
+    eventRecorded = true;
+  }
 
   try {
     switch (event.type) {
@@ -183,22 +213,60 @@ serve(async (req) => {
         const now = new Date();
         const facNum = `FAC-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
 
-        await supabase.from("facturas").insert({
-          empresa_id: sub.empresa_id,
-          suscripcion_id: sub.id,
-          numero_factura: facNum,
-          periodo_inicio: periodStart ? new Date(periodStart * 1000).toISOString().split("T")[0] : now.toISOString().split("T")[0],
-          periodo_fin: periodEnd ? new Date(periodEnd * 1000).toISOString().split("T")[0] : now.toISOString().split("T")[0],
-          num_usuarios: sub.num_usuarios,
-          precio_unitario: sub.precio_base,
-          descuento_porcentaje: sub.descuento_porcentaje || 0,
-          subtotal: (invoice.amount_paid || 0) / 100,
-          total: (invoice.amount_paid || 0) / 100,
-          estado: "pagada",
-          fecha_pago: now.toISOString(),
-          stripe_invoice_id: invoice.id,
-          stripe_payment_intent_id: (invoice as any).payment_intent as string || null,
-        });
+        const periodoInicio = periodStart ? new Date(periodStart * 1000).toISOString().split("T")[0] : now.toISOString().split("T")[0];
+        const piId = (invoice as any).payment_intent as string || null;
+        let facturaNumero = facNum;
+
+        // Idempotent on stripe_invoice_id: reuse the row billing-cycle/billing-fix-drafts may have created
+        const { data: facExistente } = await supabase
+          .from("facturas")
+          .select("id, numero_factura")
+          .eq("stripe_invoice_id", invoice.id)
+          .limit(1)
+          .maybeSingle();
+
+        let facPendiente: { id: string; numero_factura: string | null } | null = null;
+        if (!facExistente) {
+          const { data } = await supabase
+            .from("facturas")
+            .select("id, numero_factura")
+            .eq("suscripcion_id", sub.id)
+            .eq("periodo_inicio", periodoInicio)
+            .is("stripe_invoice_id", null)
+            .in("estado", ["procesando", "pendiente"])
+            .limit(1)
+            .maybeSingle();
+          facPendiente = data;
+        }
+
+        const facDestino = facExistente || facPendiente;
+        if (facDestino) {
+          facturaNumero = facDestino.numero_factura || facNum;
+          await supabase.from("facturas").update({
+            estado: "pagada",
+            fecha_pago: now.toISOString(),
+            stripe_invoice_id: invoice.id,
+            stripe_payment_intent_id: piId,
+          }).eq("id", facDestino.id);
+        } else {
+          const { error: facErr } = await supabase.from("facturas").insert({
+            empresa_id: sub.empresa_id,
+            suscripcion_id: sub.id,
+            numero_factura: facNum,
+            periodo_inicio: periodoInicio,
+            periodo_fin: periodEnd ? new Date(periodEnd * 1000).toISOString().split("T")[0] : now.toISOString().split("T")[0],
+            num_usuarios: sub.num_usuarios,
+            precio_unitario: sub.precio_base,
+            descuento_porcentaje: sub.descuento_porcentaje || 0,
+            subtotal: (invoice.amount_paid || 0) / 100,
+            total: (invoice.amount_paid || 0) / 100,
+            estado: "pagada",
+            fecha_pago: now.toISOString(),
+            stripe_invoice_id: invoice.id,
+            stripe_payment_intent_id: piId,
+          });
+          if (facErr && facErr.code !== "23505") logStep("Error recording factura", { error: facErr.message });
+        }
 
         logStep("Invoice recorded", { empresaId: sub.empresa_id });
 
@@ -220,7 +288,7 @@ serve(async (req) => {
             `Tu pago de suscripción de *${empNombre}* se procesó correctamente.\n\n` +
             `✅ *Monto cobrado:* $${invoiceAmount} MXN\n` +
             `📅 *Próximo cobro:* ${proxCobro}\n` +
-            `🧾 *Factura:* ${facNum}\n\n` +
+            `🧾 *Factura:* ${facturaNumero}\n\n` +
             `Gracias por confiar en *PrestApps*. ¡Sigue creciendo tu negocio! 🚀\n\n` +
             `Si tienes dudas sobre tu factura, responde a este mensaje. 💬`,
         });
@@ -371,12 +439,14 @@ serve(async (req) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logStep("ERROR processing event", { message: msg });
+    // Let Stripe's retry process the event again
+    if (eventRecorded) await supabase.from("stripe_events").delete().eq("event_id", event.id);
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }
-});
+}));
 
 // ── WhatsApp alert helper ──────────────────────────
 function normalizePhone(phone: string): string {
@@ -413,50 +483,66 @@ function getPhoneCandidates(phone: string, ladaPais: string = "52"): string[] {
   return Array.from(candidates);
 }
 
+const WA_BACKOFFS_MS = [0, 1500, 4000];
+
+// Retries transient failures (network, 5xx, 429, connection closed) with backoff; never throws.
+async function postWhatsApp(apiUrl: string, apiToken: string, phone: string, message: string) {
+  let lastError: string | null = null;
+  let transient = false;
+  for (let attempt = 0; attempt < WA_BACKOFFS_MS.length; attempt++) {
+    if (WA_BACKOFFS_MS[attempt] > 0) await new Promise((r) => setTimeout(r, WA_BACKOFFS_MS[attempt]));
+    try {
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "x-api-token": apiToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send-text", phone, message }),
+      });
+      const raw = await res.text().catch(() => "");
+      if (res.ok) return { success: true, error: null, transient: false };
+      lastError = `HTTP ${res.status}: ${raw.slice(0, 300)}`;
+      const errStr = raw.toLowerCase();
+      transient = res.status >= 500 || res.status === 429 ||
+        errStr.includes("connection closed") || errStr.includes("timeout") || errStr.includes("econn");
+      if (!transient) break;
+    } catch (e: any) {
+      lastError = e?.message || "Network error";
+      transient = true;
+    }
+  }
+  return { success: false, error: lastError, transient };
+}
+
 async function sendWhatsAppWithFallback(
   apiUrl: string,
   apiToken: string,
   mensaje: string,
   candidates: string[],
 ) {
-  let lastError: any = null;
-
+  let lastError: string | null = null;
   for (const candidate of candidates) {
-    try {
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "x-api-token": apiToken,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "send-text",
-          phone: candidate,
-          message: mensaje,
-        }),
-      });
-
-      const raw = await res.text();
-      let response: any = raw;
-      try {
-        response = raw ? JSON.parse(raw) : null;
-      } catch {
-        // keep raw text
-      }
-
-      if (res.ok) {
-        return { success: true, phoneUsed: candidate, response };
-      }
-
-      lastError = { status: res.status, response, phoneTried: candidate };
-      logStep("WhatsApp attempt failed", { phone: candidate, status: res.status });
-    } catch (e: any) {
-      lastError = { message: e?.message || "Unknown error", phoneTried: candidate };
-      logStep("WhatsApp attempt exception", { phone: candidate, error: e?.message });
-    }
+    const r = await postWhatsApp(apiUrl, apiToken, candidate, mensaje);
+    if (r.success) return { success: true, phoneUsed: candidate, error: null };
+    lastError = r.error;
+    logStep("WhatsApp attempt failed", { phone: candidate, error: r.error });
+    if (r.transient) break;
   }
-
   return { success: false, phoneUsed: candidates[0] || null, error: lastError };
+}
+
+async function getEmpresaAdmins(supabase: any, empresaId: string) {
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, telefono, nombre_completo")
+    .eq("empresa_id", empresaId);
+  const ids = (profiles || []).map((p: any) => p.id);
+  if (!ids.length) return [];
+  const { data: admins } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin")
+    .in("user_id", ids);
+  const adminSet = new Set((admins || []).map((a: any) => a.user_id));
+  return (profiles || []).filter((p: any) => adminSet.has(p.id));
 }
 
 async function getSystemWaConfig(supabase: any) {
@@ -509,25 +595,13 @@ async function sendWhatsAppAlert(
     const ladaPais = empresaData?.lada_pais || "52";
 
     // Get admin profiles for this empresa
-    const { data: admins } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
-
-    if (!admins?.length) {
-      logStep("No admin users found");
+    const profiles = await getEmpresaAdmins(supabase, empresaId);
+    if (!profiles.length) {
+      logStep("No admin users found", { empresaId });
       return;
     }
 
-    const adminIds = admins.map((a: any) => a.user_id);
-
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("telefono, nombre_completo")
-      .eq("empresa_id", empresaId)
-      .in("id", adminIds);
-
-    for (const profile of (profiles || [])) {
+    for (const profile of profiles) {
       if (!profile.telefono) continue;
 
       const phoneCandidates = getPhoneCandidates(profile.telefono, ladaPais);
@@ -553,7 +627,7 @@ async function sendWhatsAppAlert(
         tipo: "alerta_pago",
         mensaje: opts.mensaje,
         status: result.success ? "enviado" : "error",
-        error_detalle: result.success ? null : JSON.stringify(result.error || null),
+        error_detalle: result.success ? null : (result.error || "No se pudo entregar"),
       });
     }
   } catch (e: any) {

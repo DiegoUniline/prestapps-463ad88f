@@ -1,11 +1,62 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-Deno.serve(async (req) => {
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((o) => o.trim()).filter(Boolean);
+
+const withCors = (handler: (req: Request) => Response | Promise<Response>) => async (req: Request) => {
+  const res = await handler(req);
+  const origin = req.headers.get("Origin") || "";
+  const headers = new Headers(res.headers);
+  if (!ALLOWED_ORIGINS.length) {
+    headers.set("Access-Control-Allow-Origin", "*");
+  } else {
+    if (ALLOWED_ORIGINS.includes(origin)) headers.set("Access-Control-Allow-Origin", origin);
+    else headers.delete("Access-Control-Allow-Origin");
+    headers.append("Vary", "Origin");
+  }
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+};
+
+const SUPER_ADMIN_EMAIL = (Deno.env.get("SUPER_ADMIN_EMAIL") || "diego.leon@uniline.mx").trim().toLowerCase();
+
+type Caller = {
+  service: boolean;
+  userId: string | null;
+  email: string | null;
+  empresaId: string | null;
+  roles: string[];
+  superAdmin: boolean;
+};
+
+async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+  const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceKey && token === serviceKey) {
+    return { service: true, userId: null, email: null, empresaId: null, roles: [], superAdmin: false };
+  }
+  const { data, error } = await admin.auth.getUser(token);
+  const user = data?.user;
+  if (error || !user) return null;
+  const [{ data: profile }, { data: roleRows }] = await Promise.all([
+    admin.from("profiles").select("empresa_id").eq("id", user.id).maybeSingle(),
+    admin.from("user_roles").select("role").eq("user_id", user.id),
+  ]);
+  const email = String(user.email || "").toLowerCase();
+  return {
+    service: false,
+    userId: user.id,
+    email,
+    empresaId: profile?.empresa_id ?? null,
+    roles: (roleRows || []).map((r: any) => r.role),
+    superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
+  };
+}
+
+Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -15,8 +66,29 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    const caller = await getCaller(req, supabase);
+    if (!caller) {
+      return new Response(JSON.stringify({ error: "No autorizado" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const isPrivileged = caller.service || caller.superAdmin;
+    const canManage = isPrivileged || caller.roles.includes("admin") || caller.roles.includes("supervisor");
+
     const body = await req.json();
-    const { action, empresa_id } = body;
+    const { action } = body;
+    const empresa_id: string | null = isPrivileged ? (body.empresa_id || caller.empresaId) : caller.empresaId;
+
+    if (!empresa_id) {
+      return new Response(JSON.stringify({ error: "Sin empresa asociada" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if ((action === "send-reminder" || body.override_api_token) && !canManage) {
+      return new Response(JSON.stringify({ error: "Solo administradores o supervisores pueden realizar esta acción" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get WhatsApp config for the empresa
     const { data: config } = await supabase
@@ -155,31 +227,59 @@ Deno.serve(async (req) => {
       }
 
       // Get cuotas to notify
-      let query = supabase
-        .from("amortizacion")
-        .select(`
-          id, num_cuota, fecha_vencimiento, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes,
-          prestamo_id, empresa_id,
-          prestamos!inner(id, cliente_id, num_cuotas, monto_solicitado,
-        clientes!inner(nombre_completo, telefono),
-            id_prestamo
-          )
-        `)
-        .eq("empresa_id", empresa_id)
-        .in("status", ["Pendiente", "Parcial", "Vencida"]);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const buildQuery = () => {
+        let query = supabase
+          .from("amortizacion")
+          .select(`
+            id, num_cuota, fecha_vencimiento, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes,
+            prestamo_id, empresa_id,
+            prestamos!inner(id, cliente_id, num_cuotas, monto_solicitado,
+          clientes!inner(nombre_completo, telefono),
+              id_prestamo
+            )
+          `)
+          .eq("empresa_id", empresa_id)
+          .in("status", ["Pendiente", "Parcial", "Vencida"]);
 
-      if (reminder_type === "dia_antes") {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().slice(0, 10);
-        query = query.eq("fecha_vencimiento", tomorrowStr);
-      } else {
-        const today = new Date().toISOString().slice(0, 10);
-        query = query.lt("fecha_vencimiento", today);
+        if (reminder_type === "dia_antes") {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+          query = query.eq("fecha_vencimiento", tomorrowStr);
+        } else {
+          query = query.lt("fecha_vencimiento", todayStr);
+        }
+        return query.order("id", { ascending: true });
+      };
+
+      const PAGE = 1000;
+      const cuotas: any[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data: page, error: pageErr } = await buildQuery().range(from, from + PAGE - 1);
+        if (pageErr) throw pageErr;
+        cuotas.push(...(page || []));
+        if (!page || page.length < PAGE) break;
       }
 
-      const { data: cuotas } = await query;
-      let sent = 0, errors = 0;
+      // Phones already reminded today with this template (re-runs must not re-send)
+      const yaAvisados = new Set<string>();
+      for (let from = 0; ; from += PAGE) {
+        const { data: logs, error: logErr } = await supabase
+          .from("whatsapp_log")
+          .select("telefono")
+          .eq("empresa_id", empresa_id)
+          .eq("tipo", templateTipo)
+          .eq("status", "enviado")
+          .gte("created_at", todayStr)
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (logErr) throw logErr;
+        for (const l of (logs || [])) yaAvisados.add(l.telefono);
+        if (!logs || logs.length < PAGE) break;
+      }
+
+      let sent = 0, errors = 0, skipped = 0;
       const detalles: { cliente: string; telefono: string; cuotas_detalle: string; monto_total: string; num_cuotas: number; status: string; error?: string }[] = [];
 
       // Group cuotas by client (using cliente_id from prestamo)
@@ -231,6 +331,12 @@ Deno.serve(async (req) => {
         const message = replaceVariables(template.mensaje, vars);
         const normalizedPhone = normalizePhone(cliente.telefono, ladaPais);
 
+        if (yaAvisados.has(normalizedPhone)) {
+          skipped++;
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuotas_detalle: cuotasNums, monto_total: montoTotal.toFixed(2), num_cuotas: cuotasList.length, status: "omitido", error: "Ya se envió este aviso hoy" });
+          continue;
+        }
+
         try {
           const result = await sendWhatsApp(config.api_url, config.api_token, {
             action: "send-text",
@@ -241,7 +347,7 @@ Deno.serve(async (req) => {
           await supabase.from("whatsapp_log").insert({
             empresa_id,
             telefono: normalizedPhone,
-            tipo: "aviso",
+            tipo: templateTipo,
             mensaje: message,
             status: result.success ? "enviado" : "error",
             error_detalle: result.error || null,
@@ -262,7 +368,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      return new Response(JSON.stringify({ success: true, sent, errors, total: clienteMap.size, detalles }), {
+      return new Response(JSON.stringify({ success: true, sent, errors, skipped, total: clienteMap.size, detalles }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -275,7 +381,7 @@ Deno.serve(async (req) => {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));
 
 // ── Helpers ────────────────────────────────────────
 async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<string, any>) {
