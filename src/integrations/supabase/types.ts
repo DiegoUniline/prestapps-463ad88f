@@ -977,6 +977,21 @@ export type Database = {
           },
         ]
       }
+      cron_runs: {
+        Row: {
+          nombre: string
+          ultimo: string
+        }
+        Insert: {
+          nombre: string
+          ultimo?: string
+        }
+        Update: {
+          nombre?: string
+          ultimo?: string
+        }
+        Relationships: []
+      }
       empresa_config: {
         Row: {
           contrato_campos: Json | null
@@ -2106,6 +2121,24 @@ export type Database = {
           },
         ]
       }
+      stripe_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          tipo: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          tipo?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          tipo?: string | null
+        }
+        Relationships: []
+      }
       stripe_payment_methods: {
         Row: {
           activo: boolean
@@ -2462,6 +2495,53 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _integ_ajustar_efectivo: {
+        Args: { p_delta: number; p_empresa: string; p_id: string }
+        Returns: undefined
+      }
+      _integ_check_saldo: {
+        Args: {
+          c: Database["public"]["Tables"]["cajas"]["Row"]
+          p_monto: number
+        }
+        Returns: undefined
+      }
+      _integ_cobrador_ok: {
+        Args: { p_empresa: string; p_id: string }
+        Returns: boolean
+      }
+      _integ_empresa: { Args: never; Returns: string }
+      _integ_fmt: { Args: { p: number }; Returns: string }
+      _integ_insert_cuotas: {
+        Args: { p_cuotas: Json; p_empresa: string; p_prestamo_id: string }
+        Returns: number
+      }
+      _integ_insert_jsonb: {
+        Args: { p_row: Json; p_table: string }
+        Returns: string
+      }
+      _integ_lock_caja: {
+        Args: { p_caja_id: string; p_empresa: string }
+        Returns: {
+          activo: boolean
+          created_at: string | null
+          descripcion: string | null
+          empresa_id: string | null
+          id: string
+          nombre: string
+          saldo_actual: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cajas"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _integ_validar_refs_prestamo: {
+        Args: { p: Json; p_empresa: string }
+        Returns: undefined
+      }
       actualizar_estados_prestamos: {
         Args: { p_empresa_id?: string }
         Returns: number
@@ -2477,6 +2557,48 @@ export type Database = {
         }
         Returns: number
       }
+      caja_saldos: {
+        Args: { p_caja_ids: string[] }
+        Returns: {
+          caja_id: string
+          saldo: number
+        }[]
+      }
+      cancelar_prestamo: {
+        Args: { p_motivo: string; p_prestamo_id: string }
+        Returns: Json
+      }
+      clientes_ultima_visita: { Args: never; Returns: Json }
+      cobros_equipo_total: {
+        Args: { p_desde?: string; p_hasta?: string; p_supervisor_id: string }
+        Returns: number
+      }
+      crear_prestamo: {
+        Args: {
+          p_cuotas: Json
+          p_desembolso?: Json
+          p_prestamo: Json
+          p_solicitud_id?: string
+        }
+        Returns: Json
+      }
+      cron_claim: {
+        Args: { p_min_minutes: number; p_nombre: string }
+        Returns: boolean
+      }
+      dashboard_kpis: { Args: { p_filters?: Json }; Returns: Json }
+      editar_pago: {
+        Args: {
+          p_caja_id: string
+          p_cobrador_id?: string
+          p_metodo: string
+          p_monto: number
+          p_pago_id: string
+        }
+        Returns: Json
+      }
+      estados_cuenta_clientes: { Args: never; Returns: Json }
+      gestiones_resumen: { Args: { p_prestamo_ids: string[] }; Returns: Json }
       get_cobrador_by_user: {
         Args: { p_user_id: string }
         Returns: {
@@ -2490,6 +2612,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_super_admin: { Args: never; Returns: boolean }
+      liquidar_ruta: {
+        Args: {
+          p_caja_id: string
+          p_cobrador_id: string
+          p_concepto?: string
+          p_concepto_comision?: string
+          p_pago_ids: string[]
+          p_periodo_hasta?: string
+        }
+        Returns: Json
       }
       next_folio: {
         Args: { p_empresa_id: string; p_tipo: string }
@@ -2506,6 +2640,48 @@ export type Database = {
         }
         Returns: undefined
       }
+      pagos_listado: {
+        Args: { p_filtros?: Json; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      prestamos_por_ruta: {
+        Args: never
+        Returns: {
+          ruta_id: string
+          total: number
+        }[]
+      }
+      prestamos_resumen: {
+        Args: { p_ids?: string[]; p_today?: string }
+        Returns: {
+          caja_nombre: string
+          cliente_foto: string
+          cliente_nombre: string
+          cobrador_nombre: string
+          cuotas_pagadas: number
+          dias_atraso: number
+          mora: number
+          mora_atrasada: number
+          prestamo_id: string
+          proximo_vencimiento: string
+          ruta_nombre: string
+          saldo: number
+          saldo_atrasado: number
+          saldo_capital: number
+          saldo_interes: number
+          tiene_atraso: boolean
+          ultimo_pago_fecha: string
+          ultimo_pago_monto: number
+        }[]
+      }
+      productividad_mora: {
+        Args: { p_today?: string }
+        Returns: {
+          advisor_id: string
+          clientes_morosos: number
+          monto_mora: number
+        }[]
+      }
       rebuild_amortizacion: {
         Args: { p_prestamo_id: string }
         Returns: undefined
@@ -2514,6 +2690,24 @@ export type Database = {
       recalcular_mora_empresa: {
         Args: { p_empresa_id: string }
         Returns: undefined
+      }
+      reestructurar_prestamo: {
+        Args: {
+          p_cuotas: Json
+          p_motivo?: string
+          p_nuevo: Json
+          p_prestamo_id: string
+        }
+        Returns: Json
+      }
+      registrar_movimiento_caja: {
+        Args: {
+          p_caja_id: string
+          p_concepto: string
+          p_monto: number
+          p_tipo: string
+        }
+        Returns: Json
       }
       registrar_pago: {
         Args: {
@@ -2532,11 +2726,22 @@ export type Database = {
         }
         Returns: Json
       }
+      rentabilidad_resumen: { Args: never; Returns: Json }
       revertir_pago: {
         Args: { p_motivo: string; p_pago_id: string; p_user_id?: string }
         Returns: undefined
       }
+      siguiente_id_cliente: { Args: never; Returns: string }
       switch_empresa: { Args: { p_empresa_id: string }; Returns: undefined }
+      transferir_caja: {
+        Args: {
+          p_concepto?: string
+          p_destino: string
+          p_monto: number
+          p_origen: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "supervisor" | "cobrador"
