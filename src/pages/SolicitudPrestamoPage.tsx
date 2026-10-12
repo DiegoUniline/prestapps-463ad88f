@@ -96,12 +96,17 @@ export default function SolicitudPrestamoPage() {
   // Use centralized financial.ts for amortization preview
   const amortizacion = useMemo(() => {
     if (monto <= 0 || cuotas <= 0 || !fechaPrimerPago) return [];
-    const rows = calcularAmortizacion(
-      monto, cuotas, tasa,
-      modalidad as "fijo" | "insolutos",
-      format(fechaPrimerPago, "yyyy-MM-dd"),
-      frecuencia as any
-    );
+    let rows: ReturnType<typeof calcularAmortizacion>;
+    try {
+      rows = calcularAmortizacion(
+        monto, cuotas, tasa,
+        modalidad as "fijo" | "insolutos",
+        format(fechaPrimerPago, "yyyy-MM-dd"),
+        frecuencia as any
+      );
+    } catch {
+      return [];
+    }
     return rows.map((r) => ({
       num: r.numCuota,
       fecha: fmtDate(new Date(r.fechaVencimiento)),

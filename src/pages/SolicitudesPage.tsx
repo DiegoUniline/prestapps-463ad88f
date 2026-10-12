@@ -36,7 +36,9 @@ function calculosSolicitud(sol: any) {
   const interesTotal = monto * tasa / 100;
   const montoTotalPagar = monto + interesTotal;
   const cuotaCalculada = montoTotalPagar / cuotas;
-  const cuotaFinal = Math.ceil(cuotaCalculada);
+  const cuotaFinal = sol.modalidad === "fijo" && validarCuotaRedondeada(monto, cuotas, tasa, Math.ceil(cuotaCalculada)) !== null
+    ? Math.round(cuotaCalculada * 100) / 100
+    : Math.ceil(cuotaCalculada);
   const errorCuota = sol.modalidad === "fijo" ? validarCuotaRedondeada(monto, cuotas, tasa, cuotaFinal) : null;
   return { monto, tasa, cuotas, montoTotalPagar, cuotaCalculada, cuotaFinal, errorCuota };
 }

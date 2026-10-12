@@ -107,7 +107,11 @@ export default function NuevoPrestamoPage() {
   const interesTotal = monto * tasa / 100;
   const montoTotalPagar = monto + interesTotal;
   const cuotaCalculada = cuotas > 0 ? montoTotalPagar / cuotas : 0;
-  const cuotaFinal = cuotaOverride ? parseFloat(cuotaOverride) || cuotaCalculada : Math.ceil(cuotaCalculada);
+  // Redondeo por defecto al peso; si deja la última cuota inválida (préstamos pequeños) se usa la cuota exacta.
+  const cuotaRedondeoDefault = cuotas > 0 && validarCuotaRedondeada(monto, cuotas, tasa, Math.ceil(cuotaCalculada)) === null
+    ? Math.ceil(cuotaCalculada)
+    : Math.round(cuotaCalculada * 100) / 100;
+  const cuotaFinal = cuotaOverride ? parseFloat(cuotaOverride) || cuotaCalculada : cuotaRedondeoDefault;
 
   // Recalcular total real (última cuota se ajusta)
   const totalConCuotaFinal = montoTotalPagar; // el total real no cambia, solo la distribución
@@ -459,14 +463,14 @@ export default function NuevoPrestamoPage() {
               <div className="space-y-1.5">
                 <Label className="text-[13px]">
                   Cuota Fija
-                  <span className="text-muted-foreground ml-1">(calculada: {$$(Math.ceil(cuotaCalculada))})</span>
+                  <span className="text-muted-foreground ml-1">(calculada: {$$(cuotaRedondeoDefault)})</span>
                 </Label>
                 <Input
                   type="number"
                   min="0"
                   value={cuotaOverride}
                   onChange={(e) => setCuotaOverride(e.target.value)}
-                  placeholder={String(Math.ceil(cuotaCalculada))}
+                  placeholder={String(cuotaRedondeoDefault)}
                 />
                 <p className="text-[11px] text-muted-foreground">Déjalo vacío para usar la cuota calculada, o escribe un valor personalizado.</p>
                 {errorAmortizacion && (
