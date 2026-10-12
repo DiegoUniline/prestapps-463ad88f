@@ -75,6 +75,7 @@ interface PagosFiltros {
 type PagosNum = number | string | null;
 interface PagosListadoRpc {
   total: PagosNum;
+  total_validos?: PagosNum;
   sum_monto: PagosNum;
   sum_mora: PagosNum;
   sum_interes: PagosNum;
@@ -129,6 +130,7 @@ function usePagosListado(empresaId: string, filtros: PagosFiltros, page: number,
       return {
         rows,
         total: Number(data?.total || 0),
+        totalValidos: Number(data?.total_validos ?? data?.total ?? 0),
         totales: {
           monto: Number(data?.sum_monto || 0),
           mora: Number(data?.sum_mora || 0),
@@ -289,8 +291,9 @@ export default function PagosPage() {
     metodos: [...selMetodo],
     cajas: [...selCaja],
     rutas: [...selRuta],
-    desde: regDesde ? regDesde.toISOString() : null,
-    hasta: regHasta ? regHasta.toISOString() : null,
+    // Días de negocio (México) inclusivos: el servidor filtra [desde 00:00, hasta + 1 día).
+    desde: regDesde ? format(regDesde, "yyyy-MM-dd") : null,
+    hasta: regHasta ? format(regHasta, "yyyy-MM-dd") : null,
     sort_key: sortKey && sortDir ? sortKey : null,
     sort_dir: sortKey && sortDir ? sortDir : null,
   }), [debouncedSearch, selMetodo, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
@@ -302,6 +305,7 @@ export default function PagosPage() {
   const { data: listado, isLoading, isError } = usePagosListado(empresaId, filtros, page, !!groupBy);
   const filtered = useMemo(() => listado?.rows ?? [], [listado]);
   const totalFiltrados = listado?.total ?? 0;
+  const totalValidos = listado?.totalValidos ?? 0;
   const totales = useMemo(() => listado?.totales ?? { monto: 0, mora: 0, interes: 0, capital: 0 }, [listado]);
   const pageFrom = totalFiltrados === 0 ? 0 : groupBy ? 1 : page * PAGE_SIZE + 1;
   const pageTo = groupBy ? totalFiltrados : Math.min((page + 1) * PAGE_SIZE, totalFiltrados);
@@ -328,12 +332,12 @@ export default function PagosPage() {
 
   const kpis = useMemo(() => {
     return [
-      { label: "Total Pagos", value: String(totalFiltrados), icon: Hash, accent: "text-primary" },
+      { label: "Total Pagos", value: String(totalValidos), icon: Hash, accent: "text-primary" },
       { label: "Total Recaudado", value: $$(totales.monto), icon: DollarSign, accent: "text-success" },
       { label: "Aplicado a Capital", value: $$(totales.capital), icon: TrendingUp, accent: "text-[hsl(217,91%,60%)]" },
       { label: "Aplicado a Mora", value: $$(totales.mora), icon: HandCoins, accent: "text-destructive" },
     ];
-  }, [totalFiltrados, totales]);
+  }, [totalValidos, totales]);
 
   // ── Action handlers ──────────────────────────────────────────────
   const buildReceiptCaption = (p: PagoListItem) =>
@@ -758,10 +762,11 @@ export default function PagosPage() {
               <>
                 {groupedData.map(([groupName, items]) => {
                   const isExpanded = expandedGroups.has(groupName);
-                  const sumRecibido = items.reduce((s, p) => s + p.montoRecibido, 0);
-                  const sumMora = items.reduce((s, p) => s + p.aplicadoMora, 0);
-                  const sumInteres = items.reduce((s, p) => s + p.aplicadoInteres, 0);
-                  const sumCapital = items.reduce((s, p) => s + p.aplicadoCapital, 0);
+                  const validos = items.filter((p) => !p.anulado);
+                  const sumRecibido = validos.reduce((s, p) => s + p.montoRecibido, 0);
+                  const sumMora = validos.reduce((s, p) => s + p.aplicadoMora, 0);
+                  const sumInteres = validos.reduce((s, p) => s + p.aplicadoInteres, 0);
+                  const sumCapital = validos.reduce((s, p) => s + p.aplicadoCapital, 0);
                   return (
                     <React.Fragment key={groupName}>
                       <TableRow

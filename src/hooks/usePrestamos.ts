@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, mapChunks, rpc } from "@/lib/supabaseQuery";
+import { hoyNegocio } from "@/lib/fechaNegocio";
 
 export interface PrestamoListItem {
   id: string;
@@ -111,7 +112,7 @@ export async function fetchPrestamos(filters?: FetchFilters): Promise<PrestamoLi
 
   // Agregados por préstamo (saldos, atraso, último pago, nombres) calculados en SQL.
   // Los ids viajan en el body del RPC (sin límite de URL); lotes de 1000 = límite de filas de PostgREST.
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyNegocio();
   const resumen = await mapChunks(prestamos.map((p) => p.id), 1000, async (chunk) => {
     const { data, error } = await rpc<PrestamoResumenRow[]>("prestamos_resumen", { p_ids: chunk, p_today: today });
     if (error) throw error;

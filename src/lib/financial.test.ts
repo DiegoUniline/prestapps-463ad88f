@@ -7,11 +7,14 @@ import {
   aplicarWaterfall,
   calcularDiasAtraso,
   redondearCuota,
+  validarCuotaRedondeada,
   calcNextDate,
+  generarFechasVencimiento,
   adjustForSkipDays,
   type AmortizacionRow,
 } from "@/lib/financial";
 import { parseLocalDate } from "@/lib/utils";
+import { differenceInCalendarDays } from "date-fns";
 
 const sum = (rows: AmortizacionRow[], k: keyof AmortizacionRow) =>
   rows.reduce((s, r) => s.plus(r[k] as number), new Decimal(0)).toNumber();
@@ -93,11 +96,79 @@ describe("calcularAmortizacion — fijo", () => {
     expect(rows[2].saldoCapital).toBe(0);
   });
 
-  it("caps capital at the remaining balance when the rounded installment is large", () => {
-    const rows = calcularAmortizacion(1000, 4, 0, "fijo", "2025-01-06", "semanal", 600);
-    expect(rows.map((r) => r.capital)).toEqual([600, 400, 0, 0]);
-    expect(sum(rows, "capital")).toBe(1000);
-    expect(rows.map((r) => r.saldoCapital)).toEqual([400, 0, 0, 0]);
+  it("rejects a rounded installment so high that the loan is paid before the last cuota", () => {
+    expect(() => calcularAmortizacion(1000, 4, 0, "fijo", "2025-01-06", "semanal", 600)).toThrow(/demasiado alta para 4 cuotas/);
+    // last cuota would be exactly 0
+    expect(() => calcularAmortizacion(1000, 3, 0, "fijo", "2025-01-06", "semanal", 500)).toThrow(/demasiado alta/);
+    // last cuota positive but the last capital would be negative (interest-only would not cover it)
+    expect(() => calcularAmortizacion(100, 2, 100, "fijo", "2025-01-06", "semanal", 180)).toThrow(/demasiado alta/);
+  });
+
+  it("rejects a rounded installment below the calculated one (never negative capital)", () => {
+    // calculated cuota 1100 / 3 = 366.67
+    expect(() => calcularAmortizacion(1000, 3, 10, "fijo", "2025-01-06", "semanal", 366.66)).toThrow(/menor que la cuota calculada/);
+    // below the per-cuota interest: would have produced negative capital
+    expect(() => calcularAmortizacion(1000, 4, 40, "fijo", "2025-01-06", "semanal", 50)).toThrow(/menor que la cuota calculada/);
+    expect(() => calcularAmortizacion(1000, 4, 40, "fijo", "2025-01-06", "semanal", -10)).toThrow(/mayor a 0/);
+  });
+
+  it("accepts the calculated cuota (rounded to cents) and the largest valid rounded cuota", () => {
+    const a = calcularAmortizacion(1000, 3, 0, "fijo", "2025-01-06", "semanal", 333.33);
+    expect(a.map((r) => r.capitalInteres)).toEqual([333.33, 333.33, 333.34]);
+    const b = calcularAmortizacion(1000, 3, 0, "fijo", "2025-01-06", "semanal", 499.99);
+    expect(b.map((r) => r.capital)).toEqual([499.99, 499.99, 0.02]);
+    // last capital 0, last cuota = interest only (> 0)
+    const c = calcularAmortizacion(100, 2, 100, "fijo", "2025-01-06", "semanal", 150);
+    expect(c.map((r) => r.capital)).toEqual([100, 0]);
+    expect(c.map((r) => r.capitalInteres)).toEqual([150, 50]);
+  });
+
+  it.each([
+    [1000, 3, 10, 370],
+    [1000, 3, 10, 366.67],
+    [1234.56, 7, 17.5, 210],
+    [50000, 52, 40, 1350],
+    [100, 52, 5, 2.05],
+    [999.99, 13, 33.3333, 105],
+    [500, 1, 20, 600],
+  ])("rounded schedule monto=%s cuotas=%s tasa=%s cuota=%s keeps totals and never goes negative", (monto, cuotas, tasa, cuota) => {
+    expect(validarCuotaRedondeada(monto, cuotas, tasa, cuota)).toBeNull();
+    const rows = calcularAmortizacion(monto, cuotas, tasa, "fijo", "2025-03-03", "diario", cuota);
+    const interesTotal = new Decimal(monto).times(tasa).div(100).toDecimalPlaces(2).toNumber();
+    expect(sum(rows, "capital")).toBe(monto);
+    expect(sum(rows, "interes")).toBe(interesTotal);
+    expect(rows[rows.length - 1].saldoCapital).toBe(0);
+    rows.slice(0, -1).forEach((r) => expect(r.capitalInteres).toBe(cuota));
+    expect(rows[rows.length - 1].capitalInteres).toBeGreaterThan(0);
+    for (const r of rows) {
+      expect(r.capital).toBeGreaterThanOrEqual(0);
+      expect(r.interes).toBeGreaterThanOrEqual(0);
+      expect(r.saldoCapital).toBeGreaterThanOrEqual(0);
+    }
+    for (let i = 1; i < rows.length; i++) expect(rows[i].saldoCapital).toBeLessThanOrEqual(rows[i - 1].saldoCapital);
+  });
+
+  it("never yields negative interest when per-cuota interest rounds up", () => {
+    // 5 / 52 = 0.0961... -> 0.10; 51 * 0.10 would exceed the 5.00 total
+    const rows = calcularAmortizacion(100, 52, 5, "fijo", "2025-01-06", "semanal");
+    expect(sum(rows, "interes")).toBe(5);
+    expect(sum(rows, "capital")).toBe(100);
+    for (const r of rows) expect(r.interes).toBeGreaterThanOrEqual(0);
+  });
+
+  it("throws on invalid base parameters", () => {
+    expect(() => calcularAmortizacion(0, 3, 10, "fijo", "2025-01-06", "semanal")).toThrow(/monto/);
+    expect(() => calcularAmortizacion(NaN, 3, 10, "insolutos", "2025-01-06", "semanal")).toThrow(/monto/);
+    expect(() => calcularAmortizacion(1000, 0, 10, "fijo", "2025-01-06", "semanal")).toThrow(/cuotas/);
+    expect(() => calcularAmortizacion(1000, 2.5, 10, "insolutos", "2025-01-06", "semanal")).toThrow(/cuotas/);
+    expect(() => calcularAmortizacion(1000, 3, NaN, "fijo", "2025-01-06", "semanal")).toThrow(/tasa/);
+  });
+
+  it("ignores an empty / zero rounded cuota", () => {
+    const base = calcularAmortizacion(1000, 3, 10, "fijo", "2025-01-06", "semanal");
+    expect(calcularAmortizacion(1000, 3, 10, "fijo", "2025-01-06", "semanal", 0)).toEqual(base);
+    expect(validarCuotaRedondeada(1000, 3, 10, null)).toBeNull();
+    expect(validarCuotaRedondeada(1000, 3, 10, undefined)).toBeNull();
   });
 
   it("generates due dates by frequency starting at fechaPrimerPago", () => {
@@ -113,6 +184,19 @@ describe("calcularAmortizacion — insolutos", () => {
     expect(rows.map((r) => r.interes)).toEqual([100, 75, 50, 25]);
     expect(rows.map((r) => r.capitalInteres)).toEqual([350, 325, 300, 275]);
     expect(rows.map((r) => r.saldoCapital)).toEqual([750, 500, 250, 0]);
+  });
+
+  it("ignores the rounded cuota (not applicable)", () => {
+    expect(calcularAmortizacion(1000, 4, 10, "insolutos", "2025-01-06", "semanal", 1)).toEqual(
+      calcularAmortizacion(1000, 4, 10, "insolutos", "2025-01-06", "semanal")
+    );
+  });
+
+  it("never produces negative capital on tiny amounts", () => {
+    // 0.05 / 7 rounds up to 0.01; 6 * 0.01 would exceed the monto
+    const rows = calcularAmortizacion(0.05, 7, 1, "insolutos", "2025-01-06", "semanal");
+    expect(sum(rows, "capital")).toBe(0.05);
+    for (const r of rows) expect(r.capital).toBeGreaterThanOrEqual(0);
   });
 
   it("adjusts the last installment so capital sums to monto", () => {
@@ -186,6 +270,18 @@ describe("aplicarWaterfall", () => {
     });
   });
 
+  it("rejects zero, negative or non-finite payments", () => {
+    for (const m of [0, -10, -0.01, NaN, Infinity, -Infinity]) {
+      expect(() => aplicarWaterfall(m, 10, 20, 200)).toThrow(/mayor a 0/);
+    }
+    expect(() => aplicarWaterfall(10, NaN, 20, 200)).toThrow(/Saldo/);
+  });
+
+  it("never applies negative amounts when a balance is negative", () => {
+    const r = aplicarWaterfall(50, -5, 10, -3);
+    expect(r).toEqual({ aplicadoMora: 0, aplicadoInteres: 10, aplicadoCapital: 0, sobrante: 40 });
+  });
+
   it("has no float drift", () => {
     const r = aplicarWaterfall(0.3, 0.1, 0.1, 0.1);
     expect(r).toEqual({ aplicadoMora: 0.1, aplicadoInteres: 0.1, aplicadoCapital: 0.1, sobrante: 0 });
@@ -214,10 +310,40 @@ describe("calcularDiasAtraso", () => {
   });
 });
 
-describe("redondearCuota", () => {
-  it("keeps the total and moves the difference to the last installment", () => {
-    expect(redondearCuota(366.67, 370, 3)).toEqual({ cuotaEstandar: 370, cuotaUltima: 360.01, totalReal: 1100.01 });
-    expect(redondearCuota(120, 100, 5)).toEqual({ cuotaEstandar: 100, cuotaUltima: 200, totalReal: 600 });
+describe("redondearCuota / validarCuotaRedondeada", () => {
+  it("keeps the exact total and moves the difference to the last installment", () => {
+    expect(redondearCuota(1000, 3, 10, 370)).toEqual({ cuotaEstandar: 370, cuotaUltima: 360, totalReal: 1100 });
+    expect(redondearCuota(1000, 3, 10, 366.67)).toEqual({ cuotaEstandar: 366.67, cuotaUltima: 366.66, totalReal: 1100 });
+    expect(redondearCuota(1000, 3, 0, 333.33)).toEqual({ cuotaEstandar: 333.33, cuotaUltima: 333.34, totalReal: 1000 });
+    expect(redondearCuota(999.99, 13, 33.3333, 105).totalReal).toBe(1333.32);
+  });
+
+  it("matches the last row of calcularAmortizacion", () => {
+    const rows = calcularAmortizacion(1234.56, 7, 17.5, "fijo", "2025-01-06", "semanal", 210);
+    const r = redondearCuota(1234.56, 7, 17.5, 210);
+    expect(r.cuotaUltima).toBe(rows[6].capitalInteres);
+    expect(r.totalReal).toBe(sum(rows, "capitalInteres"));
+  });
+
+  it("rejects a rounded cuota below the calculated one", () => {
+    // calculated 600 / 5 = 120
+    expect(() => redondearCuota(500, 5, 20, 100)).toThrow(/menor que la cuota calculada/);
+    expect(validarCuotaRedondeada(500, 5, 20, 119.99)).toMatch(/al menos \$120\.00/);
+    expect(validarCuotaRedondeada(500, 5, 20, 120)).toBeNull();
+  });
+
+  it("rejects a rounded cuota that would make the last one <= 0", () => {
+    expect(() => redondearCuota(1000, 4, 0, 600)).toThrow(/demasiado alta para 4 cuotas/);
+    expect(validarCuotaRedondeada(1000, 3, 0, 500)).toMatch(/demasiado alta para 3 cuotas/);
+    expect(validarCuotaRedondeada(1000, 3, 0, 499.99)).toBeNull();
+    // whole-peso ceiling can be too high for small loans with many cuotas: 100 / 60 = 1.67 -> 2
+    expect(validarCuotaRedondeada(100, 60, 0, 2)).toMatch(/demasiado alta/);
+  });
+
+  it("rejects non-positive or non-numeric rounded cuotas", () => {
+    expect(validarCuotaRedondeada(1000, 3, 10, -1)).toMatch(/mayor a 0/);
+    expect(validarCuotaRedondeada(1000, 3, 10, NaN)).toMatch(/mayor a 0/);
+    expect(() => redondearCuota(1000, 3, 10, 0)).toThrow(/mayor a 0/);
   });
 });
 
@@ -258,10 +384,65 @@ describe("calcNextDate / adjustForSkipDays", () => {
     expect(rows[6].fechaVencimiento).toBe("2025-01-13");
   });
 
-  // Known issue (reported, not changed): with daily frequency the skipped day is pushed onto the
-  // next installment's date instead of shifting the rest of the schedule, so two cuotas share a date.
-  it.fails("daily schedule skipping Sundays has distinct due dates", () => {
+  it("daily schedule skipping Sundays shifts the rest of the schedule (distinct dates)", () => {
     const fechas = Array.from({ length: 14 }, (_, i) => fmt(calcNextDate(base, "diario", i, [0])));
     expect(new Set(fechas).size).toBe(fechas.length);
+    expect(fechas).toEqual([
+      "2025-01-06", "2025-01-07", "2025-01-08", "2025-01-09", "2025-01-10", "2025-01-11",
+      "2025-01-13", "2025-01-14", "2025-01-15", "2025-01-16", "2025-01-17", "2025-01-18",
+      "2025-01-20", "2025-01-21",
+    ]);
+    expect(generarFechasVencimiento(base, "diario", 14, [0]).map(fmt)).toEqual(fechas);
+  });
+
+  it("daily schedule skipping weekends never lands on a weekend", () => {
+    const fechas = generarFechasVencimiento(parseLocalDate("2025-01-10"), "diario", 10, [6, 0]);
+    expect(fechas.map(fmt)).toEqual([
+      "2025-01-10", "2025-01-13", "2025-01-14", "2025-01-15", "2025-01-16",
+      "2025-01-17", "2025-01-20", "2025-01-21", "2025-01-22", "2025-01-23",
+    ]);
+  });
+
+  it("a skipped first date moves the whole schedule (next cuota starts from the adjusted date)", () => {
+    const sunday = parseLocalDate("2025-01-05");
+    expect(generarFechasVencimiento(sunday, "semanal", 3, [0]).map(fmt)).toEqual(["2025-01-06", "2025-01-13", "2025-01-20"]);
+    expect(generarFechasVencimiento(sunday, "quincenal", 3, [0]).map(fmt)).toEqual(["2025-01-06", "2025-01-21", "2025-02-05"]);
+    // 2025-02-06 Thu, 2025-03-06 Thu
+    expect(generarFechasVencimiento(sunday, "mensual", 3, [0]).map(fmt)).toEqual(["2025-01-06", "2025-02-06", "2025-03-06"]);
+  });
+
+  it.each([
+    ["diario", 120],
+    ["semanal", 60],
+    ["quincenal", 40],
+    ["mensual", 36],
+  ] as const)("%s schedules with skip days are strictly increasing, distinct and avoid skipped days", (frecuencia, n) => {
+    for (const skip of [[0], [6, 0], [0, 3], [1, 2, 3, 4, 5]]) {
+      for (const start of ["2025-01-04", "2025-01-05", "2025-01-31", "2025-03-08", "2025-10-31"]) {
+        const fechas = generarFechasVencimiento(parseLocalDate(start), frecuencia, n, skip);
+        expect(fechas).toHaveLength(n);
+        expect(new Set(fechas.map(fmt)).size).toBe(n);
+        for (let i = 0; i < n; i++) {
+          expect(skip).not.toContain(fechas[i].getDay());
+          if (i > 0) expect(fechas[i].getTime()).toBeGreaterThan(fechas[i - 1].getTime());
+          expect(fmt(calcNextDate(parseLocalDate(start), frecuencia, i, skip))).toBe(fmt(fechas[i]));
+        }
+        const rows = calcularAmortizacion(1000, n, 10, "fijo", start, frecuencia, undefined, skip);
+        expect(rows.map((r) => r.fechaVencimiento)).toEqual(fechas.map(fmt));
+      }
+    }
+  });
+
+  it("keeps spacing between consecutive cuotas at least one period", () => {
+    const fechas = generarFechasVencimiento(parseLocalDate("2025-01-04"), "semanal", 20, [0]);
+    for (let i = 1; i < fechas.length; i++) {
+      expect(differenceInCalendarDays(fechas[i], fechas[i - 1])).toBe(7);
+    }
+  });
+
+  it("without skip days keeps dates anchored to the first payment date", () => {
+    expect(generarFechasVencimiento(parseLocalDate("2025-01-31"), "mensual", 4).map(fmt)).toEqual([
+      "2025-01-31", "2025-02-28", "2025-03-31", "2025-04-30",
+    ]);
   });
 });

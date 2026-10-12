@@ -8,7 +8,7 @@ import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useSolicitudes, useUpdateSolicitud } from "@/hooks/useSolicitudes";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { calcNextDate } from "@/lib/financial";
+import { calcNextDate, validarCuotaRedondeada } from "@/lib/financial";
 import { rpcCrearPrestamo } from "@/lib/rpcIntegridad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,18 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Plus, Search, Check, X, Eye, FileInput, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+function calculosSolicitud(sol: any) {
+  const monto = Number(sol.monto_solicitado);
+  const tasa = Number(sol.tasa_interes || 0);
+  const cuotas = Number(sol.num_cuotas);
+  const interesTotal = monto * tasa / 100;
+  const montoTotalPagar = monto + interesTotal;
+  const cuotaCalculada = montoTotalPagar / cuotas;
+  const cuotaFinal = Math.ceil(cuotaCalculada);
+  const errorCuota = sol.modalidad === "fijo" ? validarCuotaRedondeada(monto, cuotas, tasa, cuotaFinal) : null;
+  return { monto, tasa, cuotas, montoTotalPagar, cuotaCalculada, cuotaFinal, errorCuota };
+}
 
 export default function SolicitudesPage() {
   const navigate = useNavigate();
@@ -58,13 +70,8 @@ export default function SolicitudesPage() {
   // Approve: create the prestamo + amortization + validate caja balance + optional WhatsApp
   const approveMutation = useMutation({
     mutationFn: async ({ sol, cargaInicial }: { sol: any; cargaInicial: boolean }) => {
-      const monto = Number(sol.monto_solicitado);
-      const tasa = Number(sol.tasa_interes || 0);
-      const cuotas = Number(sol.num_cuotas);
-      const interesTotal = monto * tasa / 100;
-      const montoTotalPagar = monto + interesTotal;
-      const cuotaCalculada = montoTotalPagar / cuotas;
-      const cuotaFinal = Math.ceil(cuotaCalculada);
+      const { monto, tasa, cuotas, montoTotalPagar, cuotaCalculada, cuotaFinal, errorCuota } = calculosSolicitud(sol);
+      if (errorCuota) throw new Error(`No se puede aprobar: ${errorCuota}`);
 
       const prestamoRow = {
         cliente_id: sol.cliente_id,
@@ -362,6 +369,13 @@ export default function SolicitudesPage() {
               </div>
             </label>
 
+            {approveTarget && calculosSolicitud(approveTarget).errorCuota && (
+              <div className="flex items-start gap-2 text-destructive text-sm">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{calculosSolicitud(approveTarget).errorCuota} La cuota se redondea al peso: registra la solicitud con menos cuotas o crea el préstamo desde Nuevo Préstamo con una cuota personalizada.</span>
+              </div>
+            )}
+
             {!esCargaInicial && !approveTarget?.caja_id && (
               <div className="flex items-center gap-2 text-warning text-sm">
                 <AlertTriangle className="h-4 w-4" />
@@ -378,7 +392,7 @@ export default function SolicitudesPage() {
                 approveMutation.mutate({ sol: approveTarget, cargaInicial: esCargaInicial });
                 setApproveTarget(null);
               }}
-              disabled={approveMutation.isPending}
+              disabled={approveMutation.isPending || (!!approveTarget && !!calculosSolicitud(approveTarget).errorCuota)}
             >
               {approveMutation.isPending ? "Procesando..." : "Aprobar"}
             </Button>

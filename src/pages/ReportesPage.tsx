@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { hoyNegocioDate, rangoNegocio } from "@/lib/fechaNegocio";
 import { es } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
@@ -130,8 +131,8 @@ function ReportTable({
 // ─── Main Page ───
 export default function ReportesPage() {
   const { empresaId } = useEmpresa();
-  const [from, setFrom] = useState(() => startOfMonth(new Date()));
-  const [to, setTo] = useState(() => endOfMonth(new Date()));
+  const [from, setFrom] = useState(() => startOfMonth(hoyNegocioDate()));
+  const [to, setTo] = useState(() => endOfMonth(hoyNegocioDate()));
   const [tab, setTab] = useState("prestamos");
 
   const fromStr = format(from, "yyyy-MM-dd");
@@ -156,12 +157,14 @@ export default function ReportesPage() {
   const { data: pagosRaw = [] } = useQuery({
     queryKey: ["rpt-pagos", empresaId, fromStr, toStr],
     queryFn: async () => {
+      // created_at es timestamptz: días de negocio (México) con "hasta" inclusivo del día completo
+      const rango = rangoNegocio(fromStr, toStr);
       const data = await fetchAllRows(supabase
         .from("pagos")
         .select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, metodo_pago, created_at, anulado, prestamo_id, cobrador_id, ruta_id, prestamos(id, clientes(nombre_completo)), rutas(nombre)")
         .eq("empresa_id", empresaId!)
-        .gte("created_at", `${fromStr}T00:00:00`)
-        .lte("created_at", `${toStr}T23:59:59`)
+        .gte("created_at", rango.desde)
+        .lt("created_at", rango.hastaExcl)
         .order("created_at", { ascending: false }));
       return data || [];
     },

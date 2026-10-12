@@ -1,7 +1,10 @@
 import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
+import { installErrorReporter } from "./lib/errorReporter";
 import "./index.css";
+
+installErrorReporter();
 
 // Register service worker only in production to avoid dev preview cache/runtime conflicts
 if (import.meta.env.PROD) {

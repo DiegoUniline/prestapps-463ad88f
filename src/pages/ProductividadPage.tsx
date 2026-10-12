@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, $$, fmtDate } from "@/lib/utils";
 import { format, subDays, differenceInDays, startOfWeek, endOfWeek, subWeeks } from "date-fns";
 import { es } from "date-fns/locale";
+import { fechaNegocio, hoyNegocio, hoyNegocioDate, rangoNegocio } from "@/lib/fechaNegocio";
 import {
   CalendarIcon, TrendingUp, TrendingDown, Users, CreditCard, HandCoins,
   AlertTriangle, Eye, Clock, Target, Award, BarChart3, Minus,
@@ -59,7 +60,9 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
   return useQuery({
     queryKey: ["productividad", empresaId, desdeStr, hastaStr],
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = hoyNegocio();
+      // crm_gestiones.created_at es timestamptz: días de negocio (México), "hasta" inclusivo
+      const rangoGestiones = rangoNegocio(prevDesde, hastaStr);
       // Consultas independientes en paralelo; mora y última visita se agregan en SQL
       // (antes: amortización completa por .in(prestamo_id) y todo el historial de visitas).
       const [
@@ -96,8 +99,8 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
           .from("crm_gestiones")
           .select("id, registrado_por, tipo_gestion, cliente_id, created_at")
           .eq("empresa_id", empresaId)
-          .gte("created_at", `${prevDesde}T00:00:00`)
-          .lte("created_at", `${hastaStr}T23:59:59`)),
+          .gte("created_at", rangoGestiones.desde)
+          .lt("created_at", rangoGestiones.hastaExcl)),
         // 6. Última visita por cliente
         rpc<Record<string, string>>("clientes_ultima_visita"),
         // 7. Clientes for name mapping
@@ -163,7 +166,7 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
           prestamosByAdvisor.get(adv)!.add(pr.cliente_id);
         }
 
-        const fechaCreacion = (pr.fecha_registro || pr.created_at || "").slice(0, 10);
+        const fechaCreacion = fechaNegocio(pr.fecha_registro || pr.created_at);
         if (fechaCreacion >= desdeStr && fechaCreacion <= hastaStr) {
           m.prestamosCreados++;
           m.montoColocado += Number(pr.monto_solicitado || 0);
@@ -192,7 +195,7 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
       for (const pg of pagos || []) {
         const adv = pg.cobrador_id || pg.registrado_por || SIN_ASIGNAR;
         if (!advisorMap.has(adv)) advisorMap.set(adv, initAdvisor(adv));
-        const fecha = (pg.fecha_pago || pg.created_at || "").slice(0, 10);
+        const fecha = fechaNegocio(pg.fecha_pago || pg.created_at);
         if (fecha >= desdeStr && fecha <= hastaStr) {
           advisorMap.get(adv)!.totalCobrado += Number(pg.monto_recibido || 0);
           advisorMap.get(adv)!.pagosCuenta++;
@@ -206,7 +209,7 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
       for (const g of gestiones || []) {
         const adv = g.registrado_por;
         if (!adv || !advisorMap.has(adv)) continue;
-        const fecha = (g.created_at || "").slice(0, 10);
+        const fecha = fechaNegocio(g.created_at);
         if (fecha >= desdeStr && fecha <= hastaStr) {
           advisorMap.get(adv)!.visitasRealizadas++;
         }
@@ -237,7 +240,7 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
               clienteId,
               clienteNombre: clienteMap.get(clienteId) || "—",
               diasSinVisita: diasSinVisita === 9999 ? -1 : diasSinVisita,
-              ultimaVisita: lastVisit?.fecha?.slice(0, 10) || null,
+              ultimaVisita: lastVisit?.fecha ? fechaNegocio(lastVisit.fecha) : null,
             });
           }
         }
@@ -279,8 +282,8 @@ function staleBadge(dias: number) {
 // ── Component ────────────────────────────────────────────────────
 export default function ProductividadPage() {
   const { empresaId } = useEmpresa();
-  const [desde, setDesde] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [hasta, setHasta] = useState<Date>(endOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [desde, setDesde] = useState<Date>(() => startOfWeek(hoyNegocioDate(), { weekStartsOn: 1 }));
+  const [hasta, setHasta] = useState<Date>(() => endOfWeek(hoyNegocioDate(), { weekStartsOn: 1 }));
   const [selectedAdvisor, setSelectedAdvisor] = useState<string>("all");
 
   const { data: advisors = [], isLoading } = useProductividadData(empresaId, desde, hasta);
@@ -332,7 +335,7 @@ export default function ProductividadPage() {
   }, [filtered]);
 
   const presetRange = (label: string) => {
-    const now = new Date();
+    const now = hoyNegocioDate();
     if (label === "hoy") { setDesde(now); setHasta(now); }
     else if (label === "semana") { setDesde(startOfWeek(now, { weekStartsOn: 1 })); setHasta(endOfWeek(now, { weekStartsOn: 1 })); }
     else if (label === "semana-pasada") { const s = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }); setDesde(s); setHasta(endOfWeek(s, { weekStartsOn: 1 })); }

@@ -4,6 +4,7 @@ import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { rpc } from "@/lib/supabaseQuery";
 import { format } from "date-fns";
+import { hoyNegocio, hoyNegocioDate } from "@/lib/fechaNegocio";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,24 +77,24 @@ type DashboardRpc = {
   };
 };
 
+// desde/hasta: días de negocio (YYYY-MM-DD) inclusivos; "hoy" lo calcula el servidor en hora de México.
 type DashboardFilters = {
   desde: string | null;
   hasta: string | null;
   ruta_id: string | null;
   cobrador_id: string | null;
   caja_id: string | null;
-  today: string;
-  today_local: string;
   meses: string[];
 };
 
 const MONTH_NAMES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-// Últimos 6 meses (mismo cálculo local que antes; el servidor agrega por "YYYY-MM").
+// Últimos 6 meses respecto a hoy en hora de México (el servidor agrega por "YYYY-MM").
 function lastSixMonths() {
   const out: { ym: string; label: string }[] = [];
+  const [y, m] = hoyNegocio().split("-").map(Number);
   for (let i = 0; i < 6; i++) {
-    const d = new Date(); d.setMonth(d.getMonth() - 5 + i);
+    const d = new Date(y, m - 1 - 5 + i, 1);
     out.push({
       ym: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
       label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear().toString().slice(2)}`,
@@ -279,20 +280,18 @@ export default function DashboardPage() {
 
   const meses = useMemo(() => lastSixMonths(), []);
   const filters = useMemo<DashboardFilters>(() => ({
-    desde: fechaDesde ? fechaDesde.toISOString().slice(0, 10) : null,
-    hasta: fechaHasta ? fechaHasta.toISOString().slice(0, 10) : null,
+    desde: fechaDesde ? format(fechaDesde, "yyyy-MM-dd") : null,
+    hasta: fechaHasta ? format(fechaHasta, "yyyy-MM-dd") : null,
     ruta_id: filtroRuta !== "__all__" ? filtroRuta : null,
     cobrador_id: filtroCobrador !== "__all__" ? filtroCobrador : null,
     caja_id: filtroCaja !== "__all__" ? filtroCaja : null,
-    today: new Date().toISOString().slice(0, 10),
-    today_local: format(new Date(), "yyyy-MM-dd"),
     meses: meses.map((m) => m.ym),
   }), [fechaDesde, fechaHasta, filtroRuta, filtroCobrador, filtroCaja, meses]);
   const { data, isLoading } = useDashboardData(empresaId, filters);
 
   const hasFilters = fechaDesde || fechaHasta || filtroRuta !== "__all__" || filtroCobrador !== "__all__" || filtroCaja !== "__all__";
   const clearFilters = () => { setFechaDesde(undefined); setFechaHasta(undefined); setFiltroRuta("__all__"); setFiltroCobrador("__all__"); setFiltroCaja("__all__"); };
-  const setPreset = (days: number) => { const now = new Date(); const from = new Date(); from.setDate(now.getDate() - days); setFechaDesde(from); setFechaHasta(now); };
+  const setPreset = (days: number) => { const now = hoyNegocioDate(); const from = hoyNegocioDate(); from.setDate(now.getDate() - days); setFechaDesde(from); setFechaHasta(now); };
 
   const stats = useMemo(() => (data ? buildDashboardStats(data, meses) : null), [data, meses]);
 
@@ -342,7 +341,7 @@ export default function DashboardPage() {
           <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mr-1">Filtros:</span>
           <div className="flex items-center gap-1">
             {[{ label: "Hoy", days: 0 }, { label: "7d", days: 7 }, { label: "30d", days: 30 }, { label: "90d", days: 90 }].map(p => (
-              <Button key={p.label} variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => p.days === 0 ? (() => { const t = new Date(); setFechaDesde(t); setFechaHasta(t); })() : setPreset(p.days)}>
+              <Button key={p.label} variant="outline" size="sm" className="h-7 text-[11px] px-2" onClick={() => p.days === 0 ? (() => { const t = hoyNegocioDate(); setFechaDesde(t); setFechaHasta(t); })() : setPreset(p.days)}>
                 {p.label}
               </Button>
             ))}
@@ -384,7 +383,7 @@ export default function DashboardPage() {
       <div className="md:hidden space-y-2">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           {[{ label: "Hoy", days: 0 }, { label: "7d", days: 7 }, { label: "30d", days: 30 }, { label: "90d", days: 90 }].map(p => (
-            <Button key={p.label} variant="outline" size="sm" className="h-7 text-[11px] px-2.5 shrink-0" onClick={() => p.days === 0 ? (() => { const t = new Date(); setFechaDesde(t); setFechaHasta(t); })() : setPreset(p.days)}>
+            <Button key={p.label} variant="outline" size="sm" className="h-7 text-[11px] px-2.5 shrink-0" onClick={() => p.days === 0 ? (() => { const t = hoyNegocioDate(); setFechaDesde(t); setFechaHasta(t); })() : setPreset(p.days)}>
               {p.label}
             </Button>
           ))}

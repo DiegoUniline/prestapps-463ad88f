@@ -19,7 +19,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, CalendarIcon, Save, AlertTriangle, CalendarOff } from "lucide-react";
-import { calcNextDate } from "@/lib/financial";
+import { calcularAmortizacion, generarFechasVencimiento, validarCuotaRedondeada, type Frecuencia } from "@/lib/financial";
 import { format, addDays, addWeeks, addMonths, parse, isValid } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
@@ -44,6 +44,7 @@ function useClientesOptions(empresaId: string) {
 interface CuotaPreview {
   num: number;
   fechaVencimiento: string;
+  fechaISO: string;
   capital: number;
   interes: number;
   cuota: number;
@@ -132,79 +133,65 @@ export default function NuevoPrestamoPage() {
   }, [esInicial, numCuotasCubiertas, cuotas, cuotaFinal, montoTotalPagar]);
 
   // Tabla de amortización en tiempo real
-  const amortizacion = useMemo((): CuotaPreview[] => {
-    if (monto <= 0 || cuotas <= 0) return [];
+  const { amortizacion, errorAmortizacion } = useMemo((): { amortizacion: CuotaPreview[]; errorAmortizacion: string | null } => {
+    if (monto <= 0 || cuotas <= 0) return { amortizacion: [], errorAmortizacion: null };
     const baseDate = fechaPrimerPago || new Date();
+    const freq = frecuencia as Frecuencia;
 
-    if (modalidad === "fijo") {
-      const totalInteres = montoTotalPagar - monto;
-      const interesPorCuota = totalInteres / cuotas;
-
-      let saldoCapital = monto;
-      let saldoInteres = totalInteres;
-      const rows: CuotaPreview[] = [];
-
-      for (let i = 0; i < cuotas; i++) {
-        const isLast = i === cuotas - 1;
-
-        const interes = isLast
-          ? Math.round(saldoInteres * 100) / 100
-          : Math.round(interesPorCuota * 100) / 100;
-
-        let cuotaVal: number;
-        let capital: number;
-
-        if (isLast) {
-          capital = Math.round(saldoCapital * 100) / 100;
-          cuotaVal = Math.round((capital + interes) * 100) / 100;
-        } else {
-          cuotaVal = cuotaFinal;
-          capital = Math.min(
-            Math.round((cuotaVal - interes) * 100) / 100,
-            Math.round(saldoCapital * 100) / 100
-          );
-          cuotaVal = Math.round((capital + interes) * 100) / 100;
-        }
-
-        saldoCapital = Math.max(0, Math.round((saldoCapital - capital) * 100) / 100);
-        saldoInteres = Math.max(0, Math.round((saldoInteres - interes) * 100) / 100);
-
-        rows.push({
-          num: i + 1,
-          fechaVencimiento: format(calcNextDate(baseDate, frecuencia as any, i, diasIgnorados), "dd/MM/yyyy"),
-          capital,
-          interes,
-          cuota: cuotaVal,
-          saldo: saldoCapital,
-        });
+    try {
+      if (modalidad === "fijo") {
+        const error = validarCuotaRedondeada(monto, cuotas, tasa, cuotaFinal);
+        if (error) return { amortizacion: [], errorAmortizacion: error };
+        const rows = calcularAmortizacion(
+          monto, cuotas, tasa, "fijo", format(baseDate, "yyyy-MM-dd"), freq, cuotaFinal, diasIgnorados
+        );
+        return {
+          amortizacion: rows.map((r) => ({
+            num: r.numCuota,
+            fechaVencimiento: format(parse(r.fechaVencimiento, "yyyy-MM-dd", new Date()), "dd/MM/yyyy"),
+            fechaISO: r.fechaVencimiento,
+            capital: r.capital,
+            interes: r.interes,
+            cuota: r.capitalInteres,
+            saldo: r.saldoCapital,
+          })),
+          errorAmortizacion: null,
+        };
       }
-      return rows;
-    } else {
+
       // Saldos insolutos
+      const fechas = generarFechasVencimiento(baseDate, freq, cuotas, diasIgnorados);
       const tasaPeriodo = tasa / 100 / cuotas;
       const capitalPorCuota = monto / cuotas;
       let saldo = monto;
-      return Array.from({ length: cuotas }, (_, i) => {
-        const inter = saldo * tasaPeriodo;
-        const cuotaVal = capitalPorCuota + inter;
-        saldo -= capitalPorCuota;
-        return {
-          num: i + 1,
-          fechaVencimiento: format(calcNextDate(baseDate, frecuencia as any, i, diasIgnorados), "dd/MM/yyyy"),
-          capital: Math.round(capitalPorCuota * 100) / 100,
-          interes: Math.round(inter * 100) / 100,
-          cuota: Math.round(cuotaVal * 100) / 100,
-          saldo: Math.max(0, Math.round(saldo * 100) / 100),
-        };
-      });
+      return {
+        amortizacion: Array.from({ length: cuotas }, (_, i) => {
+          const inter = saldo * tasaPeriodo;
+          const cuotaVal = capitalPorCuota + inter;
+          saldo -= capitalPorCuota;
+          return {
+            num: i + 1,
+            fechaVencimiento: format(fechas[i], "dd/MM/yyyy"),
+            fechaISO: format(fechas[i], "yyyy-MM-dd"),
+            capital: Math.round(capitalPorCuota * 100) / 100,
+            interes: Math.round(inter * 100) / 100,
+            cuota: Math.round(cuotaVal * 100) / 100,
+            saldo: Math.max(0, Math.round(saldo * 100) / 100),
+          };
+        }),
+        errorAmortizacion: null,
+      };
+    } catch (err) {
+      return { amortizacion: [], errorAmortizacion: err instanceof Error ? err.message : "No se pudo calcular la amortización" };
     }
-  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago, montoTotalPagar, diasIgnorados]);
+  }, [monto, cuotas, cuotaFinal, frecuencia, modalidad, tasa, fechaPrimerPago, diasIgnorados]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!clienteId || !monto || !cuotas) {
         throw new Error("Completa los campos obligatorios");
       }
+      if (errorAmortizacion) throw new Error(errorAmortizacion);
 
       const esVenta = tipoCuenta !== "prestamo";
 
@@ -238,7 +225,6 @@ export default function NuevoPrestamoPage() {
         gps_lng: geo.lng,
       };
 
-      const baseDate = fechaPrimerPago || new Date();
       const numCubiertas = numCuotasCubiertas;
       const cuotasInsert = amortizacion.map((c) => {
         const yaPagada = c.num <= numCubiertas;
@@ -247,7 +233,7 @@ export default function NuevoPrestamoPage() {
           capital: c.capital,
           interes: c.interes,
           capital_interes: c.cuota,
-          fecha_vencimiento: format(calcNextDate(baseDate, frecuencia as any, c.num - 1, diasIgnorados), "yyyy-MM-dd"),
+          fecha_vencimiento: c.fechaISO,
           saldo_capital: yaPagada ? 0 : c.capital,
           saldo_interes: yaPagada ? 0 : c.interes,
           saldo_total: yaPagada ? 0 : c.cuota,
@@ -483,6 +469,11 @@ export default function NuevoPrestamoPage() {
                   placeholder={String(Math.ceil(cuotaCalculada))}
                 />
                 <p className="text-[11px] text-muted-foreground">Déjalo vacío para usar la cuota calculada, o escribe un valor personalizado.</p>
+                {errorAmortizacion && (
+                  <p className="flex items-start gap-1 text-[11px] text-destructive">
+                    <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" /> {errorAmortizacion}
+                  </p>
+                )}
               </div>
             )}
 
@@ -693,7 +684,7 @@ export default function NuevoPrestamoPage() {
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={() => navigate("/prestamos")}>Cancelar</Button>
-              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || (!esInicial && tipoCuenta === "prestamo" && cajaId && monto > Number((cajas.find((c: any) => c.id === cajaId) as any)?.saldo_actual || 0))}>
+              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !!errorAmortizacion || (!esInicial && tipoCuenta === "prestamo" && cajaId && monto > Number((cajas.find((c: any) => c.id === cajaId) as any)?.saldo_actual || 0))}>
                 <Save className="h-4 w-4 mr-1.5" />
                 {createMutation.isPending ? "Guardando..." : tipoCuenta === "prestamo" ? "Crear Préstamo" : "Crear Venta"}
               </Button>
@@ -707,7 +698,11 @@ export default function NuevoPrestamoPage() {
             <CardTitle className="text-base">Vista previa de Amortización</CardTitle>
           </CardHeader>
           <CardContent>
-            {amortizacion.length === 0 ? (
+            {errorAmortizacion ? (
+              <p className="flex items-center justify-center gap-2 text-[13px] text-destructive py-8 text-center">
+                <AlertTriangle className="h-4 w-4 shrink-0" /> {errorAmortizacion}
+              </p>
+            ) : amortizacion.length === 0 ? (
               <p className="text-[13px] text-muted-foreground py-8 text-center">
                 Ingresa monto, tasa y cuotas para ver la tabla en tiempo real.
               </p>

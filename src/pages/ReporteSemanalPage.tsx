@@ -14,11 +14,12 @@ import { CalendarDays, TrendingUp, Download, DollarSign, CalendarIcon, ArrowDown
 import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { exportToPDF, exportToCSV } from "@/lib/reportExport";
+import { hoyNegocioDate, rangoNegocio } from "@/lib/fechaNegocio";
 
 export default function ReporteSemanalPage() {
   const { empresaId } = useEmpresa();
-  const [desde, setDesde] = useState<Date>(subDays(new Date(), 30));
-  const [hasta, setHasta] = useState<Date>(new Date());
+  const [desde, setDesde] = useState<Date>(() => subDays(hoyNegocioDate(), 30));
+  const [hasta, setHasta] = useState<Date>(hoyNegocioDate);
 
   const desdeStr = format(desde, "yyyy-MM-dd");
   const hastaStr = format(hasta, "yyyy-MM-dd");
@@ -27,6 +28,8 @@ export default function ReporteSemanalPage() {
     queryKey: ["reporte-semanal", empresaId, desdeStr, hastaStr],
     queryFn: async () => {
       if (!empresaId) return null;
+      // created_at es timestamptz: días de negocio (México) con "hasta" inclusivo del día completo
+      const rango = rangoNegocio(desdeStr, hastaStr);
 
       const [pagos, movimientos, cortes] = await Promise.all([
         fetchAllRows(
@@ -41,15 +44,15 @@ export default function ReporteSemanalPage() {
           supabase.from("movimientos_caja")
             .select("monto, tipo, concepto, created_at")
             .eq("empresa_id", empresaId)
-            .gte("created_at", `${desdeStr}T00:00:00`)
-            .lte("created_at", `${hastaStr}T23:59:59`)
+            .gte("created_at", rango.desde)
+            .lt("created_at", rango.hastaExcl)
         ),
         fetchAllRows(
           supabase.from("cortes")
             .select("monto_comision, cobrador_id, created_at")
             .eq("empresa_id", empresaId)
-            .gte("created_at", `${desdeStr}T00:00:00`)
-            .lte("created_at", `${hastaStr}T23:59:59`)
+            .gte("created_at", rango.desde)
+            .lt("created_at", rango.hastaExcl)
         ),
       ]);
 

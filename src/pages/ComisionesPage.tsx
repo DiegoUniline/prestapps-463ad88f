@@ -18,6 +18,7 @@ import { DollarSign, Calculator, Loader2, Percent, UserCheck, Wallet, CheckCircl
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { $$, fmtDateTime } from "@/lib/utils";
+import { hoyNegocio, inicioDiaNegocio } from "@/lib/fechaNegocio";
 // ── Types & hooks ─────────────────────────────────────────────────
 interface Cobrador {
   id: string;
@@ -222,9 +223,9 @@ export default function ComisionesPage() {
         const supervisor = supervisores.find((s) => s.id === selectedId);
         if (!supervisor) return;
 
-        // Current month period
+        // Current month period (mes de negocio, hora de México)
         const now = new Date();
-        const desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const desde = inicioDiaNegocio(`${hoyNegocio().slice(0, 7)}-01`);
         const hasta = now.toISOString();
         let comision = 0;
         const detalles: string[] = [];

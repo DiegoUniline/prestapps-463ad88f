@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import AppErrorBoundary from "@/components/AppErrorBoundary";
+import { reportError } from "@/lib/errorReporter";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 import { UpdateBanner } from "@/components/shared/UpdateBanner";
 import { useAuthStore } from "@/stores/authStore";
@@ -97,6 +98,16 @@ if (typeof window !== "undefined" && "caches" in window) {
 }
 
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => reportError(error, { source: "query", queryKey: query.queryHash.slice(0, 300) }),
+  }),
+  mutationCache: new MutationCache({
+    // P0001 = RAISE EXCEPTION de negocio (saldo insuficiente, etc.), ya mostrado al usuario
+    onError: (error, _vars, _ctx, mutation) => {
+      if ((error as { code?: string } | null)?.code === "P0001") return;
+      reportError(error, { source: "mutation", mutationKey: String(mutation.options.mutationKey ?? "").slice(0, 300) });
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5,
@@ -131,7 +142,7 @@ function StoreInitializer() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ErrorBoundary>
+    <AppErrorBoundary>
       <TooltipProvider>
         <StoreInitializer />
         <UpdateBanner />
@@ -197,7 +208,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
-    </ErrorBoundary>
+    </AppErrorBoundary>
   </QueryClientProvider>
 );
 

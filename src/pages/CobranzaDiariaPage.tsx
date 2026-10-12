@@ -17,7 +17,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn, $$ } from "@/lib/utils";
 import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
-import { format, isToday, parseISO, startOfDay, addDays } from "date-fns";
+import { format, parseISO, startOfDay, addDays } from "date-fns";
+import { hoyNegocio, hoyNegocioDate, rangoNegocio } from "@/lib/fechaNegocio";
 import { es } from "date-fns/locale";
 import {
   CalendarIcon, Search, CheckCircle2, Clock, AlertTriangle,
@@ -68,6 +69,8 @@ function useClientesAtendidosSemana(empresaId: string, weekStartStr: string, wee
   return useQuery({
     queryKey: ["clientes-atendidos-semana", empresaId, weekStartStr, weekEndStr],
     queryFn: async () => {
+      // Semana en días de negocio (México), incluyendo el último día completo
+      const rango = rangoNegocio(weekStartStr, weekEndStr);
       // Pagos de la semana con su cliente vía embed (sin .in() de prestamo_ids)
       const [pagos, gestiones] = await Promise.all([
         fetchAllRows<{ prestamos: { cliente_id: string } | null }>(supabase
@@ -75,15 +78,15 @@ function useClientesAtendidosSemana(empresaId: string, weekStartStr: string, wee
           .select("id, prestamos!pagos_prestamo_id_fkey ( cliente_id )")
           .eq("empresa_id", empresaId)
           .eq("anulado", false)
-          .gte("created_at", weekStartStr + "T00:00:00")
-          .lte("created_at", weekEndStr + "T23:59:59")),
+          .gte("created_at", rango.desde)
+          .lt("created_at", rango.hastaExcl)),
         // Get visits (gestiones) in this week
         fetchAllRows<{ cliente_id: string }>(supabase
           .from("crm_gestiones")
           .select("id, cliente_id")
           .eq("empresa_id", empresaId)
-          .gte("created_at", weekStartStr + "T00:00:00")
-          .lte("created_at", weekEndStr + "T23:59:59")),
+          .gte("created_at", rango.desde)
+          .lt("created_at", rango.hastaExcl)),
       ]);
 
       const clienteIdsFromGestiones = new Set(gestiones.map((g) => g.cliente_id));
@@ -151,7 +154,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
             rutas ( nombre ),
             cajas ( nombre )
           ),
-          pagos!pagos_cuota_id_fkey ( monto_recibido )
+          pagos!pagos_cuota_id_fkey ( monto_recibido, anulado )
         `;
       const cuotas = await fetchAllRows<any>((supabase.from as any)("amortizacion")
         .select(cuotaSelect)
@@ -207,7 +210,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       // 4) Payments for these cuotas (embebidos)
       const pagosByCuota: Record<string, { total: number }> = {};
       for (const c of allCuotas) {
-        const pagos = (c.pagos || []) as { monto_recibido: number }[];
+        const pagos = ((c.pagos || []) as { monto_recibido: number; anulado: boolean | null }[]).filter((p) => !p.anulado);
         if (pagos.length === 0) continue;
         pagosByCuota[c.id] = { total: pagos.reduce((sum, p) => sum + Number(p.monto_recibido), 0) };
       }
@@ -289,7 +292,7 @@ export default function CobranzaDiariaPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
-  const [fecha, setFecha] = useState(new Date());
+  const [fecha, setFecha] = useState(hoyNegocioDate);
   const [search, setSearch] = useState("");
   const [filtroRuta, setFiltroRuta] = useState("todas");
   const [filtroCobrador, setFiltroCobrador] = useState("todos");
@@ -340,7 +343,7 @@ export default function CobranzaDiariaPage() {
   const { data: corteConfig } = useEmpresaCorteConfig(empresaId);
   const corteDia = corteConfig?.corteDiaSemana ?? 1;
   const corteColor = corteConfig?.corteColor ?? "#22c55e";
-  const weekStart = useMemo(() => getWeekStart(new Date(), corteDia), [corteDia]);
+  const weekStart = useMemo(() => getWeekStart(hoyNegocioDate(), corteDia), [corteDia]);
   const weekEnd = useMemo(() => getWeekEnd(weekStart), [weekStart]);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const weekEndStr = format(weekEnd, "yyyy-MM-dd");
@@ -449,9 +452,10 @@ export default function CobranzaDiariaPage() {
   };
 
   // Date navigation
-  const prevDay = () => setFecha((d) => new Date(d.getTime() - 86400000));
-  const nextDay = () => setFecha((d) => new Date(d.getTime() + 86400000));
-  const goToday = () => setFecha(new Date());
+  const prevDay = () => setFecha((d) => addDays(d, -1));
+  const nextDay = () => setFecha((d) => addDays(d, 1));
+  const goToday = () => setFecha(hoyNegocioDate());
+  const esHoy = fechaStr === hoyNegocio();
 
   // Group by ruta for summary
   const byRuta = useMemo(() => {
@@ -644,7 +648,7 @@ export default function CobranzaDiariaPage() {
                 <CalendarIcon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{format(fecha, "EEEE, d 'de' MMMM", { locale: es })}</span>
                 <span className="sm:hidden">{format(fecha, "d MMM yyyy", { locale: es })}</span>
-                {isToday(fecha) && <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">Hoy</Badge>}
+                {esHoy && <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">Hoy</Badge>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -659,7 +663,7 @@ export default function CobranzaDiariaPage() {
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={nextDay}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          {!isToday(fecha) && (
+          {!esHoy && (
             <Button variant="ghost" size="sm" className="h-8 text-[12px]" onClick={goToday}>Hoy</Button>
           )}
         </div>
