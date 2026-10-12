@@ -119,7 +119,7 @@ function usePrestamosByCaja(empresaId?: string) {
 
       // Global + per-caja stats
       const byCaja: Record<string, { activos: number; colocado: number; totalPagar: number; porCobrar: number; gananciaProyectada: number; enMora: number; moraTotal: number }> = {};
-      let global = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+      const global = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
 
       for (const p of prestamos) {
         const cajaKey = p.caja_id || "sin-caja";

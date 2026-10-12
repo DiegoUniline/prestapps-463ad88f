@@ -157,7 +157,7 @@ function useHistorialCortes(empresaId: string) {
       if (!data?.length) return [];
 
       const cobIds = [...new Set(data.map((d: any) => d.cobrador_id).filter(Boolean))];
-      let cobMap: Record<string, string> = {};
+      const cobMap: Record<string, string> = {};
       if (cobIds.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
         for (const p of profiles || []) cobMap[p.id] = p.nombre_completo;

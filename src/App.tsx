@@ -14,6 +14,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleGuard from "@/components/RoleGuard";
 import SuperAdminGuard from "@/components/SuperAdminGuard";
 import AppLayout from "@/components/AppLayout";
+import { useEmpresaSwitchReset } from "@/hooks/useEmpresaSwitchReset";
 
 /** lazy() that reloads once if a chunk from a previous deploy is gone (stale tab after an update) */
 const CHUNK_RELOAD_KEY = "chunk-reload-at";
@@ -112,6 +113,7 @@ function StoreInitializer() {
   const initAuth = useAuthStore((s) => s.initialize);
   const initUI = useUIStore((s) => s.initializeUI);
   const initEmpresa = useEmpresaStore((s) => s.initialize);
+  useEmpresaSwitchReset();
 
   useEffect(() => {
     const cleanupAuth = initAuth();

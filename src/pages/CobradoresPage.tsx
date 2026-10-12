@@ -53,7 +53,7 @@ function useCortes(empresaId: string) {
         .limit(100);
       if (error) throw error;
       const cobIds: string[] = [...new Set((cortes || []).map((c: any) => c.cobrador_id).filter(Boolean))] as string[];
-      let cobMap: Record<string, string> = {};
+      const cobMap: Record<string, string> = {};
       if (cobIds.length) {
         const { data: profs } = await (supabase.from as any)("profiles").select("id, nombre_completo").in("id", cobIds);
         for (const p of profs || []) cobMap[p.id] = p.nombre_completo;

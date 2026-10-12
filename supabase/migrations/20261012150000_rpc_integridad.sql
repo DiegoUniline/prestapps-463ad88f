@@ -2,7 +2,7 @@
 -- (transferencias, gastos, liquidaciones, alta/cancelación/reestructura de préstamos,
 -- edición de pagos) ahora es UNA llamada RPC = una transacción, con validación de tenant
 -- y de saldo bajo bloqueo de fila. Idempotente y aditivo (solo CREATE OR REPLACE).
--- Supone: cajas.saldo_actual lo mantiene un trigger sobre movimientos_caja (como hoy).
+-- Saldo disponible = caja_saldos() (misma fórmula que la UI).
 
 -- ── Helpers internos (no ejecutables por clientes) ─────────────────────────────
 
@@ -40,12 +40,20 @@ BEGIN
   RETURN c;
 END $$;
 
+-- Usa el mismo saldo que ve el usuario (caja_saldos, definida en 20261012160000);
+-- si aún no existe cae a cajas.saldo_actual.
 CREATE OR REPLACE FUNCTION public._integ_check_saldo(c public.cajas, p_monto numeric)
 RETURNS void LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  v_saldo numeric;
 BEGIN
-  IF coalesce(c.saldo_actual, 0) < p_monto THEN
+  IF to_regprocedure('public.caja_saldos(uuid[])') IS NOT NULL THEN
+    EXECUTE 'SELECT saldo FROM public.caja_saldos($1)' INTO v_saldo USING ARRAY[c.id];
+  END IF;
+  v_saldo := coalesce(v_saldo, c.saldo_actual, 0);
+  IF v_saldo < p_monto THEN
     RAISE EXCEPTION 'Saldo insuficiente en la caja "%" (disponible %, requerido %)',
-      c.nombre, public._integ_fmt(c.saldo_actual), public._integ_fmt(p_monto);
+      c.nombre, public._integ_fmt(v_saldo), public._integ_fmt(p_monto);
   END IF;
 END $$;
 

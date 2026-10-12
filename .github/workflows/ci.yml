@@ -27,9 +27,7 @@ jobs:
         run: npx tsc --noEmit -p tsconfig.app.json
 
       - name: Lint
-        # TODO: drop continue-on-error once the remaining lint errors are fixed
-        continue-on-error: true
-        run: npx eslint . --max-warnings=-1
+        run: npx eslint .
 
       - name: Unit tests
         run: npm test

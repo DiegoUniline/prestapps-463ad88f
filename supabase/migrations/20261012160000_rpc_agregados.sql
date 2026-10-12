@@ -21,84 +21,112 @@ LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
 DECLARE
   v_emp uuid := public.get_user_empresa_id();
   v_f jsonb := coalesce(p_filters, '{}'::jsonb);
   v_desde text := nullif(v_f->>'desde', '');
   v_hasta text := nullif(v_f->>'hasta', '');
+  v_desde_d date;
+  v_hasta_d date;
   v_ruta uuid := nullif(v_f->>'ruta_id', '')::uuid;
   v_cob uuid := nullif(v_f->>'cobrador_id', '')::uuid;
   v_caja uuid := nullif(v_f->>'caja_id', '')::uuid;
   v_today date := coalesce(nullif(v_f->>'today', '')::date, (now() AT TIME ZONE 'UTC')::date);
   v_today_local date;
-  v_today_txt text;
-  v_mes text;
+  v_mes_ini date;
+  v_tz text := current_setting('TimeZone');
   v_meses text[];
+  v_sin_filtros boolean;
   v_result jsonb;
 BEGIN
   IF v_emp IS NULL THEN
     RETURN NULL;
   END IF;
+  v_sin_filtros := v_desde IS NULL AND v_hasta IS NULL AND v_ruta IS NULL AND v_cob IS NULL AND v_caja IS NULL;
+  v_desde_d := v_desde::date;
+  v_hasta_d := v_hasta::date;
   v_today_local := coalesce(nullif(v_f->>'today_local', '')::date, v_today);
-  v_today_txt := to_char(v_today, 'YYYY-MM-DD');
-  v_mes := to_char(v_today, 'YYYY-MM');
+  v_mes_ini := date_trunc('month', v_today)::date;
   SELECT coalesce(array_agg(x), ARRAY[]::text[]) INTO v_meses
   FROM jsonb_array_elements_text(coalesce(v_f->'meses', '[]'::jsonb)) AS x;
   IF cardinality(v_meses) = 0 THEN
     v_meses := ARRAY(
-      SELECT to_char(date_trunc('month', v_today::timestamp) - make_interval(months => g), 'YYYY-MM')
+      SELECT to_char(v_mes_ini - make_interval(months => g), 'YYYY-MM')
       FROM generate_series(5, 0, -1) AS g
     );
   END IF;
 
+  -- Semántica idéntica al cálculo previo en el navegador:
+  --  * fechas de pagos/movimientos = fecha (zona de la sesión, UTC en Supabase) de created_at;
+  --  * prestamos.fecha_registro se compara como texto (igual que el string JSON);
+  --  * pagos NO filtran anulado (el dashboard previo tampoco lo hacía).
   WITH pr AS (
     SELECT p.id, p.cliente_id, p.ruta_id, p.cobrador_id,
            p.estado::text AS estado,
            p.frecuencia::text AS frecuencia,
            coalesce(p.monto_solicitado, 0) AS monto,
            coalesce(p.monto_total_pagar, 0) AS total_pagar,
-           coalesce(to_jsonb(p.fecha_registro) #>> '{}', '') AS freg,
+           coalesce(p.fecha_registro::text, '') AS freg,
            p.estado::text IN ('Activo', 'Al día', 'Vencido') AS activo
     FROM prestamos p
     WHERE p.empresa_id = v_emp
       AND (v_ruta IS NULL OR p.ruta_id = v_ruta)
       AND (v_cob IS NULL OR p.cobrador_id = v_cob)
       AND (v_caja IS NULL OR p.caja_id = v_caja)
-      AND (v_desde IS NULL OR coalesce(to_jsonb(p.fecha_registro) #>> '{}', '') COLLATE "C" >= v_desde)
-      AND (v_hasta IS NULL OR coalesce(to_jsonb(p.fecha_registro) #>> '{}', '') COLLATE "C" <= v_hasta)
+      AND (v_desde IS NULL OR coalesce(p.fecha_registro::text, '') COLLATE "C" >= v_desde)
+      AND (v_hasta IS NULL OR coalesce(p.fecha_registro::text, '') COLLATE "C" <= v_hasta)
   ),
+  -- Amortización pre-agregada por (préstamo, status): todo lo demás se acumula desde aquí.
   am AS (
-    SELECT a.prestamo_id, pr.activo, pr.cobrador_id, pr.ruta_id,
-           coalesce(a.saldo_total, 0) AS st,
-           coalesce(a.saldo_mora, 0) AS sm,
-           coalesce(a.saldo_capital, 0) AS sc,
-           coalesce(a.saldo_interes, 0) AS si,
-           coalesce(a.capital_pagado, 0) AS cp,
-           coalesce(a.interes_pagado, 0) AS ip,
-           coalesce(a.mora_pagada, 0) AS mp,
-           a.status::text AS status,
-           a.fecha_vencimiento::date AS fv,
-           a.status IS DISTINCT FROM 'Pagada' AS pendiente
-    FROM amortizacion a
-    JOIN pr ON pr.id = a.prestamo_id
-    WHERE a.empresa_id = v_emp
+    SELECT g.*, g.status IS DISTINCT FROM 'Pagada' AS pendiente, pr.activo, pr.cobrador_id, pr.ruta_id
+    FROM (
+      SELECT a.prestamo_id,
+             a.status::text AS status,
+             count(*) AS n,
+             sum(coalesce(a.saldo_total, 0)) AS st,
+             sum(coalesce(a.saldo_capital, 0)) AS sc,
+             sum(coalesce(a.saldo_interes, 0)) AS si,
+             sum(coalesce(a.saldo_mora, 0)) AS sm,
+             sum(coalesce(a.capital_pagado, 0)) AS cp,
+             sum(coalesce(a.interes_pagado, 0)) AS ip,
+             sum(coalesce(a.mora_pagada, 0)) AS mp,
+             count(*) FILTER (WHERE a.fecha_vencimiento::date < v_today) AS n_venc,
+             coalesce(sum(coalesce(a.saldo_total, 0)) FILTER (WHERE a.fecha_vencimiento::date < v_today), 0) AS st_venc,
+             count(*) FILTER (WHERE a.fecha_vencimiento::date = v_today) AS n_hoy,
+             coalesce(sum(coalesce(a.saldo_total, 0)) FILTER (WHERE a.fecha_vencimiento::date = v_today), 0) AS st_hoy,
+             max(v_today_local - a.fecha_vencimiento::date) FILTER (WHERE a.fecha_vencimiento::date < v_today) AS dias
+      FROM amortizacion a
+      WHERE a.empresa_id = v_emp
+        AND (v_sin_filtros OR a.prestamo_id IN (SELECT pr.id FROM pr))
+      GROUP BY a.prestamo_id, a.status
+    ) g
+    JOIN pr ON pr.id = g.prestamo_id
   ),
+  -- Pagos pre-agregados por (cobrador, día)
   pg AS (
-    SELECT p.cobrador_id,
-           coalesce(p.monto_recibido, 0) AS m,
-           coalesce(p.aplicado_capital, 0) AS c,
-           coalesce(p.aplicado_interes, 0) AS i,
-           coalesce(p.aplicado_mora, 0) AS mo,
-           coalesce(left(p.created_at::text, 10), '') AS d
-    FROM pagos p
-    JOIN pr ON pr.id = p.prestamo_id
-    WHERE p.empresa_id = v_emp
-      AND (v_cob IS NULL OR p.cobrador_id = v_cob)
-      AND (v_caja IS NULL OR p.caja_id = v_caja)
-      AND (v_ruta IS NULL OR p.ruta_id = v_ruta)
-      AND (v_desde IS NULL OR coalesce(left(p.created_at::text, 10), '') COLLATE "C" >= v_desde)
-      AND (v_hasta IS NULL OR coalesce(left(p.created_at::text, 10), '') COLLATE "C" <= v_hasta)
+    SELECT x.cobrador_id, x.d,
+           count(*) AS n,
+           sum(x.m) AS m, sum(x.c) AS c, sum(x.i) AS i, sum(x.mo) AS mo
+    FROM (
+      SELECT p.cobrador_id,
+             (p.created_at AT TIME ZONE v_tz)::date AS d,
+             coalesce(p.monto_recibido, 0) AS m,
+             coalesce(p.aplicado_capital, 0) AS c,
+             coalesce(p.aplicado_interes, 0) AS i,
+             coalesce(p.aplicado_mora, 0) AS mo
+      FROM pagos p
+      JOIN pr ON pr.id = p.prestamo_id
+      WHERE p.empresa_id = v_emp
+        AND (v_cob IS NULL OR p.cobrador_id = v_cob)
+        AND (v_caja IS NULL OR p.caja_id = v_caja)
+        AND (v_ruta IS NULL OR p.ruta_id = v_ruta)
+    ) x
+    WHERE (v_desde_d IS NULL OR x.d >= v_desde_d)
+      AND (v_hasta_d IS NULL OR x.d IS NULL OR x.d <= v_hasta_d)
+    GROUP BY x.cobrador_id, x.d
   ),
   k_pr AS (
     SELECT count(*) AS total,
@@ -110,6 +138,18 @@ BEGIN
            coalesce(sum(total_pagar) FILTER (WHERE activo), 0) AS total_pagar
     FROM pr
   ),
+  -- Por préstamo activo, solo cuotas no pagadas (top deudores y préstamos en riesgo)
+  deud AS (
+    SELECT am.prestamo_id,
+           sum(am.st) AS saldo,
+           sum(am.st_venc) AS vencido,
+           sum(am.sm) AS mora,
+           greatest(coalesce(max(am.dias), 0), 0) AS dias,
+           sum(am.n_venc) > 0 AS en_riesgo
+    FROM am
+    WHERE am.activo AND am.pendiente
+    GROUP BY am.prestamo_id
+  ),
   k_am AS (
     SELECT coalesce(sum(st) FILTER (WHERE pendiente), 0) AS saldo_por_cobrar,
            coalesce(sum(sc) FILTER (WHERE pendiente), 0) AS saldo_capital,
@@ -118,14 +158,14 @@ BEGIN
            coalesce(sum(cp), 0) AS capital_recuperado,
            coalesce(sum(ip), 0) AS interes_recuperado,
            coalesce(sum(mp), 0) AS mora_recuperada,
-           count(*) FILTER (WHERE status = 'Vencida' OR (fv < v_today AND pendiente)) AS cuotas_vencidas,
-           count(*) FILTER (WHERE pendiente) AS cuotas_pendientes,
-           count(*) FILTER (WHERE status = 'Pagada') AS cuotas_pagadas,
-           count(*) AS total_cuotas,
-           coalesce(sum(st) FILTER (WHERE fv < v_today AND pendiente), 0) AS monto_vencido,
-           coalesce(sum(st) FILTER (WHERE fv = v_today AND pendiente), 0) AS monto_vence_hoy,
-           count(*) FILTER (WHERE fv = v_today AND pendiente) AS cuotas_vencen_hoy,
-           count(DISTINCT prestamo_id) FILTER (WHERE fv < v_today AND pendiente) AS prestamos_en_riesgo
+           coalesce(sum(CASE WHEN status = 'Vencida' THEN n WHEN pendiente THEN n_venc ELSE 0 END), 0) AS cuotas_vencidas,
+           coalesce(sum(n) FILTER (WHERE pendiente), 0) AS cuotas_pendientes,
+           coalesce(sum(n) FILTER (WHERE status = 'Pagada'), 0) AS cuotas_pagadas,
+           coalesce(sum(n), 0) AS total_cuotas,
+           coalesce(sum(st_venc) FILTER (WHERE pendiente), 0) AS monto_vencido,
+           coalesce(sum(st_hoy) FILTER (WHERE pendiente), 0) AS monto_vence_hoy,
+           coalesce(sum(n_hoy) FILTER (WHERE pendiente), 0) AS cuotas_vencen_hoy,
+           (SELECT count(*) FROM deud WHERE en_riesgo) AS prestamos_en_riesgo
     FROM am
     WHERE activo
   ),
@@ -134,22 +174,25 @@ BEGIN
            coalesce(sum(c), 0) AS capital_cobrado,
            coalesce(sum(i), 0) AS interes_cobrado,
            coalesce(sum(mo), 0) AS mora_cobrada,
-           coalesce(sum(m) FILTER (WHERE d = v_today_txt), 0) AS cobrado_hoy,
-           count(*) FILTER (WHERE d = v_today_txt) AS num_pagos_hoy,
-           coalesce(sum(m) FILTER (WHERE left(d, 7) = v_mes), 0) AS cobrado_mes,
-           coalesce(sum(i + mo) FILTER (WHERE left(d, 7) = v_mes), 0) AS ingreso_financiero_mes
+           coalesce(sum(m) FILTER (WHERE d = v_today), 0) AS cobrado_hoy,
+           coalesce(sum(n) FILTER (WHERE d = v_today), 0) AS num_pagos_hoy,
+           coalesce(sum(m) FILTER (WHERE date_trunc('month', d) = v_mes_ini), 0) AS cobrado_mes,
+           coalesce(sum(i + mo) FILTER (WHERE date_trunc('month', d) = v_mes_ini), 0) AS ingreso_financiero_mes
     FROM pg
   ),
   k_mv AS (
-    SELECT coalesce(sum(coalesce(m.monto, 0)), 0) AS gastos_mes
-    FROM movimientos_caja m
-    WHERE m.empresa_id = v_emp
-      AND (v_caja IS NULL OR m.caja_id = v_caja)
-      AND (v_desde IS NULL OR coalesce(left(m.created_at::text, 10), '') COLLATE "C" >= v_desde)
-      AND (v_hasta IS NULL OR coalesce(left(m.created_at::text, 10), '') COLLATE "C" <= v_hasta)
-      AND m.tipo::text = 'salida'
-      AND left(coalesce(m.created_at::text, ''), 7) = v_mes
-      AND lower(translate(coalesce(m.concepto, ''), 'ÁÉÍÓÚ', 'áéíóú'))
+    SELECT coalesce(sum(coalesce(x.monto, 0)), 0) AS gastos_mes
+    FROM (
+      SELECT m.monto, m.concepto, m.tipo, (m.created_at AT TIME ZONE v_tz)::date AS d
+      FROM movimientos_caja m
+      WHERE m.empresa_id = v_emp
+        AND (v_caja IS NULL OR m.caja_id = v_caja)
+        AND m.tipo::text = 'salida'
+    ) x
+    WHERE (v_desde_d IS NULL OR x.d >= v_desde_d)
+      AND (v_hasta_d IS NULL OR x.d IS NULL OR x.d <= v_hasta_d)
+      AND date_trunc('month', x.d) = v_mes_ini
+      AND lower(translate(coalesce(x.concepto, ''), 'ÁÉÍÓÚ', 'áéíóú'))
           !~ '(desembolso|préstamo|prestamo|retiro|transferencia|recurso|anulación|anulacion|corrección|correccion)'
   ),
   k_misc AS (
@@ -163,17 +206,6 @@ BEGIN
           AND pp.status = 'Pendiente' AND pp.fecha_prometida::date <= v_today) AS monto_promesas_hoy,
       (SELECT count(*) FROM clientes cl WHERE cl.empresa_id = v_emp AND cl.estado::text = 'Activo') AS clientes_activos,
       (SELECT count(*) FROM clientes cl WHERE cl.empresa_id = v_emp AND cl.estado::text = 'En mora') AS clientes_mora
-  ),
-  deud AS (
-    SELECT am.prestamo_id,
-           sum(am.st) AS saldo,
-           coalesce(sum(am.st) FILTER (WHERE am.fv < v_today), 0) AS vencido,
-           sum(am.sm) AS mora,
-           greatest(coalesce(max(v_today_local - am.fv) FILTER (WHERE am.fv < v_today), 0), 0) AS dias
-    FROM am
-    WHERE am.activo AND am.pendiente
-    GROUP BY am.prestamo_id
-    HAVING sum(am.st) > 0
   ),
   top_deud AS (
     SELECT jsonb_agg(jsonb_build_object(
@@ -190,7 +222,7 @@ BEGIN
              'ruta', coalesce(nullif(r.nombre, ''), 'Sin ruta'),
              'cobrador', coalesce(nullif(pf.nombre_completo, ''), 'Sin cobrador')
            ) ORDER BY d.vencido DESC, d.saldo DESC, d.prestamo_id) AS items
-    FROM (SELECT * FROM deud ORDER BY vencido DESC, saldo DESC, prestamo_id LIMIT 8) d
+    FROM (SELECT * FROM deud WHERE saldo > 0 ORDER BY vencido DESC, saldo DESC, prestamo_id LIMIT 8) d
     JOIN pr ON pr.id = d.prestamo_id
     LEFT JOIN clientes cl ON cl.id = pr.cliente_id
     LEFT JOIN rutas r ON r.id = pr.ruta_id AND r.empresa_id = v_emp
@@ -207,8 +239,8 @@ BEGIN
            ) ORDER BY u.ord) AS items
     FROM unnest(v_meses) WITH ORDINALITY AS u(ym, ord)
     LEFT JOIN (SELECT left(freg, 7) AS ym, sum(monto) AS colocado FROM pr GROUP BY 1) col ON col.ym = u.ym
-    LEFT JOIN (SELECT left(d, 7) AS ym, sum(m) AS cobrado, sum(mo) AS mora, sum(i) AS interes, sum(c) AS capital
-               FROM pg GROUP BY 1) pm ON pm.ym = u.ym
+    LEFT JOIN (SELECT to_char(d, 'YYYY-MM') AS ym, sum(m) AS cobrado, sum(mo) AS mora, sum(i) AS interes, sum(c) AS capital
+               FROM pg WHERE d IS NOT NULL GROUP BY 1) pm ON pm.ym = u.ym
   ),
   pies AS (
     SELECT
@@ -217,7 +249,7 @@ BEGIN
       (SELECT coalesce(jsonb_agg(jsonb_build_object('name', name, 'value', value) ORDER BY value DESC, name), '[]'::jsonb)
          FROM (SELECT coalesce(nullif(frecuencia, ''), 'semanal') AS name, count(*) AS value FROM pr WHERE activo GROUP BY 1) x) AS frecuencia,
       (SELECT coalesce(jsonb_agg(jsonb_build_object('name', name, 'value', value) ORDER BY value DESC, name), '[]'::jsonb)
-         FROM (SELECT coalesce(nullif(status, ''), 'Pendiente') AS name, count(*) AS value FROM am WHERE activo GROUP BY 1) x) AS cuota_status
+         FROM (SELECT coalesce(nullif(status, ''), 'Pendiente') AS name, sum(n) AS value FROM am WHERE activo GROUP BY 1) x) AS cuota_status
   ),
   cob_stats AS (
     SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -259,7 +291,7 @@ BEGIN
          FROM cajas cj WHERE cj.empresa_id = v_emp) AS cajas
   )
   SELECT jsonb_build_object(
-    'today', v_today_txt,
+    'today', to_char(v_today, 'YYYY-MM-DD'),
     'prestamos', to_jsonb(k_pr),
     'cuotas', to_jsonb(k_am),
     'pagos', to_jsonb(k_pg),
@@ -307,6 +339,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   WITH t AS (
     SELECT coalesce(p_today, (now() AT TIME ZONE 'UTC')::date) AS hoy
@@ -375,6 +408,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   SELECT c.id,
          coalesce((SELECT sum(coalesce(p.monto_recibido, 0)) FROM pagos p
@@ -401,6 +435,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   SELECT coalesce(sum(coalesce(p.monto_recibido, 0)), 0)
   FROM pagos p
@@ -418,6 +453,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   WITH emp AS (SELECT public.get_user_empresa_id() AS id),
   pr AS (
@@ -467,6 +503,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   WITH emp AS (SELECT public.get_user_empresa_id() AS id),
   pg AS (
@@ -543,6 +580,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   SELECT coalesce(p.cobrador_id::text, p.generado_por::text) AS advisor_id,
          count(DISTINCT p.cliente_id)::integer,
@@ -563,6 +601,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   SELECT coalesce(jsonb_object_agg(x.cliente_id, x.ultima), '{}'::jsonb)
   FROM (
@@ -582,6 +621,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   SELECT coalesce(jsonb_object_agg(x.prestamo_id, jsonb_build_object('count', x.n, 'ultima', x.ultima)), '{}'::jsonb)
   FROM (
@@ -600,6 +640,7 @@ LANGUAGE sql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
   SELECT p.ruta_id, count(*)::integer
   FROM prestamos p
@@ -618,6 +659,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
+SET jit = off
 AS $$
 DECLARE
   v_emp uuid := public.get_user_empresa_id();
@@ -657,19 +699,16 @@ BEGIN
 
   v_sql := $q$
     WITH base AS (
-      SELECT p.id, p.prestamo_id, p.created_at, p.anulado, p.cuota_id, p.caja_id, p.cobrador_id,
-             to_jsonb(p.fecha_pago) #>> '{}' AS fecha_pago,
+      SELECT p.id, p.created_at,
              coalesce(p.monto_recibido, 0) AS monto_recibido,
              coalesce(p.aplicado_mora, 0) AS aplicado_mora,
              coalesce(p.aplicado_interes, 0) AS aplicado_interes,
              coalesce(p.aplicado_capital, 0) AS aplicado_capital,
              coalesce(nullif(p.metodo_pago::text, ''), 'Efectivo') AS metodo,
              coalesce(nullif(cl.nombre_completo, ''), '—') AS cliente,
-             nullif(cl.telefono, '') AS cliente_telefono,
              coalesce(nullif(pr.id_prestamo, ''), 'PRE-' || left(coalesce(p.prestamo_id::text, ''), 8)) AS short_id,
              coalesce(nullif(cj.nombre, ''), '—') AS caja,
-             coalesce(nullif(r.nombre, ''), '—') AS ruta,
-             coalesce(pr.num_cuotas, 0) AS num_cuotas
+             coalesce(nullif(r.nombre, ''), '—') AS ruta
       FROM pagos p
       LEFT JOIN prestamos pr ON pr.id = p.prestamo_id
       LEFT JOIN clientes cl ON cl.id = pr.cliente_id
@@ -696,6 +735,17 @@ BEGIN
     pagina AS (
       SELECT filt.*, row_number() OVER (ORDER BY $q$ || v_order || $q$) AS rn
       FROM filt ORDER BY $q$ || v_order || $q$ LIMIT $8 OFFSET $9
+    ),
+    filas AS (
+      SELECT pg.rn, pg.id, p.prestamo_id, pg.created_at, p.anulado, p.cuota_id, p.caja_id, p.cobrador_id,
+             to_jsonb(p.fecha_pago) #>> '{}' AS fecha_pago,
+             pg.monto_recibido, pg.aplicado_mora, pg.aplicado_interes, pg.aplicado_capital,
+             pg.metodo, pg.cliente, nullif(cl.telefono, '') AS cliente_telefono, pg.short_id, pg.caja, pg.ruta,
+             coalesce(pr.num_cuotas, 0) AS num_cuotas
+      FROM pagina pg
+      JOIN pagos p ON p.id = pg.id
+      LEFT JOIN prestamos pr ON pr.id = p.prestamo_id
+      LEFT JOIN clientes cl ON cl.id = pr.cliente_id
     )
     SELECT jsonb_build_object(
       'total', tot.total,
@@ -705,7 +755,7 @@ BEGIN
       'sum_capital', tot.sum_capital,
       'empresa', (SELECT jsonb_build_object('nombre', e.nombre, 'telefono', e.telefono, 'direccion', e.direccion, 'logo_url', e.logo_url)
                   FROM empresas e WHERE e.id = $1),
-      'rows', coalesce((SELECT jsonb_agg(to_jsonb(pagina) - 'rn' ORDER BY pagina.rn) FROM pagina), '[]'::jsonb)
+      'rows', coalesce((SELECT jsonb_agg(to_jsonb(filas) - 'rn' ORDER BY filas.rn) FROM filas), '[]'::jsonb)
     )
     FROM tot
   $q$;

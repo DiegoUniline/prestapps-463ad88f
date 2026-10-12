@@ -171,7 +171,7 @@ export default function PermisosPage() {
                                   <div className="flex items-center gap-2">
                                     <Checkbox
                                       checked={allChecked}
-                                      // @ts-ignore
+                                      // @ts-expect-error indeterminate no está en los tipos de Checkbox
                                       indeterminate={someChecked && !allChecked}
                                       onCheckedChange={() => toggleModule(mod.key)}
                                       disabled={activeRole === "admin" && mod.key === "permisos"}
