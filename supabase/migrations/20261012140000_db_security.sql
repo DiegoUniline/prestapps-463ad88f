@@ -6,7 +6,7 @@ RETURNS boolean LANGUAGE sql STABLE SET search_path = public AS $$
   SELECT coalesce(auth.jwt() ->> 'email', '') = 'diego.leon@uniline.mx'
 $$;
 
--- 1) search_path fijo en todas las SECURITY DEFINER de public
+-- 1) search_path fijo en todas las SECURITY DEFINER de public (incluye extensions para pgcrypto/uuid-ossp)
 DO $$
 DECLARE f record;
 BEGIN
@@ -16,23 +16,47 @@ BEGIN
     WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef AND p.prokind = 'f'
       AND NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) c WHERE c LIKE 'search_path=%')
   LOOP
-    EXECUTE format('ALTER FUNCTION %s SET search_path = public', f.sig);
+    EXECUTE format('ALTER FUNCTION %s SET search_path = public, extensions', f.sig);
   END LOOP;
 END $$;
 
--- 2) Ningún RPC SECURITY DEFINER ejecutable por anon (excepto helpers usados en RLS)
+-- 2) Ningún RPC SECURITY DEFINER ejecutable por anon (excepto helpers usados en RLS y hooks de auth).
+--    authenticated conserva EXECUTE solo si ya lo tenía.
 DO $$
-DECLARE f record;
+DECLARE
+  f record;
+  v_auth boolean;
 BEGIN
   FOR f IN
-    SELECT p.oid::regprocedure AS sig
+    SELECT p.oid, p.oid::regprocedure AS sig
     FROM pg_proc p
     WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef AND p.prokind = 'f'
       AND p.prorettype <> 'trigger'::regtype
       AND p.proname NOT IN ('get_user_empresa_id', 'has_role', 'is_super_admin')
+      AND p.proname NOT ILIKE '%hook%'
+      AND NOT (p.pronargs = 1 AND p.proargtypes[0] = 'jsonb'::regtype AND p.prorettype = 'jsonb'::regtype)
   LOOP
+    v_auth := has_function_privilege('authenticated', f.oid, 'EXECUTE');
     EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon', f.sig);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated, service_role', f.sig);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', f.sig);
+    IF v_auth THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', f.sig);
+    ELSE
+      EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM authenticated', f.sig);
+    END IF;
+  END LOOP;
+END $$;
+
+-- Funciones internas: solo service_role
+DO $$
+DECLARE f record;
+BEGIN
+  FOR f IN
+    SELECT p.oid::regprocedure AS sig FROM pg_proc p
+    WHERE p.pronamespace = 'public'::regnamespace AND p.proname IN ('buro_mover_creditos', 'cron_claim')
+  LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon, authenticated', f.sig);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO service_role', f.sig);
   END LOOP;
 END $$;
 

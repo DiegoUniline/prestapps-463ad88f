@@ -97,14 +97,14 @@ export function rpcEditarPago(args: {
   pagoId: string;
   monto: number;
   metodo: string;
-  cajaId: string;
+  cajaId: string | null;
   cobradorId?: string | null;
 }) {
   return callRpc<{ pago_id: string }>("editar_pago", {
     p_pago_id: args.pagoId,
     p_monto: args.monto,
     p_metodo: args.metodo,
-    p_caja_id: args.cajaId,
+    p_caja_id: args.cajaId || null,
     p_cobrador_id: args.cobradorId ?? null,
   });
 }
