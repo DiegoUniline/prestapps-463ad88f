@@ -3,6 +3,7 @@ import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpcRegistrarMovimientoCaja } from "@/lib/rpcIntegridad";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -134,17 +135,8 @@ export default function GastosPage() {
     try {
       const conceptoFull = `[${categoria}] ${concepto.trim()}${notas ? ` — ${notas.trim()}` : ""}`;
 
-      // 1) Create movimiento de salida
-      const { error } = await supabase.from("movimientos_caja").insert({
-        caja_id: cajaId,
-        tipo: "salida" as const,
-        monto: montoNum,
-        concepto: conceptoFull,
-        empresa_id: empresaId,
-      });
-      if (error) throw error;
-
-      // saldo_actual se sincroniza automáticamente via trigger
+      // Salida con validación de saldo bajo bloqueo (una sola transacción)
+      await rpcRegistrarMovimientoCaja(cajaId, "salida", montoNum, conceptoFull);
 
       toast.success(`Gasto de ${$$(montoNum)} registrado`);
       invalidateFinanceQueries(queryClient);

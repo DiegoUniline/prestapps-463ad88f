@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useMetodosPagoActivos } from "@/hooks/useCatalogos";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
+import { rpcEditarPago } from "@/lib/rpcIntegridad";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,6 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
   const nuevoMonto = parseFloat(montoRecibido) || 0;
   const montoOriginal = pago.monto_recibido;
   const diferencia = nuevoMonto - montoOriginal;
-  const cajaChanged = cajaId !== (pago.caja_id || "");
 
   const handleSave = async () => {
     if (nuevoMonto <= 0) {
@@ -87,97 +87,15 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
     }
     setSaving(true);
     try {
-      const montoChanged = Math.abs(diferencia) > 0.001;
-
-      // 1) Update the pago record metadata
-      const updateData: Record<string, any> = {
-        monto_recibido: nuevoMonto,
-        metodo_pago: metodo,
-        caja_id: cajaId,
-      };
-      if (isAdmin && cobradorId) updateData.cobrador_id = cobradorId;
-
-      await supabase.from("pagos").update(updateData as any).eq("id", pago.id);
-
-      // 2) Handle caja balance via movimientos_caja (let trigger manage saldo_actual)
-      if (montoChanged || cajaChanged) {
-        // Get human-readable loan ID for concepto
-        const { data: prestamoData } = await supabase
-          .from("prestamos")
-          .select("id_prestamo")
-          .eq("id", pago.prestamo_id)
-          .single();
-        const folio = prestamoData?.id_prestamo || pago.prestamo_id.slice(0, 8);
-
-        // Reverse original: insert salida on old caja
-        if (pago.caja_id) {
-          await supabase.from("movimientos_caja").insert({
-            caja_id: pago.caja_id,
-            tipo: "salida" as const,
-            monto: montoOriginal,
-            prestamo_id: pago.prestamo_id,
-            concepto: `Corrección pago ${folio} — salida de caja anterior`,
-            empresa_id: empresaId,
-          });
-        }
-        // Re-enter on new caja
-        await supabase.from("movimientos_caja").insert({
-          caja_id: cajaId,
-          tipo: "entrada" as const,
-          monto: nuevoMonto,
-          prestamo_id: pago.prestamo_id,
-          concepto: cajaChanged && !montoChanged
-            ? `Corrección pago ${folio} — cambio de caja`
-            : `Corrección pago ${folio} — monto actualizado`,
-          empresa_id: empresaId,
-        });
-      }
-
-      // 3) Handle cobrador efectivo_en_mano changes
-      if (pago.cobrador_id && pago.cobrador_id !== cobradorId) {
-        const { data: oldCob } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", pago.cobrador_id).single();
-        if (oldCob) {
-          await supabase.from("profiles").update({
-            efectivo_en_mano: Math.max(0, Number(oldCob.efectivo_en_mano || 0) - montoOriginal),
-          }).eq("id", pago.cobrador_id);
-        }
-      }
-      if (cobradorId) {
-        const { data: newCob } = await supabase.from("profiles").select("efectivo_en_mano").eq("id", cobradorId).single();
-        if (newCob && cobradorId !== pago.cobrador_id) {
-          await supabase.from("profiles").update({
-            efectivo_en_mano: Number(newCob.efectivo_en_mano || 0) + nuevoMonto,
-          }).eq("id", cobradorId);
-        } else if (newCob && cobradorId === pago.cobrador_id && montoChanged) {
-          await supabase.from("profiles").update({
-            efectivo_en_mano: Number(newCob.efectivo_en_mano || 0) + diferencia,
-          }).eq("id", cobradorId);
-        }
-      }
-
-      // 4) If monto changed, rebuild amortizacion atomically via RPC
-      if (montoChanged) {
-        const { error: rebuildErr } = await supabase.rpc("rebuild_amortizacion", {
-          p_prestamo_id: pago.prestamo_id,
-        });
-        if (rebuildErr) throw rebuildErr;
-      } else {
-        // Check liquidado status even if monto didn't change
-        const { data: remaining } = await supabase
-          .from("amortizacion")
-          .select("id")
-          .eq("prestamo_id", pago.prestamo_id)
-          .not("status", "eq", "Pagada");
-
-        if (remaining && remaining.length === 0) {
-          await supabase.from("prestamos").update({ estado: "Liquidado" as any }).eq("id", pago.prestamo_id);
-        } else {
-          const { data: prest } = await supabase.from("prestamos").select("estado").eq("id", pago.prestamo_id).single();
-          if (prest?.estado === "Liquidado") {
-            await supabase.from("prestamos").update({ estado: "Activo" as any }).eq("id", pago.prestamo_id);
-          }
-        }
-      }
+      // Pago + movimientos de corrección + efectivo_en_mano + amortización en una sola
+      // transacción. El servidor rechaza pagos ya liquidados en un corte.
+      await rpcEditarPago({
+        pagoId: pago.id,
+        monto: nuevoMonto,
+        metodo,
+        cajaId,
+        cobradorId: isAdmin && cobradorId ? cobradorId : null,
+      });
 
       invalidateFinanceQueries(queryClient, { prestamoId: pago.prestamo_id });
 

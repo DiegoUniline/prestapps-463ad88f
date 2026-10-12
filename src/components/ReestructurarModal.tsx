@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { rpcReestructurarPrestamo } from "@/lib/rpcIntegridad";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
-import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useFrecuenciasPagoActivas } from "@/hooks/useCatalogos";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -49,12 +48,11 @@ function calcNextDate(base: Date, frecuencia: string, n: number): Date {
 }
 
 export function ReestructurarModal({
-  open, onOpenChange, prestamoId, clienteId, clienteNombre,
+  open, onOpenChange, prestamoId, clienteNombre,
   saldoCapital, saldoTotal, prestamo,
 }: ReestructurarModalProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { empresaId } = useEmpresa();
   const { data: frecuencias = [] } = useFrecuenciasPagoActivas();
 
   const [base, setBase] = useState<"capital" | "total">("capital");
@@ -83,22 +81,7 @@ export function ReestructurarModal({
   const handleReestructurar = async () => {
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // 1) Cancel original loan as "Reestructurado"
-      await supabase.from("prestamos").update({
-        estado: "Reestructurado" as any,
-        cancelado_por: user?.id || null,
-        cancelado_en: new Date().toISOString(),
-        motivo_cancelacion: `Reestructurado — base: ${base === "capital" ? "solo capital" : "saldo total"} (${$$(montoBase)})`,
-      } as any).eq("id", prestamoId);
-
-      // Zero out remaining cuotas on old loan
-      await supabase.from("amortizacion").update({
-        saldo_capital: 0, saldo_interes: 0, saldo_mora: 0, saldo_total: 0,
-      }).eq("prestamo_id", prestamoId).not("status", "eq", "Pagada");
-
-      // 2) Create new loan
+      // 1) Datos del nuevo préstamo
       const fechaPrimerPago = calcNextDate(new Date(), frecuencia, 1);
       let montoTotalPagar = montoBase;
       if (modalidad === "fijo") {
@@ -107,31 +90,25 @@ export function ReestructurarModal({
         montoTotalPagar = cuotaEstimada * cuotasNum;
       }
 
-      const { data: newPrestamo, error: newErr } = await supabase.from("prestamos").insert({
-        cliente_id: clienteId,
-        empresa_id: empresaId,
+      const nuevoPrestamo = {
         monto_solicitado: montoBase,
         monto_total_pagar: montoTotalPagar,
         num_cuotas: cuotasNum,
-        frecuencia: frecuencia as any,
-        modalidad: modalidad as any,
+        frecuencia,
+        modalidad,
         tasa_interes: tasaNum,
         cuota_calculada: cuotaEstimada,
-        tipo_mora: prestamo.tipo_mora as any,
+        tipo_mora: prestamo.tipo_mora,
         valor_mora: prestamo.valor_mora,
         caja_id: prestamo.caja_id,
         ruta_id: prestamo.ruta_id,
         cobrador_id: prestamo.cobrador_id,
         fecha_primer_pago: fechaPrimerPago.toISOString().slice(0, 10),
-        estado: "Activo" as any,
-        generado_por: user?.id || null,
-        reestructurado_de: prestamoId,
+        estado: "Activo",
         notas: `Reestructurado del préstamo PRE-${prestamoId.slice(0, 8)} — base: ${base === "capital" ? "solo capital" : "saldo total"}`,
-      } as any).select("id").single();
+      };
 
-      if (newErr) throw newErr;
-
-      // 3) Generate amortization for new loan
+      // 2) Amortización del nuevo préstamo
       const cuotaRows = [];
       for (let i = 1; i <= cuotasNum; i++) {
         const fechaVenc = calcNextDate(fechaPrimerPago, frecuencia, i - 1);
@@ -148,8 +125,6 @@ export function ReestructurarModal({
 
         const capitalInteres = capital + interes;
         cuotaRows.push({
-          prestamo_id: newPrestamo.id,
-          empresa_id: empresaId,
           num_cuota: i,
           capital,
           interes,
@@ -158,12 +133,19 @@ export function ReestructurarModal({
           saldo_capital: capital,
           saldo_interes: interes,
           saldo_total: capitalInteres,
-          status: "Pendiente" as any,
+          status: "Pendiente",
         });
       }
 
-      const { error: amortErr } = await supabase.from("amortizacion").insert(cuotaRows as any);
-      if (amortErr) throw amortErr;
+      // 3) Nuevo préstamo + cuotas + cierre del original en una sola transacción
+      //    (el original solo se marca "Reestructurado" si el nuevo se creó)
+      const res = await rpcReestructurarPrestamo(
+        prestamoId,
+        nuevoPrestamo,
+        cuotaRows,
+        `Reestructurado — base: ${base === "capital" ? "solo capital" : "saldo total"} (${$$(montoBase)})`,
+      );
+      const newPrestamo = { id: res.prestamo_id };
 
       invalidateFinanceQueries(queryClient, { prestamoId });
 

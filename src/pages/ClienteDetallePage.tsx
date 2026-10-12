@@ -14,6 +14,7 @@ import { ArrowLeft, Pencil, Save, X, Trash2, MapPin, Loader2, User, Briefcase, U
 import { useCliente, useCreateCliente, useUpdateCliente, useDeleteCliente } from "@/hooks/useClientes";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { rpcSiguienteIdCliente } from "@/lib/rpcIntegridad";
 import { fetchAllRows } from "@/lib/supabaseQuery";
 import { toast } from "sonner";
 import type { ClienteInsert } from "@/types/cliente";
@@ -153,18 +154,16 @@ export default function ClienteDetallePage() {
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const fotoInputRef = useRef<HTMLInputElement>(null);
 
-  // Pre-fill id_cliente for new clients
+  // Pre-fill id_cliente for new clients (siguiente CLI-XXXX de la empresa, calculado en servidor)
+  const idClienteSugerido = useRef<string | null>(null);
   useEffect(() => {
     if (isNew && !form.id_cliente) {
-      supabase.from("clientes").select("id_cliente")
-        .then(({ data }) => {
-          let maxNum = 0;
-          for (const row of data || []) {
-            const m = row.id_cliente?.match(/(\d+)/);
-            if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
-          }
-          setForm(p => ({ ...p, id_cliente: `CLI-${String(maxNum + 1).padStart(4, "0")}` }));
-        });
+      rpcSiguienteIdCliente()
+        .then((codigo) => {
+          idClienteSugerido.current = codigo;
+          setForm(p => (p.id_cliente ? p : { ...p, id_cliente: codigo }));
+        })
+        .catch(() => {});
     }
   }, [isNew]);
 
@@ -254,7 +253,16 @@ export default function ClienteDetallePage() {
     }
 
     if (isNew) {
-      createCliente.mutate(form, {
+      let payload = form;
+      // Si el usuario dejó el código sugerido, se recalcula justo antes de guardar
+      if (idClienteSugerido.current && (form as any).id_cliente === idClienteSugerido.current) {
+        try {
+          payload = { ...form, id_cliente: await rpcSiguienteIdCliente() } as typeof form;
+        } catch {
+          // se usa el sugerido
+        }
+      }
+      createCliente.mutate(payload, {
         onSuccess: (data) => { toast.success(`Cliente ${data.id_cliente} creado`); navigate(`/clientes/${data.id}`, { replace: true }); },
         onError: (e) => toast.error("Error: " + (e as Error).message),
       });

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpcRegistrarMovimientoCaja, rpcTransferirCaja } from "@/lib/rpcIntegridad";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { toast } from "sonner";
@@ -269,9 +270,11 @@ export default function CajaDetallePage() {
     if (!id || !m || m <= 0) return;
     if (tipo === "salida" && saldoActual < m) { toast.error("Saldo insuficiente"); return; }
     setSaving(true);
-    const { error } = await supabase.from("movimientos_caja").insert({ caja_id: id, tipo, monto: m, concepto: concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"), empresa_id: empresaId });
-    if (error) { toast.error(error.message); setSaving(false); return; }
-    // saldo_actual se sincroniza automáticamente via trigger
+    try {
+      await rpcRegistrarMovimientoCaja(id, tipo, m, concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"));
+    } catch (err: any) {
+      toast.error(err.message); setSaving(false); return;
+    }
     setSaving(false);
     toast.success(tipo === "entrada" ? `Depósito de ${$$(m)}` : `Retiro de ${$$(m)}`);
     invalidate();
@@ -290,9 +293,11 @@ export default function CajaDetallePage() {
     setSaving(true);
     const destino = allCajas.find(c => c.id === cajaDestinoId);
     const nota = concepto.trim() || `Transferencia ${caja?.nombre} → ${destino?.nombre}`;
-    await supabase.from("movimientos_caja").insert({ caja_id: id, tipo: "salida", monto: m, concepto: nota, empresa_id: empresaId });
-    await supabase.from("movimientos_caja").insert({ caja_id: cajaDestinoId, tipo: "entrada", monto: m, concepto: nota, empresa_id: empresaId });
-    // saldo_actual se sincroniza automáticamente via trigger
+    try {
+      await rpcTransferirCaja(id, cajaDestinoId, m, nota);
+    } catch (err: any) {
+      toast.error(err.message); setSaving(false); return;
+    }
     setSaving(false);
     toast.success(`Transferencia de ${$$(m)} completada`);
     invalidate();

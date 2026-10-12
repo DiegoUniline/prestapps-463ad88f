@@ -3,6 +3,8 @@ import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
+import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpcLiquidarRuta } from "@/lib/rpcIntegridad";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -71,18 +73,18 @@ function useCajas(empresaId: string) {
   });
 }
 
-// ── Cobrador pagos for corte calculation ──────────────────────────
-async function fetchCobradorPagos(cobradorId: string, desde?: string) {
-  let query = supabase
-    .from("pagos")
-    .select("monto_recibido, created_at")
-    .eq("cobrador_id", cobradorId);
-  
-  if (desde) query = query.gte("created_at", desde);
-  
-  const { data, error } = await query.order("created_at", { ascending: true });
-  if (error) throw error;
-  return data || [];
+// ── Pagos pendientes de liquidar (sin corte) del cobrador ─────────
+async function fetchPagosSinCorte(empresaId: string, cobradorId: string) {
+  return fetchAllRows<{ id: string; monto_recibido: number; metodo_pago: string | null }>(
+    supabase
+      .from("pagos")
+      .select("id, monto_recibido, metodo_pago")
+      .eq("empresa_id", empresaId)
+      .eq("cobrador_id", cobradorId)
+      .eq("anulado", false)
+      .is("corte_id" as any, null)
+      .order("created_at", { ascending: true })
+  );
 }
 
 type SortKey = "nombre_completo" | "porcentaje_comision" | "efectivo_en_mano" | "activo";
@@ -106,6 +108,7 @@ export default function CobradoresPage() {
   const [corteTotal, setCorteTotal] = useState(0);
   const [corteComision, setCorteComision] = useState(0);
   const [corteDeposito, setCorteDeposito] = useState(0);
+  const [cortePagoIds, setCortePagoIds] = useState<string[]>([]);
   const [loadingCorte, setLoadingCorte] = useState(false);
 
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -125,7 +128,7 @@ export default function CobradoresPage() {
 
   const resetModal = () => {
     setModal(null);
-    setSelectedCobrador(null); setCorteCajaId(""); setCorteTotal(0); setCorteComision(0); setCorteDeposito(0);
+    setSelectedCobrador(null); setCorteCajaId(""); setCorteTotal(0); setCorteComision(0); setCorteDeposito(0); setCortePagoIds([]);
   };
 
   const invalidate = () => invalidateFinanceQueries(queryClient);
@@ -157,20 +160,14 @@ export default function CobradoresPage() {
     setModal("corte");
 
     try {
-      const { data: lastCorte } = await (supabase.from as any)("cortes")
-        .select("created_at")
-        .eq("cobrador_id", cobrador.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      const desde = lastCorte?.created_at || undefined;
-      const pagos = await fetchCobradorPagos(cobrador.id, desde);
-
+      const pagos = await fetchPagosSinCorte(empresaId, cobrador.id);
       const totalCobrado = pagos.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-      const comision = totalCobrado * (cobrador.porcentaje_comision / 100);
-      const efectivo = cobrador.efectivo_en_mano;
+      const efectivo = pagos
+        .filter((p) => (p.metodo_pago || "Efectivo") === "Efectivo")
+        .reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+      const comision = efectivo * (cobrador.porcentaje_comision / 100);
 
+      setCortePagoIds(pagos.map((p) => p.id));
       setCorteTotal(totalCobrado);
       setCorteComision(comision);
       setCorteDeposito(efectivo);
@@ -183,51 +180,25 @@ export default function CobradoresPage() {
 
   // ── Execute corte ───────────────────────────────────────────────
   const handleCorte = async () => {
-    if (!selectedCobrador || !corteCajaId || corteDeposito <= 0) return;
+    if (!selectedCobrador || !corteCajaId || cortePagoIds.length === 0) return;
     setSaving(true);
 
     try {
-      // 1) Insert corte record
-      const { error: corteErr } = await (supabase.from as any)("cortes").insert({
-        cobrador_id: selectedCobrador.id,
-        caja_id: corteCajaId,
-        monto_efectivo: selectedCobrador.efectivo_en_mano,
-        monto_comision: corteComision,
-        monto_depositado: corteDeposito,
-        total_cobrado: corteTotal,
-        porcentaje_usado: selectedCobrador.porcentaje_comision,
-        empresa_id: empresaId,
-      });
-      if (corteErr) throw corteErr;
-
-      // 2) Deposit into caja (full efectivo)
-      await supabase.from("movimientos_caja").insert({
-        caja_id: corteCajaId,
-        tipo: "entrada",
-        monto: corteDeposito,
+      // Mismo flujo transaccional que Liquidar Ruta: vincula los pagos al corte
+      // (no se pueden liquidar dos veces), deposita el efectivo y registra la comisión.
+      const res = await rpcLiquidarRuta({
+        cobradorId: selectedCobrador.id,
+        pagoIds: cortePagoIds,
+        cajaId: corteCajaId,
+        periodoHasta: new Date().toISOString(),
         concepto: `Corte cobrador: ${selectedCobrador.nombre_completo}`,
-        empresa_id: empresaId,
+        conceptoComision: `Comisión cobrador: ${selectedCobrador.nombre_completo} (${selectedCobrador.porcentaje_comision}%)`,
       });
 
-      // saldo_actual se sincroniza automáticamente via trigger
-
-      // 3) Pay commission as separate exit from same caja
-      if (corteComision > 0) {
-        await supabase.from("movimientos_caja").insert({
-          caja_id: corteCajaId,
-          tipo: "salida",
-          monto: corteComision,
-          concepto: `Comisión cobrador: ${selectedCobrador.nombre_completo} (${selectedCobrador.porcentaje_comision}%)`,
-          empresa_id: empresaId,
-        });
-        // saldo_actual se sincroniza automáticamente via trigger
-      }
-
-      // 4) Reset cobrador cash to 0
-      await supabase.from("profiles").update({ efectivo_en_mano: 0 } as any).eq("id", selectedCobrador.id);
-
-      toast.success(`Corte realizado: ${$$(corteDeposito)} depositado, ${$$(corteComision)} comisión`);
+      toast.success(`Corte realizado: ${$$(Number(res.monto_efectivo || 0))} depositado, ${$$(Number(res.monto_comision || 0))} comisión`);
       invalidate();
+      queryClient.invalidateQueries({ queryKey: ["pagos-no-liquidados"] });
+      queryClient.invalidateQueries({ queryKey: ["historial-cortes"] });
       resetModal();
     } catch (err: any) {
       toast.error("Error: " + err.message);
@@ -448,7 +419,7 @@ export default function CobradoresPage() {
                 {/* Summary */}
                 <div className="bg-secondary rounded-lg px-4 py-3 space-y-2">
                   <div className="flex justify-between text-[13px]">
-                    <span className="text-muted-foreground">Total cobrado (período)</span>
+                    <span className="text-muted-foreground">Total cobrado sin liquidar ({cortePagoIds.length} pagos)</span>
                     <span className="font-semibold">{$$(corteTotal)}</span>
                   </div>
                   <div className="flex justify-between text-[13px]">
@@ -461,7 +432,7 @@ export default function CobradoresPage() {
                     <span className="font-semibold text-success">{$$(corteComision)}</span>
                   </div>
                   <div className="flex justify-between text-[13px]">
-                    <span className="text-muted-foreground">Efectivo en mano</span>
+                    <span className="text-muted-foreground">Efectivo a depositar</span>
                     <span className="font-bold text-lg">{$$(corteDeposito)}</span>
                   </div>
                 </div>
@@ -486,7 +457,7 @@ export default function CobradoresPage() {
           </div>
           <DialogFooter className="px-5 py-3 border-t bg-secondary/30">
             <Button variant="outline" size="sm" className="h-8 text-[13px]" onClick={resetModal}>Cancelar</Button>
-            <Button size="sm" className="h-8 text-[13px]" disabled={saving || loadingCorte || !corteCajaId || corteDeposito <= 0} onClick={handleCorte}>
+            <Button size="sm" className="h-8 text-[13px]" disabled={saving || loadingCorte || !corteCajaId || cortePagoIds.length === 0} onClick={handleCorte}>
               {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Scissors className="h-3.5 w-3.5 mr-1.5" />}
               Confirmar Corte
             </Button>

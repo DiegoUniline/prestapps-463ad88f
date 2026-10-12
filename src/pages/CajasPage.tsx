@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpcRegistrarMovimientoCaja, rpcTransferirCaja } from "@/lib/rpcIntegridad";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -240,13 +241,11 @@ export default function CajasPage() {
       return;
     }
 
-    const { error: movErr } = await supabase.from("movimientos_caja").insert({
-      caja_id: cajaId, tipo, monto: m,
-      concepto: concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"),
-      empresa_id: empresaId,
-    });
-    if (movErr) { toast.error("Error: " + movErr.message); setSaving(false); return; }
-    // saldo_actual se sincroniza automáticamente via trigger
+    try {
+      await rpcRegistrarMovimientoCaja(cajaId, tipo, m, concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"));
+    } catch (err: any) {
+      toast.error("Error: " + err.message); setSaving(false); return;
+    }
 
     setSaving(false);
     toast.success(tipo === "entrada" ? `Depósito de ${$$(m)} registrado` : `Retiro de ${$$(m)} registrado`);
@@ -270,9 +269,11 @@ export default function CajasPage() {
     const destino = cajas.find((c) => c.id === cajaDestinoId);
     const nota = concepto.trim() || `Transferencia ${origen?.nombre} → ${destino?.nombre}`;
 
-    await supabase.from("movimientos_caja").insert({ caja_id: cajaId, tipo: "salida", monto: m, concepto: nota, empresa_id: empresaId });
-    await supabase.from("movimientos_caja").insert({ caja_id: cajaDestinoId, tipo: "entrada", monto: m, concepto: nota, empresa_id: empresaId });
-    // saldo_actual se sincroniza automáticamente via trigger
+    try {
+      await rpcTransferirCaja(cajaId, cajaDestinoId, m, nota);
+    } catch (err: any) {
+      toast.error("Error: " + err.message); setSaving(false); return;
+    }
 
     setSaving(false);
     toast.success(`Transferencia de ${$$(m)} completada`);

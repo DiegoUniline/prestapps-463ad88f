@@ -1,11 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { useFrecuenciasPagoActivas, usePlanesCuotasActivos, type PlanCuota } from "@/hooks/useCatalogos";
 import { Button } from "@/components/ui/button";
 import { SearchableSelect, SearchableOption } from "@/components/shared/SearchableSelect";
@@ -25,6 +24,7 @@ import { format, addDays, addWeeks, addMonths, parse, isValid } from "date-fns";
 import { cn, $$ } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
+import { rpcCrearPrestamo } from "@/lib/rpcIntegridad";
 
 function useClientesOptions(empresaId: string) {
   return useQuery({
@@ -65,7 +65,6 @@ export default function NuevoPrestamoPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId, empresaNombre } = useEmpresa();
-  const { user } = useAuth();
 
   const { data: clientes = [] } = useClientesOptions(empresaId);
   const { data: cajas = [] } = useCajasOptions(empresaId);
@@ -91,21 +90,6 @@ export default function NuevoPrestamoPage() {
   const [tipoCuenta, setTipoCuenta] = useState<string>("prestamo");
   const [diasIgnorados, setDiasIgnorados] = useState<number[]>([]);
 
-  // Pre-fill codigoInterno with next PRE-XXXX
-  useEffect(() => {
-    if (!codigoInterno) {
-      (supabase.from as any)("prestamos")
-        .select("id_prestamo")
-        .then(({ data }: any) => {
-          let maxNum = 0;
-          for (const row of data || []) {
-            const m = row.id_prestamo?.match(/(\d+)/);
-            if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
-          }
-          setCodigoInterno(`PRE-${String(maxNum + 1).padStart(4, "0")}`);
-        });
-    }
-  }, []);
   const [cuotaOverride, setCuotaOverride] = useState("");
   const [esInicial, setEsInicial] = useState(false);
   const [cuotasCubiertas, setCuotasCubiertas] = useState("");
@@ -229,102 +213,63 @@ export default function NuevoPrestamoPage() {
         throw new Error("Selecciona una caja antes de crear el préstamo");
       }
 
-      // Validate caja balance if not carga inicial and not a sale
-      if (!esInicial && !esVenta && cajaId) {
-        const { data: caja } = await supabase
-          .from("cajas")
-          .select("saldo_actual")
-          .eq("id", cajaId)
-          .single();
-        if (caja && Number(caja.saldo_actual) < monto) {
-          throw new Error(`Saldo insuficiente en caja (${$$(Number(caja.saldo_actual))}). Monto requerido: ${$$(monto)}`);
-        }
-      }
+      const prestamoRow = {
+        cliente_id: clienteId,
+        monto_solicitado: monto,
+        monto_total_pagar: montoTotalPagar,
+        tasa_interes: tasa,
+        num_cuotas: cuotas,
+        frecuencia,
+        modalidad,
+        fecha_primer_pago: fechaPrimerPago ? format(fechaPrimerPago, "yyyy-MM-dd") : null,
+        caja_id: cajaId || null,
+        ruta_id: rutaId || null,
+        gastos_legales: parseFloat(gastosLegales) || 0,
+        tipo_mora: tipoMora,
+        valor_mora: parseFloat(valorMora) || 0,
+        empresa: empresaNombre || null,
+        notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
+        // Vacío => el servidor asigna el siguiente PRE-XXXX de la empresa
+        codigo_interno: codigoInterno.trim() || null,
+        tipo_cuenta: tipoCuenta,
+        cuota_calculada: cuotaCalculada,
+        cuota_redondeada: cuotaFinal,
+        gps_lat: geo.lat,
+        gps_lng: geo.lng,
+      };
 
-      const { data, error } = await supabase
-        .from("prestamos")
-        .insert({
-          cliente_id: clienteId,
-          monto_solicitado: monto,
-          monto_total_pagar: montoTotalPagar,
-          tasa_interes: tasa,
-          num_cuotas: cuotas,
-          frecuencia: frecuencia as any,
-          modalidad: modalidad as any,
-          fecha_primer_pago: fechaPrimerPago ? format(fechaPrimerPago, "yyyy-MM-dd") : null,
-          caja_id: cajaId || null,
-          ruta_id: rutaId || null,
-          gastos_legales: parseFloat(gastosLegales) || 0,
-          tipo_mora: tipoMora as any,
-          valor_mora: parseFloat(valorMora) || 0,
-          empresa: empresaNombre || null,
-          notas: esInicial ? `[CARGA INICIAL] ${notas || ""}`.trim() : notas || null,
-          codigo_interno: codigoInterno || null,
-          tipo_cuenta: tipoCuenta,
-          cuota_calculada: cuotaCalculada,
-          cuota_redondeada: cuotaFinal,
-          gps_lat: geo.lat,
-          gps_lng: geo.lng,
-          empresa_id: empresaId,
-        } as any)
-        .select("id")
-        .single();
+      const baseDate = fechaPrimerPago || new Date();
+      const numCubiertas = numCuotasCubiertas;
+      const cuotasInsert = amortizacion.map((c) => {
+        const yaPagada = c.num <= numCubiertas;
+        return {
+          num_cuota: c.num,
+          capital: c.capital,
+          interes: c.interes,
+          capital_interes: c.cuota,
+          fecha_vencimiento: format(calcNextDate(baseDate, frecuencia as any, c.num - 1, diasIgnorados), "yyyy-MM-dd"),
+          saldo_capital: yaPagada ? 0 : c.capital,
+          saldo_interes: yaPagada ? 0 : c.interes,
+          saldo_total: yaPagada ? 0 : c.cuota,
+          capital_pagado: yaPagada ? c.capital : 0,
+          interes_pagado: yaPagada ? c.interes : 0,
+          fecha_pagada: yaPagada ? format(new Date(), "yyyy-MM-dd") : null,
+          status: yaPagada ? "Pagada" : "Pendiente",
+        };
+      });
 
-      if (error) throw error;
+      // Salida de caja ONLY if NOT carga inicial AND NOT a sale
+      const desembolso = !esInicial && !esVenta && cajaId
+        ? { caja_id: cajaId, monto, concepto: "Desembolso préstamo" }
+        : null;
 
-      // Insertar cuotas de amortización
-      if (amortizacion.length > 0) {
-        const baseDate = fechaPrimerPago || new Date();
-        const numCubiertas = numCuotasCubiertas;
+      // Préstamo + cuotas + desembolso en una sola transacción (valida saldo de caja bajo bloqueo)
+      const res = await rpcCrearPrestamo(prestamoRow, cuotasInsert, desembolso);
+      const data = { id: res.prestamo_id };
 
-        const cuotasInsert = amortizacion.map((c) => {
-          const yaPagada = c.num <= numCubiertas;
-          return {
-            prestamo_id: data.id,
-            num_cuota: c.num,
-            capital: c.capital,
-            interes: c.interes,
-            capital_interes: c.cuota,
-            fecha_vencimiento: format(calcNextDate(baseDate, frecuencia as any, c.num - 1, diasIgnorados), "yyyy-MM-dd"),
-            saldo_capital: yaPagada ? 0 : c.capital,
-            saldo_interes: yaPagada ? 0 : c.interes,
-            saldo_total: yaPagada ? 0 : c.cuota,
-            capital_pagado: yaPagada ? c.capital : 0,
-            interes_pagado: yaPagada ? c.interes : 0,
-            fecha_pagada: yaPagada ? format(new Date(), "yyyy-MM-dd") : null,
-            status: yaPagada ? ("Pagada" as const) : ("Pendiente" as const),
-            empresa_id: empresaId,
-          };
-        });
-
-        const { error: amortError } = await supabase
-          .from("amortizacion")
-          .insert(cuotasInsert);
-
-        if (amortError) {
-          console.error("Error insertando amortización:", amortError);
-          toast.error("Préstamo creado pero hubo error al generar cuotas");
-        }
-
-        // Para carga inicial, recalcular mora en cuotas vencidas pendientes
-        if (esInicial && numCubiertas < cuotas) {
-          await supabase.rpc("recalcular_mora", { p_prestamo_id: data.id });
-        }
-      }
-
-      // Register cash outflow ONLY if NOT carga inicial AND NOT a sale
-      if (!esInicial && !esVenta && cajaId) {
-        await supabase.from("movimientos_caja").insert({
-          caja_id: cajaId,
-          empresa_id: empresaId,
-          tipo: "salida" as any,
-          monto: monto,
-          concepto: `Desembolso préstamo`,
-          prestamo_id: data.id,
-          registrado_por: user?.id,
-        });
-
-        // saldo_actual se sincroniza automáticamente via trigger
+      // Para carga inicial, recalcular mora en cuotas vencidas pendientes
+      if (esInicial && amortizacion.length > 0 && numCubiertas < cuotas) {
+        await supabase.rpc("recalcular_mora", { p_prestamo_id: data.id });
       }
 
       return data;
@@ -410,7 +355,7 @@ export default function NuevoPrestamoPage() {
             <div className="grid grid-cols-[120px_1fr] gap-3">
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Cód. Interno</Label>
-                <Input value={codigoInterno} onChange={(e) => setCodigoInterno(e.target.value)} placeholder="CI-001" className="h-9 text-sm font-mono" />
+                <Input value={codigoInterno} onChange={(e) => setCodigoInterno(e.target.value)} placeholder="Automático (PRE-XXXX)" className="h-9 text-sm font-mono" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Cliente *</Label>

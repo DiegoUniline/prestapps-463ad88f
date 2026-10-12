@@ -3,7 +3,6 @@ import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +25,7 @@ import { es } from "date-fns/locale";
 import { cn, $$, parseLocalDate, fmtDateTime } from "@/lib/utils";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpcLiquidarRuta } from "@/lib/rpcIntegridad";
 
 /* ─── Types ─── */
 
@@ -171,7 +171,6 @@ function useHistorialCortes(empresaId: string) {
 
 export default function LiquidarRutaPage() {
   const { empresaId } = useEmpresa();
-  const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const { data: cobradores = [], isLoading } = useCobradores(empresaId);
   const { data: cajas = [] } = useCajas(empresaId);
@@ -220,58 +219,28 @@ export default function LiquidarRutaPage() {
     if (!cobrador || !cajaId || pagosRaw.length === 0) return;
     setSaving(true);
     try {
-      // 1. Create corte record
-      const comision = totals.efectivo * (cobrador.porcentaje_comision / 100);
-      const { data: corte, error: corteErr } = await supabase.from("cortes").insert({
-        cobrador_id: cobrador.id,
-        caja_id: cajaId,
-        total_cobrado: totals.total,
-        monto_efectivo: totals.efectivo,
-        monto_depositado: totals.efectivo,
-        monto_comision: comision,
-        porcentaje_usado: cobrador.porcentaje_comision,
-        empresa_id: empresaId,
-        periodo_hasta: fechaHasta!.toISOString(),
-      }).select("id").single();
-
-      if (corteErr) throw corteErr;
-
-      // 2. Mark all pagos as settled
-      const pagoIds = pagosRaw.map((p) => p.id);
-      // Update in batches of 100
-      for (let i = 0; i < pagoIds.length; i += 100) {
-        const batch = pagoIds.slice(i, i + 100);
-        const { error } = await (supabase as any).from("pagos").update({ corte_id: corte.id }).in("id", batch);
-        if (error) throw error;
-      }
-
-      // 3. Reset cobrador efectivo_en_mano (subtract what was settled as cash)
-      if (totals.efectivo > 0) {
-        await supabase.from("profiles")
-          .update({ efectivo_en_mano: Math.max(0, cobrador.efectivo_en_mano - totals.efectivo) })
-          .eq("id", cobrador.id);
-
-        // Register caja movement
-        await supabase.from("movimientos_caja").insert({
-          caja_id: cajaId,
-          tipo: "entrada" as any,
-          monto: totals.efectivo,
-          concepto: `Liquidación ruta ${cobrador.nombre} — ${pagosRaw.length} pagos hasta ${format(fechaHasta!, "dd/MM/yyyy")}`,
-          empresa_id: empresaId,
-          registrado_por: user?.id || null,
-        });
-      }
+      // Corte + vínculo de pagos + efectivo_en_mano + entrada a caja en una sola transacción.
+      // Falla si algún pago ya fue liquidado/anulado por otro usuario.
+      const res = await rpcLiquidarRuta({
+        cobradorId: cobrador.id,
+        pagoIds: pagosRaw.map((p) => p.id),
+        cajaId,
+        periodoHasta: fechaHasta!.toISOString(),
+        concepto: `Liquidación ruta ${cobrador.nombre} — ${pagosRaw.length} pagos hasta ${format(fechaHasta!, "dd/MM/yyyy")}`,
+      });
+      const comision = Number(res.monto_comision || 0);
 
       invalidateFinanceQueries(queryClient);
       queryClient.invalidateQueries({ queryKey: ["pagos-no-liquidados"] });
       queryClient.invalidateQueries({ queryKey: ["historial-cortes"] });
       queryClient.invalidateQueries({ queryKey: ["cobradores"] });
 
-      toast.success(`Ruta liquidada: ${pagosRaw.length} pagos cerrados (${$$(totals.total)}). Comisión: ${$$(comision)}`);
+      toast.success(`Ruta liquidada: ${res.pagos} pagos cerrados (${$$(Number(res.total_cobrado || 0))}). Comisión: ${$$(comision)}`);
       setShowLiquidar(false);
       setConsulted(false);
     } catch (err: any) {
       toast.error("Error: " + (err.message || err));
+      queryClient.invalidateQueries({ queryKey: ["pagos-no-liquidados"] });
     } finally {
       setSaving(false);
     }

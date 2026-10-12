@@ -9,6 +9,7 @@ import { useSolicitudes, useUpdateSolicitud } from "@/hooks/useSolicitudes";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { calcNextDate } from "@/lib/financial";
+import { rpcCrearPrestamo } from "@/lib/rpcIntegridad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,130 +66,82 @@ export default function SolicitudesPage() {
       const cuotaCalculada = montoTotalPagar / cuotas;
       const cuotaFinal = Math.ceil(cuotaCalculada);
 
-      // Validate caja balance if not carga inicial and caja is assigned
-      if (!cargaInicial && sol.caja_id) {
-        const { data: caja } = await supabase
-          .from("cajas")
-          .select("id, nombre, saldo_actual")
-          .eq("id", sol.caja_id)
-          .single();
+      const prestamoRow = {
+        cliente_id: sol.cliente_id,
+        monto_solicitado: monto,
+        monto_total_pagar: montoTotalPagar,
+        tasa_interes: tasa,
+        num_cuotas: cuotas,
+        frecuencia: sol.frecuencia,
+        modalidad: sol.modalidad,
+        fecha_primer_pago: sol.fecha_primer_pago,
+        caja_id: sol.caja_id,
+        ruta_id: sol.ruta_id,
+        gastos_legales: Number(sol.gastos_legales || 0),
+        tipo_mora: sol.tipo_mora,
+        valor_mora: Number(sol.valor_mora || 0),
+        notas: cargaInicial ? `[CARGA INICIAL] ${sol.notas || ""}`.trim() : sol.notas,
+        cuota_calculada: cuotaCalculada,
+        cuota_redondeada: cuotaFinal,
+        generado_por: user?.id,
+      };
 
-        if (caja && Number(caja.saldo_actual) < monto) {
-          throw new Error(
-            `Saldo insuficiente en caja "${caja.nombre}". Saldo: ${$$(Number(caja.saldo_actual))}, Monto solicitado: ${$$(monto)}`
-          );
-        }
-      }
-
-      // Create prestamo
-      const { data: prestamo, error } = await supabase
-        .from("prestamos")
-        .insert({
-          cliente_id: sol.cliente_id,
-          empresa_id: sol.empresa_id,
-          monto_solicitado: monto,
-          monto_total_pagar: montoTotalPagar,
-          tasa_interes: tasa,
-          num_cuotas: cuotas,
-          frecuencia: sol.frecuencia as any,
-          modalidad: sol.modalidad as any,
-          fecha_primer_pago: sol.fecha_primer_pago,
-          caja_id: sol.caja_id,
-          ruta_id: sol.ruta_id,
-          gastos_legales: Number(sol.gastos_legales || 0),
-          tipo_mora: sol.tipo_mora as any,
-          valor_mora: Number(sol.valor_mora || 0),
-          notas: cargaInicial ? `[CARGA INICIAL] ${sol.notas || ""}`.trim() : sol.notas,
-          cuota_calculada: cuotaCalculada,
-          cuota_redondeada: cuotaFinal,
-          generado_por: user?.id,
-        } as any)
-        .select("id")
-        .single();
-
-      if (error) throw error;
-
-      // Generate amortization
+      // Generate amortization (montos a 2 decimales; la última cuota absorbe el residuo)
       const baseDate = sol.fecha_primer_pago ? parseLocalDate(sol.fecha_primer_pago) : new Date();
+      const r2 = (n: number) => Math.round(n * 100) / 100;
+      const rows: Record<string, unknown>[] = [];
+      const pushRow = (i: number, capital: number, interes: number) => {
+        const cuotaVal = r2(capital + interes);
+        rows.push({
+          num_cuota: i + 1,
+          capital,
+          interes,
+          capital_interes: cuotaVal,
+          fecha_vencimiento: format(calcNextDate(baseDate, sol.frecuencia, i), "yyyy-MM-dd"),
+          saldo_capital: capital,
+          saldo_interes: interes,
+          saldo_total: cuotaVal,
+          status: "Pendiente",
+        });
+      };
 
       if (sol.modalidad === "fijo") {
         const totalInteres = montoTotalPagar - monto;
         const interesPorCuota = totalInteres / cuotas;
-        const capitalPorCuota = cuotaFinal - interesPorCuota;
-        let saldo = monto;
-        const rows = [];
+        let saldoCapital = monto;
+        let saldoInteres = totalInteres;
         for (let i = 0; i < cuotas; i++) {
           const isLast = i === cuotas - 1;
-          const capital = isLast ? saldo : Math.min(capitalPorCuota, saldo);
-          const interes = isLast ? (saldo * totalInteres / monto) : interesPorCuota;
-          const cuotaVal = isLast ? capital + interes : cuotaFinal;
-          saldo = Math.max(0, saldo - capital);
-          rows.push({
-            prestamo_id: prestamo.id,
-            empresa_id: sol.empresa_id,
-            num_cuota: i + 1,
-            capital: Math.round(capital * 100) / 100,
-            interes: Math.round(interes * 100) / 100,
-            capital_interes: Math.round(cuotaVal * 100) / 100,
-            fecha_vencimiento: format(calcNextDate(baseDate, sol.frecuencia, i), "yyyy-MM-dd"),
-            saldo_capital: Math.round(capital * 100) / 100,
-            saldo_interes: Math.round(interes * 100) / 100,
-            saldo_total: Math.round(cuotaVal * 100) / 100,
-            status: "Pendiente" as const,
-          });
+          const interes = r2(isLast ? saldoInteres : interesPorCuota);
+          const capital = isLast
+            ? r2(saldoCapital)
+            : Math.max(0, Math.min(r2(cuotaFinal - interes), r2(saldoCapital)));
+          saldoCapital = Math.max(0, r2(saldoCapital - capital));
+          saldoInteres = Math.max(0, r2(saldoInteres - interes));
+          pushRow(i, capital, interes);
         }
-        await supabase.from("amortizacion").insert(rows);
       } else {
         const tasaPeriodo = tasa / 100 / cuotas;
-        const capitalPorCuota = monto / cuotas;
+        const capitalPorCuota = r2(monto / cuotas);
         let saldo = monto;
-        const rows = [];
         for (let i = 0; i < cuotas; i++) {
-          const inter = saldo * tasaPeriodo;
-          const cuotaVal = capitalPorCuota + inter;
-          saldo -= capitalPorCuota;
-          rows.push({
-            prestamo_id: prestamo.id,
-            empresa_id: sol.empresa_id,
-            num_cuota: i + 1,
-            capital: Math.round(capitalPorCuota * 100) / 100,
-            interes: Math.round(inter * 100) / 100,
-            capital_interes: Math.round(cuotaVal * 100) / 100,
-            fecha_vencimiento: format(calcNextDate(baseDate, sol.frecuencia, i), "yyyy-MM-dd"),
-            saldo_capital: Math.round(capitalPorCuota * 100) / 100,
-            saldo_interes: Math.round(inter * 100) / 100,
-            saldo_total: Math.round(cuotaVal * 100) / 100,
-            status: "Pendiente" as const,
-          });
+          const isLast = i === cuotas - 1;
+          const interes = r2(saldo * tasaPeriodo);
+          const capital = isLast ? r2(saldo) : Math.min(capitalPorCuota, r2(saldo));
+          saldo = Math.max(0, r2(saldo - capital));
+          pushRow(i, capital, interes);
         }
-        await supabase.from("amortizacion").insert(rows);
       }
 
       // Register cash outflow (salida) ONLY if NOT carga inicial
-      if (!cargaInicial && sol.caja_id) {
-        await supabase.from("movimientos_caja").insert({
-          caja_id: sol.caja_id,
-          empresa_id: sol.empresa_id,
-          tipo: "salida" as any,
-          monto: monto,
-          concepto: `Desembolso préstamo - ${sol.clientes?.nombre_completo || "Cliente"}`,
-          prestamo_id: prestamo.id,
-          registrado_por: user?.id,
-        });
+      const desembolso = !cargaInicial && sol.caja_id
+        ? { caja_id: sol.caja_id, monto, concepto: `Desembolso préstamo - ${sol.clientes?.nombre_completo || "Cliente"}` }
+        : null;
 
-        // saldo_actual se sincroniza automáticamente via trigger
-      }
-
-      // Update solicitud status
-      await supabase
-        .from("solicitudes_prestamo")
-        .update({
-          status: "Aprobada",
-          aprobado_por: user?.id,
-          prestamo_generado_id: prestamo.id,
-          resuelto_en: new Date().toISOString(),
-        } as any)
-        .eq("id", sol.id);
+      // Préstamo + cuotas + desembolso + solicitud "Aprobada" en una sola transacción.
+      // El servidor valida saldo de caja bajo bloqueo y que la solicitud siga Pendiente.
+      const res = await rpcCrearPrestamo(prestamoRow, rows, desembolso, sol.id);
+      const prestamo = { id: res.prestamo_id };
 
       // Send WhatsApp notification (fire and forget)
       sendWhatsAppNotification(sol, "aprobada", empresaId).catch(() => {});
@@ -201,7 +154,10 @@ export default function SolicitudesPage() {
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
       invalidateFinanceQueries(queryClient);
     },
-    onError: (err: any) => toast.error(err.message || "Error al aprobar"),
+    onError: (err: any) => {
+      toast.error(err.message || "Error al aprobar");
+      queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
+    },
   });
 
   const handleReject = () => {

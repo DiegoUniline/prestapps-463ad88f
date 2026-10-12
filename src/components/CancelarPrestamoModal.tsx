@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { rpcCancelarPrestamo } from "@/lib/rpcIntegridad";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
@@ -21,7 +21,7 @@ interface CancelarPrestamoModalProps {
   folioId?: string;
 }
 
-export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteNombre, saldoPendiente, cajaId, montoDesembolso, empresaId, folioId }: CancelarPrestamoModalProps) {
+export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteNombre, saldoPendiente, cajaId, montoDesembolso }: CancelarPrestamoModalProps) {
   const queryClient = useQueryClient();
   const [motivo, setMotivo] = useState("");
   const [saving, setSaving] = useState(false);
@@ -33,36 +33,8 @@ export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteN
     }
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      await supabase.from("prestamos").update({
-        estado: "Cancelado" as any,
-        cancelado_por: user?.id || null,
-        cancelado_en: new Date().toISOString(),
-        motivo_cancelacion: motivo.trim(),
-      } as any).eq("id", prestamoId);
-
-      // Mark remaining cuotas as cancelled (set saldo to 0)
-      await supabase.from("amortizacion").update({
-        status: "Pagada" as any,
-        saldo_capital: 0,
-        saldo_interes: 0,
-        saldo_mora: 0,
-        saldo_total: 0,
-      }).eq("prestamo_id", prestamoId).not("status", "eq", "Pagada");
-
-      // Reintegrate desembolso to the caja
-      if (cajaId && montoDesembolso && montoDesembolso > 0 && empresaId) {
-        const folio = folioId || prestamoId.slice(0, 8);
-        await supabase.from("movimientos_caja").insert({
-          caja_id: cajaId,
-          tipo: "entrada" as const,
-          monto: montoDesembolso,
-          prestamo_id: prestamoId,
-          concepto: `Cancelación préstamo ${folio} — reintegro desembolso`,
-          empresa_id: empresaId,
-        });
-      }
+      // Cancelación + cuotas en cero + reintegro del desembolso en una sola transacción
+      await rpcCancelarPrestamo(prestamoId, motivo.trim());
 
       invalidateFinanceQueries(queryClient, { prestamoId });
 
