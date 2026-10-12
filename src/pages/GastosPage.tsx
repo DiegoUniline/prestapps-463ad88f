@@ -1,8 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { rpcRegistrarMovimientoCaja } from "@/lib/rpcIntegridad";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
@@ -34,49 +37,43 @@ const CATEGORIAS_GASTO = [
 ];
 
 // ── Data hooks ────────────────────────────────────────────────────
-function useGastos(empresaId: string) {
-  return useQuery({
-    queryKey: ["gastos", empresaId],
-    queryFn: async () => {
-      const data = await fetchAllRows(supabase
-        .from("movimientos_caja")
-        .select("*, cajas ( nombre )")
-        .eq("empresa_id", empresaId)
-        .eq("tipo", "salida")
-        .order("created_at", { ascending: false }));
-      // Only show manually registered gastos (those with [Categoria] tag)
-      return (data || [])
-        .filter((m: any) => /^\[.+?\]/.test(m.concepto || ""))
-        .map((m: any) => ({
-          id: m.id,
-          fecha: m.created_at,
-          concepto: m.concepto || "",
-          monto: Number(m.monto || 0),
-          caja: (m.cajas as any)?.nombre || "—",
-          cajaId: m.caja_id,
-          categoria: extractCategoria(m.concepto || ""),
-        }));
-    },
-  });
+interface GastoRow { id: string; fecha: string; concepto: string; monto: number; caja: string; cajaId: string; categoria: string; }
+interface GastosPagina {
+  rows: GastoRow[];
+  total: number;
+  total_monto: number;
+  total_mes: number;
+  por_categoria: [string, number][];
 }
 
-function extractCategoria(concepto: string): string {
-  const lower = concepto.toLowerCase();
-  // Try to detect known categories from concepto
-  if (lower.includes("[oficina]")) return "Oficina";
-  if (lower.includes("[transporte]")) return "Transporte";
-  if (lower.includes("[servicios]")) return "Servicios";
-  if (lower.includes("[salarios]")) return "Salarios";
-  if (lower.includes("[comisiones]") || lower.includes("comisión cobrador")) return "Comisiones";
-  if (lower.includes("[papelería]")) return "Papelería";
-  if (lower.includes("[mantenimiento]")) return "Mantenimiento";
-  if (lower.includes("[marketing]")) return "Marketing";
-  if (lower.includes("[legal]")) return "Legal";
-  if (lower.includes("[impuestos]")) return "Impuestos";
-  if (lower.includes("[otros]")) return "Otros";
-  if (lower.includes("desembolso") || lower.includes("préstamo")) return "Desembolso";
-  if (lower.includes("corte") || lower.includes("comisión")) return "Comisiones";
-  return "Otros";
+// Solo gastos con etiqueta "[Categoría]"; filtros, totales y desglose por categoría calculados en SQL.
+function useGastos(empresaId: string, search: string, categoria: string, page: number) {
+  return useQuery({
+    queryKey: ["gastos", empresaId, search, categoria, page],
+    enabled: !!empresaId,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const now = new Date();
+      const mesDesde = new Date(now.getFullYear(), now.getMonth(), 1);
+      const mesHasta = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const { data, error } = await rpc<GastosPagina>("gastos_listado", {
+        p_search: search || null,
+        p_categoria: categoria === "todos" ? null : categoria,
+        p_mes_desde: mesDesde.toISOString(),
+        p_mes_hasta: mesHasta.toISOString(),
+        p_limit: PAGE_SIZE,
+        p_offset: page * PAGE_SIZE,
+      });
+      if (error) throw error;
+      return {
+        total: Number(data?.total || 0),
+        total_monto: Number(data?.total_monto || 0),
+        total_mes: Number(data?.total_mes || 0),
+        por_categoria: (data?.por_categoria || []).map(([c, t]) => [c, Number(t || 0)] as [string, number]),
+        rows: (data?.rows || []).map((g) => ({ ...g, concepto: g.concepto || "", monto: Number(g.monto || 0) })),
+      } as GastosPagina;
+    },
+  });
 }
 
 function useCajas(empresaId: string) {
@@ -93,11 +90,13 @@ function useCajas(empresaId: string) {
 export default function GastosPage() {
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
-  const { data: gastos = [], isLoading } = useGastos(empresaId);
   const { data: cajas = [] } = useCajas(empresaId);
 
   const [search, setSearch] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const [page, setPage] = usePaginacion(`${empresaId}|${filtroCategoria}|${debouncedSearch}`);
+  const { data: gastosPage, isLoading, isFetching } = useGastos(empresaId, debouncedSearch, filtroCategoria, page);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -148,31 +147,10 @@ export default function GastosPage() {
     }
   };
 
-  // Filtered
-  const filtered = useMemo(() => {
-    return gastos.filter((g) => {
-      const matchSearch = !search || g.concepto.toLowerCase().includes(search.toLowerCase()) || g.caja.toLowerCase().includes(search.toLowerCase());
-      const matchCat = filtroCategoria === "todos" || g.categoria === filtroCategoria;
-      return matchSearch && matchCat;
-    });
-  }, [gastos, search, filtroCategoria]);
-
-  const totalGastos = filtered.reduce((s, g) => s + g.monto, 0);
-  const gastosMes = filtered.filter((g) => {
-    const d = parseLocalDate(g.fecha);
-    const now = new Date();
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  });
-  const totalMes = gastosMes.reduce((s, g) => s + g.monto, 0);
-
-  // Category breakdown
-  const porCategoria = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const g of filtered) {
-      map[g.categoria] = (map[g.categoria] || 0) + g.monto;
-    }
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [filtered]);
+  const filtered = gastosPage?.rows || [];
+  const totalGastos = gastosPage?.total_monto || 0;
+  const totalMes = gastosPage?.total_mes || 0;
+  const porCategoria = gastosPage?.por_categoria || [];
 
   return (
     <div className="space-y-4">
@@ -199,7 +177,7 @@ export default function GastosPage() {
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Registros</p>
-          <p className="text-2xl font-bold mt-1">{filtered.length}</p>
+          <p className="text-2xl font-bold mt-1">{gastosPage?.total ?? 0}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Categorías</p>
@@ -305,7 +283,7 @@ export default function GastosPage() {
                       <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
                         <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={4}>Totales</TableCell>
                         <TableCell className="text-right font-bold text-destructive text-[13px] px-3">
-                          -{$$(filtered.reduce((s, g) => s + g.monto, 0))}
+                          -{$$(totalGastos)}
                         </TableCell>
                       </TableRow>
                     )}
@@ -314,6 +292,7 @@ export default function GastosPage() {
               </TableBody>
             </Table>
           </div>
+          <PaginacionControles page={page} pageSize={PAGE_SIZE} total={gastosPage?.total} onPageChange={setPage} isFetching={isFetching} />
         </>
       )}
 

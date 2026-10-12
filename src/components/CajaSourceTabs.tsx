@@ -1,7 +1,9 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { useEmpresa } from "@/contexts/EmpresaContext";
+import { rpc } from "@/lib/supabaseQuery";
+import { usePaginacion, pageRange, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,37 +13,52 @@ import { es } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 
 // ── Préstamos Tab ─────────────────────────────────────────────
-function useCajaPrestamos(cajaId: string) {
+function useCajaPrestamos(cajaId: string, page: number) {
+  const { empresaId } = useEmpresa();
   return useQuery({
-    queryKey: ["caja-prestamos-source", cajaId],
-    enabled: !!cajaId,
+    queryKey: ["caja-prestamos-source", cajaId, page, empresaId],
+    enabled: !!cajaId && !!empresaId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data } = await supabase
+      const [from, to] = pageRange(page);
+      const { data, error } = await supabase
         .from("prestamos")
         .select("id, id_prestamo, monto_solicitado, monto_total_pagar, estado, created_at, cliente_id, clientes(nombre_completo)")
         .eq("caja_id", cajaId)
-        .order("created_at", { ascending: false });
+        .eq("empresa_id", empresaId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
       return data || [];
     },
   });
 }
 
+// Totales de una pestaña (todas las filas de la caja) calculados en SQL: rpc caja_fuentes_resumen.
+function useCajaFuenteResumen<T>(cajaId: string, fuente: "prestamos" | "pagos" | "transferencias", keyPrefix: string) {
+  return useQuery({
+    queryKey: [keyPrefix, cajaId, "resumen"],
+    enabled: !!cajaId,
+    queryFn: async () => {
+      const { data, error } = await rpc<Record<string, number | string>>("caja_fuentes_resumen", { p_caja_id: cajaId, p_fuente: fuente });
+      if (error) throw error;
+      const out: Record<string, number> = {};
+      for (const [k, v] of Object.entries(data || {})) out[k] = Number(v || 0);
+      return out as T;
+    },
+  });
+}
+
 export function PrestamosTab({ cajaId }: { cajaId: string }) {
-  const { data: prestamos = [], isLoading } = useCajaPrestamos(cajaId);
+  const [page, setPage] = usePaginacion(cajaId);
+  const { data: prestamos = [], isLoading, isFetching } = useCajaPrestamos(cajaId, page);
+  const { data: resumen, isLoading: loadingResumen } = useCajaFuenteResumen<{ count: number; colocado: number; totalPagar: number; cancelados: number }>(cajaId, "prestamos", "caja-prestamos-source");
   const navigate = useNavigate();
+  const totals = resumen || { colocado: 0, totalPagar: 0, count: 0, cancelados: 0 };
 
-  const totals = useMemo(() => {
-    let colocado = 0, totalPagar = 0, cancelados = 0;
-    for (const p of prestamos) {
-      if (p.estado === "Cancelado") { cancelados++; continue; }
-      colocado += Number(p.monto_solicitado || 0);
-      totalPagar += Number(p.monto_total_pagar || 0);
-    }
-    return { colocado, totalPagar, count: prestamos.length, cancelados };
-  }, [prestamos]);
-
-  if (isLoading) return <div className="space-y-2 mt-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
-  if (prestamos.length === 0) return <p className="text-center py-12 text-muted-foreground text-sm mt-4">Sin préstamos en esta caja</p>;
+  if (isLoading || loadingResumen) return <div className="space-y-2 mt-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
+  if (totals.count === 0) return <p className="text-center py-12 text-muted-foreground text-sm mt-4">Sin préstamos en esta caja</p>;
 
   return (
     <div className="mt-4 space-y-3">
@@ -119,42 +136,42 @@ export function PrestamosTab({ cajaId }: { cajaId: string }) {
           </TableBody>
         </Table>
       </div>
+      <PaginacionControles page={page} pageSize={PAGE_SIZE} total={totals.count} onPageChange={setPage} isFetching={isFetching} />
     </div>
   );
 }
 
 // ── Pagos Tab ─────────────────────────────────────────────────
-function useCajaPagos(cajaId: string) {
+function useCajaPagos(cajaId: string, page: number) {
+  const { empresaId } = useEmpresa();
   return useQuery({
-    queryKey: ["caja-pagos-source", cajaId],
-    enabled: !!cajaId,
+    queryKey: ["caja-pagos-source", cajaId, page, empresaId],
+    enabled: !!cajaId && !!empresaId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const data = await fetchAllRows(
-        supabase
-          .from("pagos")
-          .select("id, monto_recibido, fecha_pago, created_at, anulado, metodo_pago, prestamo_id, prestamos(id_prestamo, clientes(nombre_completo))")
-          .eq("caja_id", cajaId)
-          .order("created_at", { ascending: false })
-      );
+      const [from, to] = pageRange(page);
+      const { data, error } = await supabase
+        .from("pagos")
+        .select("id, monto_recibido, fecha_pago, created_at, anulado, metodo_pago, prestamo_id, prestamos(id_prestamo, clientes(nombre_completo))")
+        .eq("caja_id", cajaId)
+        .eq("empresa_id", empresaId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
       return data || [];
     },
   });
 }
 
 export function PagosTab({ cajaId }: { cajaId: string }) {
-  const { data: pagos = [], isLoading } = useCajaPagos(cajaId);
+  const [page, setPage] = usePaginacion(cajaId);
+  const { data: pagos = [], isLoading, isFetching } = useCajaPagos(cajaId, page);
+  const { data: resumen, isLoading: loadingResumen } = useCajaFuenteResumen<{ count: number; cobrado: number; anulados: number }>(cajaId, "pagos", "caja-pagos-source");
+  const totals = resumen || { cobrado: 0, anulados: 0, count: 0 };
 
-  const totals = useMemo(() => {
-    let cobrado = 0, anulados = 0;
-    for (const p of pagos) {
-      if (p.anulado) { anulados += Number(p.monto_recibido || 0); continue; }
-      cobrado += Number(p.monto_recibido || 0);
-    }
-    return { cobrado, anulados, count: pagos.length };
-  }, [pagos]);
-
-  if (isLoading) return <div className="space-y-2 mt-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
-  if (pagos.length === 0) return <p className="text-center py-12 text-muted-foreground text-sm mt-4">Sin pagos en esta caja</p>;
+  if (isLoading || loadingResumen) return <div className="space-y-2 mt-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
+  if (totals.count === 0) return <p className="text-center py-12 text-muted-foreground text-sm mt-4">Sin pagos en esta caja</p>;
 
   return (
     <div className="mt-4 space-y-3">
@@ -237,44 +254,44 @@ export function PagosTab({ cajaId }: { cajaId: string }) {
           </TableBody>
         </Table>
       </div>
+      <PaginacionControles page={page} pageSize={PAGE_SIZE} total={totals.count} onPageChange={setPage} isFetching={isFetching} />
     </div>
   );
 }
 
 // ── Transferencias Tab ────────────────────────────────────────
-function useCajaTransferencias(cajaId: string) {
+function useCajaTransferencias(cajaId: string, page: number) {
+  const { empresaId } = useEmpresa();
   return useQuery({
-    queryKey: ["caja-transferencias-source", cajaId],
-    enabled: !!cajaId,
+    queryKey: ["caja-transferencias-source", cajaId, page, empresaId],
+    enabled: !!cajaId && !!empresaId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const data = await fetchAllRows(
-        supabase
-          .from("movimientos_caja")
-          .select("id, created_at, tipo, monto, concepto")
-          .eq("caja_id", cajaId)
-          .is("prestamo_id", null)
-          .ilike("concepto", "%transferencia%")
-          .order("created_at", { ascending: false })
-      );
+      const [from, to] = pageRange(page);
+      const { data, error } = await supabase
+        .from("movimientos_caja")
+        .select("id, created_at, tipo, monto, concepto")
+        .eq("caja_id", cajaId)
+        .eq("empresa_id", empresaId)
+        .is("prestamo_id", null)
+        .ilike("concepto", "%transferencia%")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
       return data || [];
     },
   });
 }
 
 export function TransferenciasTab({ cajaId }: { cajaId: string }) {
-  const { data: rows = [], isLoading } = useCajaTransferencias(cajaId);
+  const [page, setPage] = usePaginacion(cajaId);
+  const { data: rows = [], isLoading, isFetching } = useCajaTransferencias(cajaId, page);
+  const { data: resumen, isLoading: loadingResumen } = useCajaFuenteResumen<{ count: number; recibidas: number; enviadas: number }>(cajaId, "transferencias", "caja-transferencias-source");
+  const totals = resumen || { recibidas: 0, enviadas: 0, count: 0 };
 
-  const totals = useMemo(() => {
-    let recibidas = 0, enviadas = 0;
-    for (const r of rows) {
-      if (r.tipo === "entrada") recibidas += Number(r.monto || 0);
-      else enviadas += Number(r.monto || 0);
-    }
-    return { recibidas, enviadas, count: rows.length };
-  }, [rows]);
-
-  if (isLoading) return <div className="space-y-2 mt-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
-  if (rows.length === 0) return <p className="text-center py-12 text-muted-foreground text-sm mt-4">Sin transferencias en esta caja</p>;
+  if (isLoading || loadingResumen) return <div className="space-y-2 mt-4">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>;
+  if (totals.count === 0) return <p className="text-center py-12 text-muted-foreground text-sm mt-4">Sin transferencias en esta caja</p>;
 
   return (
     <div className="mt-4 space-y-3">
@@ -340,6 +357,7 @@ export function TransferenciasTab({ cajaId }: { cajaId: string }) {
           </TableBody>
         </Table>
       </div>
+      <PaginacionControles page={page} pageSize={PAGE_SIZE} total={totals.count} onPageChange={setPage} isFetching={isFetching} />
     </div>
   );
 }

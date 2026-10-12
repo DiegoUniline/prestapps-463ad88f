@@ -1,6 +1,9 @@
-import { $$, parseLocalDate } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { $$ } from "@/lib/utils";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { rpc } from "@/lib/supabaseQuery";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, TrendingUp, TrendingDown, AlertTriangle, ShieldCheck, Star, Ban, UserPlus, ArrowUpCircle } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import LeadScoringDetailSheet from "@/components/LeadScoringDetailSheet";
 
 // ── Scoring algorithm ──────────────────────────────────────────
@@ -34,272 +37,40 @@ interface ClienteScore {
   diasGracia: number;
 }
 
-function calcularScore(data: {
-  totalPrestamos: number;
-  prestamosLiquidados: number;
-  cuotasATiempo: number;
-  cuotasTotales: number;
-  cuotasPagadasTarde: number; // paid but after due date
-  cuotasVencidas: number; // currently unpaid & overdue
-  diasAtrasoPromedio: number;
-  maxDiasAtraso: number; // worst single cuota
-  saldoActual: number;
-  montoHistorico: number;
-  diasGracia: number;
-}): { score: number; nivel: ClienteScore["nivel"]; recomendacion: string; icono: ClienteScore["icono"] } {
-  // Sin préstamos = cliente nuevo
-  if (data.totalPrestamos === 0) {
-    return {
-      score: -1,
-      nivel: "Nuevo",
-      recomendacion: "⚪ Sin historial crediticio. Cliente nuevo — evaluar capacidad de pago antes de otorgar primer préstamo.",
-      icono: "avales",
-    };
-  }
+// ── Data hook ──────────────────────────────────────────────────
+// El score (puerto exacto de calcularScore) se calcula en SQL: rpc lead_scoring_listado
+// devuelve solo la página visible + total filtrado + resumen por nivel de todos los clientes activos.
+interface LeadResumen { avg: number; excelentes: number; buenos: number; regulares: number; riesgosos: number; criticos: number; nuevos: number; }
+interface LeadPagina { total: number; resumen: LeadResumen | null; rows: ClienteScore[]; }
 
-  let score = 0; // Start from 0, must EARN points
-
-  const cuotasPagadas = data.cuotasATiempo + data.cuotasPagadasTarde;
-
-  // ═══ POSITIVE FACTORS (earn up to ~100) ═══
-
-  // 1. CUMPLIMIENTO: Did they pay? (0-45 pts) — THE most important
-  //    Someone who pays 92% (even if late) earns ~41 pts here
-  if (data.cuotasTotales > 0) {
-    const ratioPagadas = cuotasPagadas / data.cuotasTotales;
-    score += ratioPagadas * 45;
-  }
-
-  // 2. PUNTUALIDAD: Bonus for paying on time (0-15 pts)
-  //    Of the paid cuotas, what % were on time?
-  if (cuotasPagadas > 0) {
-    const ratioATiempoDePagadas = data.cuotasATiempo / cuotasPagadas;
-    score += ratioATiempoDePagadas * 15;
-  }
-
-  // 3. Loans successfully completed (0-15 pts)
-  if (data.totalPrestamos > 0) {
-    const ratioLiquidados = data.prestamosLiquidados / data.totalPrestamos;
-    score += ratioLiquidados * 15;
-  }
-
-  // 4. Track record bonus (0-10 pts) — longer history = more reliable
-  if (data.totalPrestamos >= 2) score += 3;
-  if (data.totalPrestamos >= 4) score += 3;
-  if (data.montoHistorico >= 5000) score += 2;
-  if (data.montoHistorico >= 15000) score += 2;
-
-  // ═══ NEGATIVE FACTORS (penalties) ═══
-
-  // 5. Current overdue cuotas (-3 pts each, max -20)
-  score -= Math.min(20, data.cuotasVencidas * 3);
-
-  // 6. Severity of delay — how OLD is the worst debt (-20 max)
-  const diasReales = Math.max(0, data.maxDiasAtraso - data.diasGracia);
-  if (diasReales > 0) {
-    if (diasReales <= 7) {
-      score -= diasReales * 0.3;
-    } else if (diasReales <= 30) {
-      score -= 2 + (diasReales - 7) * 0.35;
-    } else if (diasReales <= 90) {
-      score -= 10 + (diasReales - 30) * 0.17;
-    } else {
-      score -= Math.min(20, 20);
-    }
-  }
-
-  // 7. Average delay — chronic lateness (-10 max)
-  const avgReal = Math.max(0, data.diasAtrasoPromedio - data.diasGracia);
-  score -= Math.min(10, avgReal * 0.3);
-
-  // Clamp
-  score = Math.max(0, Math.min(100, Math.round(score)));
-
-  let nivel: ClienteScore["nivel"];
-  let recomendacion: string;
-  let icono: ClienteScore["icono"];
-
-  if (score >= 85) {
-    nivel = "Excelente";
-    recomendacion = "🟢 Excelente pagador. Aumentar línea de crédito. Cliente confiable para montos mayores.";
-    icono = "aumentar";
-  } else if (score >= 70) {
-    nivel = "Bueno";
-    recomendacion = "🔵 Buen historial. Se le puede prestar con confianza. Considerar aumentar monto gradualmente.";
-    icono = "prestar";
-  } else if (score >= 50) {
-    nivel = "Regular";
-    recomendacion = "🟡 Historial mixto. Prestar con precaución, mismo monto o menor. Considerar aval.";
-    icono = "avales";
-  } else if (score >= 30) {
-    nivel = "Riesgoso";
-    recomendacion = "🟠 Alto riesgo. No aumentar monto. Exigir avales sólidos y garantías.";
-    icono = "avales";
-  } else {
-    nivel = "Crítico";
-    recomendacion = "🔴 No prestar. Historial muy negativo. Si tiene saldo pendiente, gestionar cobro prioritario.";
-    icono = "no_prestar";
-  }
-
-  // Renewal hint
-  if (score >= 60 && data.saldoActual > 0 && data.cuotasVencidas === 0) {
-    recomendacion += " 📅 Próximo a liquidar — preparar oferta de renovación.";
-    icono = "vencimiento";
-  }
-
-  return { score, nivel, recomendacion, icono };
+function toLocalISODate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// ── Data hook ──────────────────────────────────────────────────
-function useLeadScoring(empresaId: string) {
+function useLeadScoring(empresaId: string, search: string, nivel: string, page: number) {
   return useQuery({
-    queryKey: ["lead-scoring", empresaId],
+    queryKey: ["lead-scoring", empresaId, search, nivel, page],
+    enabled: !!empresaId,
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      // 1. All active clients + empresa dias_gracia
-      const [{ data: clientes }, { data: empresa }] = await Promise.all([
-        supabase
-          .from("clientes")
-          .select("id, id_cliente, nombre_completo")
-          .eq("empresa_id", empresaId)
-          .eq("activo", true)
-          .order("nombre_completo"),
-        supabase
-          .from("empresas")
-          .select("dias_gracia")
-          .eq("id", empresaId)
-          .single(),
-      ]);
-
-      const diasGracia = empresa?.dias_gracia ?? 0;
-
-      if (!clientes?.length) return [];
-
-      // 2. All loans for these clients
-      const { data: prestamos } = await supabase
-        .from("prestamos")
-        .select("id, cliente_id, estado, monto_solicitado")
-        .eq("empresa_id", empresaId);
-
-      // 3. All cuotas
-      const prestamoIds = (prestamos || []).map((p) => p.id);
-      let cuotas: any[] = [];
-      if (prestamoIds.length > 0) {
-        const { data } = await supabase
-          .from("amortizacion")
-          .select("prestamo_id, status, dias_atraso, saldo_total, fecha_vencimiento, fecha_pagada")
-          .in("prestamo_id", prestamoIds);
-        cuotas = data || [];
-      }
-
-      // Build maps
-      const prestamosByCliente: Record<string, typeof prestamos> = {};
-      for (const p of prestamos || []) {
-        if (!prestamosByCliente[p.cliente_id]) prestamosByCliente[p.cliente_id] = [];
-        prestamosByCliente[p.cliente_id].push(p);
-      }
-
-      const cuotasByPrestamo: Record<string, typeof cuotas> = {};
-      for (const c of cuotas) {
-        if (!cuotasByPrestamo[c.prestamo_id]) cuotasByPrestamo[c.prestamo_id] = [];
-        cuotasByPrestamo[c.prestamo_id].push(c);
-      }
-
-      const results: ClienteScore[] = clientes.map((cli) => {
-        const cliPrestamos = prestamosByCliente[cli.id] || [];
-        const totalPrestamos = cliPrestamos.length;
-        const prestamosLiquidados = cliPrestamos.filter((p) => p.estado === "Liquidado").length;
-        const montoHistorico = cliPrestamos.reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
-
-        let cuotasATiempo = 0;
-        let cuotasPagadasTarde = 0;
-        let cuotasTotales = 0;
-        let cuotasVencidas = 0;
-        let saldoActual = 0;
-        let totalDiasAtraso = 0;
-        let cuotasConAtraso = 0;
-        let maxDiasAtraso = 0;
-
-        const hoy = new Date();
-        for (const p of cliPrestamos) {
-          const pCuotas = cuotasByPrestamo[p.id] || [];
-          for (const c of pCuotas) {
-            const venc = parseLocalDate(c.fecha_vencimiento);
-            const diffDays = Math.floor((hoy.getTime() - venc.getTime()) / 86400000);
-            const isFuture = diffDays < 0; // cuota hasn't reached due date yet
-            const dias = Number(c.dias_atraso || 0);
-
-            if (c.status === "Pagada") {
-              cuotasTotales++;
-              // Paid on time (within grace period)
-              if (dias <= diasGracia) {
-                cuotasATiempo++;
-              } else {
-                // Paid but late
-                cuotasPagadasTarde++;
-              }
-            } else if (c.status === "Vencida") {
-              cuotasTotales++;
-              cuotasVencidas++;
-              saldoActual += Number(c.saldo_total || 0);
-              const realDias = dias > 0 ? dias : Math.max(0, diffDays);
-              totalDiasAtraso += realDias;
-              cuotasConAtraso++;
-              maxDiasAtraso = Math.max(maxDiasAtraso, realDias);
-            } else if (!isFuture) {
-              // Pendiente/Parcial but due date has passed — count it
-              cuotasTotales++;
-              saldoActual += Number(c.saldo_total || 0);
-              if (diffDays > diasGracia) {
-                cuotasVencidas++;
-                totalDiasAtraso += diffDays;
-                cuotasConAtraso++;
-                maxDiasAtraso = Math.max(maxDiasAtraso, diffDays);
-              }
-            }
-            // Future cuotas (Pendiente and not yet due) are NOT counted at all
-          }
-        }
-
-        const diasAtrasoPromedio = cuotasConAtraso > 0 ? totalDiasAtraso / cuotasConAtraso : 0;
-
-        const { score, nivel, recomendacion, icono } = calcularScore({
-          totalPrestamos,
-          prestamosLiquidados,
-          cuotasATiempo,
-          cuotasTotales,
-          cuotasPagadasTarde,
-          cuotasVencidas,
-          diasAtrasoPromedio,
-          maxDiasAtraso,
-          saldoActual,
-          montoHistorico,
-          diasGracia,
-        });
-
-        return {
-          cliente_id: cli.id,
-          id_cliente: cli.id_cliente,
-          nombre_completo: cli.nombre_completo,
-          score,
-          nivel,
-          recomendacion,
-          icono,
-          totalPrestamos,
-          prestamosLiquidados,
-          cuotasATiempo,
-          cuotasTotales,
-          cuotasPagadasTarde,
-          cuotasVencidas,
-          saldoActual,
-          diasAtrasoPromedio: Math.round(diasAtrasoPromedio),
-          maxDiasAtraso,
-          montoHistorico,
-          diasGracia,
-        };
+      const { data, error } = await rpc<LeadPagina>("lead_scoring_listado", {
+        p_search: search || null,
+        p_nivel: nivel === "todos" ? null : nivel,
+        p_hoy: toLocalISODate(new Date()),
+        p_limit: PAGE_SIZE,
+        p_offset: page * PAGE_SIZE,
       });
-
-      // Sort by score descending
-      return results.sort((a, b) => b.score - a.score);
+      if (error) throw error;
+      return {
+        total: Number(data?.total || 0),
+        resumen: data?.resumen || null,
+        rows: (data?.rows || []).map((r) => ({
+          ...r,
+          saldoActual: Number(r.saldoActual || 0),
+          montoHistorico: Number(r.montoHistorico || 0),
+        })),
+      } as LeadPagina;
     },
   });
 }
@@ -355,37 +126,15 @@ function IconoAccion({ tipo }: { tipo: ClienteScore["icono"] }) {
 export default function LeadScoringPage() {
   const { empresaId } = useEmpresa();
   const navigate = useNavigate();
-  const { data: scores, isLoading } = useLeadScoring(empresaId);
   const [search, setSearch] = useState("");
   const [filtroNivel, setFiltroNivel] = useState("todos");
   const [selectedCliente, setSelectedCliente] = useState<ClienteScore | null>(null);
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const [page, setPage] = usePaginacion(`${empresaId}|${filtroNivel}|${debouncedSearch}`);
+  const { data: pagina, isLoading, isFetching } = useLeadScoring(empresaId, debouncedSearch, filtroNivel, page);
 
-  const filtered = useMemo(() => {
-    if (!scores) return [];
-    return scores.filter((s) => {
-      const matchSearch =
-        s.nombre_completo.toLowerCase().includes(search.toLowerCase()) ||
-        s.id_cliente.toLowerCase().includes(search.toLowerCase());
-      const matchNivel = filtroNivel === "todos" || s.nivel === filtroNivel;
-      return matchSearch && matchNivel;
-    });
-  }, [scores, search, filtroNivel]);
-
-  // Summary stats
-  const totals = useMemo(() => {
-    if (!scores?.length) return { avg: 0, excelentes: 0, buenos: 0, regulares: 0, riesgosos: 0, criticos: 0, nuevos: 0 };
-    const conScore = scores.filter((s) => s.score >= 0);
-    const avg = conScore.length > 0 ? Math.round(conScore.reduce((s, c) => s + c.score, 0) / conScore.length) : 0;
-    return {
-      avg,
-      excelentes: scores.filter((s) => s.nivel === "Excelente").length,
-      buenos: scores.filter((s) => s.nivel === "Bueno").length,
-      regulares: scores.filter((s) => s.nivel === "Regular").length,
-      riesgosos: scores.filter((s) => s.nivel === "Riesgoso").length,
-      criticos: scores.filter((s) => s.nivel === "Crítico").length,
-      nuevos: scores.filter((s) => s.nivel === "Nuevo").length,
-    };
-  }, [scores]);
+  const filtered = pagina?.rows || [];
+  const totals: LeadResumen = pagina?.resumen || { avg: 0, excelentes: 0, buenos: 0, regulares: 0, riesgosos: 0, criticos: 0, nuevos: 0 };
 
   return (
     <div className="space-y-4">
@@ -545,6 +294,9 @@ export default function LeadScoringPage() {
             </TableBody>
           </Table>
         </div>
+      )}
+      {!isLoading && (
+        <PaginacionControles page={page} pageSize={PAGE_SIZE} total={pagina?.total} onPageChange={setPage} isFetching={isFetching} />
       )}
 
       <LeadScoringDetailSheet

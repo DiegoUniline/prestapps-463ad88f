@@ -1,22 +1,42 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
+import { usePaginacion, pageRange, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CalendarCheck, Hash, DollarSign, AlertTriangle } from "lucide-react";
 import { cn, $$ } from "@/lib/utils";
-function usePromesasAll(empresaId: string) {
+function usePromesasPagina(empresaId: string, page: number) {
   return useQuery({
-    queryKey: ["promesas-all", empresaId],
+    queryKey: ["promesas-all", empresaId, page],
+    enabled: !!empresaId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const data = await fetchAllRows(supabase
+      const [from, to] = pageRange(page);
+      const { data, error, count } = await supabase
         .from("promesas_pago")
-        .select(`*, prestamos!promesas_pago_prestamo_id_fkey ( clientes ( nombre_completo ) )`)
+        .select(`id, fecha_prometida, monto_prometido, notas, status, prestamos!promesas_pago_prestamo_id_fkey ( clientes ( nombre_completo ) )`, { count: "exact" })
         .eq("empresa_id", empresaId)
-        .order("fecha_prometida", { ascending: true }));
-      return data || [];
+        .order("fecha_prometida", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to);
+      if (error) throw error;
+      return { rows: data || [], total: count ?? 0 };
+    },
+  });
+}
+
+function usePromesasResumen(empresaId: string) {
+  return useQuery({
+    queryKey: ["promesas-all", empresaId, "resumen"],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const { data, error } = await rpc<{ total: number; pendientes: number; vencidas: number; monto: number }>("promesas_resumen");
+      if (error) throw error;
+      return data;
     },
   });
 }
@@ -30,12 +50,15 @@ const statusBadge: Record<string, string> = {
 
 export default function PromesasPage() {
   const { empresaId } = useEmpresa();
-  const { data: promesas = [], isLoading } = usePromesasAll(empresaId);
+  const [page, setPage] = usePaginacion(`${empresaId}`);
+  const { data: pagina, isLoading, isFetching } = usePromesasPagina(empresaId, page);
+  const { data: resumen, isLoading: loadingResumen } = usePromesasResumen(empresaId);
+  const promesas = pagina?.rows || [];
 
-  const totalPromesas = promesas.length;
-  const pendientes = promesas.filter((p) => p.status === "Pendiente").length;
-  const vencidas = promesas.filter((p) => p.status === "Vencida").length;
-  const montoTotal = promesas.reduce((s, p) => s + Number(p.monto_prometido || 0), 0);
+  const totalPromesas = Number(resumen?.total || 0);
+  const pendientes = Number(resumen?.pendientes || 0);
+  const vencidas = Number(resumen?.vencidas || 0);
+  const montoTotal = Number(resumen?.monto || 0);
 
   const kpis = [
     { label: "Total Promesas", value: String(totalPromesas), icon: Hash, accent: "text-primary" },
@@ -58,7 +81,7 @@ export default function PromesasPage() {
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
               <k.icon className={cn("h-4 w-4", k.accent)} />
             </div>
-            <p className="text-lg font-semibold mt-1">{isLoading ? "—" : k.value}</p>
+            <p className="text-lg font-semibold mt-1">{loadingResumen ? "—" : k.value}</p>
           </div>
         ))}
       </div>
@@ -119,6 +142,7 @@ export default function PromesasPage() {
           </TableBody>
         </Table>
       </div>
+      <PaginacionControles page={page} pageSize={PAGE_SIZE} total={pagina?.total} onPageChange={setPage} isFetching={isFetching} />
       </div>
   );
 }

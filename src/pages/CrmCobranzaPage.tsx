@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { $$, fmtDate, fmtDateTime } from "@/lib/utils";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -49,6 +52,14 @@ const RESULTADOS = [
 
 
 
+interface CarteraPagina {
+  total: number;
+  con_mora: number;
+  total_mora: number;
+  total_adeudado: number;
+  rows: any[];
+}
+
 export default function CrmCobranzaPage() {
   const { empresaId } = useEmpresa();
   const { user } = useAuth();
@@ -68,57 +79,52 @@ export default function CrmCobranzaPage() {
     fecha_seguimiento: "",
   });
 
-  // ── Préstamos con mora (cartera vencida) ────────────────
-  const { data: carteraVencida, isLoading } = useQuery({
-    queryKey: ["crm-cartera", empresaId],
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const [page, setPage] = usePaginacion(`${empresaId}|${filtroEstado}|${debouncedSearch}`);
+
+  // ── Cartera (préstamos vigentes con saldo): agregados por préstamo, filtros, orden y KPIs en SQL ──
+  const { data: cartera, isLoading, isFetching } = useQuery({
+    queryKey: ["crm-cartera", empresaId, filtroEstado, debouncedSearch, page],
+    enabled: !!empresaId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      // Get prestamos with overdue cuotas
-      const { data: prestamos } = await supabase
-        .from("prestamos")
-        .select(`
-          id, monto_solicitado, num_cuotas, frecuencia, estado, fecha_registro,
-          clientes!inner(id, nombre_completo, telefono, direccion),
-          amortizacion(id, num_cuota, fecha_vencimiento, saldo_total, saldo_mora, status, dias_atraso)
-        `)
-        .eq("empresa_id", empresaId)
-        .in("estado", ["Activo", "Al día", "Vencido"])
-        .order("created_at", { ascending: false });
-
-      // Process each prestamo
-      return (prestamos || []).map((p: any) => {
-        const cuotas = p.amortizacion || [];
-        const vencidas = cuotas.filter((c: any) => c.status === "Vencida" || (c.dias_atraso && c.dias_atraso > 0));
-        const totalMora = cuotas.reduce((s: number, c: any) => s + (c.saldo_mora || 0), 0);
-        const totalAdeudado = cuotas.reduce((s: number, c: any) => s + (c.saldo_total || 0), 0);
-        const maxDiasAtraso = Math.max(0, ...cuotas.map((c: any) => c.dias_atraso || 0));
-        const proximaCuota = cuotas
-          .filter((c: any) => c.status !== "Pagada")
-          .sort((a: any, b: any) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento))[0];
-
-        return {
+      const { data, error } = await rpc<CarteraPagina>("crm_cartera_listado", {
+        p_search: debouncedSearch || null,
+        p_filtro: filtroEstado,
+        p_limit: PAGE_SIZE,
+        p_offset: page * PAGE_SIZE,
+      });
+      if (error) throw error;
+      return {
+        total: Number(data?.total || 0),
+        con_mora: Number(data?.con_mora || 0),
+        total_mora: Number(data?.total_mora || 0),
+        total_adeudado: Number(data?.total_adeudado || 0),
+        rows: (data?.rows || []).map((p: any) => ({
           ...p,
-          cliente: p.clientes,
-          cuotasVencidas: vencidas.length,
-          totalMora,
-          totalAdeudado,
-          maxDiasAtraso,
-          proximaCuota,
-        };
-      }).filter((p: any) => p.totalAdeudado > 0);
+          totalMora: Number(p.totalMora || 0),
+          totalAdeudado: Number(p.totalAdeudado || 0),
+          cuotasVencidas: Number(p.cuotasVencidas || 0),
+          maxDiasAtraso: Number(p.maxDiasAtraso || 0),
+          gestionesCount: Number(p.gestionesCount || 0),
+        })),
+      } as CarteraPagina;
     },
   });
 
-  // ── Gestiones ────────────────────────────────
-  const { data: gestiones } = useQuery({
-    queryKey: ["crm-gestiones", empresaId],
+  // ── Historial de gestiones: solo del préstamo abierto en el modal ──
+  const { data: gestionesSeleccionado } = useQuery({
+    queryKey: ["crm-gestiones", empresaId, selectedPrestamo?.id],
+    enabled: !!empresaId && !!selectedPrestamo?.id && openGestion,
     queryFn: async () => {
-      const data = await fetchAllRows(
-        (supabase.from as any)("crm_gestiones")
-          .select("id, cliente_id, prestamo_id, tipo_gestion, resultado, notas, fecha_seguimiento, registrado_por, created_at")
-          .eq("empresa_id", empresaId)
-          .order("created_at", { ascending: false })
-      );
-      return data as any[];
+      const { data, error } = await (supabase.from as any)("crm_gestiones")
+        .select("id, cliente_id, prestamo_id, tipo_gestion, resultado, notas, fecha_seguimiento, registrado_por, created_at")
+        .eq("empresa_id", empresaId)
+        .eq("prestamo_id", selectedPrestamo.id)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data || []) as any[];
     },
   });
 
@@ -139,6 +145,7 @@ export default function CrmCobranzaPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["crm-gestiones", empresaId] });
+      queryClient.invalidateQueries({ queryKey: ["crm-cartera", empresaId] });
       setOpenGestion(false);
       setGestionForm({ tipo_gestion: "llamada", resultado: "contactado", notas: "", fecha_seguimiento: "" });
       toast.success("Gestión registrada");
@@ -185,6 +192,7 @@ export default function CrmCobranzaPage() {
           registrado_por: user?.id || null,
         });
         queryClient.invalidateQueries({ queryKey: ["crm-gestiones", empresaId] });
+        queryClient.invalidateQueries({ queryKey: ["crm-cartera", empresaId] });
       } else {
         toast.error("Error enviando: " + (data?.error || "desconocido"));
       }
@@ -195,18 +203,7 @@ export default function CrmCobranzaPage() {
     }
   };
 
-  // ── Filter ────────────────────────────────
-  const filtered = (carteraVencida || []).filter((p: any) => {
-    const matchSearch = !search || p.cliente.nombre_completo.toLowerCase().includes(search.toLowerCase()) ||
-      p.cliente.telefono?.includes(search);
-    const matchEstado = filtroEstado === "todos" || 
-      (filtroEstado === "vencido" && p.cuotasVencidas > 0) ||
-      (filtroEstado === "al_dia" && p.cuotasVencidas === 0);
-    return matchSearch && matchEstado;
-  }).sort((a: any, b: any) => b.maxDiasAtraso - a.maxDiasAtraso);
-
-  const getGestionesForPrestamo = (prestamoId: string) => 
-    (gestiones || []).filter((g: any) => g.prestamo_id === prestamoId);
+  const filtered = cartera?.rows || [];
 
   const getSeverityColor = (dias: number) => {
     if (dias > 30) return "text-red-600 dark:text-red-400";
@@ -231,19 +228,19 @@ export default function CrmCobranzaPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cuentas</p>
-          <p className="text-xl font-bold">{filtered.length}</p>
+          <p className="text-xl font-bold">{cartera?.total ?? 0}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Con mora</p>
-          <p className="text-xl font-bold text-destructive">{filtered.filter((p: any) => p.cuotasVencidas > 0).length}</p>
+          <p className="text-xl font-bold text-destructive">{cartera?.con_mora ?? 0}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total mora</p>
-          <p className="text-xl font-bold text-destructive">{$$(filtered.reduce((s: number, p: any) => s + p.totalMora, 0))}</p>
+          <p className="text-xl font-bold text-destructive">{$$(cartera?.total_mora ?? 0)}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total adeudado</p>
-          <p className="text-xl font-bold">{$$(filtered.reduce((s: number, p: any) => s + p.totalAdeudado, 0))}</p>
+          <p className="text-xl font-bold">{$$(cartera?.total_adeudado ?? 0)}</p>
         </Card>
       </div>
 
@@ -273,8 +270,7 @@ export default function CrmCobranzaPage() {
           {/* Mobile: Cards */}
           <div className="space-y-2 md:hidden">
             {filtered.map((p: any) => {
-              const gests = getGestionesForPrestamo(p.id);
-              const lastGestion = gests[0];
+              const lastGestion = p.ultimaGestion;
               const lastResultado = lastGestion ? RESULTADOS.find((r) => r.value === lastGestion.resultado) : null;
 
               return (
@@ -342,8 +338,7 @@ export default function CrmCobranzaPage() {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((p: any) => {
-                    const gests = getGestionesForPrestamo(p.id);
-                    const lastGestion = gests[0];
+                    const lastGestion = p.ultimaGestion;
                     const lastResultado = lastGestion ? RESULTADOS.find((r) => r.value === lastGestion.resultado) : null;
 
                     return (
@@ -369,7 +364,7 @@ export default function CrmCobranzaPage() {
                         <TableCell className="text-right text-sm font-medium text-destructive">{$$(p.totalMora)}</TableCell>
                         <TableCell className="text-right text-sm font-medium">{$$(p.totalAdeudado)}</TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="outline" className="text-[10px]">{gests.length}</Badge>
+                          <Badge variant="outline" className="text-[10px]">{p.gestionesCount}</Badge>
                         </TableCell>
                         <TableCell className="text-center">
                           {lastGestion ? (
@@ -407,6 +402,13 @@ export default function CrmCobranzaPage() {
               </Table>
             </div>
           </Card>
+          <PaginacionControles
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={cartera?.total}
+            onPageChange={setPage}
+            isFetching={isFetching}
+          />
         </>
       )}
 
@@ -473,10 +475,10 @@ export default function CrmCobranzaPage() {
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Historial de gestiones</p>
                   <div className="max-h-[200px] overflow-y-auto space-y-2">
-                    {getGestionesForPrestamo(selectedPrestamo.id).length === 0 ? (
+                    {(gestionesSeleccionado || []).length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">Sin gestiones previas</p>
                     ) : (
-                      getGestionesForPrestamo(selectedPrestamo.id).map((g: any) => {
+                      (gestionesSeleccionado || []).map((g: any) => {
                         const res = RESULTADOS.find((r) => r.value === g.resultado);
                         const tipo = TIPOS_GESTION.find((t) => t.value === g.tipo_gestion);
                         return (

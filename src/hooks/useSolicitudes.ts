@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/supabaseQuery";
+import { PAGE_SIZE, pageRange } from "@/hooks/usePaginacion";
 
 export interface Solicitud {
   id: string;
@@ -42,6 +43,39 @@ export function useSolicitudes(empresaId?: string, statusFilter?: string) {
       if (statusFilter && statusFilter !== "todos") query = query.eq("status", statusFilter);
 
       return await fetchAllRows<Solicitud>(query);
+    },
+  });
+}
+
+/**
+ * Listado paginado en servidor: estado, búsqueda (nombre o ID del cliente) y orden en PostgREST.
+ * Devuelve solo la página pedida + total filtrado.
+ */
+export function useSolicitudesPaginadas(params: { empresaId?: string; status?: string; search?: string; page?: number; pageSize?: number }) {
+  const page = params.page ?? 0;
+  const pageSize = params.pageSize ?? PAGE_SIZE;
+  return useQuery({
+    queryKey: ["solicitudes", params.empresaId, params.status, "pagina", params.search || "", page, pageSize],
+    enabled: !!params.empresaId,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const search = params.search?.trim();
+      let query = (supabase.from as any)("solicitudes_prestamo")
+        .select(`*, clientes${search ? "!inner" : ""}(nombre_completo, id_cliente)`, { count: "exact" })
+        .eq("empresa_id", params.empresaId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true });
+
+      if (params.status && params.status !== "todos") query = query.eq("status", params.status);
+      if (search) {
+        const like = `%${search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`.replace(/["\\]/g, (c) => `\\${c}`);
+        query = query.or(`nombre_completo.ilike."${like}",id_cliente.ilike."${like}"`, { referencedTable: "clientes" });
+      }
+
+      const [from, to] = pageRange(page, pageSize);
+      const { data, error, count } = await query.range(from, to);
+      if (error) throw error;
+      return { rows: (data || []) as Solicitud[], total: count ?? 0 };
     },
   });
 }

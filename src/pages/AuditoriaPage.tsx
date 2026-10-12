@@ -1,7 +1,9 @@
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { useState } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { rpc } from "@/lib/supabaseQuery";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,148 +28,70 @@ interface AuditEntry {
   color: string;
 }
 
+interface AuditRow {
+  id: string;
+  tipo: "pago" | "anulacion" | "gestion" | "promesa";
+  fecha: string | null;
+  monto: number | null;
+  cliente: string | null;
+  detalle: string | null;
+  usuario: string;
+  accion: string;
+  tipo_gestion: string | null;
+  fecha_prometida: string | null;
+  status: string | null;
+}
+
+function toEntry(r: AuditRow): AuditEntry {
+  const cliente = r.cliente || "—";
+  switch (r.tipo) {
+    case "pago":
+      return { id: `pago-${r.id}`, tipo: "pago", accion: r.accion, descripcion: `${cliente} — ${$$(r.monto)}`, usuario: r.usuario, fecha: r.fecha || "", monto: Number(r.monto || 0), icono: HandCoins, color: "text-success" };
+    case "anulacion":
+      return { id: `anulacion-${r.id}`, tipo: "anulacion", accion: r.accion, descripcion: `${cliente} — ${$$(r.monto)}${r.detalle ? ` • ${r.detalle}` : ""}`, usuario: r.usuario, fecha: r.fecha || "", monto: Number(r.monto || 0), icono: XCircle, color: "text-destructive" };
+    case "gestion":
+      return { id: `gestion-${r.id}`, tipo: "gestion", accion: r.accion, descripcion: `${cliente}${r.detalle ? ` — ${r.detalle}` : ""}`, usuario: r.usuario, fecha: r.fecha || "", icono: r.tipo_gestion === "visita" ? MapPin : r.tipo_gestion === "whatsapp" ? MessageSquare : CreditCard, color: "text-primary" };
+    default:
+      return { id: `promesa-${r.id}`, tipo: "promesa", accion: r.accion, descripcion: `${$$(r.monto)} para ${r.fecha_prometida} — ${r.status}`, usuario: r.usuario, fecha: r.fecha || "", monto: Number(r.monto || 0), icono: CalendarCheck, color: "text-purple-500" };
+  }
+}
+
 export default function AuditoriaPage() {
   const { empresaId } = useEmpresa();
   const [search, setSearch] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("todos");
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const [page, setPage] = usePaginacion(`${empresaId}|${filtroTipo}|${debouncedSearch}`);
 
-  // Pagos (incluye anulaciones)
-  const { data: pagos, isLoading: lp } = useQuery({
-    queryKey: ["audit-pagos", empresaId],
+  // KPIs: conteos por tipo en SQL
+  const { data: resumen } = useQuery({
+    queryKey: ["audit-resumen", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      const data = await fetchAllRows<any>(
-        supabase
-          .from("pagos")
-          .select("id, monto_recibido, anulado, anulado_por, anulado_en, motivo_anulacion, created_at, registrado_por, prestamo_id, prestamos!inner(clientes!inner(nombre_completo))")
-          .eq("empresa_id", empresaId)
-          .order("created_at", { ascending: false })
-      );
+      const { data, error } = await rpc<{ total: number; pagos: number; anulaciones: number; gestiones: number; promesas: number }>("auditoria_resumen");
+      if (error) throw error;
       return data;
     },
   });
 
-  // CRM gestiones
-  const { data: gestiones, isLoading: lg } = useQuery({
-    queryKey: ["audit-gestiones", empresaId],
+  // Bitácora paginada (pagos, anulaciones, gestiones, promesas) unificada y ordenada en SQL
+  const { data: listado, isLoading, isFetching } = useQuery({
+    queryKey: ["audit-listado", empresaId, filtroTipo, debouncedSearch, page],
+    enabled: !!empresaId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const data = await fetchAllRows<any>(
-        supabase
-          .from("crm_gestiones")
-          .select("id, tipo_gestion, resultado, notas, created_at, registrado_por, prestamo_id, clientes!inner(nombre_completo)")
-          .eq("empresa_id", empresaId)
-          .order("created_at", { ascending: false })
-      );
-      return data;
+      const { data, error } = await rpc<{ rows: AuditRow[]; has_more: boolean }>("auditoria_listado", {
+        p_tipo: filtroTipo === "todos" ? null : filtroTipo,
+        p_search: debouncedSearch || null,
+        p_limit: PAGE_SIZE,
+        p_offset: page * PAGE_SIZE,
+      });
+      if (error) throw error;
+      return { rows: (data?.rows || []).map(toEntry), hasMore: !!data?.has_more };
     },
   });
 
-  // Promesas
-  const { data: promesas, isLoading: lpr } = useQuery({
-    queryKey: ["audit-promesas", empresaId],
-    queryFn: async () => {
-      const data = await fetchAllRows<any>(
-        supabase
-          .from("promesas_pago")
-          .select("id, monto_prometido, fecha_prometida, status, created_at, prestamo_id")
-          .eq("empresa_id", empresaId)
-          .order("created_at", { ascending: false })
-      );
-      return data;
-    },
-  });
-
-  // Profiles map
-  const { data: profiles } = useQuery({
-    queryKey: ["audit-profiles", empresaId],
-    queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("id, nombre_completo").eq("empresa_id", empresaId);
-      const map: Record<string, string> = {};
-      for (const p of data || []) map[p.id] = p.nombre_completo;
-      return map;
-    },
-  });
-
-  const entries: AuditEntry[] = useMemo(() => {
-    const list: AuditEntry[] = [];
-    const pMap = profiles || {};
-
-    // Pagos
-    for (const p of pagos || []) {
-      const cliente = (p as any).prestamos?.clientes?.nombre_completo || "—";
-      list.push({
-        id: `pago-${p.id}`,
-        tipo: "pago",
-        accion: "Pago registrado",
-        descripcion: `${cliente} — ${$$(p.monto_recibido)}`,
-        usuario: pMap[p.registrado_por || ""] || "Sistema",
-        fecha: p.created_at || "",
-        monto: p.monto_recibido,
-        icono: HandCoins,
-        color: "text-success",
-      });
-
-      if (p.anulado) {
-        list.push({
-          id: `anulacion-${p.id}`,
-          tipo: "anulacion",
-          accion: "Pago anulado",
-          descripcion: `${cliente} — ${$$(p.monto_recibido)}${p.motivo_anulacion ? ` • ${p.motivo_anulacion}` : ""}`,
-          usuario: pMap[p.anulado_por || ""] || "Sistema",
-          fecha: p.anulado_en || p.created_at || "",
-          monto: p.monto_recibido,
-          icono: XCircle,
-          color: "text-destructive",
-        });
-      }
-    }
-
-    // Gestiones
-    for (const g of gestiones || []) {
-      const cliente = (g as any).clientes?.nombre_completo || "—";
-      const tipoLabel = g.tipo_gestion === "visita" ? "Visita" : g.tipo_gestion === "llamada" ? "Llamada" : g.tipo_gestion === "whatsapp" ? "WhatsApp" : g.tipo_gestion;
-      list.push({
-        id: `gestion-${g.id}`,
-        tipo: "gestion",
-        accion: `${tipoLabel}: ${g.resultado}`,
-        descripcion: `${cliente}${g.notas ? ` — ${g.notas.slice(0, 80)}` : ""}`,
-        usuario: pMap[g.registrado_por || ""] || "Sistema",
-        fecha: g.created_at || "",
-        icono: g.tipo_gestion === "visita" ? MapPin : g.tipo_gestion === "whatsapp" ? MessageSquare : CreditCard,
-        color: "text-primary",
-      });
-    }
-
-    // Promesas
-    for (const p of promesas || []) {
-      list.push({
-        id: `promesa-${p.id}`,
-        tipo: "promesa",
-        accion: "Promesa registrada",
-        descripcion: `${$$(p.monto_prometido)} para ${p.fecha_prometida} — ${p.status}`,
-        usuario: "Sistema",
-        fecha: p.created_at || "",
-        monto: p.monto_prometido,
-        icono: CalendarCheck,
-        color: "text-purple-500",
-      });
-    }
-
-    list.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    return list;
-  }, [pagos, gestiones, promesas, profiles]);
-
-  const filtered = useMemo(() => {
-    return entries.filter(e => {
-      if (filtroTipo !== "todos" && e.tipo !== filtroTipo) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return e.descripcion.toLowerCase().includes(q) || e.usuario.toLowerCase().includes(q) || e.accion.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [entries, search, filtroTipo]);
-
-  const isLoading = lp || lg || lpr;
+  const filtered = listado?.rows || [];
 
   return (
     <div className="space-y-4">
@@ -180,11 +104,11 @@ export default function AuditoriaPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</p><p className="text-xl font-bold">{entries.length}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Pagos</p><p className="text-xl font-bold text-success">{entries.filter(e => e.tipo === "pago").length}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Anulaciones</p><p className="text-xl font-bold text-destructive">{entries.filter(e => e.tipo === "anulacion").length}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Gestiones</p><p className="text-xl font-bold text-primary">{entries.filter(e => e.tipo === "gestion").length}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Promesas</p><p className="text-xl font-bold">{entries.filter(e => e.tipo === "promesa").length}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</p><p className="text-xl font-bold">{resumen?.total ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Pagos</p><p className="text-xl font-bold text-success">{resumen?.pagos ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Anulaciones</p><p className="text-xl font-bold text-destructive">{resumen?.anulaciones ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Gestiones</p><p className="text-xl font-bold text-primary">{resumen?.gestiones ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Promesas</p><p className="text-xl font-bold">{resumen?.promesas ?? 0}</p></Card>
       </div>
 
       <div className="flex gap-3 items-center">
@@ -212,7 +136,7 @@ export default function AuditoriaPage() {
           <div className="md:hidden space-y-2">
             {filtered.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground text-[13px]">Sin registros</p>
-            ) : filtered.slice(0, 200).map((e) => {
+            ) : filtered.map((e) => {
               const Icon = e.icono;
               return (
                 <div key={e.id} className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
@@ -246,7 +170,7 @@ export default function AuditoriaPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.slice(0, 200).map(e => {
+                  {filtered.map(e => {
                     const Icon = e.icono;
                     return (
                       <TableRow key={e.id}>
@@ -269,6 +193,14 @@ export default function AuditoriaPage() {
               </Table>
             </div>
           </Card>
+          <PaginacionControles
+            page={page}
+            pageSize={PAGE_SIZE}
+            hasMore={listado?.hasMore}
+            rowsOnPage={filtered.length}
+            onPageChange={setPage}
+            isFetching={isFetching}
+          />
         </>
       )}
       </div>

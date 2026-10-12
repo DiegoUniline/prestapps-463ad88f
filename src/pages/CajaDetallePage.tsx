@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
+import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { rpcRegistrarMovimientoCaja, rpcTransferirCaja } from "@/lib/rpcIntegridad";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
@@ -54,83 +56,22 @@ function useCaja(cajaId: string) {
   });
 }
 
+type CajaStats = { activos: number; colocado: number; totalPagar: number; porCobrar: number; capitalPorCobrar: number; interesPorCobrar: number; moraPorCobrar: number; moraCobrada: number; ganancia: number; enMora: number; moraTotal: number; liquidados: number; capitalRecuperado: number };
+
+// KPIs de cartera de la caja (incluye mora calculada al día) agregados en SQL: rpc caja_detalle_stats.
 function useCajaStats(cajaId: string) {
   return useQuery({
     queryKey: ["caja-stats", cajaId],
     enabled: !!cajaId,
     queryFn: async () => {
-      const { data: prestamos } = await supabase
-        .from("prestamos")
-        .select("id, monto_solicitado, monto_total_pagar, estado, tipo_mora, valor_mora")
-        .eq("caja_id", cajaId)
-        .not("estado", "in", '("Cancelado")');
-
-      if (!prestamos?.length) return { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, capitalPorCobrar: 0, interesPorCobrar: 0, moraPorCobrar: 0, moraCobrada: 0, ganancia: 0, enMora: 0, moraTotal: 0, liquidados: 0, capitalRecuperado: 0 };
-
-      const ids = prestamos.map(p => p.id);
-      const prestamoMap = new Map(prestamos.map((p) => [p.id, p]));
-      const amortData = await fetchAllRows(
-        supabase
-          .from("amortizacion")
-          .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes, mora_pagada, status, fecha_vencimiento")
-          .in("prestamo_id", ids)
-      );
-
       const today = new Date().toISOString().slice(0, 10);
-      const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
-
-      for (const a of amortData) {
-        const p = prestamoMap.get(a.prestamo_id);
-        if (!prestamoAgg[a.prestamo_id]) {
-          prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, capital: 0, interes: 0, tieneAtraso: false };
-        }
-
-        const saldoCapital = Number(a.saldo_capital || 0);
-        const saldoInteres = Number(a.saldo_interes || 0);
-        const saldoMoraGuardada = Number(a.saldo_mora || 0);
-        const moraPagada = Number(a.mora_pagada || 0);
-        let moraPendiente = saldoMoraGuardada;
-
-        const hayAtraso = !!a.fecha_vencimiento && a.fecha_vencimiento < today;
-        if (hayAtraso && Number(a.saldo_total || 0) > 0 && Number(p?.valor_mora || 0) > 0) {
-          const diasAtraso = Math.max(0, Math.floor((parseLocalDate(today).getTime() - parseLocalDate(a.fecha_vencimiento).getTime()) / 86400000));
-          const baseMora = p?.tipo_mora === "porcentaje"
-            ? Number(a.capital_interes || 0) * (Number(p?.valor_mora || 0) / 100) * diasAtraso
-            : Number(p?.valor_mora || 0) * diasAtraso;
-          const moraCalculada = Math.max(0, baseMora - moraPagada);
-          moraPendiente = Math.max(saldoMoraGuardada, moraCalculada);
-        }
-
-        prestamoAgg[a.prestamo_id].capital += saldoCapital;
-        prestamoAgg[a.prestamo_id].interes += saldoInteres;
-        prestamoAgg[a.prestamo_id].mora += moraPendiente;
-        prestamoAgg[a.prestamo_id].moraCobrada += moraPagada;
-        prestamoAgg[a.prestamo_id].saldo += saldoCapital + saldoInteres + moraPendiente;
-
-        if (hayAtraso && (saldoCapital + saldoInteres + moraPendiente) > 0) {
-          prestamoAgg[a.prestamo_id].tieneAtraso = true;
-        }
+      const { data, error } = await rpc<Record<keyof CajaStats, number | string>>("caja_detalle_stats", { p_caja_id: cajaId, p_today: today });
+      if (error) throw error;
+      const out = {} as CajaStats;
+      for (const k of ["activos", "colocado", "totalPagar", "porCobrar", "capitalPorCobrar", "interesPorCobrar", "moraPorCobrar", "moraCobrada", "ganancia", "enMora", "moraTotal", "liquidados", "capitalRecuperado"] as (keyof CajaStats)[]) {
+        out[k] = Number(data?.[k] || 0);
       }
-
-      let activos = 0, colocado = 0, totalPagar = 0, porCobrar = 0, capitalPorCobrar = 0, interesPorCobrar = 0, moraPorCobrar = 0, moraCobrada = 0, ganancia = 0, enMora = 0, moraTotal = 0, liquidados = 0, capitalRecuperado = 0;
-      for (const p of prestamos) {
-        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, moraCobrada: 0, capital: 0, interes: 0, tieneAtraso: false };
-        const monto = Number(p.monto_solicitado || 0);
-        const total = Number(p.monto_total_pagar || 0);
-        const isActive = p.estado !== "Liquidado";
-        if (isActive) activos++; else { liquidados++; capitalRecuperado += monto; }
-        colocado += monto;
-        totalPagar += total;
-        porCobrar += agg.saldo;
-        capitalPorCobrar += agg.capital;
-        interesPorCobrar += agg.interes;
-        moraPorCobrar += agg.mora;
-        moraCobrada += agg.moraCobrada;
-        ganancia += (total - monto) + agg.moraCobrada + agg.mora;
-        if (agg.tieneAtraso) { enMora++; moraTotal += agg.mora; }
-      }
-
-      return { activos, colocado, totalPagar, porCobrar, capitalPorCobrar, interesPorCobrar, moraPorCobrar, moraCobrada, ganancia, enMora, moraTotal, liquidados, capitalRecuperado };
+      return out;
     },
   });
 }
@@ -141,33 +82,13 @@ function useCajaFlujoReal(cajaId: string) {
     queryKey: ["caja-flujo-real", cajaId],
     enabled: !!cajaId,
     queryFn: async () => {
-      const { data: pagos } = await supabase
-        .from("pagos").select("monto_recibido").eq("caja_id", cajaId).eq("anulado", false);
-      const totalCobros = (pagos || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-
-      const { data: prestamos } = await supabase
-        .from("prestamos").select("monto_solicitado").eq("caja_id", cajaId).not("estado", "eq", "Cancelado");
-      const totalDesembolsos = (prestamos || []).reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
-
-      const { data: manuales } = await supabase
-        .from("movimientos_caja").select("tipo, monto, concepto").eq("caja_id", cajaId).is("prestamo_id", null);
-
-      let depositos = 0, retiros = 0, transferenciasIn = 0, transferenciasOut = 0, gastos = 0, comisiones = 0;
-      for (const m of manuales || []) {
-        const monto = Number(m.monto || 0);
-        const lower = (m.concepto || "").toLowerCase();
-        // Skip automatic correction movements (caja reassignment)
-        if (lower.includes("corrección") || lower.includes("correccion") || lower.includes("movido a caja")) continue;
-        const isTransfer = lower.includes("transferencia");
-        // "Gasto cobrador" = comisión automática, NO gasto manual del usuario
-        const isComision = lower.includes("comisión") || lower.includes("comision") || lower.includes("corte") || lower.includes("gasto cobrador");
-        const isGasto = !isComision && (lower.includes("[") || lower.startsWith("gasto"));
-        if (isTransfer) { if (m.tipo === "entrada") transferenciasIn += monto; else transferenciasOut += monto; }
-        else if (isComision) comisiones += monto;
-        else if (isGasto) gastos += monto;
-        else if (m.tipo === "entrada") depositos += monto;
-        else retiros += monto;
-      }
+      // Sumas por categoría en SQL (rpc caja_flujo), misma clasificación de movimientos manuales que antes.
+      const { data, error } = await rpc<Record<string, number | string>>("caja_flujo", { p_caja_id: cajaId });
+      if (error) throw error;
+      const n = (k: string) => Number(data?.[k] || 0);
+      const totalCobros = n("cobros");
+      const totalDesembolsos = n("desembolsos");
+      const depositos = n("depositos"), retiros = n("retiros"), transferenciasIn = n("transferencias_in"), transferenciasOut = n("transferencias_out"), gastos = n("gastos"), comisiones = n("comisiones");
 
       // NOTE: Anulaciones are NOT counted as salidas because the anulado pagos
       // are already excluded from cobros (entradas). Counting them as salida
@@ -191,37 +112,52 @@ function useCajaFlujoReal(cajaId: string) {
   });
 }
 
-interface KardexRow { id: string; fecha: string; tipo: "entrada" | "salida"; concepto: string; monto: number; categoria: string; }
-
-function classifyConcepto(concepto: string, tipo: "entrada" | "salida"): string {
-  const lower = concepto.toLowerCase();
-  if (lower.includes("corrección") || lower.includes("correccion") || lower.includes("movido a caja")) return "Correcciones";
-  if (lower.includes("anulación") || lower.includes("anulacion")) return "Anulaciones";
-  if (lower.includes("pago") || lower.includes("cobro") || lower.includes("cuota")) return "Pagos";
-  if (lower.includes("desembolso") || lower.includes("préstamo")) return "Desembolsos";
-  if (lower.includes("comisión") || lower.includes("comision") || lower.includes("corte")) return "Comisiones";
-  if (lower.includes("transferencia")) return "Transferencias";
-  if (lower.includes("[") || lower.includes("gasto")) return "Gastos";
-  if (tipo === "entrada") return "Depósitos";
-  return "Retiros";
-}
+interface KardexRow { id: string; fecha: string; tipo: "entrada" | "salida"; concepto: string; monto: number; categoria: string; balance: number; }
 
 const KARDEX_CATEGORIES = ["Todos", "Pagos", "Desembolsos", "Anulaciones", "Correcciones", "Gastos", "Comisiones", "Depósitos", "Retiros", "Transferencias"] as const;
 const MANUAL_CATEGORIES = new Set(["Depósitos", "Retiros", "Transferencias"]);
 
-function useCajaKardex(cajaId: string) {
+// Página del kardex con saldo corrido calculado en SQL (rpc caja_kardex), más reciente primero.
+// modo "todos": saldo sobre todos los movimientos (la categoría solo filtra filas);
+// modo "manual": solo depósitos/retiros/transferencias, con su propio saldo corrido.
+function useCajaKardex(cajaId: string, modo: "todos" | "manual", categoria: string, page: number, enabled = true) {
   return useQuery({
-    queryKey: ["caja-kardex", cajaId],
+    queryKey: ["caja-kardex", cajaId, "pagina", modo, categoria, page],
+    enabled: !!cajaId && enabled,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const { data, error } = await rpc<{ id: string; created_at: string | null; tipo: "entrada" | "salida"; monto: number | string; concepto: string; categoria: string; balance: number | string }[]>("caja_kardex", {
+        p_caja_id: cajaId,
+        p_modo: modo,
+        p_categoria: categoria === "Todos" ? null : categoria,
+        p_limit: PAGE_SIZE,
+        p_offset: page * PAGE_SIZE,
+      });
+      if (error) throw error;
+      return (data || []).map((m): KardexRow => ({
+        id: m.id,
+        fecha: m.created_at || "",
+        tipo: m.tipo,
+        concepto: m.concepto,
+        monto: Number(m.monto || 0),
+        categoria: m.categoria,
+        balance: Number(m.balance || 0),
+      }));
+    },
+  });
+}
+
+// Conteo y sumas por categoría del kardex (chips, totales de la pestaña Movimientos).
+function useCajaKardexResumen(cajaId: string) {
+  return useQuery({
+    queryKey: ["caja-kardex", cajaId, "resumen"],
     enabled: !!cajaId,
     queryFn: async () => {
-      const movs = await fetchAllRows(supabase.from("movimientos_caja").select("id, created_at, tipo, monto, concepto").eq("caja_id", cajaId).order("created_at", { ascending: true }));
-      const rows: KardexRow[] = [];
-      for (const m of movs || []) {
-        const concepto = m.concepto || (m.tipo === "entrada" ? "Depósito" : "Retiro");
-        rows.push({ id: m.id, fecha: m.created_at || "", tipo: m.tipo as "entrada" | "salida", concepto, monto: Number(m.monto || 0), categoria: classifyConcepto(concepto, m.tipo as "entrada" | "salida") });
-      }
-      rows.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-      return rows;
+      const { data, error } = await rpc<{ categoria: string; n: number; entradas: number | string; salidas: number | string }[]>("caja_kardex_resumen", { p_caja_id: cajaId });
+      if (error) throw error;
+      const map: Record<string, { n: number; entradas: number; salidas: number }> = {};
+      for (const r of data || []) map[r.categoria] = { n: Number(r.n || 0), entradas: Number(r.entradas || 0), salidas: Number(r.salidas || 0) };
+      return map;
     },
   });
 }
@@ -247,7 +183,6 @@ export default function CajaDetallePage() {
   const { empresaId } = useEmpresa();
   const { data: caja, isLoading: loadingCaja } = useCaja(id || "");
   const { data: stats, isLoading: loadingStats } = useCajaStats(id || "");
-  const { data: rows = [], isLoading: loadingKardex } = useCajaKardex(id || "");
   const { data: allCajas = [] } = useAllCajas(empresaId);
   const { saldo: saldoReal } = useSingleCajaSaldoReal(id || "");
   const { data: flujoReal } = useCajaFlujoReal(id || "");
@@ -255,6 +190,11 @@ export default function CajaDetallePage() {
   const [tab, setTab] = useState("resumen");
   const [modal, setModal] = useState<ModalType>(null);
   const [kardexFilter, setKardexFilter] = useState("Todos");
+  const [kardexPage, setKardexPage] = usePaginacion(`${id}|${kardexFilter}`);
+  const [manualPage, setManualPage] = usePaginacion(`${id}`);
+  const { data: kardexResumen = {}, isLoading: loadingKardex } = useCajaKardexResumen(id || "");
+  const { data: filteredKardex = [], isLoading: loadingKardexPage, isFetching: fetchingKardex } = useCajaKardex(id || "", "todos", kardexFilter, kardexPage, tab === "kardex");
+  const { data: manualRows = [], isLoading: loadingManualPage, isFetching: fetchingManual } = useCajaKardex(id || "", "manual", "Todos", manualPage, tab === "movimientos");
   const [monto, setMonto] = useState("");
   const [concepto, setConcepto] = useState("");
   const [cajaDestinoId, setCajaDestinoId] = useState("");
@@ -308,28 +248,22 @@ export default function CajaDetallePage() {
     resetModal();
   };
 
-  // ── Computed data ──────────────────────────────────────────────
-  const withBalance = useMemo(() => {
-    let balance = 0;
-    return rows.map(r => { balance += r.tipo === "entrada" ? r.monto : -r.monto; return { ...r, balance }; }).reverse();
-  }, [rows]);
+  // ── Computed data (totales por categoría desde rpc caja_kardex_resumen) ──
+  const totalMovs = useMemo(() => Object.values(kardexResumen).reduce((s, c) => s + c.n, 0), [kardexResumen]);
+  const manualTotals = useMemo(() => {
+    let n = 0, entradas = 0, salidas = 0;
+    for (const cat of MANUAL_CATEGORIES) {
+      const c = kardexResumen[cat];
+      if (c) { n += c.n; entradas += c.entradas; salidas += c.salidas; }
+    }
+    return { n, entradas, salidas, saldo: entradas - salidas };
+  }, [kardexResumen]);
+  const kardexFilterTotals = kardexResumen[kardexFilter] || { n: 0, entradas: 0, salidas: 0 };
 
-  // Manual movements only (depósitos, retiros, transferencias)
-  const manualRows = useMemo(() => {
-    const filtered = rows.filter(r => MANUAL_CATEGORIES.has(r.categoria));
-    let balance = 0;
-    return filtered.map(r => { balance += r.tipo === "entrada" ? r.monto : -r.monto; return { ...r, balance }; }).reverse();
-  }, [rows]);
-
-  const filteredKardex = useMemo(() => {
-    if (kardexFilter === "Todos") return withBalance;
-    return withBalance.filter(r => r.categoria === kardexFilter);
-  }, [withBalance, kardexFilter]);
-
-  const availableCategories = useMemo(() => {
-    const cats = new Set(rows.map(r => r.categoria));
-    return KARDEX_CATEGORIES.filter(c => c === "Todos" || cats.has(c));
-  }, [rows]);
+  const availableCategories = useMemo(
+    () => KARDEX_CATEGORIES.filter(c => c === "Todos" || (kardexResumen[c]?.n || 0) > 0),
+    [kardexResumen]
+  );
 
   const flujoData = useMemo(() => {
     if (!flujoReal) return { entradas: {} as Record<string, number>, salidas: {} as Record<string, number>, totalEntradas: 0, totalSalidas: 0, saldoInicial: saldoActual, flujoNeto: 0 };
@@ -516,19 +450,19 @@ export default function CajaDetallePage() {
 
         {/* ── Movimientos Tab (solo depósitos, retiros, transferencias) ── */}
         <TabsContent value="movimientos" className="mt-4 space-y-3">
-          {loadingKardex ? (
+          {loadingKardex || loadingManualPage ? (
             <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : manualRows.length === 0 ? (
+          ) : manualTotals.n === 0 ? (
             <p className="text-center py-12 text-muted-foreground text-sm">Sin depósitos, retiros ni transferencias</p>
           ) : (
             <>
               <div className="flex items-center gap-4 text-[12px] px-1">
-                <span className="text-muted-foreground">{manualRows.length} movimientos</span>
+                <span className="text-muted-foreground">{manualTotals.n} movimientos</span>
                 <span className="text-success font-medium">
-                  +{$$(manualRows.filter(r => r.tipo === "entrada").reduce((s, r) => s + r.monto, 0))}
+                  +{$$(manualTotals.entradas)}
                 </span>
                 <span className="text-destructive font-medium">
-                  -{$$(manualRows.filter(r => r.tipo === "salida").reduce((s, r) => s + r.monto, 0))}
+                  -{$$(manualTotals.salidas)}
                 </span>
               </div>
 
@@ -554,8 +488,8 @@ export default function CajaDetallePage() {
                 <div className="px-4 py-3 bg-muted/50 border-t-2 border-border flex items-center justify-between font-bold text-[13px]">
                   <span>Totales</span>
                   <div className="flex gap-4">
-                    <span className="text-success">+{$$(manualRows.filter(r => r.tipo === "entrada").reduce((s, r) => s + r.monto, 0))}</span>
-                    <span className="text-destructive">-{$$(manualRows.filter(r => r.tipo === "salida").reduce((s, r) => s + r.monto, 0))}</span>
+                    <span className="text-success">+{$$(manualTotals.entradas)}</span>
+                    <span className="text-destructive">-{$$(manualTotals.salidas)}</span>
                   </div>
                 </div>
               </div>
@@ -589,16 +523,17 @@ export default function CajaDetallePage() {
                     <TableRow className="bg-muted/50 border-t-2 border-border font-bold">
                       <TableCell className="px-3 text-[12px]" colSpan={3}>Totales</TableCell>
                       <TableCell className="text-right text-[13px] px-3 text-success font-bold">
-                        {$$(manualRows.filter(r => r.tipo === "entrada").reduce((s, r) => s + r.monto, 0))}
+                        {$$(manualTotals.entradas)}
                       </TableCell>
                       <TableCell className="text-right text-[13px] px-3 text-destructive font-bold">
-                        {$$(manualRows.filter(r => r.tipo === "salida").reduce((s, r) => s + r.monto, 0))}
+                        {$$(manualTotals.salidas)}
                       </TableCell>
-                      <TableCell className="text-right text-[13px] px-3 font-bold">{manualRows.length > 0 ? $$(manualRows[0].balance) : "$0"}</TableCell>
+                      <TableCell className="text-right text-[13px] px-3 font-bold">{$$(manualTotals.saldo)}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
               </div>
+              <PaginacionControles page={manualPage} pageSize={PAGE_SIZE} total={manualTotals.n} onPageChange={setManualPage} isFetching={fetchingManual} />
             </>
           )}
         </TabsContent>
@@ -606,7 +541,7 @@ export default function CajaDetallePage() {
         {/* ── Kardex Tab ──────────────────────────────────────────── */}
         <TabsContent value="kardex" className="mt-4 space-y-3">
           {/* Category filter chips */}
-          {!loadingKardex && withBalance.length > 0 && (
+          {!loadingKardex && totalMovs > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {availableCategories.map(cat => (
                 <button
@@ -622,7 +557,7 @@ export default function CajaDetallePage() {
                   {cat}
                   {cat !== "Todos" && (
                     <span className="ml-1 opacity-70">
-                      ({withBalance.filter(r => r.categoria === cat).length})
+                      ({kardexResumen[cat]?.n || 0})
                     </span>
                   )}
                 </button>
@@ -630,9 +565,9 @@ export default function CajaDetallePage() {
             </div>
           )}
 
-          {loadingKardex ? (
+          {loadingKardex || loadingKardexPage ? (
             <div className="space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : withBalance.length === 0 ? (
+          ) : totalMovs === 0 ? (
             <p className="text-center py-12 text-muted-foreground text-sm">Sin movimientos</p>
           ) : filteredKardex.length === 0 ? (
             <p className="text-center py-12 text-muted-foreground text-sm">Sin movimientos en "{kardexFilter}"</p>
@@ -641,12 +576,12 @@ export default function CajaDetallePage() {
               {/* Summary for filtered view */}
               {kardexFilter !== "Todos" && (
                 <div className="flex items-center gap-4 text-[12px] px-1">
-                  <span className="text-muted-foreground">{filteredKardex.length} movimientos</span>
+                  <span className="text-muted-foreground">{kardexFilterTotals.n} movimientos</span>
                   <span className="text-success font-medium">
-                    +{$$(filteredKardex.filter(r => r.tipo === "entrada").reduce((s, r) => s + r.monto, 0))}
+                    +{$$(kardexFilterTotals.entradas)}
                   </span>
                   <span className="text-destructive font-medium">
-                    -{$$(filteredKardex.filter(r => r.tipo === "salida").reduce((s, r) => s + r.monto, 0))}
+                    -{$$(kardexFilterTotals.salidas)}
                   </span>
                 </div>
               )}
@@ -701,6 +636,13 @@ export default function CajaDetallePage() {
                   </TableBody>
                 </Table>
               </div>
+              <PaginacionControles
+                page={kardexPage}
+                pageSize={PAGE_SIZE}
+                total={kardexFilter === "Todos" ? totalMovs : kardexFilterTotals.n}
+                onPageChange={setKardexPage}
+                isFetching={fetchingKardex}
+              />
             </>
           )}
         </TabsContent>
@@ -709,7 +651,7 @@ export default function CajaDetallePage() {
         <TabsContent value="flujo" className="mt-4">
           {loadingKardex ? (
             <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-          ) : rows.length === 0 ? (
+          ) : totalMovs === 0 ? (
             <p className="text-center py-12 text-muted-foreground text-sm">Sin movimientos</p>
           ) : (
             <Card>

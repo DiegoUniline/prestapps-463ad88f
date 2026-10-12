@@ -6,6 +6,7 @@
 
 -- ── Índices de soporte ───────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_clientes_empresa_created        ON public.clientes (empresa_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prestamos_cliente               ON public.prestamos (cliente_id);
 CREATE INDEX IF NOT EXISTS idx_crm_gestiones_empresa_created   ON public.crm_gestiones (empresa_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_promesas_pago_empresa_created   ON public.promesas_pago (empresa_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_promesas_pago_empresa_fecha     ON public.promesas_pago (empresa_id, fecha_prometida, id);
@@ -255,7 +256,8 @@ $$;
 
 -- ── 2) Atendidos de la semana (pagos + gestiones) ────────────────
 -- Sin p_cliente_ids / p_prestamo_ids: todos los atendidos de la semana.
--- Con alguno: cada lista de salida se limita a los ids dados (NULL => lista vacía).
+-- Con alguno: solo se evalúan esos ids (p. ej. la página visible); NULL => lista de salida vacía.
+-- Las gestiones usan el rango [desde 00:00:00, hasta 23:59:59] en la zona de la sesión (igual que antes vía PostgREST).
 CREATE OR REPLACE FUNCTION public.atendidos_semana(
   p_desde date,
   p_hasta date,
@@ -272,38 +274,69 @@ SET plan_cache_mode = force_custom_plan
 AS $$
 DECLARE
   v_emp uuid := public.get_user_empresa_id();
+  v_ini timestamptz := p_desde::timestamp::timestamptz;
+  v_fin timestamptz := (p_hasta::timestamp + interval '23 hours 59 minutes 59 seconds')::timestamptz;
 BEGIN
   IF v_emp IS NULL THEN
     RETURN NULL;
   END IF;
+
+  IF p_cliente_ids IS NULL AND p_prestamo_ids IS NULL THEN
+    RETURN (
+      WITH g AS (
+        SELECT g.prestamo_id, g.cliente_id
+        FROM crm_gestiones g
+        WHERE g.empresa_id = v_emp AND g.created_at >= v_ini AND g.created_at <= v_fin
+      ),
+      pres AS (
+        SELECT p.prestamo_id
+        FROM pagos p
+        WHERE p.empresa_id = v_emp AND p.anulado = false
+          AND p.fecha_pago >= p_desde AND p.fecha_pago <= p_hasta
+        UNION
+        SELECT g.prestamo_id FROM g WHERE g.prestamo_id IS NOT NULL
+      ),
+      cli AS (
+        SELECT g.cliente_id FROM g WHERE g.cliente_id IS NOT NULL
+        UNION
+        SELECT pr.cliente_id FROM prestamos pr JOIN pres ON pres.prestamo_id = pr.id WHERE pr.empresa_id = v_emp
+      )
+      SELECT jsonb_build_object(
+        'prestamo_ids', coalesce((SELECT jsonb_agg(pres.prestamo_id) FROM pres), '[]'::jsonb),
+        'cliente_ids', coalesce((SELECT jsonb_agg(cli.cliente_id) FROM cli), '[]'::jsonb)
+      )
+    );
+  END IF;
+
   RETURN (
-  WITH scope AS (SELECT (p_cliente_ids IS NOT NULL OR p_prestamo_ids IS NOT NULL) AS on_),
-  g AS (
-    SELECT g.prestamo_id, g.cliente_id
-    FROM crm_gestiones g
-    WHERE g.empresa_id = v_emp
-      AND g.created_at >= p_desde::timestamp::timestamptz
-      AND g.created_at <= (p_hasta::timestamp + interval '23 hours 59 minutes 59 seconds')::timestamptz
-  ),
-  pres AS (
-    SELECT p.prestamo_id
-    FROM pagos p
-    WHERE p.empresa_id = v_emp AND p.anulado = false
-      AND p.fecha_pago >= p_desde AND p.fecha_pago <= p_hasta
-    UNION
-    SELECT g.prestamo_id FROM g WHERE g.prestamo_id IS NOT NULL
-  ),
-  cli AS (
-    SELECT g.cliente_id FROM g WHERE g.cliente_id IS NOT NULL
-    UNION
-    SELECT pr.cliente_id FROM prestamos pr JOIN pres ON pres.prestamo_id = pr.id
-  )
-  SELECT jsonb_build_object(
-    'prestamo_ids', coalesce((SELECT jsonb_agg(pres.prestamo_id) FROM pres, scope
-                              WHERE NOT scope.on_ OR pres.prestamo_id = ANY (p_prestamo_ids)), '[]'::jsonb),
-    'cliente_ids', coalesce((SELECT jsonb_agg(cli.cliente_id) FROM cli, scope
-                             WHERE NOT scope.on_ OR cli.cliente_id = ANY (p_cliente_ids)), '[]'::jsonb)
-  )
+    WITH pr AS (
+      SELECT p.id, p.cliente_id
+      FROM prestamos p
+      WHERE p.empresa_id = v_emp
+        AND (p.id = ANY (coalesce(p_prestamo_ids, '{}')) OR p.cliente_id = ANY (coalesce(p_cliente_ids, '{}')))
+    ),
+    pres AS (
+      SELECT pr.id, pr.cliente_id
+      FROM pr
+      WHERE EXISTS (SELECT 1 FROM pagos pg
+                    WHERE pg.prestamo_id = pr.id AND pg.anulado = false AND pg.empresa_id = v_emp
+                      AND pg.fecha_pago >= p_desde AND pg.fecha_pago <= p_hasta)
+         OR EXISTS (SELECT 1 FROM crm_gestiones g
+                    WHERE g.prestamo_id = pr.id AND g.empresa_id = v_emp
+                      AND g.created_at >= v_ini AND g.created_at <= v_fin)
+    ),
+    cli AS (
+      SELECT c.id
+      FROM unnest(coalesce(p_cliente_ids, '{}')) AS c(id)
+      WHERE EXISTS (SELECT 1 FROM pres WHERE pres.cliente_id = c.id)
+         OR EXISTS (SELECT 1 FROM crm_gestiones g
+                    WHERE g.cliente_id = c.id AND g.empresa_id = v_emp
+                      AND g.created_at >= v_ini AND g.created_at <= v_fin)
+    )
+    SELECT jsonb_build_object(
+      'prestamo_ids', coalesce((SELECT jsonb_agg(DISTINCT pres.id) FROM pres WHERE pres.id = ANY (coalesce(p_prestamo_ids, '{}'))), '[]'::jsonb),
+      'cliente_ids', coalesce((SELECT jsonb_agg(DISTINCT cli.id) FROM cli), '[]'::jsonb)
+    )
   );
 END;
 $$;
@@ -653,39 +686,44 @@ SET plan_cache_mode = force_custom_plan
 AS $$
 DECLARE
   v_emp uuid := public.get_user_empresa_id();
+  v_tipo text := coalesce(p_tipo, 'todos');
+  v_q text := lower(nullif(p_search, ''));
+  v_bbox boolean := p_min_lat IS NOT NULL AND p_min_lng IS NOT NULL AND p_max_lat IS NOT NULL AND p_max_lng IS NOT NULL;
+  v_min_lat numeric := CASE WHEN v_bbox THEN p_min_lat ELSE -90 END;
+  v_max_lat numeric := CASE WHEN v_bbox THEN p_max_lat ELSE 90 END;
+  v_min_lng numeric := CASE WHEN v_bbox THEN p_min_lng ELSE -180 END;
+  v_max_lng numeric := CASE WHEN v_bbox THEN p_max_lng ELSE 180 END;
+  v_limit integer := least(greatest(coalesce(p_limit, 500), 1), 2000);
 BEGIN
   IF v_emp IS NULL THEN
-    RETURN NULL;
+    RETURN '[]'::jsonb;
   END IF;
   RETURN (
-  WITH q AS (SELECT lower(nullif(p_search, '')) AS q),
-  bb AS (SELECT (p_min_lat IS NOT NULL AND p_min_lng IS NOT NULL AND p_max_lat IS NOT NULL AND p_max_lng IS NOT NULL) AS on_),
-  cl AS (
+  WITH cl AS (
     SELECT 'cliente'::text AS tipo, c.gps_lat AS lat, c.gps_lng AS lng, c.nombre_completo AS nombre,
            c.id_cliente, c.direccion, NULL::numeric AS monto, c.created_at AS fecha
-    FROM clientes c, q, bb
-    WHERE coalesce(p_tipo, 'todos') IN ('todos', 'clientes')
+    FROM clientes c
+    WHERE v_tipo IN ('todos', 'clientes')
       AND c.empresa_id = v_emp
       AND c.gps_lat IS NOT NULL AND c.gps_lng IS NOT NULL AND c.gps_lat <> 0 AND c.gps_lng <> 0
-      AND (NOT bb.on_ OR (c.gps_lat BETWEEN p_min_lat AND p_max_lat AND c.gps_lng BETWEEN p_min_lng AND p_max_lng))
-      AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0 OR strpos(lower(c.id_cliente), q.q) > 0
-           OR strpos(lower(coalesce(c.direccion, '')), q.q) > 0)
+      AND c.gps_lat BETWEEN v_min_lat AND v_max_lat AND c.gps_lng BETWEEN v_min_lng AND v_max_lng
+      AND (v_q IS NULL OR strpos(lower(c.nombre_completo), v_q) > 0 OR strpos(lower(c.id_cliente), v_q) > 0
+           OR strpos(lower(coalesce(c.direccion, '')), v_q) > 0)
     ORDER BY c.created_at DESC NULLS LAST, c.id
-    LIMIT p_limit
+    LIMIT v_limit
   ),
   pr AS (
     SELECT 'prestamo'::text, p.gps_lat, p.gps_lng, c.nombre_completo, NULL::text, NULL::text,
            p.monto_solicitado, p.created_at
     FROM prestamos p
     JOIN clientes c ON c.id = p.cliente_id
-    CROSS JOIN q CROSS JOIN bb
-    WHERE coalesce(p_tipo, 'todos') IN ('todos', 'prestamos')
+    WHERE v_tipo IN ('todos', 'prestamos')
       AND p.empresa_id = v_emp
       AND p.gps_lat IS NOT NULL AND p.gps_lng IS NOT NULL AND p.gps_lat <> 0 AND p.gps_lng <> 0
-      AND (NOT bb.on_ OR (p.gps_lat BETWEEN p_min_lat AND p_max_lat AND p.gps_lng BETWEEN p_min_lng AND p_max_lng))
-      AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0)
+      AND p.gps_lat BETWEEN v_min_lat AND v_max_lat AND p.gps_lng BETWEEN v_min_lng AND v_max_lng
+      AND (v_q IS NULL OR strpos(lower(c.nombre_completo), v_q) > 0)
     ORDER BY p.created_at DESC NULLS LAST, p.id
-    LIMIT p_limit
+    LIMIT v_limit
   ),
   pg AS (
     SELECT 'pago'::text, p.gps_lat, p.gps_lng, c.nombre_completo, NULL::text, NULL::text,
@@ -693,14 +731,13 @@ BEGIN
     FROM pagos p
     JOIN prestamos pr2 ON pr2.id = p.prestamo_id
     JOIN clientes c ON c.id = pr2.cliente_id
-    CROSS JOIN q CROSS JOIN bb
-    WHERE coalesce(p_tipo, 'todos') IN ('todos', 'pagos')
+    WHERE v_tipo IN ('todos', 'pagos')
       AND p.empresa_id = v_emp
       AND p.gps_lat IS NOT NULL AND p.gps_lng IS NOT NULL AND p.gps_lat <> 0 AND p.gps_lng <> 0
-      AND (NOT bb.on_ OR (p.gps_lat BETWEEN p_min_lat AND p_max_lat AND p.gps_lng BETWEEN p_min_lng AND p_max_lng))
-      AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0)
+      AND p.gps_lat BETWEEN v_min_lat AND v_max_lat AND p.gps_lng BETWEEN v_min_lng AND v_max_lng
+      AND (v_q IS NULL OR strpos(lower(c.nombre_completo), v_q) > 0)
     ORDER BY p.created_at DESC NULLS LAST, p.id
-    LIMIT p_limit
+    LIMIT v_limit
   ),
   todo AS (SELECT * FROM cl UNION ALL SELECT * FROM pr UNION ALL SELECT * FROM pg)
   SELECT coalesce(jsonb_agg(jsonb_build_object(
@@ -1166,28 +1203,43 @@ BEGIN
   RETURN (
   WITH man AS (
     SELECT x.tipo, x.monto,
-           strpos(x.l, 'transferencia') > 0 AS es_transf,
-           (strpos(x.l, 'comisión') > 0 OR strpos(x.l, 'comision') > 0 OR strpos(x.l, 'corte') > 0 OR strpos(x.l, 'gasto cobrador') > 0) AS es_comision,
-           (strpos(x.l, '[') > 0 OR left(x.l, 5) = 'gasto') AS es_gasto
+           CASE
+             WHEN strpos(x.l, 'transferencia') > 0 THEN CASE WHEN x.tipo = 'entrada' THEN 'transferencias_in' ELSE 'transferencias_out' END
+             WHEN strpos(x.l, 'comisión') > 0 OR strpos(x.l, 'comision') > 0 OR strpos(x.l, 'corte') > 0 OR strpos(x.l, 'gasto cobrador') > 0 THEN 'comisiones'
+             WHEN strpos(x.l, '[') > 0 OR left(x.l, 5) = 'gasto' THEN 'gastos'
+             WHEN x.tipo = 'entrada' THEN 'depositos'
+             ELSE 'retiros'
+           END AS cat
     FROM (
       SELECT m.tipo::text AS tipo, coalesce(m.monto, 0) AS monto, public._lower_es(m.concepto) AS l
       FROM movimientos_caja m
       WHERE m.caja_id = p_caja_id AND m.empresa_id = v_emp AND m.prestamo_id IS NULL
+      OFFSET 0
     ) x
-    WHERE NOT (strpos(x.l, 'corrección') > 0 OR strpos(x.l, 'correccion') > 0 OR strpos(x.l, 'movido a caja') > 0)
+    WHERE strpos(x.l, 'corrección') = 0 AND strpos(x.l, 'correccion') = 0 AND strpos(x.l, 'movido a caja') = 0
+  ),
+  agg AS (
+    SELECT coalesce(sum(monto) FILTER (WHERE cat = 'transferencias_in'), 0) AS transferencias_in,
+           coalesce(sum(monto) FILTER (WHERE cat = 'transferencias_out'), 0) AS transferencias_out,
+           coalesce(sum(monto) FILTER (WHERE cat = 'comisiones'), 0) AS comisiones,
+           coalesce(sum(monto) FILTER (WHERE cat = 'gastos'), 0) AS gastos,
+           coalesce(sum(monto) FILTER (WHERE cat = 'depositos'), 0) AS depositos,
+           coalesce(sum(monto) FILTER (WHERE cat = 'retiros'), 0) AS retiros
+    FROM man
   )
   SELECT jsonb_build_object(
     'cobros', (SELECT coalesce(sum(coalesce(p.monto_recibido, 0)), 0) FROM pagos p
                WHERE p.caja_id = p_caja_id AND p.empresa_id = v_emp AND p.anulado = false),
     'desembolsos', (SELECT coalesce(sum(coalesce(pr.monto_solicitado, 0)), 0) FROM prestamos pr
                     WHERE pr.caja_id = p_caja_id AND pr.empresa_id = v_emp AND pr.estado <> 'Cancelado'),
-    'transferencias_in', (SELECT coalesce(sum(monto), 0) FROM man WHERE es_transf AND tipo = 'entrada'),
-    'transferencias_out', (SELECT coalesce(sum(monto), 0) FROM man WHERE es_transf AND tipo <> 'entrada'),
-    'comisiones', (SELECT coalesce(sum(monto), 0) FROM man WHERE NOT es_transf AND es_comision),
-    'gastos', (SELECT coalesce(sum(monto), 0) FROM man WHERE NOT es_transf AND NOT es_comision AND es_gasto),
-    'depositos', (SELECT coalesce(sum(monto), 0) FROM man WHERE NOT es_transf AND NOT es_comision AND NOT es_gasto AND tipo = 'entrada'),
-    'retiros', (SELECT coalesce(sum(monto), 0) FROM man WHERE NOT es_transf AND NOT es_comision AND NOT es_gasto AND tipo <> 'entrada')
+    'transferencias_in', agg.transferencias_in,
+    'transferencias_out', agg.transferencias_out,
+    'comisiones', agg.comisiones,
+    'gastos', agg.gastos,
+    'depositos', agg.depositos,
+    'retiros', agg.retiros
   )
+  FROM agg
   );
 END;
 $$;

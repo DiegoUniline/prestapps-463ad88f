@@ -1,6 +1,7 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { rpc } from "@/lib/supabaseQuery";
+import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,57 +12,48 @@ import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { cn, $$ } from "@/lib/utils";
 import { RefreshCw, Star, TrendingUp, DollarSign, ChevronRight, CheckCircle2 } from "lucide-react";
+interface RenovacionPagina {
+  total: number;
+  elegibles: number;
+  colocacion: number;
+  score_promedio: number;
+  rows: any[];
+}
+
 export default function RenovacionPage() {
   const { empresaId } = useEmpresa();
   const navigate = useNavigate();
 
-  const { data: candidatos, isLoading } = useQuery({
-    queryKey: ["renovacion-candidatos", empresaId],
+  const [page, setPage] = usePaginacion(`${empresaId}`);
+
+  // Candidatos (progreso >= 50%) con score, elegibilidad y totales calculados en SQL; solo la página visible.
+  const { data: resultado, isLoading, isFetching } = useQuery({
+    queryKey: ["renovacion-candidatos", empresaId, page],
+    enabled: !!empresaId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      // Get active loans with their amortization
-      const { data: prestamos } = await supabase
-        .from("prestamos")
-        .select(`
-          id, monto_solicitado, monto_total_pagar, num_cuotas, frecuencia, tasa_interes, modalidad,
-          cliente_id, ruta_id, caja_id, cobrador_id,
-          clientes!inner(id, nombre_completo, telefono),
-          amortizacion(id, num_cuota, status, saldo_total, dias_atraso)
-        `)
-        .eq("empresa_id", empresaId)
-        .in("estado", ["Activo", "Al día"]);
-
-      return (prestamos || []).map((p: any) => {
-        const cuotas = p.amortizacion || [];
-        const pagadas = cuotas.filter((c: any) => c.status === "Pagada").length;
-        const total = cuotas.length;
-        const progreso = total > 0 ? (pagadas / total) * 100 : 0;
-        const pendientes = total - pagadas;
-        const saldoRestante = cuotas.reduce((s: number, c: any) => s + (c.saldo_total || 0), 0);
-        const maxAtraso = Math.max(0, ...cuotas.map((c: any) => c.dias_atraso || 0));
-        const cuotasATiempo = cuotas.filter((c: any) => c.status === "Pagada" && (c.dias_atraso || 0) <= 3).length;
-        const score = pagadas > 0 ? Math.round((cuotasATiempo / pagadas) * 100) : 0;
-
-        return {
-          ...p,
-          cliente: p.clientes,
-          pagadas,
-          total,
-          progreso,
-          pendientes,
-          saldoRestante,
-          maxAtraso,
-          score,
-          elegible: progreso >= 70 && maxAtraso <= 7,
-          montoSugerido: Math.round(p.monto_solicitado * (score >= 90 ? 1.3 : score >= 70 ? 1.15 : 1)),
-        };
-      })
-      .filter((p: any) => p.progreso >= 50)
-      .sort((a: any, b: any) => b.progreso - a.progreso);
+      const { data, error } = await rpc<RenovacionPagina>("renovacion_candidatos", {
+        p_limit: PAGE_SIZE,
+        p_offset: page * PAGE_SIZE,
+      });
+      if (error) throw error;
+      return {
+        total: Number(data?.total || 0),
+        elegibles: Number(data?.elegibles || 0),
+        colocacion: Number(data?.colocacion || 0),
+        score_promedio: Number(data?.score_promedio || 0),
+        rows: (data?.rows || []).map((c: any) => ({
+          ...c,
+          monto_solicitado: Number(c.monto_solicitado || 0),
+          saldoRestante: Number(c.saldoRestante || 0),
+          montoSugerido: Number(c.montoSugerido || 0),
+          progreso: Number(c.progreso || 0),
+        })),
+      } as RenovacionPagina;
     },
   });
 
-  const elegibles = useMemo(() => (candidatos || []).filter(c => c.elegible), [candidatos]);
-  const totalColocacion = useMemo(() => elegibles.reduce((s, c) => s + c.montoSugerido, 0), [elegibles]);
+  const candidatos = resultado?.rows;
 
   return (
     <div className="space-y-4">
@@ -76,19 +68,19 @@ export default function RenovacionPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Candidatos</p>
-          <p className="text-xl font-bold">{(candidatos || []).length}</p>
+          <p className="text-xl font-bold">{resultado?.total ?? 0}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Elegibles</p>
-          <p className="text-xl font-bold text-success">{elegibles.length}</p>
+          <p className="text-xl font-bold text-success">{resultado?.elegibles ?? 0}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Colocación potencial</p>
-          <p className="text-xl font-bold text-primary">{$$(totalColocacion)}</p>
+          <p className="text-xl font-bold text-primary">{$$(resultado?.colocacion ?? 0)}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Score promedio</p>
-          <p className="text-xl font-bold">{elegibles.length > 0 ? Math.round(elegibles.reduce((s, c) => s + c.score, 0) / elegibles.length) : 0}%</p>
+          <p className="text-xl font-bold">{resultado?.score_promedio ?? 0}%</p>
         </Card>
       </div>
 
@@ -211,6 +203,13 @@ export default function RenovacionPage() {
               </Table>
             </div>
           </Card>
+          <PaginacionControles
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={resultado?.total}
+            onPageChange={setPage}
+            isFetching={isFetching}
+          />
         </>
       )}
       </div>
