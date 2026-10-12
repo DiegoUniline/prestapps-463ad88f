@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { LiquidarModal } from "@/components/LiquidarModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { PagoModal } from "@/components/PagoModal";
@@ -223,12 +224,15 @@ export default function PrestamoDetallePage() {
   const { data: promesasRaw = [] } = usePromesas(isNew ? undefined : id);
   const { data: cajasAll = [] } = useCajas();
   const { data: rutasAll = [] } = useRutasOptions();
+  const { empresaId: empresaActualId } = useEmpresa();
   const { data: cobradoresAll = [] } = useQuery({
-    queryKey: ["cobradores-all"],
+    queryKey: ["cobradores-all", empresaActualId],
+    enabled: !!empresaActualId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, nombre_completo")
+        .eq("empresa_id", empresaActualId)
         .eq("activo", true)
         .order("nombre_completo");
       if (error) throw error;

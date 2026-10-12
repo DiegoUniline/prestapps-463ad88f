@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { usePersistedString, usePersistedSet, usePersistedDate } from "@/hooks/usePersistedFilters";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -57,48 +58,84 @@ interface PagoListItem {
 type SortKey = keyof PagoListItem;
 
 // ── Data hook ─────────────────────────────────────────────────────
-function usePagosAll(empresaId: string) {
-  return useQuery({
-    queryKey: ["pagos-all", empresaId],
-    queryFn: async () => {
-      const raw = await fetchAllRows<any>(
-        supabase
-          .from("pagos")
-          .select(`
-            id, monto_recibido, aplicado_mora, aplicado_interes, aplicado_capital,
-            metodo_pago, created_at, prestamo_id, anulado, cuota_id, caja_id, cobrador_id, fecha_pago,
-            cajas ( nombre ),
-            prestamos!pagos_prestamo_id_fkey ( id, id_prestamo, num_cuotas, clientes ( nombre_completo, telefono ), rutas ( nombre ), empresas ( nombre, telefono, direccion, logo_url ) )
-          `)
-          .eq("empresa_id", empresaId)
-          .order("created_at", { ascending: false })
-      );
+// Paginación, filtros, orden y totales en el servidor (rpc pagos_listado).
+const PAGE_SIZE = 100;
 
-      return (raw || []).map((p: any) => ({
+interface PagosFiltros {
+  search: string | null;
+  metodos: string[];
+  cajas: string[];
+  rutas: string[];
+  desde: string | null;
+  hasta: string | null;
+  sort_key: string | null;
+  sort_dir: "asc" | "desc" | null;
+}
+
+type PagosNum = number | string | null;
+interface PagosListadoRpc {
+  total: PagosNum;
+  sum_monto: PagosNum;
+  sum_mora: PagosNum;
+  sum_interes: PagosNum;
+  sum_capital: PagosNum;
+  empresa: { nombre: string | null; telefono: string | null; direccion: string | null; logo_url: string | null } | null;
+  rows: {
+    id: string; prestamo_id: string; created_at: string | null; anulado: boolean | null; cuota_id: string | null;
+    caja_id: string | null; cobrador_id: string | null; fecha_pago: string | null; monto_recibido: PagosNum;
+    aplicado_mora: PagosNum; aplicado_interes: PagosNum; aplicado_capital: PagosNum; metodo: string; cliente: string;
+    cliente_telefono: string | null; short_id: string; caja: string; ruta: string; num_cuotas: PagosNum;
+  }[];
+}
+
+function usePagosListado(empresaId: string, filtros: PagosFiltros, page: number, todos: boolean) {
+  return useQuery({
+    queryKey: ["pagos-all", empresaId, filtros, todos ? "todos" : page],
+    enabled: !!empresaId,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const { data, error } = await rpc<PagosListadoRpc>("pagos_listado", {
+        p_filtros: filtros,
+        p_limit: todos ? null : PAGE_SIZE,
+        p_offset: todos ? 0 : page * PAGE_SIZE,
+      });
+      if (error) throw error;
+      const empresa = data?.empresa;
+      const rows: PagoListItem[] = (data?.rows || []).map((p) => ({
         id: p.id,
-        cliente: p.prestamos?.clientes?.nombre_completo || "—",
-        clientePhone: p.prestamos?.clientes?.telefono || null,
+        cliente: p.cliente,
+        clientePhone: p.cliente_telefono || null,
         prestamoId: p.prestamo_id,
-        shortId: p.prestamos?.id_prestamo || `PRE-${(p.prestamo_id || "").slice(0, 8)}`,
+        shortId: p.short_id,
         fecha: p.created_at || "",
         montoRecibido: Number(p.monto_recibido || 0),
         aplicadoMora: Number(p.aplicado_mora || 0),
         aplicadoInteres: Number(p.aplicado_interes || 0),
         aplicadoCapital: Number(p.aplicado_capital || 0),
-        metodo: p.metodo_pago || "Efectivo",
-        caja: (p.cajas as any)?.nombre || "—",
+        metodo: p.metodo,
+        caja: p.caja,
         cajaId: p.caja_id || null,
-        ruta: p.prestamos?.rutas?.nombre || "—",
+        ruta: p.ruta,
         anulado: p.anulado || false,
         cuotaId: p.cuota_id || null,
         cobradorId: p.cobrador_id || null,
         fechaPago: p.fecha_pago || null,
-        numCuotas: p.prestamos?.num_cuotas || 0,
-        empresaNombre: p.prestamos?.empresas?.nombre || "Empresa",
-        empresaTelefono: p.prestamos?.empresas?.telefono || null,
-        empresaDireccion: p.prestamos?.empresas?.direccion || null,
-        empresaLogoUrl: p.prestamos?.empresas?.logo_url || null,
-      })) as PagoListItem[];
+        numCuotas: Number(p.num_cuotas || 0),
+        empresaNombre: empresa?.nombre || "Empresa",
+        empresaTelefono: empresa?.telefono || null,
+        empresaDireccion: empresa?.direccion || null,
+        empresaLogoUrl: empresa?.logo_url || null,
+      }));
+      return {
+        rows,
+        total: Number(data?.total || 0),
+        totales: {
+          monto: Number(data?.sum_monto || 0),
+          mora: Number(data?.sum_mora || 0),
+          interes: Number(data?.sum_interes || 0),
+          capital: Number(data?.sum_capital || 0),
+        },
+      };
     },
   });
 }
@@ -185,7 +222,6 @@ function MetodoDot({ metodo }: { metodo: string }) {
 export default function PagosPage() {
   const { empresaId } = useEmpresa();
   const queryClient = useQueryClient();
-  const { data: pagos = [], isLoading, isError } = usePagosAll(empresaId);
   const { data: cajasRaw = [] } = useCajasOptions(empresaId);
   const { data: rutasRaw = [] } = useRutasOptions(empresaId);
 
@@ -247,31 +283,28 @@ export default function PagosPage() {
     setRegDesde(undefined); setRegHasta(undefined); setSortKey(null); setSortDir(null);
   };
 
-  const filtered = useMemo(() => {
-    let data = pagos.filter((p) => {
-      if (search) {
-        const q = search.toLowerCase();
-        if (!p.cliente.toLowerCase().includes(q) && !p.shortId.toLowerCase().includes(q)) return false;
-      }
-      if (selMetodo.size > 0 && !selMetodo.has(p.metodo)) return false;
-      if (selCaja.size > 0 && !selCaja.has(p.caja)) return false;
-      if (selRuta.size > 0 && !selRuta.has(p.ruta)) return false;
-      if (p.fecha) {
-        const d = parseLocalDate(p.fecha);
-        if (regDesde && d < regDesde) return false;
-        if (regHasta && d > regHasta) return false;
-      }
-      return true;
-    });
-    if (sortKey && sortDir) {
-      data = [...data].sort((a, b) => {
-        const av = a[sortKey]; const bv = b[sortKey];
-        if (typeof av === "number" && typeof bv === "number") return sortDir === "asc" ? av - bv : bv - av;
-        return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
-      });
-    }
-    return data;
-  }, [pagos, search, selMetodo, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const filtros = useMemo<PagosFiltros>(() => ({
+    search: debouncedSearch || null,
+    metodos: [...selMetodo],
+    cajas: [...selCaja],
+    rutas: [...selRuta],
+    desde: regDesde ? regDesde.toISOString() : null,
+    hasta: regHasta ? regHasta.toISOString() : null,
+    sort_key: sortKey && sortDir ? sortKey : null,
+    sort_dir: sortKey && sortDir ? sortDir : null,
+  }), [debouncedSearch, selMetodo, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
+  const [page, setPage] = useState(0);
+  const filtrosKey = JSON.stringify(filtros);
+  useEffect(() => { setPage(0); }, [filtrosKey]);
+
+  // Con agrupación se necesitan todas las filas filtradas; sin ella, una página de PAGE_SIZE.
+  const { data: listado, isLoading, isError } = usePagosListado(empresaId, filtros, page, !!groupBy);
+  const filtered = useMemo(() => listado?.rows ?? [], [listado]);
+  const totalFiltrados = listado?.total ?? 0;
+  const totales = useMemo(() => listado?.totales ?? { monto: 0, mora: 0, interes: 0, capital: 0 }, [listado]);
+  const pageFrom = totalFiltrados === 0 ? 0 : groupBy ? 1 : page * PAGE_SIZE + 1;
+  const pageTo = groupBy ? totalFiltrados : Math.min((page + 1) * PAGE_SIZE, totalFiltrados);
 
   // Grouped data computation
   const groupedData = useMemo(() => {
@@ -294,19 +327,13 @@ export default function PagosPage() {
   }, [filtered, groupBy]);
 
   const kpis = useMemo(() => {
-    const source = filtered;
-    const totalPagos = source.length;
-    const totalRecaudado = source.reduce((s, p) => s + p.montoRecibido, 0);
-    const totalMora = source.reduce((s, p) => s + p.aplicadoMora, 0);
-    const totalCapital = source.reduce((s, p) => s + p.aplicadoCapital, 0);
-
     return [
-      { label: "Total Pagos", value: String(totalPagos), icon: Hash, accent: "text-primary" },
-      { label: "Total Recaudado", value: $$(totalRecaudado), icon: DollarSign, accent: "text-success" },
-      { label: "Aplicado a Capital", value: $$(totalCapital), icon: TrendingUp, accent: "text-[hsl(217,91%,60%)]" },
-      { label: "Aplicado a Mora", value: $$(totalMora), icon: HandCoins, accent: "text-destructive" },
+      { label: "Total Pagos", value: String(totalFiltrados), icon: Hash, accent: "text-primary" },
+      { label: "Total Recaudado", value: $$(totales.monto), icon: DollarSign, accent: "text-success" },
+      { label: "Aplicado a Capital", value: $$(totales.capital), icon: TrendingUp, accent: "text-[hsl(217,91%,60%)]" },
+      { label: "Aplicado a Mora", value: $$(totales.mora), icon: HandCoins, accent: "text-destructive" },
     ];
-  }, [filtered]);
+  }, [totalFiltrados, totales]);
 
   // ── Action handlers ──────────────────────────────────────────────
   const buildReceiptCaption = (p: PagoListItem) =>
@@ -582,11 +609,11 @@ export default function PagosPage() {
 
       {/* Count + pagination header */}
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-muted-foreground">{filtered.length} pago{filtered.length !== 1 ? "s" : ""}</p>
+        <p className="text-[12px] text-muted-foreground">{totalFiltrados} pago{totalFiltrados !== 1 ? "s" : ""}</p>
         <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
-          <span>1-{filtered.length} / {filtered.length}</span>
-          <Button variant="ghost" size="icon" className="h-6 w-6" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
+          <span>{pageFrom}-{pageTo} / {totalFiltrados}</span>
+          <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!!groupBy || page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}><ChevronLeft className="h-3.5 w-3.5" /></Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" disabled={!!groupBy || pageTo >= totalFiltrados} onClick={() => setPage((p) => p + 1)}><ChevronRight className="h-3.5 w-3.5" /></Button>
         </div>
       </div>
 
@@ -769,10 +796,10 @@ export default function PagosPage() {
                 {/* Totals row */}
                 <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
                   <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={3}>Totales</TableCell>
-                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.montoRecibido, 0))}</TableCell>
-                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoMora, 0))}</TableCell>
-                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoInteres, 0))}</TableCell>
-                  <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoCapital, 0))}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(totales.monto)}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(totales.mora)}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(totales.interes)}</TableCell>
+                  <TableCell className="text-right px-3 text-[12px]">{$$(totales.capital)}</TableCell>
                   <TableCell colSpan={4} />
                 </TableRow>
               </>
@@ -782,10 +809,10 @@ export default function PagosPage() {
                 {filtered.length > 0 && (
                   <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
                     <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={3}>Totales</TableCell>
-                    <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.montoRecibido, 0))}</TableCell>
-                    <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoMora, 0))}</TableCell>
-                    <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoInteres, 0))}</TableCell>
-                    <TableCell className="text-right px-3 text-[12px]">{$$(filtered.reduce((s, p) => s + p.aplicadoCapital, 0))}</TableCell>
+                    <TableCell className="text-right px-3 text-[12px]">{$$(totales.monto)}</TableCell>
+                    <TableCell className="text-right px-3 text-[12px]">{$$(totales.mora)}</TableCell>
+                    <TableCell className="text-right px-3 text-[12px]">{$$(totales.interes)}</TableCell>
+                    <TableCell className="text-right px-3 text-[12px]">{$$(totales.capital)}</TableCell>
                     <TableCell colSpan={4} />
                   </TableRow>
                 )}

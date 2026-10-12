@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { fetchAllRows, mapChunks, rpc } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -68,36 +68,28 @@ function useClientesAtendidosSemana(empresaId: string, weekStartStr: string, wee
   return useQuery({
     queryKey: ["clientes-atendidos-semana", empresaId, weekStartStr, weekEndStr],
     queryFn: async () => {
-      // Get payments in this week
-      const { data: pagos } = await supabase
-        .from("pagos")
-        .select("prestamo_id")
-        .eq("empresa_id", empresaId)
-        .eq("anulado", false)
-        .gte("created_at", weekStartStr + "T00:00:00")
-        .lte("created_at", weekEndStr + "T23:59:59");
+      // Pagos de la semana con su cliente vía embed (sin .in() de prestamo_ids)
+      const [pagos, gestiones] = await Promise.all([
+        fetchAllRows<{ prestamos: { cliente_id: string } | null }>(supabase
+          .from("pagos")
+          .select("id, prestamos!pagos_prestamo_id_fkey ( cliente_id )")
+          .eq("empresa_id", empresaId)
+          .eq("anulado", false)
+          .gte("created_at", weekStartStr + "T00:00:00")
+          .lte("created_at", weekEndStr + "T23:59:59")),
+        // Get visits (gestiones) in this week
+        fetchAllRows<{ cliente_id: string }>(supabase
+          .from("crm_gestiones")
+          .select("id, cliente_id")
+          .eq("empresa_id", empresaId)
+          .gte("created_at", weekStartStr + "T00:00:00")
+          .lte("created_at", weekEndStr + "T23:59:59")),
+      ]);
 
-      // Get visits (gestiones) in this week
-      const { data: gestiones } = await supabase
-        .from("crm_gestiones")
-        .select("cliente_id")
-        .eq("empresa_id", empresaId)
-        .gte("created_at", weekStartStr + "T00:00:00")
-        .lte("created_at", weekEndStr + "T23:59:59");
-
-      // Get cliente_ids from pagos via prestamos
-      const prestamoIds = [...new Set((pagos || []).map((p: any) => p.prestamo_id))];
-      const clienteIdsFromGestiones = new Set((gestiones || []).map((g: any) => g.cliente_id));
-
-      let clienteIdsFromPagos = new Set<string>();
-      if (prestamoIds.length > 0) {
-        const { data: prestamos } = await supabase
-          .from("prestamos")
-          .select("cliente_id")
-          .in("id", prestamoIds);
-        for (const p of prestamos || []) {
-          clienteIdsFromPagos.add(p.cliente_id);
-        }
+      const clienteIdsFromGestiones = new Set(gestiones.map((g) => g.cliente_id));
+      const clienteIdsFromPagos = new Set<string>();
+      for (const p of pagos) {
+        if (p.prestamos?.cliente_id) clienteIdsFromPagos.add(p.prestamos.cliente_id);
       }
 
       // Merge both sets
@@ -147,14 +139,22 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
   return useQuery({
     queryKey: ["cobranza-diaria", fecha, empresaId],
     queryFn: async () => {
-      // 1) Get cuotas: due today, overdue unpaid, OR paid on this date
-      const cuotas = await fetchAllRows(supabase
-        .from("amortizacion")
-        .select(`
+      // 1) Cuotas: due today, overdue unpaid, OR paid on this date — con su préstamo
+      //    (cliente/ruta/caja) y sus pagos embebidos: sin listas .in() gigantes.
+      const cuotaSelect = `
           id, prestamo_id, num_cuota, capital_interes, saldo_total, saldo_mora,
           saldo_capital, saldo_interes, mora_pagada, interes_pagado, capital_pagado,
-          fecha_vencimiento, status, dias_atraso, fecha_pagada
-        `)
+          fecha_vencimiento, status, dias_atraso, fecha_pagada,
+          prestamos!amortizacion_prestamo_id_fkey (
+            id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, tipo_cuenta,
+            clientes ( nombre_completo, foto_cliente ),
+            rutas ( nombre ),
+            cajas ( nombre )
+          ),
+          pagos!pagos_cuota_id_fkey ( monto_recibido )
+        `;
+      const cuotas = await fetchAllRows<any>((supabase.from as any)("amortizacion")
+        .select(cuotaSelect)
         .eq("empresa_id", empresaId)
         .or(`fecha_vencimiento.eq.${fecha},and(fecha_vencimiento.lt.${fecha},status.neq.Pagada),fecha_pagada.eq.${fecha}`)
         .order("fecha_vencimiento", { ascending: true }));
@@ -172,74 +172,44 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       const promesaCuotaIds = new Set((promesas || []).map((p: any) => p.cuota_id));
 
       // Merge: add any promised cuotas not already in the list
-      let allCuotaIds = new Set(cuotas.map((c) => c.id));
-      const missingPromesaIds = [...promesaCuotaIds].filter((id) => !allCuotaIds.has(id));
+      const allCuotaIds = new Set(cuotas.map((c) => c.id));
+      const missingPromesaIds = [...promesaCuotaIds].filter((id) => id && !allCuotaIds.has(id));
 
-      let extraCuotas: any[] = [];
-      if (missingPromesaIds.length > 0) {
-        const { data: extra } = await supabase
-          .from("amortizacion")
-          .select(`
-            id, prestamo_id, num_cuota, capital_interes, saldo_total, saldo_mora,
-            saldo_capital, saldo_interes, mora_pagada, interes_pagado, capital_pagado,
-            fecha_vencimiento, status, dias_atraso, fecha_pagada
-          `)
-          .in("id", missingPromesaIds);
-        extraCuotas = extra || [];
-      }
+      const extraCuotas = await mapChunks(missingPromesaIds, 200, async (chunk) => {
+        const { data: extra, error } = await (supabase.from as any)("amortizacion")
+          .select(cuotaSelect)
+          .in("id", chunk);
+        if (error) throw error;
+        return (extra || []) as any[];
+      });
 
       const allCuotas = [...cuotas, ...extraCuotas];
 
-      // 2) Get prestamos info
-      const prestamoIds = [...new Set(allCuotas.map((c) => c.prestamo_id))];
-      const { data: prestamos } = await (supabase.from as any)("prestamos")
-        .select(`
-          id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, tipo_cuenta,
-          clientes ( nombre_completo, foto_cliente ),
-          rutas ( nombre ),
-          cajas ( nombre )
-        `)
-        .in("id", prestamoIds);
-
-      // 3) Get cobradores names from profiles
-      const cobIds = [...new Set((prestamos || []).map((p: any) => p.cobrador_id).filter(Boolean))] as string[];
-      const cobMap: Record<string, string> = {};
-      if (cobIds.length) {
-        const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
-        for (const c of profiles || []) cobMap[c.id] = c.nombre_completo;
-      }
-
-      // 4) Get payments for these cuotas to check if paid today
-      const cuotaIds = allCuotas.map((c) => c.id);
-      const { data: pagos } = await supabase
-        .from("pagos")
-        .select("cuota_id, monto_recibido, created_at")
-        .in("cuota_id", cuotaIds);
-
-      const pagosByCuota: Record<string, { total: number; fecha: string }> = {};
-      for (const p of pagos || []) {
-        if (!p.cuota_id) continue;
-        if (!pagosByCuota[p.cuota_id]) pagosByCuota[p.cuota_id] = { total: 0, fecha: "" };
-        pagosByCuota[p.cuota_id].total += Number(p.monto_recibido);
-        pagosByCuota[p.cuota_id].fecha = p.created_at || "";
-      }
-
+      // 2) Préstamos (embebidos en cada cuota)
       const presMap: Record<string, any> = {};
-      for (const p of prestamos || []) presMap[p.id] = p;
+      for (const c of allCuotas) if (c.prestamos) presMap[c.prestamo_id] = c.prestamos;
+      const prestamoIds = [...new Set(allCuotas.map((c) => c.prestamo_id as string))];
 
-      // 5) Get gestiones count per prestamo
-      const { data: gestiones } = await supabase
-        .from("crm_gestiones")
-        .select("prestamo_id, created_at, resultado")
-        .in("prestamo_id", prestamoIds)
-        .order("created_at", { ascending: false });
+      // 3) Get cobradores names from profiles (pocos ids distintos)
+      const cobIds = [...new Set(Object.values(presMap).map((p: any) => p.cobrador_id).filter(Boolean))] as string[];
+      const cobMap: Record<string, string> = {};
+      // 5) Gestiones count per prestamo (agregado en SQL; ids en el body del RPC)
+      const [profilesRes, gestionesRes] = await Promise.all([
+        cobIds.length
+          ? supabase.from("profiles").select("id, nombre_completo").in("id", cobIds)
+          : Promise.resolve({ data: [] as { id: string; nombre_completo: string }[], error: null }),
+        rpc<Record<string, { count: number; ultima: string | null }>>("gestiones_resumen", { p_prestamo_ids: prestamoIds }),
+      ]);
+      for (const c of profilesRes.data || []) cobMap[c.id] = c.nombre_completo;
+      if (gestionesRes.error) throw gestionesRes.error;
+      const gestionesByPrestamo = gestionesRes.data || {};
 
-      const gestionesByPrestamo: Record<string, { count: number; ultima: string | null }> = {};
-      for (const g of gestiones || []) {
-        if (!gestionesByPrestamo[g.prestamo_id]) {
-          gestionesByPrestamo[g.prestamo_id] = { count: 0, ultima: g.created_at };
-        }
-        gestionesByPrestamo[g.prestamo_id].count++;
+      // 4) Payments for these cuotas (embebidos)
+      const pagosByCuota: Record<string, { total: number }> = {};
+      for (const c of allCuotas) {
+        const pagos = (c.pagos || []) as { monto_recibido: number }[];
+        if (pagos.length === 0) continue;
+        pagosByCuota[c.id] = { total: pagos.reduce((sum, p) => sum + Number(p.monto_recibido), 0) };
       }
 
       return allCuotas.map((c): CuotaDiaria => {
@@ -289,7 +259,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
 
 function useCajasAll(empresaId: string) {
   return useQuery({
-    queryKey: ["cajas-all", empresaId],
+    queryKey: ["cajas-all", empresaId, "nombres"],
     queryFn: async () => {
       const { data } = await supabase.from("cajas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
       return data || [];

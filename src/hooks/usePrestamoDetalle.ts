@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 
 export function usePrestamoDetalle(prestamoId: string | undefined) {
   return useQuery({
@@ -117,10 +118,12 @@ export function usePromesas(prestamoId: string | undefined) {
 }
 
 export function useCajas() {
+  const { empresaId } = useEmpresa();
   return useQuery({
-    queryKey: ["cajas-all"],
+    queryKey: ["cajas-all", empresaId, "nombres"],
+    enabled: !!empresaId,
     queryFn: async () => {
-      const { data } = await supabase.from("cajas").select("id, nombre").order("nombre");
+      const { data } = await supabase.from("cajas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
       return data || [];
     },
     staleTime: 5 * 60 * 1000, // 5min - rarely changes

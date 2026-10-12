@@ -22,6 +22,7 @@ interface EmpresaState {
 }
 
 const DEFAULT_EMPRESA = "00000000-0000-0000-0000-000000000001";
+export const EMPRESA_SWITCHED_EVENT = "empresa-switched";
 
 export const useEmpresaStore = create<EmpresaState>((set, get) => ({
   empresaId: localStorage.getItem("empresa_id") || DEFAULT_EMPRESA,
@@ -46,6 +47,11 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
       empresaNombre: empresa?.nombre || "Empresa",
       monedaSimbolo: simbolo,
     });
+    // Limpia la caché de React Query del tenant anterior (ver useEmpresaSwitchReset).
+    // setTimeout: deja que React re-renderice con el nuevo empresaId antes de limpiar.
+    if (typeof window !== "undefined") {
+      setTimeout(() => window.dispatchEvent(new CustomEvent(EMPRESA_SWITCHED_EVENT, { detail: { empresaId: id } })), 0);
+    }
   },
 
   initialize: () => {

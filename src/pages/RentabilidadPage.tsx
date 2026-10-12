@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,126 +14,87 @@ import { DollarSign, TrendingUp, PieChart, BarChart3, Users } from "lucide-react
 
 const pct = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(1) + "%" : "0%";
 
+type RentabilidadNum = number | string | null;
+type RentabilidadGrupo = {
+  rutaId?: string; cobId?: string; nombre: string; prestamos: RentabilidadNum;
+  capitalColocado: RentabilidadNum; capitalRecuperado: RentabilidadNum; utilidadBruta: RentabilidadNum;
+};
+type RentabilidadRpc = {
+  totales: Record<"totalCapital" | "totalUtilidad" | "totalRecuperado" | "totalInteres" | "totalMora", RentabilidadNum>;
+  porRuta: RentabilidadGrupo[];
+  porCobrador: RentabilidadGrupo[];
+  porPrestamo: {
+    id: string; cliente: string; estado: string; capitalColocado: RentabilidadNum; capitalRecuperado: RentabilidadNum;
+    interesGanado: RentabilidadNum; moraGanada: RentabilidadNum; totalRecibido: RentabilidadNum; utilidadBruta: RentabilidadNum;
+  }[];
+};
+
 export default function RentabilidadPage() {
   const { empresaId } = useEmpresa();
 
+  // Agregado en SQL (rpc rentabilidad_resumen): totales, por ruta, por cobrador y top 100 préstamos.
   const { data, isLoading } = useQuery({
     queryKey: ["rentabilidad", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      const [prestamos, pagos, { data: rutas }, { data: profiles }] = await Promise.all([
-        fetchAllRows(supabase.from("prestamos").select("id, monto_solicitado, monto_total_pagar, tasa_interes, gastos_legales, estado, ruta_id, cobrador_id, cliente_id, clientes(nombre_completo)")
-          .eq("empresa_id", empresaId).in("estado", ["Activo", "Al día", "Vencido", "Liquidado"])),
-        fetchAllRows(supabase.from("pagos").select("id, prestamo_id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, anulado")
-          .eq("empresa_id", empresaId).eq("anulado", false)),
-        supabase.from("rutas").select("id, nombre").eq("empresa_id", empresaId),
-        supabase.from("profiles").select("id, nombre_completo").eq("empresa_id", empresaId),
-      ]);
-
-      return { prestamos: prestamos || [], pagos: pagos || [], rutas: rutas || [], profiles: profiles || [] };
+      const { data, error } = await rpc<RentabilidadRpc>("rentabilidad_resumen");
+      if (error) throw error;
+      return data as RentabilidadRpc;
     },
   });
 
   const { byPrestamo, byRuta, byCobrador, totales } = useMemo(() => {
     if (!data) return { byPrestamo: [], byRuta: [], byCobrador: [], totales: null };
+    const n = (v: number | string | null | undefined) => Number(v || 0);
+    const ratio = (a: number, b: number) => (b > 0 ? (a / b) * 100 : 0);
 
-    const pagosByPrestamo: Record<string, { capital: number; interes: number; mora: number; total: number }> = {};
-    for (const p of data.pagos) {
-      const key = p.prestamo_id;
-      if (!pagosByPrestamo[key]) pagosByPrestamo[key] = { capital: 0, interes: 0, mora: 0, total: 0 };
-      pagosByPrestamo[key].capital += Number(p.aplicado_capital || 0);
-      pagosByPrestamo[key].interes += Number(p.aplicado_interes || 0);
-      pagosByPrestamo[key].mora += Number(p.aplicado_mora || 0);
-      pagosByPrestamo[key].total += Number(p.monto_recibido || 0);
-    }
-
-    const rutaMap: Record<string, string> = {};
-    for (const r of data.rutas) rutaMap[r.id] = r.nombre;
-    const profileMap: Record<string, string> = {};
-    for (const p of data.profiles) profileMap[p.id] = p.nombre_completo;
-
-    const byPrestamo = data.prestamos.map((p: any) => {
-      const pagado = pagosByPrestamo[p.id] || { capital: 0, interes: 0, mora: 0, total: 0 };
-      const capitalColocado = Number(p.monto_solicitado || 0);
-      const interesEsperado = Number(p.monto_total_pagar || 0) - capitalColocado;
-      const utilidadBruta = pagado.interes + pagado.mora;
-      const roi = capitalColocado > 0 ? (utilidadBruta / capitalColocado) * 100 : 0;
-      const recuperacion = capitalColocado > 0 ? (pagado.capital / capitalColocado) * 100 : 0;
-
+    const byPrestamo = data.porPrestamo.map((p) => {
+      const capitalColocado = n(p.capitalColocado);
+      const utilidadBruta = n(p.utilidadBruta);
+      const capitalRecuperado = n(p.capitalRecuperado);
       return {
         id: p.id,
-        cliente: (p.clientes as any)?.nombre_completo || "—",
+        cliente: p.cliente,
         capitalColocado,
-        interesEsperado,
-        capitalRecuperado: pagado.capital,
-        interesGanado: pagado.interes,
-        moraGanada: pagado.mora,
-        totalRecibido: pagado.total,
+        capitalRecuperado,
+        interesGanado: n(p.interesGanado),
+        moraGanada: n(p.moraGanada),
+        totalRecibido: n(p.totalRecibido),
         utilidadBruta,
-        roi,
-        recuperacion,
+        roi: ratio(utilidadBruta, capitalColocado),
+        recuperacion: ratio(capitalRecuperado, capitalColocado),
         estado: p.estado,
-        rutaId: p.ruta_id,
-        cobradorId: p.cobrador_id,
       };
     });
-
-    // Group by ruta
-    const rutaGroups: Record<string, typeof byPrestamo> = {};
-    for (const p of byPrestamo) {
-      const key = p.rutaId || "sin-ruta";
-      if (!rutaGroups[key]) rutaGroups[key] = [];
-      rutaGroups[key].push(p);
-    }
-    const byRuta = Object.entries(rutaGroups).map(([rutaId, items]) => {
-      const capitalColocado = items.reduce((s, i) => s + i.capitalColocado, 0);
-      const utilidadBruta = items.reduce((s, i) => s + i.utilidadBruta, 0);
-      const capitalRecuperado = items.reduce((s, i) => s + i.capitalRecuperado, 0);
+    const grupo = (g: RentabilidadGrupo) => {
+      const capitalColocado = n(g.capitalColocado);
+      const capitalRecuperado = n(g.capitalRecuperado);
+      const utilidadBruta = n(g.utilidadBruta);
       return {
-        rutaId,
-        nombre: rutaMap[rutaId] || "Sin ruta",
-        prestamos: items.length,
+        nombre: g.nombre,
+        prestamos: n(g.prestamos),
         capitalColocado,
         capitalRecuperado,
         utilidadBruta,
-        roi: capitalColocado > 0 ? (utilidadBruta / capitalColocado) * 100 : 0,
-        recuperacion: capitalColocado > 0 ? (capitalRecuperado / capitalColocado) * 100 : 0,
+        roi: ratio(utilidadBruta, capitalColocado),
+        recuperacion: ratio(capitalRecuperado, capitalColocado),
       };
-    }).sort((a, b) => b.utilidadBruta - a.utilidadBruta);
+    };
+    const byRuta = data.porRuta.map((g) => ({ rutaId: g.rutaId, ...grupo(g) }));
+    const byCobrador = data.porCobrador.map((g) => ({ cobId: g.cobId, ...grupo(g) }));
 
-    // Group by cobrador
-    const cobGroups: Record<string, typeof byPrestamo> = {};
-    for (const p of byPrestamo) {
-      const key = p.cobradorId || "sin-cobrador";
-      if (!cobGroups[key]) cobGroups[key] = [];
-      cobGroups[key].push(p);
-    }
-    const byCobrador = Object.entries(cobGroups).map(([cobId, items]) => {
-      const capitalColocado = items.reduce((s, i) => s + i.capitalColocado, 0);
-      const utilidadBruta = items.reduce((s, i) => s + i.utilidadBruta, 0);
-      const capitalRecuperado = items.reduce((s, i) => s + i.capitalRecuperado, 0);
-      return {
-        cobId,
-        nombre: profileMap[cobId] || "Sin asignar",
-        prestamos: items.length,
-        capitalColocado,
-        capitalRecuperado,
-        utilidadBruta,
-        roi: capitalColocado > 0 ? (utilidadBruta / capitalColocado) * 100 : 0,
-        recuperacion: capitalColocado > 0 ? (capitalRecuperado / capitalColocado) * 100 : 0,
-      };
-    }).sort((a, b) => b.utilidadBruta - a.utilidadBruta);
-
-    const totalCapital = byPrestamo.reduce((s, p) => s + p.capitalColocado, 0);
-    const totalUtilidad = byPrestamo.reduce((s, p) => s + p.utilidadBruta, 0);
-    const totalRecuperado = byPrestamo.reduce((s, p) => s + p.capitalRecuperado, 0);
-    const totalInteres = byPrestamo.reduce((s, p) => s + p.interesGanado, 0);
-    const totalMora = byPrestamo.reduce((s, p) => s + p.moraGanada, 0);
-
+    const t = data.totales;
+    const totalCapital = n(t.totalCapital);
+    const totalUtilidad = n(t.totalUtilidad);
     return {
-      byPrestamo: byPrestamo.sort((a, b) => b.utilidadBruta - a.utilidadBruta),
+      byPrestamo,
       byRuta,
       byCobrador,
-      totales: { totalCapital, totalUtilidad, totalRecuperado, totalInteres, totalMora, roi: totalCapital > 0 ? (totalUtilidad / totalCapital) * 100 : 0 },
+      totales: {
+        totalCapital, totalUtilidad,
+        totalRecuperado: n(t.totalRecuperado), totalInteres: n(t.totalInteres), totalMora: n(t.totalMora),
+        roi: ratio(totalUtilidad, totalCapital),
+      },
     };
   }, [data]);
 

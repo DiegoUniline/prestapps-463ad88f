@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Route, UserCheck } from "lucide-react";
@@ -20,12 +21,15 @@ interface ReasignarModalProps {
 }
 
 function useCobradoresOptions() {
+  const { empresaId } = useEmpresa();
   return useQuery({
-    queryKey: ["cobradores-options-reasignar"],
+    queryKey: ["cobradores-options-reasignar", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, nombre_completo")
+        .eq("empresa_id", empresaId)
         .eq("activo", true)
         .order("nombre_completo");
       if (error) throw error;

@@ -17,9 +17,20 @@ const CLIENTE_COLUMNS = `
   dom_municipio, dom_ciudad, dom_estado, dom_cp
 `;
 
+/**
+ * Valor seguro para un filtro `ilike` dentro de `.or()`: escapa comodines de LIKE (%, _ y barra invertida)
+ * y lo envuelve en comillas dobles para que comas, puntos, dos puntos o paréntesis
+ * del texto buscado no rompan la sintaxis de PostgREST.
+ */
+function ilikeOrValue(term: string) {
+  const like = term.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const quoted = `%${like}%`.replace(/["\\]/g, (c) => `\\${c}`);
+  return `"${quoted}"`;
+}
+
 export function useClientes(filters?: { estado?: string; search?: string; empresaId?: string }) {
   return useQuery({
-    queryKey: ["clientes", filters],
+    queryKey: ["clientes", filters?.empresaId, filters?.estado, filters?.search],
     queryFn: async () => {
       let query = (supabase.from as any)("clientes")
         .select(CLIENTE_COLUMNS)
@@ -32,8 +43,9 @@ export function useClientes(filters?: { estado?: string; search?: string; empres
         query = query.eq("estado", filters.estado);
       }
       if (filters?.search) {
+        const pattern = ilikeOrValue(filters.search);
         query = query.or(
-          `nombre_completo.ilike.%${filters.search}%,id_cliente.ilike.%${filters.search}%,telefono.ilike.%${filters.search}%,correo.ilike.%${filters.search}%`
+          `nombre_completo.ilike.${pattern},id_cliente.ilike.${pattern},telefono.ilike.${pattern},correo.ilike.${pattern}`
         );
       }
 

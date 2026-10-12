@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { fetchAllRows, rpc } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -115,29 +115,15 @@ async function fetchCobros(cobradorId: string, empresaId: string, desde?: string
   return await fetchAllRows(query);
 }
 
-// Fetch cobros for all cobradores in supervisor's rutas
-async function fetchCobrosEquipo(supervisorId: string, empresaId: string, desde?: string, hasta?: string) {
-  // Get rutas assigned to supervisor
-  const { data: supRutas } = await supabase
-    .from("supervisor_rutas")
-    .select("ruta_id")
-    .eq("supervisor_id", supervisorId);
-  
-  if (!supRutas?.length) return 0;
-
-  const rutaIds = supRutas.map((r) => r.ruta_id);
-
-  let query = supabase
-    .from("pagos")
-    .select("monto_recibido")
-    .in("ruta_id", rutaIds)
-    .eq("empresa_id", empresaId);
-
-  if (desde) query = query.gte("created_at", desde);
-  if (hasta) query = query.lte("created_at", hasta);
-
-  const { data } = await query;
-  return (data || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+// Total cobrado (pagos no anulados) por las rutas del supervisor — SUM en SQL
+async function fetchCobrosEquipo(supervisorId: string, desde?: string, hasta?: string) {
+  const { data, error } = await rpc<number | string>("cobros_equipo_total", {
+    p_supervisor_id: supervisorId,
+    p_desde: desde ?? null,
+    p_hasta: hasta ?? null,
+  });
+  if (error) throw error;
+  return Number(data || 0);
 }
 
 // Fetch préstamos generated in period
@@ -243,9 +229,12 @@ export default function ComisionesPage() {
         let comision = 0;
         const detalles: string[] = [];
 
+        const necesitaEquipo = (!!supervisor.comision_cobros_equipo && supervisor.comision_cobros_equipo > 0)
+          || (!!supervisor.bono_meta_objetivo && supervisor.bono_meta_objetivo > 0 && !!supervisor.bono_meta_monto);
+        const totalEquipo = necesitaEquipo ? await fetchCobrosEquipo(supervisor.id, desde, hasta) : 0;
+
         // 1. Comisión por cobros del equipo
         if (supervisor.comision_cobros_equipo && supervisor.comision_cobros_equipo > 0) {
-          const totalEquipo = await fetchCobrosEquipo(supervisor.id, empresaId, desde, hasta);
           const com = totalEquipo * (supervisor.comision_cobros_equipo / 100);
           comision += com;
           detalles.push(`Cobros equipo: ${$$(totalEquipo)} × ${supervisor.comision_cobros_equipo}% = ${$$(com)}`);
@@ -262,7 +251,6 @@ export default function ComisionesPage() {
 
         // 3. Bono por meta
         if (supervisor.bono_meta_objetivo && supervisor.bono_meta_objetivo > 0 && supervisor.bono_meta_monto) {
-          const totalEquipo = await fetchCobrosEquipo(supervisor.id, empresaId, desde, hasta);
           if (totalEquipo >= supervisor.bono_meta_objetivo) {
             comision += supervisor.bono_meta_monto;
             detalles.push(`Bono meta alcanzada (${$$(totalEquipo)} ≥ ${$$(supervisor.bono_meta_objetivo)}): +${$$(supervisor.bono_meta_monto)}`);

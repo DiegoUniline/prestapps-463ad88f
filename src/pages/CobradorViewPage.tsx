@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows, mapChunks } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useAuth } from "@/contexts/AuthContext";
@@ -91,122 +92,90 @@ function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresaId: str
     queryKey: ["cobrador-cobranza", fechaDesde, fechaHasta, empresaId, cobradorId],
     enabled: enabled && !!empresaId,
     queryFn: async () => {
+      // Cuotas con su préstamo (cliente/ruta) y sus pagos embebidos; el filtro por cobrador
+      // se aplica en el servidor sobre el préstamo (prestamos!inner), sin listas .in() gigantes.
       const amortizacionSelect = `
         id, prestamo_id, num_cuota, capital_interes, saldo_total, saldo_mora,
         saldo_capital, saldo_interes, mora_pagada, interes_pagado, capital_pagado,
-        fecha_vencimiento, status, dias_atraso, fecha_pagada
+        fecha_vencimiento, status, dias_atraso, fecha_pagada,
+        prestamos!amortizacion_prestamo_id_fkey!inner (
+          id, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, empresa_id,
+          clientes ( nombre_completo, telefono, direccion, gps_lat, gps_lng ),
+          rutas ( nombre )
+        ),
+        pagos!pagos_cuota_id_fkey ( monto_recibido, anulado )
       `;
-      // PERF: si es cobrador, primero traer SOLO sus préstamos y luego sus cuotas.
-      // Si es admin (cobradorId == null), traer cuotas del rango primero.
-      let presMap: Record<string, any> = {};
-      let cuotas: any[] = [];
-      let pagosByPrestamo: Record<string, number> = {};
+      const rangoFilter =
+        `and(fecha_vencimiento.gte.${fechaDesde},fecha_vencimiento.lte.${fechaHasta}),` +
+        `and(fecha_vencimiento.lt.${fechaDesde},status.neq.Pagada),` +
+        `and(fecha_pagada.gte.${fechaDesde},fecha_pagada.lte.${fechaHasta})`;
+      const presMap: Record<string, any> = {};
+      const pagosByPrestamo: Record<string, number> = {};
 
-      if (cobradorId) {
-        const { data: prestamos } = await supabase
-          .from("prestamos")
-          .select(`
-            id, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id,
-            clientes ( nombre_completo, telefono, direccion, gps_lat, gps_lng ),
-            rutas ( nombre )
-          `)
-          .eq("empresa_id", empresaId)
-          .eq("cobrador_id", cobradorId);
-
-        for (const p of prestamos || []) presMap[p.id] = p;
-        const ids = Object.keys(presMap);
-        if (ids.length === 0) return [];
-
-        const { data, error } = await supabase
-          .from("amortizacion")
-          .select(amortizacionSelect)
-          .in("prestamo_id", ids)
-          .or(
-            `and(fecha_vencimiento.gte.${fechaDesde},fecha_vencimiento.lte.${fechaHasta}),` +
-            `and(fecha_vencimiento.lt.${fechaDesde},status.neq.Pagada),` +
-            `and(fecha_pagada.gte.${fechaDesde},fecha_pagada.lte.${fechaHasta})`
-          )
-          .order("fecha_vencimiento", { ascending: true });
-        if (error) throw error;
-        cuotas = data || [];
-      } else {
-        const { data, error } = await supabase
-          .from("amortizacion")
-          .select(amortizacionSelect)
-          .eq("empresa_id", empresaId)
-          .or(
-            `and(fecha_vencimiento.gte.${fechaDesde},fecha_vencimiento.lte.${fechaHasta}),` +
-            `and(fecha_vencimiento.lt.${fechaDesde},status.neq.Pagada),` +
-            `and(fecha_pagada.gte.${fechaDesde},fecha_pagada.lte.${fechaHasta})`
-          )
-          .order("fecha_vencimiento", { ascending: true });
-        if (error) throw error;
-        if (!data?.length) return [];
-        cuotas = data;
-
-        const prestamoIds = [...new Set(cuotas.map((c) => c.prestamo_id))];
-        const { data: prestamos } = await supabase
-          .from("prestamos")
-          .select(`
-            id, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id,
-            clientes ( nombre_completo, telefono, direccion, gps_lat, gps_lng ),
-            rutas ( nombre )
-          `)
-          .in("id", prestamoIds);
-        for (const p of prestamos || []) presMap[p.id] = p;
-      }
-
-      const prestamoIdsParaPagos = Object.keys(presMap);
-      if (prestamoIdsParaPagos.length > 0) {
-        let pagosRangoQuery = supabase
-          .from("pagos")
-          .select("prestamo_id, monto_recibido")
-          .eq("empresa_id", empresaId)
-          .eq("anulado", false)
-          .in("prestamo_id", prestamoIdsParaPagos)
-          .gte("fecha_pago", fechaDesde)
-          .lte("fecha_pago", fechaHasta);
-
-        if (cobradorId) pagosRangoQuery = pagosRangoQuery.eq("cobrador_id", cobradorId);
-
-        const { data: pagosRango } = await pagosRangoQuery;
-        for (const p of pagosRango || []) {
-          if (!p.prestamo_id) continue;
-          pagosByPrestamo[p.prestamo_id] = (pagosByPrestamo[p.prestamo_id] || 0) + Number(p.monto_recibido || 0);
+      const cuotasQuery = () => {
+        let q = (supabase.from as any)("amortizacion").select(amortizacionSelect);
+        if (cobradorId) {
+          q = q.eq("prestamos.empresa_id", empresaId).eq("prestamos.cobrador_id", cobradorId);
+        } else {
+          q = q.eq("empresa_id", empresaId);
         }
+        return q;
+      };
+
+      // Pagos del rango (por préstamo) para repartir montos en cuotas sin pago directo
+      let pagosRangoQuery = (supabase.from as any)("pagos")
+        .select("id, prestamo_id, monto_recibido, prestamos!pagos_prestamo_id_fkey!inner ( cobrador_id, empresa_id )")
+        .eq("empresa_id", empresaId)
+        .eq("anulado", false)
+        .gte("fecha_pago", fechaDesde)
+        .lte("fecha_pago", fechaHasta);
+      if (cobradorId) {
+        pagosRangoQuery = pagosRangoQuery
+          .eq("cobrador_id", cobradorId)
+          .eq("prestamos.cobrador_id", cobradorId)
+          .eq("prestamos.empresa_id", empresaId);
       }
+
+      const [cuotasRango, pagosRango] = await Promise.all([
+        fetchAllRows<any>(cuotasQuery().or(rangoFilter).order("fecha_vencimiento", { ascending: true })),
+        fetchAllRows<any>(pagosRangoQuery),
+      ]);
+      let cuotas: any[] = cuotasRango;
+      for (const c of cuotas) presMap[c.prestamo_id] = c.prestamos;
+      for (const p of pagosRango) {
+        if (!p.prestamo_id) continue;
+        pagosByPrestamo[p.prestamo_id] = (pagosByPrestamo[p.prestamo_id] || 0) + Number(p.monto_recibido || 0);
+      }
+      if (!cobradorId && cuotas.length === 0) return [];
 
       if (cobradorId) {
         const prestamosConPago = Object.keys(pagosByPrestamo);
         if (prestamosConPago.length > 0) {
-          const { data: cuotasTocadas, error: cuotasTocadasError } = await supabase
-            .from("amortizacion")
-            .select(amortizacionSelect)
-            .in("prestamo_id", prestamosConPago)
-            .or("status.eq.Pagada,status.eq.Parcial,capital_pagado.gt.0,interes_pagado.gt.0,mora_pagada.gt.0")
-            .order("fecha_vencimiento", { ascending: true });
-          if (cuotasTocadasError) throw cuotasTocadasError;
+          const cuotasTocadas = await mapChunks(prestamosConPago, 150, (chunk) =>
+            fetchAllRows<any>(cuotasQuery()
+              .in("prestamo_id", chunk)
+              .or("status.eq.Pagada,status.eq.Parcial,capital_pagado.gt.0,interes_pagado.gt.0,mora_pagada.gt.0")
+              .order("fecha_vencimiento", { ascending: true }))
+          );
 
           const cuotasById = new Map(cuotas.map((c) => [c.id, c]));
-          for (const c of cuotasTocadas || []) cuotasById.set(c.id, c);
+          for (const c of cuotasTocadas) {
+            cuotasById.set(c.id, c);
+            presMap[c.prestamo_id] = c.prestamos;
+          }
           cuotas = Array.from(cuotasById.values()).sort((a, b) => String(a.fecha_vencimiento).localeCompare(String(b.fecha_vencimiento)));
         }
       }
 
       if (!cuotas.length) return [];
 
-      // Payments for these cuotas
-      const cuotaIds = cuotas.map((c) => c.id);
-      const { data: pagos } = await supabase
-        .from("pagos")
-        .select("cuota_id, monto_recibido")
-        .in("cuota_id", cuotaIds)
-        .eq("anulado", false);
-
+      // Payments for these cuotas (embebidos, no anulados)
       const pagosByCuota: Record<string, number> = {};
-      for (const p of pagos || []) {
-        if (!p.cuota_id) continue;
-        pagosByCuota[p.cuota_id] = (pagosByCuota[p.cuota_id] || 0) + Number(p.monto_recibido);
+      for (const c of cuotas) {
+        for (const p of (c.pagos || []) as { monto_recibido: number; anulado: boolean }[]) {
+          if (p.anulado) continue;
+          pagosByCuota[c.id] = (pagosByCuota[c.id] || 0) + Number(p.monto_recibido);
+        }
       }
 
       const pagoRestanteByPrestamo = { ...pagosByPrestamo };
@@ -284,11 +253,9 @@ function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresaId: str
         pagosQuery = pagosQuery.eq("cobrador_id", cobradorId);
       }
 
-      const { data, error } = await pagosQuery;
+      const data = await fetchAllRows<any>(pagosQuery);
 
-      if (error) throw error;
-
-      return (data || []).map((p: any): PagoHistorial => ({
+      return data.map((p: any): PagoHistorial => ({
         id: p.id,
         prestamoId: p.prestamo_id,
         clienteNombre: p.prestamos?.clientes?.nombre_completo || "—",
@@ -337,45 +304,26 @@ function useResumenSemanal(empresaId: string, cobradorId: string | null, weekSta
     queryKey: ["cobrador-resumen-semanal", desde, hasta, empresaId, cobradorId],
     enabled: enabled && !!empresaId,
     queryFn: async () => {
-      let cuotas: any[] = [];
-      if (cobradorId) {
-        const { data: prestamos } = await supabase
-          .from("prestamos")
-          .select("id")
-          .eq("empresa_id", empresaId)
-          .eq("cobrador_id", cobradorId);
-        const ids = (prestamos || []).map((p) => p.id);
-        if (ids.length === 0) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
-        const { data } = await supabase
-          .from("amortizacion")
-          .select("id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento")
-          .in("prestamo_id", ids)
-          .gte("fecha_vencimiento", desde)
-          .lte("fecha_vencimiento", hasta);
-        cuotas = data || [];
-      } else {
-        const { data } = await supabase
-          .from("amortizacion")
-          .select("id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento")
-          .eq("empresa_id", empresaId)
-          .gte("fecha_vencimiento", desde)
-          .lte("fecha_vencimiento", hasta);
-        cuotas = data || [];
-      }
+      // Cuotas de la semana con pagos embebidos (no anulados, de la empresa); filtro por cobrador en servidor.
+      let cuotasQuery = (supabase.from as any)("amortizacion")
+        .select(`id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento,
+          ${cobradorId ? "prestamos!amortizacion_prestamo_id_fkey!inner ( cobrador_id, empresa_id )," : ""}
+          pagos!pagos_cuota_id_fkey ( monto_recibido )`)
+        .gte("fecha_vencimiento", desde)
+        .lte("fecha_vencimiento", hasta)
+        .eq("pagos.anulado", false)
+        .eq("pagos.empresa_id", empresaId);
+      cuotasQuery = cobradorId
+        ? cuotasQuery.eq("prestamos.empresa_id", empresaId).eq("prestamos.cobrador_id", cobradorId)
+        : cuotasQuery.eq("empresa_id", empresaId);
+      const cuotas = await fetchAllRows<any>(cuotasQuery);
       if (!cuotas.length) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
       const filtered = cuotas;
 
-      // Payments received this week for these cuotas
-      const cuotaIds = filtered.map((c) => c.id);
+      // Payments received for these cuotas
       let pagadoTotal = 0;
-      if (cuotaIds.length > 0) {
-        const { data: pagos } = await supabase
-          .from("pagos")
-          .select("monto_recibido")
-          .in("cuota_id", cuotaIds)
-          .eq("anulado", false)
-          .eq("empresa_id", empresaId);
-        pagadoTotal = (pagos || []).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
+      for (const c of filtered) {
+        for (const p of (c.pagos || []) as { monto_recibido: number }[]) pagadoTotal += Number(p.monto_recibido || 0);
       }
 
       const totalEsperado = filtered.reduce((s, c) => s + Number(c.capital_interes || 0), 0);
@@ -390,7 +338,7 @@ function useResumenSemanal(empresaId: string, cobradorId: string | null, weekSta
 
 function useCajasAll(empresaId: string) {
   return useQuery({
-    queryKey: ["cajas-all", empresaId],
+    queryKey: ["cajas-all", empresaId, "nombres"],
     queryFn: async () => {
       const { data } = await supabase.from("cajas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
       return data || [];
@@ -423,34 +371,30 @@ function usePerfilCobrador(cobradorId: string | null, empresaId: string, enabled
       const totalComisionesGanadas = (cortes || []).reduce((s, c) => s + Number(c.monto_comision || 0), 0);
       const totalCobrado = (cortes || []).reduce((s, c) => s + Number(c.total_cobrado || 0), 0);
 
-      // All assigned loans (active)
-      const { data: prestamos } = await supabase
-        .from("prestamos")
+      // All assigned loans (active) con su amortización embebida (sin .in() de prestamo_ids)
+      const prestamos = await fetchAllRows<any>((supabase.from as any)("prestamos")
         .select(`
           id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro,
           frecuencia, fecha_primer_pago,
           clientes ( nombre_completo ),
-          rutas ( nombre )
+          rutas ( nombre ),
+          amortizacion!amortizacion_prestamo_id_fkey ( status, saldo_total, saldo_mora )
         `)
         .eq("cobrador_id", cobradorId!)
         .eq("empresa_id", empresaId)
         .in("estado", ["Activo", "Al día", "Vencido"])
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }));
 
-      // Get amortization summary for each loan
-      const prestamoIds = (prestamos || []).map(p => p.id);
-      let amortSummary: Record<string, { pagadas: number; saldo: number; mora: number }> = {};
-      if (prestamoIds.length > 0) {
-        const { data: amort } = await supabase
-          .from("amortizacion")
-          .select("prestamo_id, status, saldo_total, saldo_mora")
-          .in("prestamo_id", prestamoIds);
-        for (const a of amort || []) {
-          if (!amortSummary[a.prestamo_id]) amortSummary[a.prestamo_id] = { pagadas: 0, saldo: 0, mora: 0 };
-          if (a.status === "Pagada") amortSummary[a.prestamo_id].pagadas += 1;
-          amortSummary[a.prestamo_id].saldo += Number(a.saldo_total || 0);
-          amortSummary[a.prestamo_id].mora += Number(a.saldo_mora || 0);
+      // Amortization summary for each loan
+      const amortSummary: Record<string, { pagadas: number; saldo: number; mora: number }> = {};
+      for (const p of prestamos) {
+        const sum = { pagadas: 0, saldo: 0, mora: 0 };
+        for (const a of (p.amortizacion || []) as { status: string | null; saldo_total: number | null; saldo_mora: number | null }[]) {
+          if (a.status === "Pagada") sum.pagadas += 1;
+          sum.saldo += Number(a.saldo_total || 0);
+          sum.mora += Number(a.saldo_mora || 0);
         }
+        amortSummary[p.id] = sum;
       }
 
       return {

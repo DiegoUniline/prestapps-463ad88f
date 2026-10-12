@@ -14,7 +14,8 @@ import { useClientes, useUpdateCliente } from "@/hooks/useClientes";
 import { useAtendidos } from "@/hooks/useAtendidos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { rpc } from "@/lib/supabaseQuery";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { toast } from "sonner";
 
 const estadoColors: Record<string, string> = {
@@ -35,106 +36,21 @@ interface EstadoCuenta {
   cobrador_nombre: string | null;
 }
 
-function useEstadosCuenta() {
+// Agregado en SQL (rpc estados_cuenta_clientes): evita el .in() gigante de préstamos/cuotas.
+function useEstadosCuenta(empresaId: string) {
   return useQuery({
-    queryKey: ["estados-cuenta"],
+    queryKey: ["estados-cuenta", empresaId],
+    enabled: !!empresaId,
     staleTime: 2 * 60 * 1000,
     queryFn: async () => {
-      // 1. All clients
-      const { data: clientes, error: cErr } = await supabase
-        .from("clientes")
-        .select("id, id_cliente, nombre_completo")
-        .eq("activo", true)
-        .order("nombre_completo");
-      if (cErr) throw cErr;
-
-      // 2. All active loans with cobrador
-      const { data: prestamos, error: pErr } = await supabase
-        .from("prestamos")
-        .select("id, cliente_id, cobrador_id")
-        .in("estado", ["Activo", "Al día", "Vencido"]);
-      if (pErr) throw pErr;
-
-      const prestamoIds = (prestamos || []).map((p) => p.id);
-      if (prestamoIds.length === 0) {
-        return (clientes || []).map((c) => ({
-          cliente_id: c.id,
-          id_cliente: c.id_cliente,
-          nombre_completo: c.nombre_completo,
-          saldo_total: 0,
-          cuotas_vencidas: 0,
-          saldo_moroso: 0,
-          cobrador_nombre: null,
-        })) as EstadoCuenta[];
-      }
-
-      // 3. All unpaid cuotas for those loans
-      const { data: cuotas, error: aErr } = await supabase
-        .from("amortizacion")
-        .select("prestamo_id, saldo_total, saldo_mora, status")
-        .in("prestamo_id", prestamoIds)
-        .neq("status", "Pagada");
-      if (aErr) throw aErr;
-
-      // 4. Cobradores from profiles
-      const cobradorIds = [...new Set((prestamos || []).map((p) => p.cobrador_id).filter(Boolean))];
-      let cobradorMap: Record<string, string> = {};
-      if (cobradorIds.length > 0) {
-        const { data: profiles } = await supabase.from("profiles")
-          .select("id, nombre_completo")
-          .in("id", cobradorIds);
-        for (const c of profiles || []) {
-          cobradorMap[c.id] = c.nombre_completo;
-        }
-      }
-
-      // Build per-client map
-      const prestamoByCliente: Record<string, typeof prestamos> = {};
-      for (const p of prestamos || []) {
-        if (!prestamoByCliente[p.cliente_id]) prestamoByCliente[p.cliente_id] = [];
-        prestamoByCliente[p.cliente_id].push(p);
-      }
-
-      const cuotaByPrestamo: Record<string, typeof cuotas> = {};
-      for (const c of cuotas || []) {
-        if (!cuotaByPrestamo[c.prestamo_id]) cuotaByPrestamo[c.prestamo_id] = [];
-        cuotaByPrestamo[c.prestamo_id].push(c);
-      }
-
-      const result: EstadoCuenta[] = (clientes || []).map((cli) => {
-        const cliPrestamos = prestamoByCliente[cli.id] || [];
-        let saldoTotal = 0;
-        let cuotasVencidas = 0;
-        let saldoMoroso = 0;
-        let cobradorNombre: string | null = null;
-
-        for (const p of cliPrestamos) {
-          const pCuotas = cuotaByPrestamo[p.id] || [];
-          for (const c of pCuotas) {
-            saldoTotal += Number(c.saldo_total || 0);
-            if (c.status === "Vencida") {
-              cuotasVencidas++;
-              saldoMoroso += Number(c.saldo_total || 0);
-            }
-          }
-          if (p.cobrador_id && cobradorMap[p.cobrador_id]) {
-            cobradorNombre = cobradorMap[p.cobrador_id];
-          }
-        }
-
-        return {
-          cliente_id: cli.id,
-          id_cliente: cli.id_cliente,
-          nombre_completo: cli.nombre_completo,
-          saldo_total: saldoTotal,
-          cuotas_vencidas: cuotasVencidas,
-          saldo_moroso: saldoMoroso,
-          cobrador_nombre: cobradorNombre,
-        };
-      });
-
-      // Only return clients that have active loans
-      return result.filter((r) => r.saldo_total > 0 || r.cuotas_vencidas > 0);
+      const { data, error } = await rpc<EstadoCuenta[]>("estados_cuenta_clientes");
+      if (error) throw error;
+      return (data || []).map((e) => ({
+        ...e,
+        saldo_total: Number(e.saldo_total || 0),
+        cuotas_vencidas: Number(e.cuotas_vencidas || 0),
+        saldo_moroso: Number(e.saldo_moroso || 0),
+      })) as EstadoCuenta[];
     },
   });
 }
@@ -145,9 +61,10 @@ export default function ClientesPage() {
   const [searchEC, setSearchEC] = useState("");
   const navigate = useNavigate();
   const { empresaId } = useEmpresa();
-  const { data: clientes, isLoading } = useClientes({ search, estado: estadoFilter, empresaId });
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const { data: clientes, isLoading } = useClientes({ search: debouncedSearch, estado: estadoFilter, empresaId });
   const updateCliente = useUpdateCliente();
-  const { data: estados, isLoading: loadingEC } = useEstadosCuenta();
+  const { data: estados, isLoading: loadingEC } = useEstadosCuenta(empresaId);
   const { clienteIds: atendidoClienteIds, color: atendidoColor } = useAtendidos(empresaId);
 
   const handleToggleActivo = (e: React.MouseEvent, id: string, activo: boolean) => {

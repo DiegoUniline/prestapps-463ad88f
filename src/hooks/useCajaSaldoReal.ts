@@ -1,60 +1,31 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { rpc } from "@/lib/supabaseQuery";
 
 /**
- * Calcula el saldo real de una o varias cajas desde las tablas fuente,
+ * Calcula el saldo real de una o varias cajas desde las tablas fuente (rpc caja_saldos, SUM en SQL),
  * sin depender de cajas.saldo_actual ni del kardex completo.
  *
  * Fórmula:
- *   + Pagos no anulados (entradas por cobros)
+ *   + Pagos no anulados (entradas por cobros, pagos.caja_id)
  *   - Préstamos no cancelados (salidas por desembolsos)
- *   + Movimientos manuales entrada (depósitos, transferencias recibidas)
- *   - Movimientos manuales salida (retiros, transferencias realizadas, gastos)
- *
- * "Manual" = movimientos_caja donde prestamo_id IS NULL
+ *   ± Movimientos manuales (movimientos_caja con prestamo_id IS NULL): depósitos, retiros,
+ *     transferencias, gastos, comisiones…
+ *     EXCEPTO las entradas de corte/liquidación de cobrador ("Corte cobrador: …", "Liquidación ruta …"):
+ *     ese efectivo ya está contado en los pagos de la caja; sumarlo otra vez lo duplicaba.
  */
 export function useCajaSaldoReal(cajaIds: string[]) {
+  const ids = [...cajaIds].sort();
   return useQuery({
-    queryKey: ["caja-saldo-real", ...cajaIds.sort()],
-    enabled: cajaIds.length > 0,
+    queryKey: ["caja-saldo-real", ...ids],
+    enabled: ids.length > 0,
     refetchOnMount: "always" as const,
     queryFn: async () => {
       const result: Record<string, number> = {};
-      for (const id of cajaIds) result[id] = 0;
+      for (const id of ids) result[id] = 0;
 
-      // 1. Pagos no anulados por caja
-      const { data: pagos } = await supabase
-        .from("pagos")
-        .select("caja_id, monto_recibido")
-        .in("caja_id", cajaIds)
-        .eq("anulado", false);
-
-      for (const p of pagos || []) {
-        if (p.caja_id) result[p.caja_id] = (result[p.caja_id] || 0) + Number(p.monto_recibido || 0);
-      }
-
-      // 2. Préstamos no cancelados (desembolsos = salida)
-      const { data: prestamos } = await supabase
-        .from("prestamos")
-        .select("caja_id, monto_solicitado, estado")
-        .in("caja_id", cajaIds)
-        .not("estado", "eq", "Cancelado");
-
-      for (const pr of prestamos || []) {
-        if (pr.caja_id) result[pr.caja_id] = (result[pr.caja_id] || 0) - Number(pr.monto_solicitado || 0);
-      }
-
-      // 3. Movimientos manuales (prestamo_id IS NULL) = depósitos, retiros, transferencias, gastos
-      const { data: manuales } = await supabase
-        .from("movimientos_caja")
-        .select("caja_id, tipo, monto")
-        .in("caja_id", cajaIds)
-        .is("prestamo_id", null);
-
-      for (const m of manuales || []) {
-        const sign = m.tipo === "entrada" ? 1 : -1;
-        result[m.caja_id] = (result[m.caja_id] || 0) + sign * Number(m.monto || 0);
-      }
+      const { data, error } = await rpc<{ caja_id: string; saldo: number | string | null }[]>("caja_saldos", { p_caja_ids: ids });
+      if (error) throw error;
+      for (const row of data || []) result[row.caja_id] = Number(row.saldo || 0);
 
       return result;
     },

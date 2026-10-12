@@ -35,6 +35,7 @@ const estadoBadge: Record<string, string> = {
 };
 
 type SortKey = keyof PrestamoListItem;
+const ROW_STEP = 100;
 const estadoOptions = ["Activo", "Vencido", "Al día", "Liquidado", "Juridico", "Cancelado"];
 
 // ── All available columns definition ──────────────────────────────
@@ -557,6 +558,15 @@ export default function PrestamosPage() {
     return data;
   }, [tabFiltered, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir]);
 
+  // Render incremental: 100 filas por bloque ("Mostrar más")
+  const [visibleCount, setVisibleCount] = useState(ROW_STEP);
+  const [groupVisible, setGroupVisible] = useState<Record<string, number>>({});
+  useEffect(() => {
+    setVisibleCount(ROW_STEP);
+    setGroupVisible({});
+  }, [activeTab, search, selEstado, selCaja, selRuta, regDesde, regHasta, sortKey, sortDir, groupBy]);
+  const visibleRows = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+
   // Grouped data computation
   const groupedData = useMemo(() => {
     if (!groupBy) return null;
@@ -751,7 +761,7 @@ export default function PrestamosPage() {
       <div className="flex items-center justify-between">
         <p className="text-[12px] text-muted-foreground">{filtered.length} préstamo{filtered.length !== 1 ? "s" : ""}</p>
         <div className="flex items-center gap-1 text-[12px] text-muted-foreground">
-          <span>1-{filtered.length} / {filtered.length}</span>
+          <span>{filtered.length > 0 ? 1 : 0}-{Math.min(visibleCount, filtered.length)} / {filtered.length}</span>
           <Button variant="ghost" size="icon" className="h-6 w-6" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
           <Button variant="ghost" size="icon" className="h-6 w-6" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
         </div>
@@ -768,7 +778,7 @@ export default function PrestamosPage() {
           ))
         ) : filtered.length === 0 ? (
           <p className="text-center py-8 text-muted-foreground text-[13px]">No se encontraron préstamos</p>
-        ) : filtered.map((p) => {
+        ) : visibleRows.map((p) => {
           const d = p.diasAtraso ?? 0;
           const diasColor = d > 30 ? "text-destructive" : d > 7 ? "text-warning" : d > 0 ? "text-orange-500" : "text-muted-foreground";
           return (
@@ -843,6 +853,11 @@ export default function PrestamosPage() {
             </div>
           );
         })}
+        {!isLoading && filtered.length > visibleCount && (
+          <Button variant="outline" size="sm" className="w-full h-9 text-[13px]" onClick={() => setVisibleCount((c) => c + ROW_STEP)}>
+            Mostrar más ({filtered.length - visibleCount} restantes)
+          </Button>
+        )}
       </div>
 
       {/* DESKTOP Table */}
@@ -961,7 +976,7 @@ export default function PrestamosPage() {
                           ))}
                         </TableRow>
                       )}
-                      {isExpanded && items.map((p) => (
+                      {isExpanded && items.slice(0, groupVisible[groupName] ?? ROW_STEP).map((p) => (
                         <TableRow
                           key={p.id}
                           className={cn(
@@ -980,6 +995,15 @@ export default function PrestamosPage() {
                           ))}
                         </TableRow>
                       ))}
+                      {isExpanded && items.length > (groupVisible[groupName] ?? ROW_STEP) && (
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell colSpan={colSpanTotal} className="text-center py-2">
+                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setGroupVisible((g) => ({ ...g, [groupName]: (g[groupName] ?? ROW_STEP) + ROW_STEP }))}>
+                              Mostrar más ({items.length - (groupVisible[groupName] ?? ROW_STEP)} restantes)
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </React.Fragment>
                   );
                 })}
@@ -1002,7 +1026,7 @@ export default function PrestamosPage() {
               </>
             ) : (
               <>
-                {filtered.map((p) => (
+                {visibleRows.map((p) => (
                   <TableRow
                     key={p.id}
                     className={cn(
@@ -1021,6 +1045,15 @@ export default function PrestamosPage() {
                     ))}
                   </TableRow>
                 ))}
+                {filtered.length > visibleCount && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={colSpanTotal} className="text-center py-2">
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setVisibleCount((c) => c + ROW_STEP)}>
+                        Mostrar más ({filtered.length - visibleCount} restantes)
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )}
                 {filtered.length > 0 && (
                   <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
                     <TableCell className="px-3" />

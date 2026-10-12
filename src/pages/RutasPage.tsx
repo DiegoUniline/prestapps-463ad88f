@@ -3,6 +3,7 @@ import { $$ } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { rpc } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,21 +38,17 @@ function useRutas(empresaId: string) {
 
       // Get cobrador names from profiles
       const cobIds = [...new Set((rutas || []).map(r => r.cobrador_id).filter(Boolean))];
-      let cobMap: Record<string, string> = {};
+      const cobMap: Record<string, string> = {};
       if (cobIds.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
         for (const c of profiles || []) cobMap[c.id] = c.nombre_completo;
       }
 
-      // Count prestamos per ruta
-      const { data: prestamos } = await supabase
-        .from("prestamos")
-        .select("ruta_id")
-        .not("estado", "in", '("Cancelado","Liquidado")');
+      // Count prestamos per ruta (COUNT en SQL, sin tope de 1000 filas)
+      const { data: conteos, error: cErr } = await rpc<{ ruta_id: string; total: number }[]>("prestamos_por_ruta");
+      if (cErr) throw cErr;
       const countMap: Record<string, number> = {};
-      for (const p of prestamos || []) {
-        if (p.ruta_id) countMap[p.ruta_id] = (countMap[p.ruta_id] || 0) + 1;
-      }
+      for (const c of conteos || []) countMap[c.ruta_id] = Number(c.total || 0);
 
       return (rutas || []).map((r): Ruta => ({
         ...r,
@@ -62,15 +59,26 @@ function useRutas(empresaId: string) {
   });
 }
 
-function useCobradores() {
+function useCobradores(empresaId: string) {
   return useQuery({
-    queryKey: ["cobradores-options"],
+    queryKey: ["cobradores-options", empresaId],
+    enabled: !!empresaId,
     queryFn: async () => {
-      const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "cobrador");
-      if (!roles?.length) return [];
-      const userIds = roles.map((r) => r.user_id);
-      const { data } = await supabase.from("profiles").select("id, nombre_completo").eq("activo", true).in("id", userIds).order("nombre_completo");
-      return (data || []).map((p) => ({ id: p.id, nombre: p.nombre_completo }));
+      // Perfiles activos de la empresa (pocos) y luego cuáles tienen rol cobrador
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, nombre_completo")
+        .eq("empresa_id", empresaId)
+        .eq("activo", true)
+        .order("nombre_completo");
+      if (!profiles?.length) return [];
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "cobrador")
+        .in("user_id", profiles.map((p) => p.id));
+      const cobradorIds = new Set((roles || []).map((r) => r.user_id));
+      return profiles.filter((p) => cobradorIds.has(p.id)).map((p) => ({ id: p.id, nombre: p.nombre_completo }));
     },
   });
 }
@@ -150,7 +158,7 @@ function RutaDetallePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { empresaId } = useEmpresa();
-  const { data: cobradores = [] } = useCobradores();
+  const { data: cobradores = [] } = useCobradores(empresaId);
 
   const { data: ruta, isLoading } = useQuery({
     queryKey: ["ruta-detalle", id],

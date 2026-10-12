@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { fetchAllRows, rpc } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -59,64 +59,57 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
   return useQuery({
     queryKey: ["productividad", empresaId, desdeStr, hastaStr],
     queryFn: async () => {
-      // 1. Profiles (advisors)
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, nombre_completo, activo")
-        .eq("empresa_id", empresaId);
-
-      // 2. Prestamos activos per cobrador
-      const prestamos = await fetchAllRows(supabase
-        .from("prestamos")
-        .select("id, cobrador_id, generado_por, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
-        .eq("empresa_id", empresaId));
-
-      // 3. Pagos in period & previous
-      const pagos = await fetchAllRows(supabase
-        .from("pagos")
-        .select("id, cobrador_id, registrado_por, monto_recibido, created_at, prestamo_id, fecha_pago")
-        .eq("empresa_id", empresaId)
-        .eq("anulado", false)
-        .gte("fecha_pago", prevDesde)
-        .lte("fecha_pago", hastaStr));
-
-      // 4. Amortizacion for mora
-      const prestamoIds = (prestamos || [])
-        .filter((p) => p.estado === "Activo" || p.estado === "Al día" || p.estado === "Vencido")
-        .map((p) => p.id);
-
-      let amortData: any[] = [];
-      if (prestamoIds.length > 0) {
-        amortData = await fetchAllRows(supabase
-          .from("amortizacion")
-          .select("prestamo_id, saldo_total, saldo_mora, status, fecha_vencimiento")
-          .in("prestamo_id", prestamoIds));
-      }
-
-      // 5. CRM gestiones (visits) in period
-      const gestiones = await fetchAllRows(supabase
-        .from("crm_gestiones")
-        .select("id, registrado_por, tipo_gestion, cliente_id, created_at")
-        .eq("empresa_id", empresaId)
-        .gte("created_at", `${prevDesde}T00:00:00`)
-        .lte("created_at", `${hastaStr}T23:59:59`));
-
-      // 6. All visitas ever for "last visit" tracking
-      const allVisitas = await fetchAllRows(supabase
-        .from("crm_gestiones")
-        .select("cliente_id, created_at, registrado_por")
-        .eq("empresa_id", empresaId)
-        .eq("tipo_gestion", "Visita")
-        .order("created_at", { ascending: false }));
-
-      // 7. Clientes for name mapping
-      const clientes = await fetchAllRows(supabase
-        .from("clientes")
-        .select("id, nombre_completo")
-        .eq("empresa_id", empresaId));
+      const today = new Date().toISOString().slice(0, 10);
+      // Consultas independientes en paralelo; mora y última visita se agregan en SQL
+      // (antes: amortización completa por .in(prestamo_id) y todo el historial de visitas).
+      const [
+        { data: profiles },
+        prestamos,
+        pagos,
+        moraRes,
+        gestiones,
+        visitasRes,
+        clientes,
+      ] = await Promise.all([
+        // 1. Profiles (advisors)
+        supabase
+          .from("profiles")
+          .select("id, nombre_completo, activo")
+          .eq("empresa_id", empresaId),
+        // 2. Prestamos per cobrador
+        fetchAllRows<any>(supabase
+          .from("prestamos")
+          .select("id, cobrador_id, generado_por, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
+          .eq("empresa_id", empresaId)),
+        // 3. Pagos in period & previous
+        fetchAllRows<any>(supabase
+          .from("pagos")
+          .select("id, cobrador_id, registrado_por, monto_recibido, created_at, prestamo_id, fecha_pago")
+          .eq("empresa_id", empresaId)
+          .eq("anulado", false)
+          .gte("fecha_pago", prevDesde)
+          .lte("fecha_pago", hastaStr)),
+        // 4. Mora vencida por asesor (préstamos Activo/Al día/Vencido)
+        rpc<{ advisor_id: string | null; clientes_morosos: number; monto_mora: number | string }[]>("productividad_mora", { p_today: today }),
+        // 5. CRM gestiones (visits) in period
+        fetchAllRows<any>(supabase
+          .from("crm_gestiones")
+          .select("id, registrado_por, tipo_gestion, cliente_id, created_at")
+          .eq("empresa_id", empresaId)
+          .gte("created_at", `${prevDesde}T00:00:00`)
+          .lte("created_at", `${hastaStr}T23:59:59`)),
+        // 6. Última visita por cliente
+        rpc<Record<string, string>>("clientes_ultima_visita"),
+        // 7. Clientes for name mapping
+        fetchAllRows<any>(supabase
+          .from("clientes")
+          .select("id, nombre_completo")
+          .eq("empresa_id", empresaId)),
+      ]);
+      if (moraRes.error) throw moraRes.error;
+      if (visitasRes.error) throw visitasRes.error;
 
       const clienteMap = new Map((clientes || []).map((c) => [c.id, c.nombre_completo]));
-      const today = new Date().toISOString().slice(0, 10);
 
       // ── Build per-advisor metrics ──
       const advisorMap = new Map<string, AdvisorMetrics>();
@@ -186,28 +179,12 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
         if (m) m.clientesTotales = clients.size;
       }
 
-      // Mora per prestamo → advisor
-      const prestamoAdvisorMap = new Map<string, string>();
-      for (const pr of prestamos || []) {
-        const adv = resolveAdvisor(pr.cobrador_id, pr.generado_por) || SIN_ASIGNAR;
-        prestamoAdvisorMap.set(pr.id, adv);
-      }
-
-      const morososByAdvisor = new Map<string, Set<string>>();
-      for (const a of amortData) {
-        const adv = prestamoAdvisorMap.get(a.prestamo_id);
-        if (!adv || !advisorMap.has(adv)) continue;
-        if (a.fecha_vencimiento < today && Number(a.saldo_total || 0) > 0) {
-          if (!morososByAdvisor.has(adv)) morososByAdvisor.set(adv, new Set());
-          // Find the client for this prestamo
-          const pr = (prestamos || []).find((p) => p.id === a.prestamo_id);
-          if (pr) morososByAdvisor.get(adv)!.add(pr.cliente_id);
-          advisorMap.get(adv)!.montoMora += Number(a.saldo_mora || 0);
-        }
-      }
-      for (const [adv, morosos] of morososByAdvisor) {
-        const m = advisorMap.get(adv)!;
-        m.clientesMorosos = morosos.size;
+      // Mora vencida por asesor (agregada en SQL: clientes distintos y saldo_mora de cuotas vencidas)
+      for (const row of moraRes.data || []) {
+        const m = advisorMap.get(row.advisor_id || SIN_ASIGNAR);
+        if (!m) continue;
+        m.montoMora += Number(row.monto_mora || 0);
+        m.clientesMorosos = Number(row.clientes_morosos || 0);
         m.moraRate = m.clientesTotales > 0 ? (m.clientesMorosos / m.clientesTotales) * 100 : 0;
       }
 
@@ -242,12 +219,9 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
       }
 
       // Last visit per client per advisor
-      const lastVisitMap = new Map<string, { fecha: string; advisor: string }>();
-      for (const v of allVisitas || []) {
-        if (!lastVisitMap.has(v.cliente_id)) {
-          lastVisitMap.set(v.cliente_id, { fecha: v.created_at!, advisor: v.registrado_por || "" });
-        }
-      }
+      const lastVisitMap = new Map<string, { fecha: string }>(
+        Object.entries(visitasRes.data || {}).map(([clienteId, fecha]) => [clienteId, { fecha }])
+      );
 
       // Build clientesSinVisita per advisor
       for (const [adv, clients] of prestamosByAdvisor) {

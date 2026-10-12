@@ -5,7 +5,6 @@ import { useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUserRole, type AppRole } from "@/hooks/useCurrentUserRole";
 import { usePermisosRead, type PermisoModule } from "@/hooks/usePermisos";
-import { fetchPrestamos } from "@/hooks/usePrestamos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuthStore } from "@/stores/authStore";
 import { isSuperAdmin } from "@/components/SuperAdminGuard";
@@ -140,14 +139,9 @@ export function AppSidebar() {
   // Prefetch main views on mount — keys MUST match actual hook keys
   useEffect(() => {
     if (!empresaId) return;
-    // Solo admins ven Préstamos/Cajas/Rutas en sidebar — evita cargar
-    // miles de filas de amortización para cobradores/supervisores.
+    // Solo admins ven Cajas/Rutas en sidebar. La lista de préstamos NO se precarga:
+    // es la consulta más pesada y solo debe correr al abrir /prestamos.
     if (role !== "admin") return;
-    queryClient.prefetchQuery({
-      queryKey: ["prestamos-list-v2", undefined, undefined, empresaId],
-      queryFn: () => fetchPrestamos({ empresaId }),
-      staleTime: 1000 * 60 * 5,
-    });
     queryClient.prefetchQuery({
       queryKey: ["cajas-options", empresaId],
       queryFn: async () => {

@@ -386,9 +386,9 @@ AS $$
                    WHERE m.caja_id = c.id
                      AND m.prestamo_id IS NULL
                      AND NOT (m.tipo::text = 'entrada'
-                              AND (m.concepto ILIKE 'Corte cobrador%'
-                                   OR m.concepto ILIKE 'Liquidación ruta%'
-                                   OR m.concepto ILIKE 'Liquidacion ruta%'))), 0)
+                              AND (coalesce(m.concepto, '') ILIKE 'Corte cobrador%'
+                                   OR coalesce(m.concepto, '') ILIKE 'Liquidación ruta%'
+                                   OR coalesce(m.concepto, '') ILIKE 'Liquidacion ruta%'))), 0)
   FROM cajas c
   WHERE c.empresa_id = public.get_user_empresa_id()
     AND c.id = ANY (p_caja_ids);
@@ -641,7 +641,7 @@ BEGIN
   SELECT nullif(array_agg(x), '{}') INTO v_rutas FROM jsonb_array_elements_text(coalesce(v_f->'rutas', '[]'::jsonb)) x;
 
   v_order := CASE v_f->>'sort_key'
-    WHEN 'fecha' THEN 'created_at ' || v_dir
+    WHEN 'fecha' THEN 'created_at ' || v_dir || CASE WHEN v_dir = 'ASC' THEN ' NULLS FIRST' ELSE ' NULLS LAST' END
     WHEN 'cliente' THEN 'cliente ' || v_dir
     WHEN 'shortId' THEN 'short_id ' || v_dir
     WHEN 'montoRecibido' THEN 'monto_recibido ' || v_dir
