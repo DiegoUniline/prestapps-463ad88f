@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { sendDocumentViaWhatsApp } from "@/lib/whatsappDocument";
 import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
-import jsPDF from "jspdf";
+import type { jsPDF } from "jspdf";
 
 interface DocumentPreviewModalProps {
   open: boolean;

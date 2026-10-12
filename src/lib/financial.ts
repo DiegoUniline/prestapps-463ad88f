@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { addDays, addWeeks, addMonths } from "date-fns";
+import { addDays, addWeeks, addMonths, differenceInCalendarDays, format } from "date-fns";
 import { parseLocalDate } from "@/lib/utils";
 
 // Configure Decimal for financial precision
@@ -89,7 +89,7 @@ export function calcularAmortizacion(
 
       rows.push({
         numCuota: i,
-        fechaVencimiento: calcNextDate(base, frecuencia, i - 1, skipDays).toISOString().slice(0, 10),
+        fechaVencimiento: format(calcNextDate(base, frecuencia, i - 1, skipDays), "yyyy-MM-dd"),
         capital: cap.toDecimalPlaces(2).toNumber(),
         interes: int.toDecimalPlaces(2).toNumber(),
         capitalInteres: cuotaVal.toDecimalPlaces(2).toNumber(),
@@ -110,7 +110,7 @@ export function calcularAmortizacion(
 
       rows.push({
         numCuota: i,
-        fechaVencimiento: calcNextDate(base, frecuencia, i - 1, skipDays).toISOString().slice(0, 10),
+        fechaVencimiento: format(calcNextDate(base, frecuencia, i - 1, skipDays), "yyyy-MM-dd"),
         capital: cap.toDecimalPlaces(2).toNumber(),
         interes: int.toDecimalPlaces(2).toNumber(),
         capitalInteres: cap.plus(int).toDecimalPlaces(2).toNumber(),
@@ -167,7 +167,7 @@ export function aplicarWaterfall(
 export function calcularDiasAtraso(fechaVencimiento: string, fechaActual?: string): number {
   const venc = parseLocalDate(fechaVencimiento);
   const actual = fechaActual ? parseLocalDate(fechaActual) : new Date();
-  const diff = Math.floor((actual.getTime() - venc.getTime()) / (1000 * 60 * 60 * 24));
+  const diff = differenceInCalendarDays(actual, venc);
   return Math.max(0, diff);
 }
 

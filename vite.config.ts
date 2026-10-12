@@ -23,25 +23,20 @@ export default defineConfig(({ mode }) => ({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // Supabase REST/RPC/Functions/Auth responses (financial data) are never cached by the SW.
+        // Only public storage objects (logos, static assets) are cached.
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/oewuzgugsjqtznmgnfhp\.supabase\.co\/rest\/v1\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-api-cache",
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 },
-              networkTimeoutSeconds: 5,
-            },
-          },
-          {
-            urlPattern: /^https:\/\/oewuzgugsjqtznmgnfhp\.supabase\.co\/storage\/.*/i,
+            urlPattern: /^https:\/\/oewuzgugsjqtznmgnfhp\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
             handler: "CacheFirst",
             options: {
-              cacheName: "supabase-storage-cache",
+              cacheName: "supabase-storage-public-cache",
               expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 7 },
+              cacheableResponse: { statuses: [200] },
             },
           },
         ],
+        cleanupOutdatedCaches: true,
         navigateFallbackDenylist: [/^\/~oauth/],
       },
       manifest: {
@@ -69,12 +64,17 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-query': ['@tanstack/react-query'],
-          'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-popover', '@radix-ui/react-select', '@radix-ui/react-tabs'],
-          'vendor-charts': ['recharts'],
+        // Function form so recharts stays out of the entry: Rollup moves unassigned shared deps
+        // (e.g. clsx) into a manual chunk, which made the entry import vendor-charts.
+        manualChunks(id) {
+          // Shared helpers used by the entry; keep them out of vendor-charts.
+          if (id.includes("commonjsHelpers") || /node_modules\/(clsx|tailwind-merge)\//.test(id)) return "vendor-react";
+          if (!id.includes("node_modules")) return;
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler|@remix-run\/router)\//.test(id)) return "vendor-react";
+          if (id.includes("node_modules/@tanstack/")) return "vendor-query";
+          if (id.includes("node_modules/@supabase/")) return "vendor-supabase";
+          if (/node_modules\/@radix-ui\/react-(dialog|popover|select|tabs)\//.test(id)) return "vendor-ui";
+          if (/node_modules\/(recharts|recharts-scale|react-smooth|victory-vendor|d3-[^/]+|internmap)\//.test(id)) return "vendor-charts";
         },
       },
     },

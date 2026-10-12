@@ -15,60 +15,84 @@ import RoleGuard from "@/components/RoleGuard";
 import SuperAdminGuard from "@/components/SuperAdminGuard";
 import AppLayout from "@/components/AppLayout";
 
-// Direct imports — frequent pages, instant navigation
-import LoginPage from "@/pages/LoginPage";
-import LandingPage from "@/pages/LandingPage";
-import RegisterPage from "@/pages/RegisterPage";
-import ResetPasswordPage from "@/pages/ResetPasswordPage";
-import DashboardPage from "@/pages/DashboardPage";
-import HomeRouter from "@/pages/HomeRouter";
-import PrestamosPage from "@/pages/PrestamosPage";
-import PrestamoDetallePage from "@/pages/PrestamoDetallePage";
-import NuevoPrestamoPage from "@/pages/NuevoPrestamoPage";
-import PagosPage from "@/pages/PagosPage";
-import PromesasPage from "@/pages/PromesasPage";
-import ClientesPage from "@/pages/ClientesPage";
-import ClienteDetallePage from "@/pages/ClienteDetallePage";
-import CajasPage from "@/pages/CajasPage";
-import CajaDetallePage from "@/pages/CajaDetallePage";
-import RutasPage from "@/pages/RutasPage";
-import CobradoresPage from "@/pages/CobradoresPage";
-import CobranzaDiariaPage from "@/pages/CobranzaDiariaPage";
-import ClienteCobranzaDetallePage from "@/pages/ClienteCobranzaDetallePage";
-import CobradorViewPage from "@/pages/CobradorViewPage";
-import SolicitudesPage from "@/pages/SolicitudesPage";
-import SolicitudPrestamoPage from "@/pages/SolicitudPrestamoPage";
-import PlanesCuotasPage from "@/pages/PlanesCuotasPage";
-import GastosPage from "@/pages/GastosPage";
+/** lazy() that reloads once if a chunk from a previous deploy is gone (stale tab after an update) */
+const CHUNK_RELOAD_KEY = "chunk-reload-at";
+function lazyPage(factory: () => Promise<{ default: React.ComponentType }>) {
+  return lazy(() =>
+    factory().catch((err) => {
+      let last = 0;
+      try { last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || 0); } catch { /* storage unavailable */ }
+      if (Date.now() - last > 10_000) {
+        try { sessionStorage.setItem(CHUNK_RELOAD_KEY, String(Date.now())); } catch { /* storage unavailable */ }
+        window.location.reload();
+        return new Promise<never>(() => {});
+      }
+      throw err;
+    })
+  );
+}
 
-// Lazy — infrequent/heavy pages
-const ReportesPage = lazy(() => import("@/pages/ReportesPage"));
-const UsuariosPage = lazy(() => import("@/pages/UsuariosPage"));
-const EmpresasPage = lazy(() => import("@/pages/EmpresasPage"));
-const SuperAdminBuroPage = lazy(() => import("@/pages/SuperAdminBuroPage"));
-const WhatsAppConfigPage = lazy(() => import("@/pages/WhatsAppConfigPage"));
-const CrmCobranzaPage = lazy(() => import("@/pages/CrmCobranzaPage"));
-const LeadScoringPage = lazy(() => import("@/pages/LeadScoringPage"));
-const ComisionesPage = lazy(() => import("@/pages/ComisionesPage"));
-const MapaGPSPage = lazy(() => import("@/pages/MapaGPSPage"));
-const LiquidarRutaPage = lazy(() => import("@/pages/LiquidarRutaPage"));
-const CatalogosPage = lazy(() => import("@/pages/CatalogosPage"));
-const ConfiguracionEmpresaPage = lazy(() => import("@/pages/ConfiguracionEmpresaPage"));
-const PermisosPage = lazy(() => import("@/pages/PermisosPage"));
-const AlertasPage = lazy(() => import("@/pages/AlertasPage"));
-const RenovacionPage = lazy(() => import("@/pages/RenovacionPage"));
-const RentabilidadPage = lazy(() => import("@/pages/RentabilidadPage"));
-const ReporteSemanalPage = lazy(() => import("@/pages/ReporteSemanalPage"));
-const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
-const ProductividadPage = lazy(() => import("@/pages/ProductividadPage"));
-const MiSuscripcionPage = lazy(() => import("@/pages/MiSuscripcionPage"));
-const SuperAdminWhatsAppPage = lazy(() => import("@/pages/SuperAdminWhatsAppPage"));
-const SuperAdminPage = lazy(() => import("@/pages/SuperAdminPage"));
-const SuperAdminHealthPage = lazy(() => import("@/pages/SuperAdminHealthPage"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
+// Eager — entry route only
+import LoginPage from "@/pages/LoginPage";
+
+// Lazy — every other route page
+const LandingPage = lazyPage(() => import("@/pages/LandingPage"));
+const RegisterPage = lazyPage(() => import("@/pages/RegisterPage"));
+const ResetPasswordPage = lazyPage(() => import("@/pages/ResetPasswordPage"));
+const HomeRouter = lazyPage(() => import("@/pages/HomeRouter"));
+const PrestamosPage = lazyPage(() => import("@/pages/PrestamosPage"));
+const PrestamoDetallePage = lazyPage(() => import("@/pages/PrestamoDetallePage"));
+const NuevoPrestamoPage = lazyPage(() => import("@/pages/NuevoPrestamoPage"));
+const PagosPage = lazyPage(() => import("@/pages/PagosPage"));
+const PromesasPage = lazyPage(() => import("@/pages/PromesasPage"));
+const ClientesPage = lazyPage(() => import("@/pages/ClientesPage"));
+const ClienteDetallePage = lazyPage(() => import("@/pages/ClienteDetallePage"));
+const CajasPage = lazyPage(() => import("@/pages/CajasPage"));
+const CajaDetallePage = lazyPage(() => import("@/pages/CajaDetallePage"));
+const RutasPage = lazyPage(() => import("@/pages/RutasPage"));
+const CobradoresPage = lazyPage(() => import("@/pages/CobradoresPage"));
+const CobranzaDiariaPage = lazyPage(() => import("@/pages/CobranzaDiariaPage"));
+const ClienteCobranzaDetallePage = lazyPage(() => import("@/pages/ClienteCobranzaDetallePage"));
+const CobradorViewPage = lazyPage(() => import("@/pages/CobradorViewPage"));
+const SolicitudesPage = lazyPage(() => import("@/pages/SolicitudesPage"));
+const SolicitudPrestamoPage = lazyPage(() => import("@/pages/SolicitudPrestamoPage"));
+const PlanesCuotasPage = lazyPage(() => import("@/pages/PlanesCuotasPage"));
+const GastosPage = lazyPage(() => import("@/pages/GastosPage"));
+
+const ReportesPage = lazyPage(() => import("@/pages/ReportesPage"));
+const UsuariosPage = lazyPage(() => import("@/pages/UsuariosPage"));
+const EmpresasPage = lazyPage(() => import("@/pages/EmpresasPage"));
+const SuperAdminBuroPage = lazyPage(() => import("@/pages/SuperAdminBuroPage"));
+const WhatsAppConfigPage = lazyPage(() => import("@/pages/WhatsAppConfigPage"));
+const CrmCobranzaPage = lazyPage(() => import("@/pages/CrmCobranzaPage"));
+const LeadScoringPage = lazyPage(() => import("@/pages/LeadScoringPage"));
+const ComisionesPage = lazyPage(() => import("@/pages/ComisionesPage"));
+const MapaGPSPage = lazyPage(() => import("@/pages/MapaGPSPage"));
+const LiquidarRutaPage = lazyPage(() => import("@/pages/LiquidarRutaPage"));
+const CatalogosPage = lazyPage(() => import("@/pages/CatalogosPage"));
+const ConfiguracionEmpresaPage = lazyPage(() => import("@/pages/ConfiguracionEmpresaPage"));
+const PermisosPage = lazyPage(() => import("@/pages/PermisosPage"));
+const AlertasPage = lazyPage(() => import("@/pages/AlertasPage"));
+const RenovacionPage = lazyPage(() => import("@/pages/RenovacionPage"));
+const RentabilidadPage = lazyPage(() => import("@/pages/RentabilidadPage"));
+const ReporteSemanalPage = lazyPage(() => import("@/pages/ReporteSemanalPage"));
+const AuditoriaPage = lazyPage(() => import("@/pages/AuditoriaPage"));
+const ProductividadPage = lazyPage(() => import("@/pages/ProductividadPage"));
+const MiSuscripcionPage = lazyPage(() => import("@/pages/MiSuscripcionPage"));
+const SuperAdminWhatsAppPage = lazyPage(() => import("@/pages/SuperAdminWhatsAppPage"));
+const SuperAdminPage = lazyPage(() => import("@/pages/SuperAdminPage"));
+const SuperAdminHealthPage = lazyPage(() => import("@/pages/SuperAdminHealthPage"));
+const NotFound = lazyPage(() => import("@/pages/NotFound"));
 
 function LazyPage({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
+}
+
+// Purge legacy service-worker runtime caches that stored Supabase API/storage responses
+if (typeof window !== "undefined" && "caches" in window) {
+  ["supabase-api-cache", "supabase-storage-cache"].forEach((name) => {
+    caches.delete(name).catch(() => {});
+  });
 }
 
 const queryClient = new QueryClient({
@@ -114,35 +138,35 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/landing" element={<LandingPage />} />
+            <Route path="/" element={<LazyPage><LandingPage /></LazyPage>} />
+            <Route path="/landing" element={<LazyPage><LandingPage /></LazyPage>} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/registro" element={<RegisterPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/registro" element={<LazyPage><RegisterPage /></LazyPage>} />
+            <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<HomeRouter />} />
-              <Route path="/cobranza" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="cobranza"><CobranzaDiariaPage /></RoleGuard>} />
-              <Route path="/cobranza/cliente/:id" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="cobranza"><ClienteCobranzaDetallePage /></RoleGuard>} />
-              <Route path="/mi-cobranza" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="mi_cobranza"><CobradorViewPage /></RoleGuard>} />
-              <Route path="/prestamos" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="prestamos"><PrestamosPage /></RoleGuard>} />
-              <Route path="/prestamos/:id" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="prestamos"><PrestamoDetallePage /></RoleGuard>} />
-              <Route path="/planes-cuotas" element={<RoleGuard allowed={["admin", "supervisor"]} module="prestamos"><PlanesCuotasPage /></RoleGuard>} />
-              <Route path="/pagos" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="pagos"><PagosPage /></RoleGuard>} />
-              <Route path="/promesas" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="promesas"><PromesasPage /></RoleGuard>} />
-              <Route path="/solicitudes" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="solicitudes"><SolicitudesPage /></RoleGuard>} />
-              <Route path="/solicitudes/nueva" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="solicitudes" action="agregar"><SolicitudPrestamoPage /></RoleGuard>} />
-              <Route path="/gastos" element={<RoleGuard allowed={["admin"]} module="gastos"><GastosPage /></RoleGuard>} />
+              <Route path="/dashboard" element={<LazyPage><HomeRouter /></LazyPage>} />
+              <Route path="/cobranza" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="cobranza"><LazyPage><CobranzaDiariaPage /></LazyPage></RoleGuard>} />
+              <Route path="/cobranza/cliente/:id" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="cobranza"><LazyPage><ClienteCobranzaDetallePage /></LazyPage></RoleGuard>} />
+              <Route path="/mi-cobranza" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="mi_cobranza"><LazyPage><CobradorViewPage /></LazyPage></RoleGuard>} />
+              <Route path="/prestamos" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="prestamos"><LazyPage><PrestamosPage /></LazyPage></RoleGuard>} />
+              <Route path="/prestamos/:id" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="prestamos"><LazyPage><PrestamoDetallePage /></LazyPage></RoleGuard>} />
+              <Route path="/planes-cuotas" element={<RoleGuard allowed={["admin", "supervisor"]} module="prestamos"><LazyPage><PlanesCuotasPage /></LazyPage></RoleGuard>} />
+              <Route path="/pagos" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="pagos"><LazyPage><PagosPage /></LazyPage></RoleGuard>} />
+              <Route path="/promesas" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="promesas"><LazyPage><PromesasPage /></LazyPage></RoleGuard>} />
+              <Route path="/solicitudes" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="solicitudes"><LazyPage><SolicitudesPage /></LazyPage></RoleGuard>} />
+              <Route path="/solicitudes/nueva" element={<RoleGuard allowed={["admin", "supervisor", "cobrador"]} module="solicitudes" action="agregar"><LazyPage><SolicitudPrestamoPage /></LazyPage></RoleGuard>} />
+              <Route path="/gastos" element={<RoleGuard allowed={["admin"]} module="gastos"><LazyPage><GastosPage /></LazyPage></RoleGuard>} />
 
-              <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]} module="clientes"><ClientesPage /></RoleGuard>} />
-              <Route path="/clientes/:id" element={<RoleGuard allowed={["admin", "supervisor"]} module="clientes"><ClienteDetallePage /></RoleGuard>} />
+              <Route path="/clientes" element={<RoleGuard allowed={["admin", "supervisor"]} module="clientes"><LazyPage><ClientesPage /></LazyPage></RoleGuard>} />
+              <Route path="/clientes/:id" element={<RoleGuard allowed={["admin", "supervisor"]} module="clientes"><LazyPage><ClienteDetallePage /></LazyPage></RoleGuard>} />
               <Route path="/reportes" element={<RoleGuard allowed={["admin", "supervisor"]} module="reportes"><LazyPage><ReportesPage /></LazyPage></RoleGuard>} />
 
-              <Route path="/prestamos/nuevo" element={<RoleGuard allowed={["admin"]} module="prestamos" action="agregar"><NuevoPrestamoPage /></RoleGuard>} />
-              <Route path="/cajas" element={<RoleGuard allowed={["admin"]} module="cajas"><CajasPage /></RoleGuard>} />
-              <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]} module="cajas"><CajaDetallePage /></RoleGuard>} />
-              <Route path="/rutas" element={<RoleGuard allowed={["admin"]} module="rutas"><RutasPage /></RoleGuard>} />
-              <Route path="/rutas/:id" element={<RoleGuard allowed={["admin"]} module="rutas"><RutasPage /></RoleGuard>} />
-              <Route path="/cobradores" element={<RoleGuard allowed={["admin"]} module="cobradores"><CobradoresPage /></RoleGuard>} />
+              <Route path="/prestamos/nuevo" element={<RoleGuard allowed={["admin"]} module="prestamos" action="agregar"><LazyPage><NuevoPrestamoPage /></LazyPage></RoleGuard>} />
+              <Route path="/cajas" element={<RoleGuard allowed={["admin"]} module="cajas"><LazyPage><CajasPage /></LazyPage></RoleGuard>} />
+              <Route path="/cajas/:id" element={<RoleGuard allowed={["admin"]} module="cajas"><LazyPage><CajaDetallePage /></LazyPage></RoleGuard>} />
+              <Route path="/rutas" element={<RoleGuard allowed={["admin"]} module="rutas"><LazyPage><RutasPage /></LazyPage></RoleGuard>} />
+              <Route path="/rutas/:id" element={<RoleGuard allowed={["admin"]} module="rutas"><LazyPage><RutasPage /></LazyPage></RoleGuard>} />
+              <Route path="/cobradores" element={<RoleGuard allowed={["admin"]} module="cobradores"><LazyPage><CobradoresPage /></LazyPage></RoleGuard>} />
               <Route path="/usuarios" element={<RoleGuard allowed={["admin"]} module="usuarios"><LazyPage><UsuariosPage /></LazyPage></RoleGuard>} />
               <Route path="/usuarios/:id" element={<RoleGuard allowed={["admin"]} module="usuarios"><LazyPage><UsuariosPage /></LazyPage></RoleGuard>} />
               <Route path="/super-admin" element={<SuperAdminGuard><LazyPage><SuperAdminPage /></LazyPage></SuperAdminGuard>} />

@@ -1,4 +1,3 @@
-import { toPng } from "html-to-image";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ReceiptData {
@@ -234,6 +233,7 @@ export async function sendReceiptAsImage(
     // Wait for browser to layout the element
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
+    const { toPng } = await import("html-to-image");
     const dataUrl = await toPng(el, {
       cacheBust: true,
       pixelRatio: 3,

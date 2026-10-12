@@ -1,5 +1,4 @@
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import type { jsPDF } from "jspdf";
 import { format } from "date-fns";
 import { $$, fmtDate, fmtDateTime } from "@/lib/utils";
 
@@ -7,6 +6,15 @@ const GRAY: [number, number, number] = [107, 114, 128];
 const DARK: [number, number, number] = [17, 24, 39];
 const BLACK: [number, number, number] = [0, 0, 0];
 const WHITE: [number, number, number] = [255, 255, 255];
+
+/** jsPDF + autotable are loaded on demand to keep them out of the main bundle */
+async function loadPdfLib() {
+  const [{ default: JsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  return { JsPDF, autoTable };
+}
 
 /** Load an image URL as base64 data URL for jsPDF */
 async function loadImageAsBase64(url: string): Promise<string | null> {
@@ -145,7 +153,8 @@ const cleanTableStyles = {
 
 // ── 1. ESTADO DE CUENTA ──────────────────────────────────────────
 export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaData[], pagos: PagoData[]) {
-  const doc = new jsPDF();
+  const { JsPDF, autoTable } = await loadPdfLib();
+  const doc = new JsPDF();
   const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
   let y = addHeader(doc, "ESTADO DE CUENTA", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
@@ -276,7 +285,8 @@ export async function generarEstadoCuenta(prestamo: PrestamoData, cuotas: CuotaD
 
 // ── 2. CONTRATO ──────────────────────────────────────────────────
 export async function generarContrato(prestamo: PrestamoData, cuotas: CuotaData[]) {
-  const doc = new jsPDF();
+  const { JsPDF, autoTable } = await loadPdfLib();
+  const doc = new JsPDF();
   const logoBase64 = prestamo.logoUrl ? await loadImageAsBase64(prestamo.logoUrl) : null;
   let y = addHeader(doc, "CONTRATO DE PRÉSTAMO", prestamo.id, prestamo.clienteNombre, logoBase64, prestamo.empresaNombre);
 
@@ -421,7 +431,8 @@ export async function generarReciboPagos(prestamo: PrestamoData, pagos: PagoData
   estHeight += 30; // totals + footer
   estHeight = Math.max(estHeight, 100);
 
-  const doc = new jsPDF({ orientation: "p", unit: "mm", format: [ticketW, estHeight] });
+  const { JsPDF } = await loadPdfLib();
+  const doc = new JsPDF({ orientation: "p", unit: "mm", format: [ticketW, estHeight] });
 
   let y = margin;
 

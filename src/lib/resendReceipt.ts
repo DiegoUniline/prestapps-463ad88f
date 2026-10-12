@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
 
 /**
  * Re-sends the last (or a specific) payment receipt for a loan via WhatsApp.
@@ -86,6 +85,7 @@ export async function resendReceiptForPrestamo(opts: {
       })
     : undefined;
 
+  const { sendReceiptAsImage } = await import("@/lib/whatsappReceipt");
   return sendReceiptAsImage(
     empresaId,
     cliente.telefono,

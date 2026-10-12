@@ -1,7 +1,9 @@
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
-import DashboardPage from "@/pages/DashboardPage";
+import { lazy, Suspense } from "react";
 import { Navigate } from "react-router-dom";
 import { usePermisosRead, type PermisoModule } from "@/hooks/usePermisos";
+
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 
 export default function HomeRouter() {
   const { role, loading } = useCurrentUserRole();
@@ -13,7 +15,7 @@ export default function HomeRouter() {
       </div>
     );
   }
-  if (role === "admin") return <DashboardPage />;
+  if (role === "admin") return <Suspense fallback={null}><DashboardPage /></Suspense>;
 
   // Cobradores y supervisores: encuentra la primera vista a la que tienen acceso
   const candidates: { module: PermisoModule; path: string }[] = [
