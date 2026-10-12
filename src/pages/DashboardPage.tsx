@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
+import { format } from "date-fns";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,59 +38,192 @@ import { cn, $$, fmtDate } from "@/lib/utils";
 
 const pct = (n: number) => `${n.toFixed(1)}%`;
 
-type DashboardMovimiento = {
-  tipo?: string | null;
-  monto?: number | null;
-  concepto?: string | null;
-  created_at?: string | null;
-  caja_id?: string | null;
+type DashboardNum = number | string | null;
+type DashboardPieItem = { name: string; value: number };
+type DashboardRpc = {
+  today: string;
+  prestamos: Record<"total" | "activos" | "liquidados" | "juridicos" | "vencidos" | "capital_colocado" | "total_pagar", DashboardNum>;
+  cuotas: Record<
+    | "saldo_por_cobrar" | "saldo_capital" | "saldo_interes" | "mora_total" | "capital_recuperado" | "interes_recuperado"
+    | "mora_recuperada" | "cuotas_vencidas" | "cuotas_pendientes" | "cuotas_pagadas" | "total_cuotas" | "monto_vencido"
+    | "monto_vence_hoy" | "cuotas_vencen_hoy" | "prestamos_en_riesgo",
+    DashboardNum
+  >;
+  pagos: Record<
+    | "total_cobrado" | "capital_cobrado" | "interes_cobrado" | "mora_cobrada" | "cobrado_hoy" | "num_pagos_hoy"
+    | "cobrado_mes" | "ingreso_financiero_mes",
+    DashboardNum
+  >;
+  gastosMes: DashboardNum;
+  misc: Record<
+    | "efectivo_calle" | "capital_cajas" | "promesas_pendientes" | "promesas_por_atender" | "monto_promesas_hoy"
+    | "clientes_activos" | "clientes_mora",
+    DashboardNum
+  >;
+  topDeudores: {
+    id: string; cliente: string; telefono: string | null; direccion: string | null;
+    gpsLat: number | null; gpsLng: number | null; saldo: DashboardNum; vencido: DashboardNum;
+    mora: DashboardNum; diasAtraso: DashboardNum; ruta: string; cobrador: string;
+  }[];
+  meses: { ym: string; colocado: DashboardNum; cobrado: DashboardNum; mora: DashboardNum; interes: DashboardNum; capital: DashboardNum }[];
+  pies: { estado: DashboardPieItem[]; frecuencia: DashboardPieItem[]; cuota_status: DashboardPieItem[] };
+  cobradorStats: { id: string; nombre: string | null; cobrado: DashboardNum; prestamos: DashboardNum; efectivo: DashboardNum; saldo: DashboardNum; mora: DashboardNum }[];
+  rutaStats: { nombre: string; prestamos: DashboardNum; saldo: DashboardNum; mora: DashboardNum }[];
+  opciones: {
+    rutas: { id: string; nombre: string }[];
+    cobradores: { id: string; nombre_completo: string | null }[];
+    cajas: { id: string; nombre: string; saldo: DashboardNum }[];
+  };
 };
 
-type DashboardRuta = { id: string; nombre: string };
-type DashboardCobrador = { id: string; nombre_completo?: string | null; nombre?: string | null };
-type DashboardCliente = {
-  nombre_completo?: string | null;
-  telefono?: string | null;
-  direccion?: string | null;
-  gps_lat?: number | null;
-  gps_lng?: number | null;
+type DashboardFilters = {
+  desde: string | null;
+  hasta: string | null;
+  ruta_id: string | null;
+  cobrador_id: string | null;
+  caja_id: string | null;
+  today: string;
+  today_local: string;
+  meses: string[];
 };
-type DashboardPrestamo = {
-  id: string;
-  ruta_id?: string | null;
-  cobrador_id?: string | null;
-  clientes?: DashboardCliente | DashboardCliente[] | null;
-};
+
+const MONTH_NAMES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+// Últimos 6 meses (mismo cálculo local que antes; el servidor agrega por "YYYY-MM").
+function lastSixMonths() {
+  const out: { ym: string; label: string }[] = [];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(); d.setMonth(d.getMonth() - 5 + i);
+    out.push({
+      ym: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear().toString().slice(2)}`,
+    });
+  }
+  return out;
+}
 
 // ── Data fetching ─────────────────────────────────────────────────
-function useDashboardData(empresaId: string) {
+// Todo el agregado (KPIs, series, top deudores) se calcula en SQL: rpc dashboard_kpis.
+function useDashboardData(empresaId: string, filters: DashboardFilters) {
   return useQuery({
-    queryKey: ["dashboard", empresaId],
+    queryKey: ["dashboard", empresaId, filters],
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const [
-        prestamos, amort, pagos,
-        { data: cajas }, { data: cobradores }, { data: rutas },
-        clientes, promesas, movimientos,
-      ] = await Promise.all([
-        fetchAllRows(supabase.from("prestamos").select("id, cliente_id, monto_solicitado, monto_total_pagar, estado, fecha_registro, cobrador_id, ruta_id, caja_id, frecuencia, num_cuotas, tasa_interes, clientes(nombre_completo, telefono, direccion, gps_lat, gps_lng)").eq("empresa_id", empresaId)),
-        fetchAllRows(supabase.from("amortizacion").select("prestamo_id, num_cuota, capital, interes, capital_interes, saldo_total, saldo_mora, saldo_capital, saldo_interes, status, fecha_vencimiento, mora, capital_pagado, interes_pagado, mora_pagada").eq("empresa_id", empresaId)),
-        fetchAllRows(supabase.from("pagos").select("id, monto_recibido, aplicado_capital, aplicado_interes, aplicado_mora, created_at, cobrador_id, prestamo_id, caja_id, ruta_id").eq("empresa_id", empresaId)),
-        supabase.from("cajas").select("id, nombre, saldo_actual").eq("empresa_id", empresaId),
-        supabase.from("profiles").select("id, nombre_completo, efectivo_en_mano, activo, porcentaje_comision").eq("empresa_id", empresaId),
-        supabase.from("rutas").select("id, nombre, cobrador_id").eq("empresa_id", empresaId),
-        fetchAllRows(supabase.from("clientes").select("id, estado, created_at").eq("empresa_id", empresaId)),
-        fetchAllRows(supabase.from("promesas_pago").select("id, monto_prometido, fecha_prometida, status").eq("empresa_id", empresaId)),
-        fetchAllRows(supabase.from("movimientos_caja").select("id, tipo, monto, concepto, created_at, caja_id").eq("empresa_id", empresaId)),
-      ]);
-      return {
-        prestamos: prestamos || [], amort: amort || [], pagos: pagos || [],
-        cajas: cajas || [], cobradores: cobradores || [], rutas: rutas || [],
-        clientes: clientes || [], promesas: promesas || [], movimientos: movimientos || [], today,
-      };
+      const { data, error } = await rpc<DashboardRpc>("dashboard_kpis", { p_filters: filters });
+      if (error) throw error;
+      return data as DashboardRpc;
     },
+    enabled: !!empresaId,
     staleTime: 1000 * 60 * 3, // 3 min cache
+    placeholderData: keepPreviousData,
   });
+}
+
+function buildDashboardStats(d: DashboardRpc, meses: { ym: string; label: string }[]) {
+  const n = (v: DashboardNum | undefined) => Number(v || 0);
+  const P = d.prestamos, C = d.cuotas, G = d.pagos, M = d.misc;
+
+  const capitalColocado = n(P.capital_colocado);
+  const totalPagar = n(P.total_pagar);
+  const interesEsperado = totalPagar - capitalColocado;
+  const totalActivos = n(P.activos);
+
+  const saldoPorCobrar = n(C.saldo_por_cobrar);
+  const saldoCapital = n(C.saldo_capital);
+  const saldoInteres = n(C.saldo_interes);
+  const moraTotal = n(C.mora_total);
+  const capitalRecuperado = n(C.capital_recuperado);
+  const interesRecuperado = n(C.interes_recuperado);
+  const moraRecuperada = n(C.mora_recuperada);
+  const cuotasVencidas = n(C.cuotas_vencidas);
+  const cuotasPendientes = n(C.cuotas_pendientes);
+  const cuotasPagadas = n(C.cuotas_pagadas);
+  const totalCuotas = n(C.total_cuotas);
+  const montoVencido = n(C.monto_vencido);
+
+  const totalCobrado = n(G.total_cobrado);
+  const capitalCobrado = n(G.capital_cobrado);
+  const interesCobrado = n(G.interes_cobrado);
+  const moraCobrada = n(G.mora_cobrada);
+  const cobradoHoy = n(G.cobrado_hoy);
+  const numPagosHoy = n(G.num_pagos_hoy);
+
+  const efectivoCalle = n(M.efectivo_calle);
+  const capitalCajas = n(M.capital_cajas);
+
+  const tasaRecuperacion = capitalColocado > 0 ? (capitalRecuperado / capitalColocado) * 100 : 0;
+  const tasaMorosidad = saldoPorCobrar > 0 ? (montoVencido / saldoPorCobrar) * 100 : 0;
+  const eficienciaCobranza = totalPagar > 0 ? (totalCobrado / totalPagar) * 100 : 0;
+  const indiceMora = capitalColocado > 0 ? (moraTotal / capitalColocado) * 100 : 0;
+  const rendimientoCartera = capitalColocado > 0 ? (interesRecuperado / capitalColocado) * 100 : 0;
+  const ticketPromedio = totalActivos > 0 ? capitalColocado / totalActivos : 0;
+  const cuotaPromedio = cuotasPendientes > 0 ? saldoPorCobrar / cuotasPendientes : 0;
+  const carteraVencidaPct = capitalColocado > 0 ? (montoVencido / capitalColocado) * 100 : 0;
+
+  const liquidezTotal = capitalCajas + efectivoCalle;
+  const gananciaNeta = interesCobrado + moraCobrada;
+  const cobradoMes = n(G.cobrado_mes);
+  const ingresoFinancieroMes = n(G.ingreso_financiero_mes);
+  const gastosMes = n(d.gastosMes);
+  const gananciaMes = ingresoFinancieroMes - gastosMes;
+
+  const topDeudores = d.topDeudores.map((t) => ({
+    ...t,
+    saldo: n(t.saldo),
+    vencido: n(t.vencido),
+    mora: n(t.mora),
+    diasAtraso: n(t.diasAtraso),
+  }));
+
+  const mesesMap = new Map(d.meses.map((m) => [m.ym, m]));
+  const colocacionMes = meses.map(({ ym, label }) => {
+    const m = mesesMap.get(ym);
+    return { mes: label, colocado: n(m?.colocado), cobrado: n(m?.cobrado), mora: n(m?.mora), interes: n(m?.interes), capital: n(m?.capital) };
+  });
+
+  const currentPeriod = colocacionMes[colocacionMes.length - 1];
+  const previousPeriod = colocacionMes[colocacionMes.length - 2];
+  const variation = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+  const monthlyTrend = {
+    collected: variation(currentPeriod.cobrado, previousPeriod.cobrado),
+    placed: variation(currentPeriod.colocado, previousPeriod.colocado),
+    arrears: variation(currentPeriod.mora, previousPeriod.mora),
+  };
+
+  const estadoPie = d.pies.estado.map(({ name, value }) => ({ name, value: n(value) }));
+  const saldoPie = [{ name: "Capital", value: saldoCapital }, { name: "Interés", value: saldoInteres }, { name: "Mora", value: moraTotal }].filter(s => s.value > 0);
+  const freqPie = d.pies.frecuencia.map(({ name, value }) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value: n(value) }));
+  const cuotaStatusPie = d.pies.cuota_status.map(({ name, value }) => ({ name, value: n(value) }));
+
+  const cobradorStats = d.cobradorStats.map((c) => ({
+    nombre: c.nombre || "",
+    cobrado: n(c.cobrado),
+    prestamos: n(c.prestamos),
+    efectivo: n(c.efectivo),
+    saldo: n(c.saldo),
+    mora: n(c.mora),
+  }));
+  const rutaStats = d.rutaStats.map((r) => ({ nombre: r.nombre, prestamos: n(r.prestamos), saldo: n(r.saldo), mora: n(r.mora) }));
+  const cajasData = d.opciones.cajas.map((c) => ({ nombre: c.nombre, saldo: n(c.saldo) }));
+  const cobradoresChart = cobradorStats.slice(0, 8).map((c) => ({ nombre: c.nombre.split(" ")[0], cobrado: c.cobrado, saldo: c.saldo }));
+
+  return {
+    capitalColocado, totalPagar, interesEsperado, saldoPorCobrar, saldoCapital, saldoInteres, moraTotal,
+    capitalRecuperado, interesRecuperado, moraRecuperada, montoVencido, cuotasVencidas, cuotasPendientes,
+    cuotasPagadas, totalCuotas, prestamosVencidos: n(P.vencidos), totalCobrado, capitalCobrado, interesCobrado, moraCobrada,
+    cobradoHoy, numPagosHoy, efectivoCalle, capitalCajas, tasaRecuperacion, tasaMorosidad, eficienciaCobranza,
+    indiceMora, rendimientoCartera, ticketPromedio, cuotaPromedio, promesasPendientes: n(M.promesas_pendientes),
+    promesasPorAtender: n(M.promesas_por_atender), montoPromesasHoy: n(M.monto_promesas_hoy),
+    clientesActivos: n(M.clientes_activos), clientesMora: n(M.clientes_mora), liquidezTotal, gananciaNeta, carteraVencidaPct,
+    cobradoMes, ingresoFinancieroMes, gastosMes, gananciaMes, montoVenceHoy: n(C.monto_vence_hoy), cuotasVencenHoy: n(C.cuotas_vencen_hoy),
+    prestamosEnRiesgo: n(C.prestamos_en_riesgo), topDeudores,
+    totalPrestamos: n(P.total), totalActivos, totalLiquidados: n(P.liquidados),
+    totalJuridicos: n(P.juridicos), colocacionMes, monthlyTrend,
+    estadoPie, saldoPie, freqPie, cuotaStatusPie,
+    cobradorStats, rutaStats, cajasData, cobradoresChart,
+  };
 }
 
 function KPI({ title, value, icon: Icon, accent, sub, trend, large }: {
@@ -137,7 +270,6 @@ function DatePick({ value, onChange, placeholder }: { value: Date | undefined; o
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { empresaId, empresaNombre } = useEmpresa();
-  const { data, isLoading } = useDashboardData(empresaId);
 
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
   const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
@@ -145,252 +277,24 @@ export default function DashboardPage() {
   const [filtroCobrador, setFiltroCobrador] = useState<string>("__all__");
   const [filtroCaja, setFiltroCaja] = useState<string>("__all__");
 
+  const meses = useMemo(() => lastSixMonths(), []);
+  const filters = useMemo<DashboardFilters>(() => ({
+    desde: fechaDesde ? fechaDesde.toISOString().slice(0, 10) : null,
+    hasta: fechaHasta ? fechaHasta.toISOString().slice(0, 10) : null,
+    ruta_id: filtroRuta !== "__all__" ? filtroRuta : null,
+    cobrador_id: filtroCobrador !== "__all__" ? filtroCobrador : null,
+    caja_id: filtroCaja !== "__all__" ? filtroCaja : null,
+    today: new Date().toISOString().slice(0, 10),
+    today_local: format(new Date(), "yyyy-MM-dd"),
+    meses: meses.map((m) => m.ym),
+  }), [fechaDesde, fechaHasta, filtroRuta, filtroCobrador, filtroCaja, meses]);
+  const { data, isLoading } = useDashboardData(empresaId, filters);
+
   const hasFilters = fechaDesde || fechaHasta || filtroRuta !== "__all__" || filtroCobrador !== "__all__" || filtroCaja !== "__all__";
   const clearFilters = () => { setFechaDesde(undefined); setFechaHasta(undefined); setFiltroRuta("__all__"); setFiltroCobrador("__all__"); setFiltroCaja("__all__"); };
   const setPreset = (days: number) => { const now = new Date(); const from = new Date(); from.setDate(now.getDate() - days); setFechaDesde(from); setFechaHasta(now); };
 
-  const stats = useMemo(() => {
-    if (!data) return null;
-    const { prestamos: allPrestamos, amort: allAmort, pagos: allPagos, cajas, cobradores, rutas, clientes, promesas, movimientos, today } = data;
-
-    const desdeStr = fechaDesde ? fechaDesde.toISOString().slice(0, 10) : null;
-    const hastaStr = fechaHasta ? fechaHasta.toISOString().slice(0, 10) : null;
-
-    const prestamos = allPrestamos.filter(p => {
-      if (filtroRuta !== "__all__" && p.ruta_id !== filtroRuta) return false;
-      if (filtroCobrador !== "__all__" && p.cobrador_id !== filtroCobrador) return false;
-      if (filtroCaja !== "__all__" && p.caja_id !== filtroCaja) return false;
-      if (desdeStr && (p.fecha_registro || "") < desdeStr) return false;
-      if (hastaStr && (p.fecha_registro || "") > hastaStr) return false;
-      return true;
-    });
-
-    const prestamoIds = new Set(prestamos.map(p => p.id));
-    const amort = allAmort.filter(a => prestamoIds.has(a.prestamo_id));
-    const pagos = allPagos.filter(p => {
-      if (!prestamoIds.has(p.prestamo_id)) return false;
-      if (filtroCobrador !== "__all__" && p.cobrador_id !== filtroCobrador) return false;
-      if (filtroCaja !== "__all__" && p.caja_id !== filtroCaja) return false;
-      if (filtroRuta !== "__all__" && p.ruta_id !== filtroRuta) return false;
-      const pDate = (p.created_at || "").slice(0, 10);
-      if (desdeStr && pDate < desdeStr) return false;
-      if (hastaStr && pDate > hastaStr) return false;
-      return true;
-    });
-
-    const movimientosFiltrados = (movimientos as DashboardMovimiento[]).filter(m => {
-      if (filtroCaja !== "__all__" && m.caja_id !== filtroCaja) return false;
-      const movimientoDate = (m.created_at || "").slice(0, 10);
-      if (desdeStr && movimientoDate < desdeStr) return false;
-      if (hastaStr && movimientoDate > hastaStr) return false;
-      return true;
-    });
-
-    const activos = prestamos.filter(p => ["Activo", "Al día", "Vencido"].includes(p.estado || ""));
-    const liquidados = prestamos.filter(p => p.estado === "Liquidado");
-    const juridicos = prestamos.filter(p => p.estado === "Juridico");
-
-    const capitalColocado = activos.reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
-    const totalPagar = activos.reduce((s, p) => s + Number(p.monto_total_pagar || 0), 0);
-    const interesEsperado = totalPagar - capitalColocado;
-
-    const activeIds = new Set(activos.map(p => p.id));
-    const amortActivos = amort.filter(a => activeIds.has(a.prestamo_id));
-
-    const saldoPorCobrar = amortActivos.filter(a => a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_total || 0), 0);
-    const saldoCapital = amortActivos.filter(a => a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_capital || 0), 0);
-    const saldoInteres = amortActivos.filter(a => a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_interes || 0), 0);
-    const moraTotal = amortActivos.reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
-
-    const capitalRecuperado = amortActivos.reduce((s, a) => s + Number(a.capital_pagado || 0), 0);
-    const interesRecuperado = amortActivos.reduce((s, a) => s + Number(a.interes_pagado || 0), 0);
-    const moraRecuperada = amortActivos.reduce((s, a) => s + Number(a.mora_pagada || 0), 0);
-
-    const cuotasVencidas = amortActivos.filter(a => a.status === "Vencida" || (a.fecha_vencimiento < today && a.status !== "Pagada")).length;
-    const cuotasPendientes = amortActivos.filter(a => a.status !== "Pagada").length;
-    const cuotasPagadas = amortActivos.filter(a => a.status === "Pagada").length;
-    const totalCuotas = amortActivos.length;
-    const prestamosVencidos = prestamos.filter(p => p.estado === "Vencido").length;
-    const montoVencido = amortActivos.filter(a => a.fecha_vencimiento < today && a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_total || 0), 0);
-
-    const totalCobrado = pagos.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-    const capitalCobrado = pagos.reduce((s, p) => s + Number(p.aplicado_capital || 0), 0);
-    const interesCobrado = pagos.reduce((s, p) => s + Number(p.aplicado_interes || 0), 0);
-    const moraCobrada = pagos.reduce((s, p) => s + Number(p.aplicado_mora || 0), 0);
-
-    const pagosHoy = pagos.filter(p => p.created_at?.startsWith(today));
-    const cobradoHoy = pagosHoy.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-    const numPagosHoy = pagosHoy.length;
-
-    const efectivoCalle = cobradores.reduce((s: number, c: any) => s + Number(c.efectivo_en_mano || 0), 0);
-    const capitalCajas = cajas.reduce((s, c) => s + Number(c.saldo_actual || 0), 0);
-
-    const tasaRecuperacion = capitalColocado > 0 ? (capitalRecuperado / capitalColocado) * 100 : 0;
-    const tasaMorosidad = saldoPorCobrar > 0 ? (montoVencido / saldoPorCobrar) * 100 : 0;
-    const eficienciaCobranza = totalPagar > 0 ? (totalCobrado / totalPagar) * 100 : 0;
-    const indiceMora = capitalColocado > 0 ? (moraTotal / capitalColocado) * 100 : 0;
-    const rendimientoCartera = capitalColocado > 0 ? (interesRecuperado / capitalColocado) * 100 : 0;
-    const ticketPromedio = activos.length > 0 ? capitalColocado / activos.length : 0;
-    const cuotaPromedio = cuotasPendientes > 0 ? saldoPorCobrar / cuotasPendientes : 0;
-    const carteraVencidaPct = capitalColocado > 0 ? (montoVencido / capitalColocado) * 100 : 0;
-
-    const promesasPendientes = promesas.filter(p => p.status === "Pendiente");
-    const promesasHoy = promesasPendientes.filter(p => p.fecha_prometida <= today);
-    const montoPromesasHoy = promesasHoy.reduce((s, p) => s + Number(p.monto_prometido || 0), 0);
-
-    const clientesActivos = clientes.filter((c: any) => c.estado === "Activo").length;
-    const clientesMora = clientes.filter((c: any) => c.estado === "En mora").length;
-    const liquidezTotal = capitalCajas + efectivoCalle;
-    const gananciaNeta = interesCobrado + moraCobrada;
-
-    // Resumen ejecutivo: lo que el dueño necesita entender al entrar.
-    const currentMonth = today.slice(0, 7);
-    const cobradoMes = pagos
-      .filter(p => (p.created_at || "").startsWith(currentMonth))
-      .reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-    const ingresoFinancieroMes = pagos
-      .filter(p => (p.created_at || "").startsWith(currentMonth))
-      .reduce((s, p) => s + Number(p.aplicado_interes || 0) + Number(p.aplicado_mora || 0), 0);
-    const gastosMes = movimientosFiltrados
-      .filter(m => {
-        if (m.tipo !== "salida" || !(m.created_at || "").startsWith(currentMonth)) return false;
-        const concepto = (m.concepto || "").toLowerCase();
-        return !["desembolso", "préstamo", "prestamo", "retiro", "transferencia", "recurso", "anulación", "anulacion", "corrección", "correccion"]
-          .some(exclusion => concepto.includes(exclusion));
-      })
-      .reduce((s: number, m) => s + Number(m.monto || 0), 0);
-    const gananciaMes = ingresoFinancieroMes - gastosMes;
-    const cuotasVencenHoy = amortActivos.filter(a => a.fecha_vencimiento === today && a.status !== "Pagada");
-    const montoVenceHoy = cuotasVencenHoy.reduce((s, a) => s + Number(a.saldo_total || 0), 0);
-    const prestamosEnRiesgo = new Set(
-      amortActivos
-        .filter(a => a.fecha_vencimiento < today && a.status !== "Pagada")
-        .map(a => a.prestamo_id),
-    ).size;
-
-    const rutaMap = new Map((rutas as DashboardRuta[]).map(r => [r.id, r.nombre]));
-    const cobradorMap = new Map((cobradores as DashboardCobrador[]).map(c => [c.id, c.nombre_completo || c.nombre || "Sin cobrador"]));
-    const topDeudores = (activos as DashboardPrestamo[])
-      .map(prestamo => {
-        const pendientes = amortActivos.filter(a => a.prestamo_id === prestamo.id && a.status !== "Pagada");
-        const vencidas = pendientes.filter(a => a.fecha_vencimiento < today);
-        const saldo = pendientes.reduce((s, a) => s + Number(a.saldo_total || 0), 0);
-        const vencido = vencidas.reduce((s, a) => s + Number(a.saldo_total || 0), 0);
-        const mora = pendientes.reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
-        const diasAtraso = vencidas.reduce((max, a) => {
-          const diff = Math.floor((Date.now() - new Date(`${a.fecha_vencimiento}T00:00:00`).getTime()) / 86400000);
-          return Math.max(max, diff);
-        }, 0);
-        const cliente = Array.isArray(prestamo.clientes) ? prestamo.clientes[0] : prestamo.clientes;
-        return {
-          id: prestamo.id,
-          cliente: cliente?.nombre_completo || "Cliente sin nombre",
-          telefono: cliente?.telefono || null,
-          direccion: cliente?.direccion || null,
-          gpsLat: cliente?.gps_lat || null,
-          gpsLng: cliente?.gps_lng || null,
-          saldo,
-          vencido,
-          mora,
-          diasAtraso,
-          ruta: rutaMap.get(prestamo.ruta_id) || "Sin ruta",
-          cobrador: cobradorMap.get(prestamo.cobrador_id) || "Sin cobrador",
-        };
-      })
-      .filter(cliente => cliente.saldo > 0)
-      .sort((a, b) => {
-        if (a.vencido > 0 || b.vencido > 0) return b.vencido - a.vencido;
-        return b.saldo - a.saldo;
-      })
-      .slice(0, 8);
-
-    // Cuotas del día
-    const cuotasHoy = amort
-      .filter(a => prestamoIds.has(a.prestamo_id) && a.fecha_vencimiento <= today && a.status !== "Pagada")
-      .sort((a, b) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento))
-      .slice(0, 12)
-      .map(a => {
-        const prest = allPrestamos.find(p => p.id === a.prestamo_id);
-        return { id: a.prestamo_id, cliente: (prest?.clientes as any)?.nombre_completo || "—", monto: Number(a.saldo_total || 0), cuota: `${a.num_cuota}`, status: a.status || "Pendiente", vencimiento: a.fecha_vencimiento };
-      });
-
-    // Colocación por mes (6 meses)
-    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-    const colocacionMes: { mes: string; colocado: number; cobrado: number; mora: number; interes: number; capital: number }[] = [];
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(); d.setMonth(d.getMonth() - 5 + i);
-      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const label = `${monthNames[d.getMonth()]} ${d.getFullYear().toString().slice(2)}`;
-      const col = prestamos.filter(p => (p.fecha_registro || "").startsWith(ym)).reduce((s, p) => s + Number(p.monto_solicitado || 0), 0);
-      const mesPagos = pagos.filter(p => (p.created_at || "").startsWith(ym));
-      const cob = mesPagos.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-      const mor = mesPagos.reduce((s, p) => s + Number(p.aplicado_mora || 0), 0);
-      const int = mesPagos.reduce((s, p) => s + Number(p.aplicado_interes || 0), 0);
-      const cap = mesPagos.reduce((s, p) => s + Number(p.aplicado_capital || 0), 0);
-      colocacionMes.push({ mes: label, colocado: col, cobrado: cob, mora: mor, interes: int, capital: cap });
-    }
-
-    const currentPeriod = colocacionMes[colocacionMes.length - 1];
-    const previousPeriod = colocacionMes[colocacionMes.length - 2];
-    const variation = (current: number, previous: number) => {
-      if (previous === 0) return current > 0 ? 100 : 0;
-      return ((current - previous) / previous) * 100;
-    };
-    const monthlyTrend = {
-      collected: variation(currentPeriod.cobrado, previousPeriod.cobrado),
-      placed: variation(currentPeriod.colocado, previousPeriod.colocado),
-      arrears: variation(currentPeriod.mora, previousPeriod.mora),
-    };
-
-    // Pies
-    const estadoCount: Record<string, number> = {};
-    for (const p of prestamos) { const e = p.estado || "Activo"; estadoCount[e] = (estadoCount[e] || 0) + 1; }
-    const estadoPie = Object.entries(estadoCount).map(([name, value]) => ({ name, value }));
-    const saldoPie = [{ name: "Capital", value: saldoCapital }, { name: "Interés", value: saldoInteres }, { name: "Mora", value: moraTotal }].filter(s => s.value > 0);
-    const freqCount: Record<string, number> = {};
-    for (const p of activos) { const f = p.frecuencia || "semanal"; freqCount[f] = (freqCount[f] || 0) + 1; }
-    const freqPie = Object.entries(freqCount).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }));
-
-    // Cuota status pie
-    const cuotaStatusCount: Record<string, number> = {};
-    for (const c of amortActivos) { const s = c.status || "Pendiente"; cuotaStatusCount[s] = (cuotaStatusCount[s] || 0) + 1; }
-    const cuotaStatusPie = Object.entries(cuotaStatusCount).map(([name, value]) => ({ name, value }));
-
-    // Cobradores
-    const cobradorStats = cobradores.filter((c: any) => c.activo).map((c: any) => {
-      const cobPagos = pagos.filter(p => p.cobrador_id === c.id);
-      const totalCob2 = cobPagos.reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
-      const prestamosAsignados = prestamos.filter(p => p.cobrador_id === c.id && ["Activo", "Al día", "Vencido"].includes(p.estado || "")).length;
-      const saldoCob = amort.filter(a => { const pr = prestamos.find(p2 => p2.id === a.prestamo_id); return pr?.cobrador_id === c.id && a.status !== "Pagada"; }).reduce((s, a) => s + Number(a.saldo_total || 0), 0);
-      const moraCob = amort.filter(a => { const pr = prestamos.find(p2 => p2.id === a.prestamo_id); return pr?.cobrador_id === c.id; }).reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
-      return { nombre: c.nombre_completo || c.nombre, cobrado: totalCob2, prestamos: prestamosAsignados, efectivo: Number(c.efectivo_en_mano || 0), saldo: saldoCob, mora: moraCob };
-    }).sort((a: any, b: any) => b.cobrado - a.cobrado);
-
-    const rutaStats = rutas.map((r: any) => {
-      const prs = prestamos.filter(p => p.ruta_id === r.id && ["Activo", "Al día", "Vencido"].includes(p.estado || ""));
-      const saldo = amort.filter(a => prs.some(p => p.id === a.prestamo_id) && a.status !== "Pagada").reduce((s, a) => s + Number(a.saldo_total || 0), 0);
-      const mora = amort.filter(a => prs.some(p => p.id === a.prestamo_id)).reduce((s, a) => s + Number(a.saldo_mora || 0), 0);
-      return { nombre: r.nombre, prestamos: prs.length, saldo, mora };
-    }).sort((a: any, b: any) => b.saldo - a.saldo);
-
-    const cajasData = cajas.map(c => ({ nombre: c.nombre, saldo: Number(c.saldo_actual || 0) }));
-    const cobradoresChart = cobradorStats.slice(0, 8).map((c: any) => ({ nombre: c.nombre.split(" ")[0], cobrado: c.cobrado, saldo: c.saldo }));
-
-    return {
-      capitalColocado, totalPagar, interesEsperado, saldoPorCobrar, saldoCapital, saldoInteres, moraTotal,
-      capitalRecuperado, interesRecuperado, moraRecuperada, montoVencido, cuotasVencidas, cuotasPendientes,
-      cuotasPagadas, totalCuotas, prestamosVencidos, totalCobrado, capitalCobrado, interesCobrado, moraCobrada,
-      cobradoHoy, numPagosHoy, efectivoCalle, capitalCajas, tasaRecuperacion, tasaMorosidad, eficienciaCobranza,
-      indiceMora, rendimientoCartera, ticketPromedio, cuotaPromedio, promesasPendientes: promesasPendientes.length,
-      promesasPorAtender: promesasHoy.length, montoPromesasHoy, clientesActivos, clientesMora, liquidezTotal, gananciaNeta, carteraVencidaPct,
-      cobradoMes, ingresoFinancieroMes, gastosMes, gananciaMes, montoVenceHoy, cuotasVencenHoy: cuotasVencenHoy.length,
-      prestamosEnRiesgo, topDeudores,
-      totalPrestamos: prestamos.length, totalActivos: activos.length, totalLiquidados: liquidados.length,
-      totalJuridicos: juridicos.length, cuotasHoy, colocacionMes, monthlyTrend,
-      estadoPie, saldoPie, freqPie, cuotaStatusPie,
-      cobradorStats, rutaStats, cajasData, cobradoresChart,
-    };
-  }, [data, fechaDesde, fechaHasta, filtroRuta, filtroCobrador, filtroCaja]);
+  const stats = useMemo(() => (data ? buildDashboardStats(data, meses) : null), [data, meses]);
 
   if (isLoading || !stats) {
     return (
@@ -452,21 +356,21 @@ export default function DashboardPage() {
             <SelectTrigger className="h-8 w-[130px] text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todas rutas</SelectItem>
-              {(data?.rutas || []).map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
+              {(data?.opciones.rutas || []).map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filtroCobrador} onValueChange={setFiltroCobrador}>
             <SelectTrigger className="h-8 w-[140px] text-[12px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos</SelectItem>
-              {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
+              {(data?.opciones.cobradores || []).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filtroCaja} onValueChange={setFiltroCaja}>
             <SelectTrigger className="h-8 w-[130px] text-[12px]"><SelectValue placeholder="Caja" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todas cajas</SelectItem>
-              {(data?.cajas || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+              {(data?.opciones.cajas || []).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
             </SelectContent>
           </Select>
           {hasFilters && (
@@ -495,14 +399,14 @@ export default function DashboardPage() {
             <SelectTrigger className="h-8 text-[12px]"><SelectValue placeholder="Ruta" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todas rutas</SelectItem>
-              {(data?.rutas || []).map((r: any) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
+              {(data?.opciones.rutas || []).map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filtroCobrador} onValueChange={setFiltroCobrador}>
             <SelectTrigger className="h-8 text-[12px]"><SelectValue placeholder="Cobrador" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos</SelectItem>
-              {(data?.cobradores || []).filter((c: any) => c.activo).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
+              {(data?.opciones.cobradores || []).map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre_completo}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
