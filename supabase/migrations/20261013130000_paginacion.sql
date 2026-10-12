@@ -1015,7 +1015,7 @@ AS $$
              CASE WHEN m.tipo::text = 'entrada' THEN coalesce(m.monto, 0) ELSE -coalesce(m.monto, 0) END AS signed
       FROM movimientos_caja m
       WHERE m.caja_id = p_caja_id
-        AND m.empresa_id = public.get_user_empresa_id()
+        AND m.empresa_id = (SELECT public.get_user_empresa_id())
     ) x
     WHERE coalesce(p_modo, 'todos') <> 'manual' OR x.categoria IN ('Depósitos', 'Retiros', 'Transferencias')
   ),
@@ -1064,7 +1064,7 @@ AS $$
            public._kardex_categoria(coalesce(m.concepto, CASE WHEN m.tipo::text = 'entrada' THEN 'Depósito' ELSE 'Retiro' END), m.tipo::text) AS categoria
     FROM movimientos_caja m
     WHERE m.caja_id = p_caja_id
-      AND m.empresa_id = public.get_user_empresa_id()
+      AND m.empresa_id = (SELECT public.get_user_empresa_id())
   ) x
   GROUP BY x.categoria;
 $$;
