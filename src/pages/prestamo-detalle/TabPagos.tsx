@@ -10,8 +10,6 @@ import { dash, type PagoRow, type DocType, type PdfPrestamo, type PdfPagos } fro
 import { MetodoDot } from "./ui";
 import { useCan } from "@/hooks/usePermisos";
 
-// usePagos no selecciona fecha_pago: en runtime llega undefined (EditPagoModal no lo usa).
-type PagoConFecha = PagoRow & { fecha_pago?: string | null };
 
 interface TabPagosProps {
   pagosRaw: PagoRow[];
@@ -151,7 +149,7 @@ export function TabPagos({
                         {!isAnulado && (
                           <div className="flex items-center gap-0.5">
                             {!isCancelado && canEditarPago && (
-                              <button title="Editar pago" onClick={() => { setEditPagoData({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), metodo_pago: pg.metodo_pago || "Efectivo", caja_id: pg.caja_id, cobrador_id: pg.cobrador_id, fecha_pago: (pg as PagoConFecha).fecha_pago ?? null }); setEditPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                              <button title="Editar pago" onClick={() => { setEditPagoData({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), metodo_pago: pg.metodo_pago || "Efectivo", caja_id: pg.caja_id, cobrador_id: pg.cobrador_id, fecha_pago: pg.fecha_pago ?? null }); setEditPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             )}

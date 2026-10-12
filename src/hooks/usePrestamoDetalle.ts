@@ -84,7 +84,7 @@ export function usePagos(prestamoId: string | undefined) {
           id, prestamo_id, cuota_id, monto_recibido, metodo_pago,
           aplicado_capital, aplicado_interes, aplicado_mora,
           caja_id, cobrador_id, ruta_id, registrado_por,
-          gps_lat, gps_lng, created_at,
+          gps_lat, gps_lng, created_at, fecha_pago,
           anulado, anulado_por, anulado_en, motivo_anulacion,
           cajas ( nombre )
         `)
@@ -92,7 +92,14 @@ export function usePagos(prestamoId: string | undefined) {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      const pagos = data || [];
+      const cobradorIds = [...new Set(pagos.map((p) => p.cobrador_id).filter((id): id is string => !!id))];
+      const nombres = new Map<string, string>();
+      if (cobradorIds.length) {
+        const { data: perfiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobradorIds);
+        for (const pf of perfiles || []) nombres.set(pf.id, pf.nombre_completo);
+      }
+      return pagos.map((p) => ({ ...p, cobrador_nombre: p.cobrador_id ? nombres.get(p.cobrador_id) ?? null : null }));
     },
     enabled: !!prestamoId,
     staleTime: 1000 * 60 * 5,

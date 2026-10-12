@@ -34,8 +34,15 @@ const estadoBadge: Record<string, string> = {
   Juridico: "bg-badge-juridico text-badge-juridico-foreground",
 };
 
-// "diasParaVencer" is a computed column with no field on PrestamoListItem (sorting by it compares undefined values).
+// "diasParaVencer" es columna calculada: se ordena por proximoVencimiento (vacío al final).
 type SortKey = keyof PrestamoListItem | "diasParaVencer";
+
+function valorOrden(p: PrestamoListItem, key: SortKey): unknown {
+  if (key === "diasParaVencer") {
+    return p.proximoVencimiento && p.estado !== "Liquidado" && p.estado !== "Cancelado" ? p.proximoVencimiento : null;
+  }
+  return p[key];
+}
 const ROW_STEP = 100;
 const estadoOptions = ["Activo", "Vencido", "Al día", "Liquidado", "Juridico", "Cancelado"];
 
@@ -561,8 +568,8 @@ export default function PrestamosPage() {
     });
     if (sortKey && sortDir) {
       data = [...data].sort((a, b) => {
-        const ar: Partial<Record<SortKey, unknown>> = a; const br: Partial<Record<SortKey, unknown>> = b;
-        const av = ar[sortKey]; const bv = br[sortKey];
+        const av = valorOrden(a, sortKey); const bv = valorOrden(b, sortKey);
+        if (av == null || bv == null) return av == null && bv == null ? 0 : av == null ? 1 : -1;
         if (typeof av === "number" && typeof bv === "number") return sortDir === "asc" ? av - bv : bv - av;
         return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
       });

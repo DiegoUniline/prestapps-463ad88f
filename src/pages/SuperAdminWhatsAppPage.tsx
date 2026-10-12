@@ -38,14 +38,12 @@ type SaWhatsAppLog = Omit<Tables<"whatsapp_log">, "created_at"> & {
 /** whatsapp_config row with `empresas:empresa_id(nombre, telefono)`. */
 type SaWaConfig = Tables<"whatsapp_config"> & {
   empresas: { nombre: string; telefono: string | null } | null;
-  /** Not a real column (the column is `enviar_recibo_pago`); always undefined at runtime. Kept to preserve current UI behavior. */
-  recibo_pago?: boolean;
 };
 type SaSystemTemplate = Tables<"system_notification_templates">;
 interface SaSystemWaConfig { api_url: string; api_token: string }
 
 /* ── helper to call the SA edge function ── */
-async function saFetch<T = unknown>(action: string, method: "GET" | "POST" = "GET", body?: unknown): Promise<T> {
+async function saFetch<T = unknown>(action: string, method: "GET" | "POST" = "GET", body?: Record<string, unknown>): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await supabase.functions.invoke("sa-notifications", {
     method,
@@ -63,7 +61,7 @@ async function saFetch<T = unknown>(action: string, method: "GET" | "POST" = "GE
       },
     });
     if (!resp.ok) throw new Error(await resp.text());
-    return resp.json();
+    return (await resp.json()) as T;
   }
 
   // POST
@@ -78,7 +76,7 @@ async function saFetch<T = unknown>(action: string, method: "GET" | "POST" = "GE
     body: JSON.stringify(body),
   });
   if (!resp.ok) throw new Error(await resp.text());
-  return resp.json();
+  return (await resp.json()) as T;
 }
 
 /* ────────────────────────────────────────────── */
@@ -561,8 +559,8 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                             <div className="flex gap-1 flex-wrap">
                               {cfg.aviso_dia_antes && <Badge variant="outline" className="text-[10px]">Día antes</Badge>}
                               {cfg.aviso_vencido && <Badge variant="outline" className="text-[10px]">Vencido</Badge>}
-                              {cfg.recibo_pago && <Badge variant="outline" className="text-[10px]">Recibo</Badge>}
-                              {!cfg.aviso_dia_antes && !cfg.aviso_vencido && !cfg.recibo_pago && (
+                              {cfg.enviar_recibo_pago && <Badge variant="outline" className="text-[10px]">Recibo</Badge>}
+                              {!cfg.aviso_dia_antes && !cfg.aviso_vencido && !cfg.enviar_recibo_pago && (
                                 <span className="text-xs text-muted-foreground">Ninguno</span>
                               )}
                             </div>

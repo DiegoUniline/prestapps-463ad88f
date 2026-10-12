@@ -37,7 +37,7 @@ import { TabPromesas } from "@/pages/prestamo-detalle/TabPromesas";
 import { TabActividad } from "@/pages/prestamo-detalle/TabActividad";
 
 // Campos que usePagos no selecciona (llegan undefined en runtime) pero el recibo consulta de forma opcional.
-type PagoRecibo = PagoRow & { fecha_pago?: string | null; cobrador_nombre?: string | null };
+type PagoRecibo = PagoRow;
 
 export default function PrestamoDetallePage() {
   const { id } = useParams();
