@@ -69,7 +69,7 @@ export function HistorialPagosModal({ open, onOpenChange, prestamoId, clienteNom
               Sin pagos registrados aún
             </div>
           ) : (
-            pagos.map((p: any) => (
+            pagos.map((p) => (
               <div
                 key={p.id}
                 className={cn(

@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import { errorMessage } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,11 +29,26 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
+/* ── Shapes returned by the sa-notifications edge function (JSON, untyped at the boundary) ── */
+/** whatsapp_log row with `empresas:empresa_id(nombre)`; created_at has a now() default. */
+type SaWhatsAppLog = Omit<Tables<"whatsapp_log">, "created_at"> & {
+  created_at: string;
+  empresas: { nombre: string } | null;
+};
+/** whatsapp_config row with `empresas:empresa_id(nombre, telefono)`. */
+type SaWaConfig = Tables<"whatsapp_config"> & {
+  empresas: { nombre: string; telefono: string | null } | null;
+  /** Not a real column (the column is `enviar_recibo_pago`); always undefined at runtime. Kept to preserve current UI behavior. */
+  recibo_pago?: boolean;
+};
+type SaSystemTemplate = Tables<"system_notification_templates">;
+interface SaSystemWaConfig { api_url: string; api_token: string }
+
 /* ── helper to call the SA edge function ── */
-async function saFetch(action: string, method = "GET", body?: any) {
+async function saFetch<T = unknown>(action: string, method: "GET" | "POST" = "GET", body?: unknown): Promise<T> {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await supabase.functions.invoke("sa-notifications", {
-    method: method as any,
+    method,
     headers: { "Content-Type": "application/json" },
     body: method === "GET" ? undefined : body,
   });
@@ -151,7 +168,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [tipoFilter, setTipoFilter] = useState<string>("all");
   const [empresaFilter, setEmpresaFilter] = useState<string>("all");
-  const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [selectedLog, setSelectedLog] = useState<SaWhatsAppLog | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<SystemTemplate | null>(null);
   const [editedMessage, setEditedMessage] = useState("");
   const [origenFilter, setOrigenFilter] = useState<string>("all");
@@ -166,36 +183,36 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   // Fetch ALL whatsapp logs via edge function (bypasses RLS)
   const { data: logs, isLoading: logsLoading } = useQuery({
     queryKey: ["sa-whatsapp-logs"],
-    queryFn: () => saFetch("logs"),
+    queryFn: () => saFetch<SaWhatsAppLog[]>("logs"),
   });
 
   // Fetch empresas
   const { data: empresas } = useQuery({
     queryKey: ["sa-empresas-list"],
-    queryFn: () => saFetch("empresas"),
+    queryFn: () => saFetch<{ id: string; nombre: string }[]>("empresas"),
   });
 
   // Fetch saved templates
   const { data: savedTemplates } = useQuery({
     queryKey: ["sa-system-templates"],
-    queryFn: () => saFetch("templates"),
+    queryFn: () => saFetch<SaSystemTemplate[]>("templates"),
   });
 
   // Fetch WA configs for all empresas
   const { data: waConfigs, isLoading: configsLoading } = useQuery({
     queryKey: ["sa-wa-configs"],
-    queryFn: () => saFetch("wa-configs"),
+    queryFn: () => saFetch<SaWaConfig[]>("wa-configs"),
   });
 
   // Fetch system WA config
   const { data: systemWaConfig } = useQuery({
     queryKey: ["sa-system-wa-config"],
-    queryFn: () => saFetch("system-wa-config"),
+    queryFn: () => saFetch<SaSystemWaConfig>("system-wa-config"),
   });
 
   // Sync system config into local state
   useEffect(() => {
-    const cfg = systemWaConfig as any;
+    const cfg = systemWaConfig;
     if (cfg?.api_token && !sysToken) setSysToken(cfg.api_token);
   }, [systemWaConfig]);
 
@@ -209,19 +226,19 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
       toast.success("Plantilla guardada correctamente");
       setEditingTemplate(null);
     },
-    onError: (e: any) => toast.error("Error: " + e.message),
+    onError: (e) => toast.error("Error: " + e.message),
   });
 
   // Get unique tipos
   const tipos = useMemo(() => {
     if (!logs) return [];
-    return [...new Set<string>(logs.map((l: any) => l.tipo))].sort();
+    return [...new Set<string>(logs.map((l) => l.tipo))].sort();
   }, [logs]);
 
   // Filter logs
   const filtered = useMemo(() => {
     if (!logs) return [];
-    return logs.filter((l: any) => {
+    return logs.filter((l) => {
       if (statusFilter !== "all" && l.status !== statusFilter) return false;
       if (tipoFilter !== "all" && l.tipo !== tipoFilter) return false;
       if (search) {
@@ -243,7 +260,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
   };
 
   const getTemplateMessage = (key: string, defaultMsg: string) => {
-    const saved = savedTemplates?.find((t: any) => t.template_key === key);
+    const saved = savedTemplates?.find((t) => t.template_key === key);
     return saved?.message_template || defaultMsg;
   };
 
@@ -327,7 +344,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
             <Card>
               <CardContent className="pt-4 text-center">
                 <div className="text-2xl font-bold text-emerald-600">
-                  {logs?.filter((l: any) => l.status === "enviado").length || 0}
+                  {logs?.filter((l) => l.status === "enviado").length || 0}
                 </div>
                 <div className="text-xs text-muted-foreground">Enviados</div>
               </CardContent>
@@ -335,7 +352,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
             <Card>
               <CardContent className="pt-4 text-center">
                 <div className="text-2xl font-bold text-destructive">
-                  {logs?.filter((l: any) => l.status === "error").length || 0}
+                  {logs?.filter((l) => l.status === "error").length || 0}
                 </div>
                 <div className="text-xs text-muted-foreground">Errores</div>
               </CardContent>
@@ -378,13 +395,13 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filtered.map((log: any) => (
+                      filtered.map((log) => (
                         <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedLog(log)}>
                           <TableCell className="text-xs font-mono">
                             {format(new Date(log.created_at), "dd/MM/yy HH:mm", { locale: es })}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {(log.empresas as any)?.nombre || "—"}
+                            {log.empresas?.nombre || "—"}
                           </TableCell>
                           <TableCell className="text-sm font-mono">{log.telefono}</TableCell>
                           <TableCell>
@@ -450,8 +467,8 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                       await saFetch("save-system-wa-config", "POST", { api_token: sysToken });
                       queryClient.invalidateQueries({ queryKey: ["sa-system-wa-config"] });
                       toast.success("Configuración del sistema guardada");
-                    } catch (e: any) {
-                      toast.error("Error: " + e.message);
+                    } catch (e) {
+                      toast.error("Error: " + errorMessage(e));
                     } finally {
                       setSavingConfig(false);
                     }
@@ -460,7 +477,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                   <Save className="h-4 w-4 mr-2" />
                   {savingConfig ? "Guardando..." : "Guardar"}
                 </Button>
-                {(systemWaConfig as any)?.api_token ? (
+                {systemWaConfig?.api_token ? (
                   <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
                     <Wifi className="h-3 w-3 mr-1" /> Configurado
                   </Badge>
@@ -511,12 +528,12 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
                         </TableCell>
                       </TableRow>
                     ) : (
-                      waConfigs.map((cfg: any) => (
+                      waConfigs.map((cfg) => (
                         <TableRow key={cfg.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               <Building2 className="h-4 w-4 text-muted-foreground" />
-                              {(cfg.empresas as any)?.nombre || cfg.empresa_id?.slice(0, 8)}
+                              {cfg.empresas?.nombre || cfg.empresa_id?.slice(0, 8)}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -575,7 +592,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
             <CardContent className="space-y-4">
               {SYSTEM_TEMPLATES.map((tmpl) => {
                 const currentMsg = getTemplateMessage(tmpl.key, tmpl.defaultMessage);
-                const isCustomized = savedTemplates?.some((t: any) => t.template_key === tmpl.key);
+                const isCustomized = savedTemplates?.some((t) => t.template_key === tmpl.key);
 
                 return (
                   <Card key={tmpl.key} className="border">
@@ -634,7 +651,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
                   <Label className="text-muted-foreground text-xs">Empresa</Label>
-                  <div className="font-medium">{(selectedLog.empresas as any)?.nombre || "—"}</div>
+                  <div className="font-medium">{selectedLog.empresas?.nombre || "—"}</div>
                 </div>
                 <div>
                   <Label className="text-muted-foreground text-xs">Teléfono</Label>

@@ -64,7 +64,7 @@ function CalendarCaption({
 
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
   const [month, setMonth] = React.useState<Date>(
-    (props as any).selected instanceof Date ? (props as any).selected : new Date()
+    props.selected instanceof Date ? props.selected : new Date()
   );
 
   return (

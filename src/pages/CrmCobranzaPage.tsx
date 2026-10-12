@@ -184,7 +184,8 @@ export default function CrmCobranzaPage() {
 
   const sendWhatsAppCobranza = async (message: string) => {
     const prestamo = waPreview.prestamo;
-    if (!prestamo) return;
+    // The preview is only reachable for rows with a phone (see the `p.cliente.telefono &&` guards below).
+    if (!prestamo || !prestamo.cliente.telefono) return;
     setSendingWA(prestamo.id);
     try {
       const res = await encolarWhatsApp({
