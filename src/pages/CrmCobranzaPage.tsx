@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { $$, fmtDate, fmtDateTime } from "@/lib/utils";
+import { $$, fmtDate, fmtDateTime, errorMessage } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { rpc } from "@/lib/supabaseQuery";
@@ -53,12 +53,29 @@ const RESULTADOS = [
 
 
 
+/** Row shape returned by the `crm_cartera_listado` RPC (jsonb). */
+interface CarteraRow {
+  id: string;
+  monto_solicitado: number;
+  num_cuotas: number;
+  frecuencia: string;
+  estado: string;
+  fecha_registro: string | null;
+  cliente: { id: string; nombre_completo: string; telefono: string | null; direccion: string | null };
+  cuotasVencidas: number;
+  totalMora: number;
+  totalAdeudado: number;
+  maxDiasAtraso: number;
+  gestionesCount: number;
+  ultimaGestion: { resultado: string; created_at: string | null } | null;
+}
+
 interface CarteraPagina {
   total: number;
   con_mora: number;
   total_mora: number;
   total_adeudado: number;
-  rows: any[];
+  rows: CarteraRow[];
 }
 
 export default function CrmCobranzaPage() {
@@ -70,7 +87,7 @@ export default function CrmCobranzaPage() {
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
   const [openGestion, setOpenGestion] = useState(false);
-  const [selectedPrestamo, setSelectedPrestamo] = useState<any>(null);
+  const [selectedPrestamo, setSelectedPrestamo] = useState<CarteraRow | null>(null);
 
   // Gestión form
   const [gestionForm, setGestionForm] = useState({
@@ -101,7 +118,7 @@ export default function CrmCobranzaPage() {
         con_mora: Number(data?.con_mora || 0),
         total_mora: Number(data?.total_mora || 0),
         total_adeudado: Number(data?.total_adeudado || 0),
-        rows: (data?.rows || []).map((p: any) => ({
+        rows: (data?.rows || []).map((p) => ({
           ...p,
           totalMora: Number(p.totalMora || 0),
           totalAdeudado: Number(p.totalAdeudado || 0),
@@ -118,21 +135,21 @@ export default function CrmCobranzaPage() {
     queryKey: ["crm-gestiones", empresaId, selectedPrestamo?.id],
     enabled: !!empresaId && !!selectedPrestamo?.id && openGestion,
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("crm_gestiones")
+      const { data, error } = await supabase.from("crm_gestiones")
         .select("id, cliente_id, prestamo_id, tipo_gestion, resultado, notas, fecha_seguimiento, registrado_por, created_at")
         .eq("empresa_id", empresaId)
-        .eq("prestamo_id", selectedPrestamo.id)
+        .eq("prestamo_id", selectedPrestamo!.id)
         .order("created_at", { ascending: false })
         .limit(200);
       if (error) throw error;
-      return (data || []) as any[];
+      return data || [];
     },
   });
 
   const saveGestion = useMutation({
     mutationFn: async () => {
       if (!selectedPrestamo) return;
-      const { error } = await (supabase.from as any)("crm_gestiones").insert({
+      const { error } = await supabase.from("crm_gestiones").insert({
         empresa_id: empresaId,
         prestamo_id: selectedPrestamo.id,
         cliente_id: selectedPrestamo.cliente.id,
@@ -151,17 +168,17 @@ export default function CrmCobranzaPage() {
       setGestionForm({ tipo_gestion: "llamada", resultado: "contactado", notas: "", fecha_seguimiento: "" });
       toast.success("Gestión registrada");
     },
-    onError: (e: any) => toast.error("Error: " + e.message),
+    onError: (e) => toast.error("Error: " + e.message),
   });
 
   // ── Send WhatsApp from CRM ────────────────
   const [sendingWA, setSendingWA] = useState<string | null>(null);
-  const [waPreview, setWaPreview] = useState<{ open: boolean; prestamo: any | null }>({ open: false, prestamo: null });
+  const [waPreview, setWaPreview] = useState<{ open: boolean; prestamo: CarteraRow | null }>({ open: false, prestamo: null });
 
-  const buildWhatsAppMessage = (prestamo: any) =>
+  const buildWhatsAppMessage = (prestamo: CarteraRow) =>
     `Hola ${prestamo.cliente.nombre_completo}, nos comunicamos respecto a su crédito. Tiene ${prestamo.cuotasVencidas} cuota(s) vencida(s) por un total de ${$$(prestamo.totalAdeudado)}. Por favor comuníquese con nosotros.`;
 
-  const handleWhatsAppPreview = (prestamo: any) => {
+  const handleWhatsAppPreview = (prestamo: CarteraRow) => {
     setWaPreview({ open: true, prestamo });
   };
 
@@ -179,7 +196,7 @@ export default function CrmCobranzaPage() {
       });
       if (res.success) {
         toast.success("Mensaje en cola de envío");
-        await (supabase.from as any)("crm_gestiones").insert({
+        await supabase.from("crm_gestiones").insert({
           empresa_id: empresaId,
           prestamo_id: prestamo.id,
           cliente_id: prestamo.cliente.id,
@@ -193,8 +210,8 @@ export default function CrmCobranzaPage() {
       } else {
         toast.error("Error enviando: " + (res.error || "desconocido"));
       }
-    } catch (e: any) {
-      toast.error("Error: " + e.message);
+    } catch (e) {
+      toast.error("Error: " + errorMessage(e));
     } finally {
       setSendingWA(null);
     }
@@ -266,7 +283,7 @@ export default function CrmCobranzaPage() {
         <>
           {/* Mobile: Cards */}
           <div className="space-y-2 md:hidden">
-            {filtered.map((p: any) => {
+            {filtered.map((p) => {
               const lastGestion = p.ultimaGestion;
               const lastResultado = lastGestion ? RESULTADOS.find((r) => r.value === lastGestion.resultado) : null;
 
@@ -334,7 +351,7 @@ export default function CrmCobranzaPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((p: any) => {
+                  {filtered.map((p) => {
                     const lastGestion = p.ultimaGestion;
                     const lastResultado = lastGestion ? RESULTADOS.find((r) => r.value === lastGestion.resultado) : null;
 
@@ -475,7 +492,7 @@ export default function CrmCobranzaPage() {
                     {(gestionesSeleccionado || []).length === 0 ? (
                       <p className="text-xs text-muted-foreground text-center py-4">Sin gestiones previas</p>
                     ) : (
-                      (gestionesSeleccionado || []).map((g: any) => {
+                      (gestionesSeleccionado || []).map((g) => {
                         const res = RESULTADOS.find((r) => r.value === g.resultado);
                         const tipo = TIPOS_GESTION.find((t) => t.value === g.tipo_gestion);
                         return (

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDialog";
 import { Loader2, Pencil } from "lucide-react";
+import { errorMessage } from "@/lib/utils";
 
 interface EditPrestamoModalProps {
   open: boolean;
@@ -60,16 +61,16 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
       setRutaId(prestamo.ruta_id ?? "");
       setCobradorId(prestamo.cobrador_id ?? "");
       setNotas(prestamo.notas ?? "");
-      setCodigoInterno((prestamo as any).codigo_interno ?? "");
+      setCodigoInterno(prestamo.codigo_interno ?? "");
     }
   }, [open, prestamo]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updates: Record<string, any> = {
+      const updates: Record<string, unknown> = {
         tasa_interes: tasaInteres ? parseFloat(tasaInteres) : null,
-        tipo_mora: tipoMora as any,
+        tipo_mora: tipoMora,
         valor_mora: valorMora ? parseFloat(valorMora) : 0,
         gastos_legales: gastosLegales ? parseFloat(gastosLegales) : 0,
         caja_id: cajaId || null,
@@ -86,8 +87,8 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
 
       toast.success("Préstamo actualizado correctamente");
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error("Error al actualizar: " + (err.message || err));
+    } catch (err) {
+      toast.error("Error al actualizar: " + String(errorMessage(err) || err));
     } finally {
       setSaving(false);
     }

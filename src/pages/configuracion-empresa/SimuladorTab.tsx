@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Receipt, FileText, Send, FileDown, Phone, MessageSquare } from "lucide-react";
 import { useEmpresaConfig } from "@/hooks/useEmpresaConfig";
+import { errorMessage } from "@/lib/utils";
 
 // ── Tab: Simulador ──
 export function SimuladorTab() {
@@ -78,8 +79,8 @@ export function SimuladorTab() {
       } else {
         toast.error(result.error || "Error al enviar el ticket");
       }
-    } catch (e: any) {
-      toast.error(e.message || "Error al enviar");
+    } catch (e) {
+      toast.error(errorMessage(e) || "Error al enviar");
     } finally {
       setSendingTicket(false);
     }
@@ -106,8 +107,8 @@ export function SimuladorTab() {
       } else {
         toast.error(data?.error || "Error al enviar el mensaje");
       }
-    } catch (e: any) {
-      toast.error(e.message || "Error al enviar");
+    } catch (e) {
+      toast.error(errorMessage(e) || "Error al enviar");
     } finally {
       setSendingText(false);
     }
@@ -165,8 +166,8 @@ export function SimuladorTab() {
       const doc = await generarContrato(prestamoData, mockCuotas);
       doc.save("contrato-prueba.pdf");
       toast.success("Contrato descargado");
-    } catch (e: any) {
-      toast.error(e.message || "Error al generar contrato");
+    } catch (e) {
+      toast.error(errorMessage(e) || "Error al generar contrato");
     }
   };
 
@@ -214,8 +215,8 @@ export function SimuladorTab() {
       const doc = await generarReciboPagos(prestamoData, mockPagos);
       doc.save("recibo-prueba.pdf");
       toast.success("Recibo descargado");
-    } catch (e: any) {
-      toast.error(e.message || "Error al generar recibo");
+    } catch (e) {
+      toast.error(errorMessage(e) || "Error al generar recibo");
     }
   };
 

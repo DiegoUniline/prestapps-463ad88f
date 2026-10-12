@@ -12,12 +12,39 @@ import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { cn, $$ } from "@/lib/utils";
 import { RefreshCw, Star, TrendingUp, DollarSign, ChevronRight, CheckCircle2 } from "lucide-react";
+import type { Enums } from "@/integrations/supabase/types";
+
+/** Fila que arma `renovacion_candidatos` con jsonb_build_object. */
+interface CandidatoRenovacion {
+  id: string;
+  monto_solicitado: number;
+  monto_total_pagar: number | null;
+  num_cuotas: number;
+  frecuencia: Enums<"frecuencia_pago">;
+  tasa_interes: number | null;
+  modalidad: Enums<"prestamo_modalidad">;
+  cliente_id: string;
+  ruta_id: string | null;
+  caja_id: string | null;
+  cobrador_id: string | null;
+  cliente: { id: string; nombre_completo: string; telefono: string | null };
+  pagadas: number;
+  total: number;
+  progreso: number;
+  pendientes: number;
+  saldoRestante: number;
+  maxAtraso: number;
+  score: number;
+  elegible: boolean;
+  montoSugerido: number;
+}
+
 interface RenovacionPagina {
   total: number;
   elegibles: number;
   colocacion: number;
   score_promedio: number;
-  rows: any[];
+  rows: CandidatoRenovacion[];
 }
 
 export default function RenovacionPage() {
@@ -42,7 +69,7 @@ export default function RenovacionPage() {
         elegibles: Number(data?.elegibles || 0),
         colocacion: Number(data?.colocacion || 0),
         score_promedio: Number(data?.score_promedio || 0),
-        rows: (data?.rows || []).map((c: any) => ({
+        rows: (data?.rows || []).map((c) => ({
           ...c,
           monto_solicitado: Number(c.monto_solicitado || 0),
           saldoRestante: Number(c.saldoRestante || 0),

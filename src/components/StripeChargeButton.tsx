@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CreditCard, Send, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, errorMessage } from "@/lib/utils";
 import { encolarWhatsApp } from "@/lib/whatsappCola";
 
 interface StripeChargeButtonProps {
@@ -56,13 +56,13 @@ export function StripeChargeButton({
     queryKey: ["stripe-pm", empresaId, clienteId],
     queryFn: async () => {
       const { data } = await supabase
-        .from("stripe_payment_methods" as any)
+        .from("stripe_payment_methods")
         .select("*")
         .eq("empresa_id", empresaId)
         .eq("cliente_id", clienteId)
         .eq("activo", true)
         .maybeSingle();
-      return data as any;
+      return data;
     },
     enabled: !!connectStatus?.charges_enabled,
   });
@@ -154,9 +154,9 @@ export function StripeChargeButton({
           }
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       setResult("error");
-      toast.error(err.message || "Error al procesar");
+      toast.error(errorMessage(err) || "Error al procesar");
     } finally {
       setLoading(false);
     }

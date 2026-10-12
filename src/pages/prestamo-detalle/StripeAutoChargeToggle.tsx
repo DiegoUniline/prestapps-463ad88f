@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Zap } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { errorMessage } from "@/lib/utils";
 
 // ── Stripe Auto-Charge Toggle ─────────────────────────────────────
 export function StripeAutoChargeToggle({ prestamoId, enabled, disabled, onToggled, empresaId }: {
@@ -42,14 +43,14 @@ export function StripeAutoChargeToggle({ prestamoId, enabled, disabled, onToggle
     try {
       const { error } = await supabase
         .from("prestamos")
-        .update({ cobro_automatico_stripe: value } as any)
+        .update({ cobro_automatico_stripe: value })
         .eq("id", prestamoId);
       if (error) throw error;
       setChecked(value);
       toast.success(value ? "Cobro automático activado" : "Cobro automático desactivado");
       onToggled();
-    } catch (err: any) {
-      toast.error(err.message || "Error al actualizar");
+    } catch (err) {
+      toast.error(errorMessage(err) || "Error al actualizar");
     } finally {
       setLoading(false);
     }

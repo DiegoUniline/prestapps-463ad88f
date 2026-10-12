@@ -35,7 +35,7 @@ interface ReestructurarModalProps {
   };
 }
 
-import { $$ } from "@/lib/utils";
+import { $$, errorMessage } from "@/lib/utils";
 
 function calcNextDate(base: Date, frecuencia: string, n: number): Date {
   switch (frecuencia) {
@@ -152,8 +152,8 @@ export function ReestructurarModal({
       toast.success("Préstamo reestructurado exitosamente");
       onOpenChange(false);
       navigate(`/prestamos/${newPrestamo.id}`);
-    } catch (err: any) {
-      toast.error("Error: " + (err.message || err));
+    } catch (err) {
+      toast.error("Error: " + String(errorMessage(err) || err));
     } finally {
       setSaving(false);
     }

@@ -17,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, ArrowLeft, Pencil, Save, X, Trash2, Loader2, Search, Eye, EyeOff } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, errorMessage } from "@/lib/utils";
 
 const rolColors: Record<string, string> = {
   admin: "bg-primary text-primary-foreground",
@@ -64,7 +64,7 @@ function useRutas(empresaId: string) {
   return useQuery({
     queryKey: ["rutas-list", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("rutas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
+      const { data, error } = await supabase.from("rutas").select("id, nombre").eq("empresa_id", empresaId).order("nombre");
       if (error) throw error;
       return (data || []) as Ruta[];
     },
@@ -265,8 +265,8 @@ function UsuarioDetallePage() {
         setEditing(false);
         setPassword("");
       }
-    } catch (e: any) {
-      toast.error(e.message || "Error al guardar");
+    } catch (e) {
+      toast.error(errorMessage(e) || "Error al guardar");
     } finally {
       setSaving(false);
     }
@@ -284,8 +284,8 @@ function UsuarioDetallePage() {
       toast.success("Usuario eliminado");
       queryClient.invalidateQueries({ queryKey: ["usuarios"] });
       navigate("/usuarios");
-    } catch (e: any) {
-      toast.error(e.message || "Error al eliminar");
+    } catch (e) {
+      toast.error(errorMessage(e) || "Error al eliminar");
     } finally {
       setSaving(false);
     }

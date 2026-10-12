@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Slider } from "@/components/ui/slider";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, errorMessage } from "@/lib/utils";
 import { HandCoins, Loader2, AlertTriangle, Percent, BadgeDollarSign, Zap } from "lucide-react";
 
 interface Cuota {
@@ -97,8 +97,8 @@ export function LiquidarModal({ open, onOpenChange, prestamoId, cuotasPendientes
       invalidateFinanceQueries(queryClient, { prestamoId });
       toast.success(`Préstamo liquidado por ${$$(Number(res?.monto ?? montoAPagar))}`);
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error(err.message || "Error al liquidar");
+    } catch (err) {
+      toast.error(errorMessage(err) || "Error al liquidar");
     } finally {
       setSaving(false);
     }
