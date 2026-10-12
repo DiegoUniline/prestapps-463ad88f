@@ -22,6 +22,7 @@ import {
 import { $$, cn } from "@/lib/utils";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { encolarWhatsApp } from "@/lib/whatsappCola";
 
 const ESTADO_BADGE: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
   activa: { label: "Activa", variant: "default", color: "text-emerald-600" },
@@ -115,14 +116,11 @@ export default function MiSuscripcionPage() {
         .eq("id", user?.id || "")
         .single();
       if (!profile?.telefono) return;
-      await supabase.functions.invoke("whatsapp-sender", {
-        body: {
-          action: "send-text",
-          empresa_id: empresaId,
-          phone: profile.telefono,
-          message: `⚠️ *Alerta de Suscripción*\n\nEl proceso de pago fue ${tipo}. Por favor intenta nuevamente desde Mi Suscripción o usa un método de pago diferente.`,
-          tipo: "alerta_pago",
-        },
+      await encolarWhatsApp({
+        empresaId,
+        telefono: profile.telefono,
+        tipo: "alerta_pago",
+        mensaje: `⚠️ *Alerta de Suscripción*\n\nEl proceso de pago fue ${tipo}. Por favor intenta nuevamente desde Mi Suscripción o usa un método de pago diferente.`,
       });
     } catch { /* silent */ }
   };

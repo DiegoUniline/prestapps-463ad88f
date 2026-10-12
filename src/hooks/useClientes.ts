@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { PAGE_SIZE, pageRange } from "@/hooks/usePaginacion";
 import type { Cliente, ClienteInsert } from "@/types/cliente";
 
 const CLIENTE_COLUMNS = `
@@ -28,28 +28,42 @@ function ilikeOrValue(term: string) {
   return `"${quoted}"`;
 }
 
-export function useClientes(filters?: { estado?: string; search?: string; empresaId?: string }) {
+const CLIENTE_LIST_COLUMNS = "id, id_cliente, nombre_completo, telefono, dni, situacion_laboral, estado, activo, created_at";
+
+export type ClienteListado = Pick<
+  Cliente,
+  "id" | "id_cliente" | "nombre_completo" | "telefono" | "dni" | "situacion_laboral" | "estado" | "activo" | "created_at"
+>;
+
+/** Listado paginado en servidor: filtros, búsqueda y orden en PostgREST; solo la página visible. */
+export function useClientes(filters: { estado?: string; search?: string; empresaId?: string; page?: number; pageSize?: number }) {
+  const page = filters.page ?? 0;
+  const pageSize = filters.pageSize ?? PAGE_SIZE;
   return useQuery({
-    queryKey: ["clientes", filters?.empresaId, filters?.estado, filters?.search],
+    queryKey: ["clientes", filters.empresaId, filters.estado, filters.search, page, pageSize],
+    enabled: !!filters.empresaId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       let query = (supabase.from as any)("clientes")
-        .select(CLIENTE_COLUMNS)
-        .order("created_at", { ascending: false });
+        .select(CLIENTE_LIST_COLUMNS, { count: "exact" })
+        .eq("empresa_id", filters.empresaId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true });
 
-      if (filters?.empresaId) {
-        query = query.eq("empresa_id", filters.empresaId);
-      }
-      if (filters?.estado && filters.estado !== "todos") {
+      if (filters.estado && filters.estado !== "todos") {
         query = query.eq("estado", filters.estado);
       }
-      if (filters?.search) {
+      if (filters.search) {
         const pattern = ilikeOrValue(filters.search);
         query = query.or(
           `nombre_completo.ilike.${pattern},id_cliente.ilike.${pattern},telefono.ilike.${pattern},correo.ilike.${pattern}`
         );
       }
 
-      return await fetchAllRows<Cliente>(query);
+      const [from, to] = pageRange(page, pageSize);
+      const { data, error, count } = await query.range(from, to);
+      if (error) throw error;
+      return { rows: (data || []) as ClienteListado[], total: count ?? 0 };
     },
     staleTime: 5 * 60 * 1000,
   });

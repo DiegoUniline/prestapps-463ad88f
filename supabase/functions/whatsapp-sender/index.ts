@@ -66,7 +66,40 @@ Deno.serve(withCors(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    const body = (await req.json().catch(() => null)) || {};
+    const { action } = body;
     const caller = await getCaller(req, supabase);
+
+    // ── process-queue (whatsapp_cola) ──────────────────
+    // Usuarios: solo su empresa. Service role / super admin: todas (o body.empresa_id).
+    // Sin sesión (pg_cron con la clave publicable): todas, como máximo una vez por minuto.
+    // Solo envía filas ya encoladas, así que es seguro e idempotente.
+    if (action === "process-queue") {
+      let empresaFiltro: string | null = null;
+      if (caller?.service || caller?.superAdmin) {
+        empresaFiltro = body.empresa_id || null;
+      } else if (caller) {
+        if (!caller.empresaId) {
+          return new Response(JSON.stringify({ error: "Sin empresa asociada" }), {
+            status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        empresaFiltro = caller.empresaId;
+      } else {
+        const { data: claimed, error: claimErr } = await supabase.rpc("cron_claim", { p_nombre: "whatsapp-queue", p_min_minutes: 1 });
+        if (claimErr) console.error("[whatsapp-queue] cron_claim error:", claimErr.message);
+        if (claimErr || claimed !== true) {
+          return new Response(JSON.stringify({ skipped: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+      const resumen = await processQueue(supabase, supabaseUrl, empresaFiltro);
+      return new Response(JSON.stringify({ success: true, ...resumen }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!caller) {
       return new Response(JSON.stringify({ error: "No autorizado" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -74,9 +107,6 @@ Deno.serve(withCors(async (req) => {
     }
     const isPrivileged = caller.service || caller.superAdmin;
     const canManage = isPrivileged || caller.roles.includes("admin") || caller.roles.includes("supervisor");
-
-    const body = await req.json();
-    const { action } = body;
     const empresa_id: string | null = isPrivileged ? (body.empresa_id || caller.empresaId) : caller.empresaId;
 
     if (!empresa_id) {
@@ -383,6 +413,115 @@ Deno.serve(withCors(async (req) => {
   }
 }));
 
+// ── Cola (whatsapp_cola) ───────────────────────────
+const QUEUE_BATCH = 50;
+const QUEUE_BUDGET_MS = 100_000;
+
+async function processQueue(supabase: any, supabaseUrl: string, empresaId: string | null) {
+  const started = Date.now();
+  const { data: rows, error } = await supabase.rpc("whatsapp_cola_claim", { p_limit: QUEUE_BATCH, p_empresa: empresaId });
+  if (error) throw error;
+
+  const configs = new Map<string, { config: any; lada: string }>();
+  const getConfig = async (empresa: string) => {
+    if (!configs.has(empresa)) {
+      const [{ data: config }, { data: emp }] = await Promise.all([
+        supabase.from("whatsapp_config").select("*").eq("empresa_id", empresa).maybeSingle(),
+        supabase.from("empresas").select("lada_pais").eq("id", empresa).maybeSingle(),
+      ]);
+      configs.set(empresa, { config, lada: emp?.lada_pais || "52" });
+    }
+    return configs.get(empresa)!;
+  };
+
+  let sent = 0, retry = 0, failed = 0;
+  const pendientes: string[] = [];
+
+  for (const row of (rows || []) as any[]) {
+    if (Date.now() - started > QUEUE_BUDGET_MS) {
+      pendientes.push(row.id);
+      continue;
+    }
+    try {
+      const { config, lada } = await getConfig(row.empresa_id);
+      if (!config || !config.activo) {
+        const msg = !config ? "WhatsApp no configurado para esta empresa" : "WhatsApp está inactivo para esta empresa";
+        await finishRow(supabase, supabaseUrl, row, { success: false, error: msg }, "", true);
+        failed++;
+        continue;
+      }
+
+      const phone = normalizePhone(row.telefono || "", lada);
+      const payload: Record<string, any> = row.media_tipo === "image"
+        ? { action: "send-image", phone, url: row.media_url, caption: row.mensaje || "" }
+        : row.media_tipo === "file"
+          ? { action: "send-file", phone, url: row.media_url, fileName: row.media_nombre || "documento.pdf" }
+          : { action: "send-text", phone, message: row.mensaje || "" };
+
+      const result = await sendWhatsApp(config.api_url, config.api_token, payload);
+      const estado = await finishRow(supabase, supabaseUrl, row, result, phone, false);
+      if (estado === "enviado") sent++;
+      else if (estado === "error") failed++;
+      else retry++;
+    } catch (e: any) {
+      console.error("[whatsapp-queue] row error:", row.id, e?.message || e);
+      try {
+        await finishRow(supabase, supabaseUrl, row, { success: false, error: e?.message || "Error inesperado" }, "", false);
+      } catch { /* el lease de 10 min lo devolverá a la cola */ }
+      retry++;
+    }
+  }
+
+  if (pendientes.length) {
+    await supabase.rpc("whatsapp_cola_liberar", { p_ids: pendientes });
+  }
+
+  return { claimed: (rows || []).length, sent, retry, failed, released: pendientes.length };
+}
+
+async function finishRow(
+  supabase: any,
+  supabaseUrl: string,
+  row: any,
+  result: { success: boolean; error?: string | null },
+  phone: string,
+  permanente: boolean,
+): Promise<string | null> {
+  const { data: estado, error } = await supabase.rpc("whatsapp_cola_resultado", {
+    p_id: row.id,
+    p_ok: result.success,
+    p_error: result.error || null,
+    p_permanente: permanente,
+  });
+  if (error) throw error;
+
+  if (estado === "enviado" || estado === "error") {
+    const { error: logErr } = await supabase.from("whatsapp_log").insert({
+      empresa_id: row.empresa_id,
+      telefono: phone || row.telefono,
+      tipo: row.tipo || "manual",
+      mensaje: row.media_tipo === "file" ? (row.media_nombre || "") : (row.mensaje || ""),
+      imagen_url: row.media_tipo === "image" ? row.media_url : null,
+      status: estado,
+      error_detalle: estado === "error" ? (result.error || null) : null,
+      referencia_id: row.referencia_id || null,
+    });
+    if (logErr) console.error("[whatsapp-queue] log error:", logErr.message);
+    await cleanupStorage(supabase, tempPaths(supabaseUrl, row));
+  }
+  return estado ?? null;
+}
+
+// Solo archivos temporales de la propia empresa en empresa-assets/temp-receipts/<empresa_id>/
+function tempPaths(supabaseUrl: string, row: any): string[] {
+  const prefix = `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/empresa-assets/`;
+  const url: string = row.media_url || "";
+  if (!url.startsWith(prefix)) return [];
+  const path = decodeURIComponent(url.slice(prefix.length).split("?")[0]);
+  if (!path.startsWith(`temp-receipts/${row.empresa_id}/`) || path.includes("..")) return [];
+  return [path];
+}
+
 // ── Helpers ────────────────────────────────────────
 async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<string, any>) {
   // Retry with exponential backoff. Retries on:
@@ -407,6 +546,7 @@ async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<st
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(20_000),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {

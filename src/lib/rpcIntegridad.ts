@@ -112,3 +112,106 @@ export function rpcEditarPago(args: {
 export function rpcSiguienteIdCliente() {
   return callRpc<string>("siguiente_id_cliente", {});
 }
+
+// ── Pagos (supabase/migrations/20261013120000_pagos_integridad.sql) ─────────────
+
+export interface RegistrarPagoArgs {
+  prestamoId: string;
+  empresaId: string;
+  cajaId: string;
+  cobradorId: string | null;
+  rutaId: string | null;
+  registradoPor: string | null;
+  monto: number;
+  metodo: string;
+  fechaPago: string;
+  gpsLat: number | null;
+  gpsLng: number | null;
+  distribution: { cuotaId: string; mora: number; interes: number; capital: number }[];
+  descuentos?: { cuota_id: string; monto: number }[] | null;
+}
+
+export function rpcRegistrarPagoCompleto(a: RegistrarPagoArgs) {
+  return callRpc<unknown>("registrar_pago_completo", {
+    p_prestamo_id: a.prestamoId,
+    p_empresa_id: a.empresaId,
+    p_caja_id: a.cajaId,
+    p_cobrador_id: a.cobradorId,
+    p_ruta_id: a.rutaId,
+    p_registrado_por: a.registradoPor,
+    p_monto: a.monto,
+    p_metodo: a.metodo,
+    p_fecha_pago: a.fechaPago,
+    p_gps_lat: a.gpsLat,
+    p_gps_lng: a.gpsLng,
+    p_distribution: a.distribution,
+    p_descuentos: a.descuentos?.length ? a.descuentos : null,
+  });
+}
+
+export function rpcLiquidarPrestamo(a: {
+  prestamoId: string;
+  cajaId: string;
+  modo: "completo" | "solo_capital" | "descuento";
+  descMoraPct: number;
+  descInteresPct: number;
+  cobradorId: string | null;
+  rutaId: string | null;
+  fechaPago: string;
+  gpsLat: number | null;
+  gpsLng: number | null;
+  montoEsperado: number;
+  nota: string;
+}) {
+  return callRpc<{ prestamo_id: string; monto: number; condonado: number; cuotas: number }>("liquidar_prestamo", {
+    p_prestamo_id: a.prestamoId,
+    p_caja_id: a.cajaId,
+    p_modo: a.modo,
+    p_desc_mora_pct: a.descMoraPct,
+    p_desc_interes_pct: a.descInteresPct,
+    p_cobrador_id: a.cobradorId,
+    p_ruta_id: a.rutaId,
+    p_fecha_pago: a.fechaPago,
+    p_gps_lat: a.gpsLat,
+    p_gps_lng: a.gpsLng,
+    p_monto_esperado: a.montoEsperado,
+    p_nota: a.nota,
+  });
+}
+
+export function rpcRegistrarPromesaPago(prestamoId: string, cuotaId: string | null, monto: number, fecha: string, notas?: string | null) {
+  return callRpc<{ promesa_id: string }>("registrar_promesa_pago", {
+    p_prestamo_id: prestamoId,
+    p_cuota_id: cuotaId,
+    p_monto: monto,
+    p_fecha: fecha,
+    p_notas: notas ?? null,
+  });
+}
+
+export function rpcRegistrarVisita(a: {
+  prestamoId: string;
+  clienteId: string | null;
+  resultado: string;
+  notas?: string | null;
+  cuotaId?: string | null;
+  montoPromesa?: number | null;
+  fechaPromesa?: string | null;
+}) {
+  return callRpc<{ gestion_id: string; promesa_id: string | null }>("registrar_visita", {
+    p_prestamo_id: a.prestamoId,
+    p_cliente_id: a.clienteId,
+    p_resultado: a.resultado,
+    p_notas: a.notas ?? null,
+    p_cuota_id: a.cuotaId ?? null,
+    p_monto_promesa: a.montoPromesa ?? null,
+    p_fecha_promesa: a.fechaPromesa ?? null,
+  });
+}
+
+export function rpcEditarPrestamo(prestamoId: string, datos: Record<string, unknown>) {
+  return callRpc<{ prestamo_id: string; caja_cambio: boolean }>("editar_prestamo", {
+    p_prestamo_id: prestamoId,
+    p_datos: datos,
+  });
+}

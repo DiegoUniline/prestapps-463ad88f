@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
 
 /**
  * Computes the current week range [start, end] based on corte_dia_semana (0=Sun..6=Sat).
@@ -40,13 +41,23 @@ interface AtendidosResult {
   isLoading: boolean;
 }
 
-export function useAtendidos(empresaId?: string): AtendidosResult {
+/**
+ * Atendidos de la semana (pagos no anulados + gestiones CRM), calculado en SQL (rpc atendidos_semana).
+ * Con `scope` solo se consultan los ids dados (p. ej. la página visible); sin él, todos los de la semana.
+ */
+export function useAtendidos(
+  empresaId?: string,
+  scope?: { clienteIds?: string[]; prestamoIds?: string[] }
+): AtendidosResult {
+  const scoped = !!scope;
+  const clienteIds = scope?.clienteIds ? [...scope.clienteIds].sort() : null;
+  const prestamoIds = scope?.prestamoIds ? [...scope.prestamoIds].sort() : null;
   const { data, isLoading } = useQuery({
-    queryKey: ["atendidos-semana", empresaId],
+    queryKey: ["atendidos-semana", empresaId, scoped ? { clienteIds, prestamoIds } : "todos"],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!empresaId) return { prestamoIds: [], clienteIds: [], color: "#22c55e" };
 
-      // 1. Get empresa config
       const { data: emp } = await supabase
         .from("empresas")
         .select("corte_dia_semana, corte_color_cobrado")
@@ -57,48 +68,21 @@ export function useAtendidos(empresaId?: string): AtendidosResult {
       const color = emp?.corte_color_cobrado ?? "#22c55e";
       const { start, end } = getCurrentWeekRange(corteDia);
 
-      // 2. Fetch pagos and gestiones in parallel within week range
-      const [pagosData, gestionesData] = await Promise.all([
-        fetchAllRows(supabase
-          .from("pagos")
-          .select("prestamo_id")
-          .eq("empresa_id", empresaId)
-          .eq("anulado", false)
-          .gte("fecha_pago", start)
-          .lte("fecha_pago", end)),
-        fetchAllRows(supabase
-          .from("crm_gestiones")
-          .select("prestamo_id, cliente_id")
-          .eq("empresa_id", empresaId)
-          .gte("created_at", `${start}T00:00:00`)
-          .lte("created_at", `${end}T23:59:59`)),
-      ]);
-
-      const prestamoIdSet = new Set<string>();
-      const clienteIdSet = new Set<string>();
-
-      for (const p of pagosData) {
-        prestamoIdSet.add(p.prestamo_id);
-      }
-      for (const g of gestionesData) {
-        prestamoIdSet.add(g.prestamo_id);
-        if (g.cliente_id) clienteIdSet.add(g.cliente_id);
+      if (scoped && !clienteIds?.length && !prestamoIds?.length) {
+        return { prestamoIds: [], clienteIds: [], color };
       }
 
-      // 3. Resolve cliente IDs from pagos via prestamos
-      if (prestamoIdSet.size > 0) {
-        const { data: pres } = await supabase
-          .from("prestamos")
-          .select("id, cliente_id")
-          .in("id", [...prestamoIdSet]);
-        for (const pr of pres || []) {
-          clienteIdSet.add(pr.cliente_id);
-        }
-      }
+      const { data: res, error } = await rpc<{ prestamo_ids: string[]; cliente_ids: string[] }>("atendidos_semana", {
+        p_desde: start,
+        p_hasta: end,
+        p_cliente_ids: scoped ? clienteIds || [] : null,
+        p_prestamo_ids: scoped ? prestamoIds || [] : null,
+      });
+      if (error) throw error;
 
       return {
-        prestamoIds: [...prestamoIdSet],
-        clienteIds: [...clienteIdSet],
+        prestamoIds: res?.prestamo_ids || [],
+        clienteIds: res?.cliente_ids || [],
         color,
       };
     },
@@ -106,9 +90,12 @@ export function useAtendidos(empresaId?: string): AtendidosResult {
     staleTime: 1000 * 60 * 2,
   });
 
+  const prestamoSet = useMemo(() => new Set(data?.prestamoIds || []), [data?.prestamoIds]);
+  const clienteSet = useMemo(() => new Set(data?.clienteIds || []), [data?.clienteIds]);
+
   return {
-    prestamoIds: new Set(data?.prestamoIds || []),
-    clienteIds: new Set(data?.clienteIds || []),
+    prestamoIds: prestamoSet,
+    clienteIds: clienteSet,
     color: data?.color || "#22c55e",
     isLoading,
   };

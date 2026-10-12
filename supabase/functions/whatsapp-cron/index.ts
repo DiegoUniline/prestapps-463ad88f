@@ -151,9 +151,26 @@ Deno.serve(withCors(async (req) => {
       }
     }
 
-    console.log("WhatsApp cron results:", JSON.stringify(results));
+    // Cola de WhatsApp (recibos, documentos): procesa lo pendiente de todas las empresas
+    let queue: any = null;
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/whatsapp-sender`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${serviceRoleKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "process-queue" }),
+      });
+      queue = await res.json().catch(() => ({ status: res.status }));
+    } catch (e: any) {
+      console.error("WhatsApp queue error:", e?.message || e);
+      queue = { error: e?.message || String(e) };
+    }
 
-    return new Response(JSON.stringify({ success: true, results }), {
+    console.log("WhatsApp cron results:", JSON.stringify(results), "queue:", JSON.stringify(queue));
+
+    return new Response(JSON.stringify({ success: true, results, queue }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {

@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CalendarCheck } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useEmpresa } from "@/contexts/EmpresaContext";
+import { rpcRegistrarPromesaPago } from "@/lib/rpcIntegridad";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -21,7 +20,6 @@ interface PromesaModalProps {
 }
 import { $$ } from "@/lib/utils";
 export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId, saldoTotal, fechaVencimiento }: PromesaModalProps) {
-  const { empresaId } = useEmpresa();
   const [monto, setMonto] = useState(saldoTotal.toString());
   const [fecha, setFecha] = useState("");
   const [notas, setNotas] = useState("");
@@ -35,19 +33,8 @@ export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId
     if (!canSubmit) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from("promesas_pago").insert({
-        prestamo_id: prestamoId,
-        cuota_id: cuotaId,
-        monto_prometido: montoNum,
-        fecha_prometida: fecha,
-        notas: notas || null,
-        status: "Pendiente",
-        empresa_id: empresaId,
-      });
-      if (error) throw error;
-
-      // Update cuota status to Prometida
-      await supabase.from("amortizacion").update({ status: "Prometida" as any }).eq("id", cuotaId);
+      // Promesa + cuota "Prometida" en una sola transacción
+      await rpcRegistrarPromesaPago(prestamoId, cuotaId || null, montoNum, fecha, notas || null);
 
       toast.success(`Promesa registrada para cuota #${cuotaNum}`);
       queryClient.invalidateQueries({ queryKey: ["promesas"] });

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { encolarWhatsApp } from "@/lib/whatsappCola";
 
 interface ReceiptData {
   pago: {
@@ -194,28 +195,38 @@ function buildReceiptElement(data: ReceiptData, config: TicketConfig): HTMLDivEl
   return el;
 }
 
-/**
- * Generates a receipt PNG on the client using ticket config, uploads to storage, sends via WhatsApp, then cleans up.
- */
-export async function sendReceiptAsImage(
-  empresaId: string,
-  phone: string,
-  data: ReceiptData,
-  caption: string,
-  isTest = false,
-): Promise<{ success: boolean; error?: string }> {
-  const storagePath = `temp-receipts/${empresaId}/${crypto.randomUUID()}.png`;
-  let el: HTMLDivElement | null = null;
+function receiptText(data: ReceiptData, caption: string): string {
+  const { pago, empresa, cliente, prestamo } = data;
+  const lines = [
+    caption,
+    "",
+    `*${empresa.nombre}*`,
+    `Cliente: ${cliente.nombre}`,
+    `Folio: ${pago.folio}`,
+    pago.fecha ? `Fecha: ${pago.fecha}` : "",
+    `Método: ${pago.metodo_pago || "Efectivo"}`,
+    `Total pagado: ${$$(pago.monto_recibido)}`,
+    pago.aplicado_mora ? `A mora: ${$$(pago.aplicado_mora)}` : "",
+    pago.aplicado_interes ? `A interés: ${$$(pago.aplicado_interes)}` : "",
+    pago.aplicado_capital ? `A capital: ${$$(pago.aplicado_capital)}` : "",
+    (pago.descuento || 0) > 0 ? `Descuento: -${$$(pago.descuento!)}` : "",
+    `Cuota: ${pago.cuota_num || "---"} de ${prestamo.num_cuotas}`,
+    `Saldo restante: ${$$(pago.saldo_restante)}`,
+    pago.proxima_cuota ? `Próx. vencimiento: ${pago.proxima_cuota}` : "",
+    pago.monto_proxima ? `Próx. monto: ${$$(pago.monto_proxima)}` : "",
+  ];
+  return lines.filter((l, i) => l !== "" || i === 1).join("\n");
+}
 
+async function renderAndUpload(empresaId: string, data: ReceiptData, storagePath: string): Promise<string> {
+  let el: HTMLDivElement | null = null;
   try {
-    // 0. Fetch ticket config
     const config = await fetchTicketConfig(empresaId);
 
-    // 1. Render element and wait for layout + images
+    // Render element and wait for layout + images
     el = buildReceiptElement(data, config);
     document.body.appendChild(el);
 
-    // Wait for images (logo) to load
     const images = el.querySelectorAll("img");
     if (images.length > 0) {
       await Promise.all(
@@ -230,7 +241,6 @@ export async function sendReceiptAsImage(
       );
     }
 
-    // Wait for browser to layout the element
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     const { toPng } = await import("html-to-image");
@@ -241,26 +251,57 @@ export async function sendReceiptAsImage(
       style: { opacity: "1" },
     });
 
-    document.body.removeChild(el);
-    el = null;
-
-    // 2. Convert to blob and upload to storage
     const blob = await fetch(dataUrl).then((r) => r.blob());
-
     const { error: uploadErr } = await supabase.storage
       .from("empresa-assets")
       .upload(storagePath, blob, { contentType: "image/png", upsert: true });
-
     if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
 
-    // 3. Get public URL
-    const { data: urlData } = supabase.storage
-      .from("empresa-assets")
-      .getPublicUrl(storagePath);
+    return supabase.storage.from("empresa-assets").getPublicUrl(storagePath).data.publicUrl;
+  } finally {
+    if (el && el.parentNode) document.body.removeChild(el);
+  }
+}
 
-    const publicUrl = urlData.publicUrl;
+/**
+ * Genera el recibo PNG en el navegador (config de ticket), lo sube a storage y lo ENCOLA en
+ * whatsapp_cola; el envío con reintentos lo hace la Edge Function whatsapp-sender, que borra
+ * la imagen temporal al terminar. Si la imagen falla, encola el recibo como texto.
+ * isTest (prueba desde configuración) envía directo para mostrar el resultado al momento.
+ */
+export async function sendReceiptAsImage(
+  empresaId: string,
+  phone: string,
+  data: ReceiptData,
+  caption: string,
+  isTest = false,
+  referenciaId?: string | null,
+): Promise<{ success: boolean; queued?: boolean; error?: string }> {
+  const storagePath = `temp-receipts/${empresaId}/${crypto.randomUUID()}.png`;
 
-    // 4. Send via WhatsApp using send-image action
+  if (!isTest) {
+    let publicUrl: string | null = null;
+    try {
+      publicUrl = await renderAndUpload(empresaId, data, storagePath);
+    } catch (e) {
+      console.error("sendReceiptAsImage render/upload error:", e);
+      try {
+        await supabase.storage.from("empresa-assets").remove([storagePath]);
+      } catch {
+        // silent
+      }
+    }
+
+    return encolarWhatsApp(
+      publicUrl
+        ? { empresaId, telefono: phone, tipo: "recibo", mensaje: caption, mediaUrl: publicUrl, mediaTipo: "image", referenciaId }
+        : { empresaId, telefono: phone, tipo: "recibo", mensaje: receiptText(data, caption), referenciaId },
+    );
+  }
+
+  try {
+    const publicUrl = await renderAndUpload(empresaId, data, storagePath);
+
     const { data: result, error: invokeErr } = await supabase.functions.invoke("whatsapp-sender", {
       body: {
         action: "send-image",
@@ -269,7 +310,7 @@ export async function sendReceiptAsImage(
         url: publicUrl,
         caption,
         tipo: "recibo",
-        test: isTest,
+        test: true,
       },
     });
 
@@ -285,7 +326,6 @@ export async function sendReceiptAsImage(
       throw new Error(errMsg);
     }
 
-    // 5. Cleanup storage after a delay
     setTimeout(async () => {
       try {
         await supabase.storage.from("empresa-assets").remove([storagePath]);
@@ -296,8 +336,6 @@ export async function sendReceiptAsImage(
 
     return result || { success: true };
   } catch (e: any) {
-    if (el && el.parentNode) document.body.removeChild(el);
-
     try {
       await supabase.storage.from("empresa-assets").remove([storagePath]);
     } catch {

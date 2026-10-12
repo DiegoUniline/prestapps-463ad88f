@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { toast } from "sonner";
 import { CreditCard, Send, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { cn, $$ } from "@/lib/utils";
+import { encolarWhatsApp } from "@/lib/whatsappCola";
 
 interface StripeChargeButtonProps {
   prestamoId: string;
@@ -98,13 +99,12 @@ export function StripeChargeButton({
           // Send WhatsApp notification
           if (clienteTelefono) {
             try {
-              await supabase.functions.invoke("whatsapp-sender", {
-                body: {
-                  action: "send-text",
-                  empresa_id: empresaId,
-                  phone: clienteTelefono,
-                  message: `✅ Se ha procesado un cobro de ${$$(montoCobrado)} a su tarjeta ${paymentMethod.brand} ****${paymentMethod.last4} para la cuota${cuotaNum ? ` #${cuotaNum}` : ""} del préstamo PRE-${prestamoId.slice(0, 8)}. Gracias por su pago.`,
-                },
+              await encolarWhatsApp({
+                empresaId,
+                telefono: clienteTelefono,
+                tipo: "cobro_tarjeta",
+                mensaje: `✅ Se ha procesado un cobro de ${$$(montoCobrado)} a su tarjeta ${paymentMethod.brand} ****${paymentMethod.last4} para la cuota${cuotaNum ? ` #${cuotaNum}` : ""} del préstamo PRE-${prestamoId.slice(0, 8)}. Gracias por su pago.`,
+                referenciaId: prestamoId,
               });
             } catch { /* silent */ }
           }
@@ -130,15 +130,14 @@ export function StripeChargeButton({
           // Send link via WhatsApp if client has phone
           if (clienteTelefono) {
             try {
-              const { data: waData, error: waError } = await supabase.functions.invoke("whatsapp-sender", {
-                body: {
-                  action: "send-text",
-                  empresa_id: empresaId,
-                  phone: clienteTelefono,
-                  message: `💳 Hola ${clienteNombre}, para facilitar sus pagos le invitamos a registrar su tarjeta de forma segura en el siguiente enlace:\n\n${data.url}\n\nEste enlace es 100% seguro y procesado por Stripe.`,
-                },
+              const wa = await encolarWhatsApp({
+                empresaId,
+                telefono: clienteTelefono,
+                tipo: "link_tarjeta",
+                mensaje: `💳 Hola ${clienteNombre}, para facilitar sus pagos le invitamos a registrar su tarjeta de forma segura en el siguiente enlace:\n\n${data.url}\n\nEste enlace es 100% seguro y procesado por Stripe.`,
+                referenciaId: clienteId,
               });
-              if (waError || !waData?.success) throw new Error("WhatsApp no disponible");
+              if (!wa.success) throw new Error("WhatsApp no disponible");
               toast.success("Enlace de registro de tarjeta enviado por WhatsApp");
               setResult("link_sent");
             } catch {

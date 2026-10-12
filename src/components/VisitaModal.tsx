@@ -6,9 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, CalendarCheck, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useEmpresa } from "@/contexts/EmpresaContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { rpcRegistrarVisita } from "@/lib/rpcIntegridad";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -33,8 +31,6 @@ interface VisitaModalProps {
 }
 import { $$ } from "@/lib/utils";
 export function VisitaModal({ open, onOpenChange, prestamoId, clienteId, clienteNombre, cuotaId, cuotaNum, saldoTotal }: VisitaModalProps) {
-  const { empresaId } = useEmpresa();
-  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [resultado, setResultado] = useState("no_encontrado");
@@ -48,34 +44,17 @@ export function VisitaModal({ open, onOpenChange, prestamoId, clienteId, cliente
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      // 1) Register CRM gestión as visita
-      await supabase.from("crm_gestiones").insert({
-        empresa_id: empresaId,
-        prestamo_id: prestamoId,
-        cliente_id: clienteId,
-        tipo_gestion: "visita",
-        resultado: resultado,
+      // Gestión de visita (+ promesa y cuota "Prometida" si aplica) en una sola transacción
+      const conPromesa = isPromesa && !!fechaPromesa;
+      await rpcRegistrarVisita({
+        prestamoId,
+        clienteId: clienteId || null,
+        resultado,
         notas: notas || null,
-        fecha_seguimiento: isPromesa && fechaPromesa ? fechaPromesa : null,
-        registrado_por: user?.id || null,
+        cuotaId: cuotaId || null,
+        montoPromesa: conPromesa ? (parseFloat(montoPromesa) || saldoTotal) : null,
+        fechaPromesa: conPromesa ? fechaPromesa : null,
       });
-
-      // 2) If promesa de pago, also register in promesas_pago and update cuota
-      if (isPromesa && fechaPromesa) {
-        const montoNum = parseFloat(montoPromesa) || saldoTotal;
-        await supabase.from("promesas_pago").insert({
-          prestamo_id: prestamoId,
-          cuota_id: cuotaId,
-          empresa_id: empresaId,
-          monto_prometido: montoNum,
-          fecha_prometida: fechaPromesa,
-          notas: notas || null,
-          status: "Pendiente",
-        });
-
-        // Update cuota status to Prometida
-        await supabase.from("amortizacion").update({ status: "Prometida" as any }).eq("id", cuotaId);
-      }
 
       toast.success(isPromesa ? "Visita registrada con promesa de pago" : "Visita registrada");
       queryClient.invalidateQueries({ queryKey: ["cobranza-diaria"] });

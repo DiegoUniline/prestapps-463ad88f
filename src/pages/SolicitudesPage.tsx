@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Plus, Search, Check, X, Eye, FileInput, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { encolarWhatsApp } from "@/lib/whatsappCola";
 
 function calculosSolicitud(sol: any) {
   const monto = Number(sol.monto_solicitado);
@@ -484,15 +485,12 @@ async function sendWhatsAppNotification(
       ? `✅ ¡Hola ${cliente.nombre_completo}! Tu solicitud de préstamo por ${$$(Number(sol.monto_solicitado))} ha sido *APROBADA*. Pronto recibirás más detalles.`
       : `❌ Hola ${cliente.nombre_completo}, lamentamos informarte que tu solicitud de préstamo por ${$$(Number(sol.monto_solicitado))} ha sido *RECHAZADA*. ${motivoRechazo ? `Motivo: ${motivoRechazo}` : "Contacta a tu asesor para más información."}`;
 
-    await supabase.functions.invoke("whatsapp-sender", {
-      body: {
-        action: "send-text",
-        empresa_id: empresaId,
-        phone: cliente.telefono,
-        message,
-        tipo: "solicitud",
-        referencia_id: sol.id,
-      },
+    await encolarWhatsApp({
+      empresaId,
+      telefono: cliente.telefono,
+      tipo: "solicitud",
+      mensaje: message,
+      referenciaId: sol.id,
     });
   } catch {
     // Silent fail - notification is not critical

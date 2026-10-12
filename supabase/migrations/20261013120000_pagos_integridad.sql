@@ -557,7 +557,7 @@ BEGIN
   FOR t IN SELECT jsonb_object_keys(v_cfg) LOOP
     CONTINUE WHEN to_regclass('public.' || t) IS NULL;
 
-    SELECT string_agg(DISTINCT p.oid::regprocedure::text, ', ') INTO v_bloq
+    SELECT string_agg(DISTINCT format('ALTER FUNCTION %s SECURITY DEFINER SET search_path = public;', p.oid::regprocedure), ' ') INTO v_bloq
       FROM pg_proc p
      WHERE p.pronamespace = 'public'::regnamespace
        AND p.prokind = 'f'
@@ -567,7 +567,7 @@ BEGIN
        AND (has_function_privilege('authenticated', p.oid, 'EXECUTE')
             OR EXISTS (SELECT 1 FROM pg_trigger tg WHERE tg.tgfoid = p.oid AND NOT tg.tgisinternal));
     IF v_bloq IS NOT NULL THEN
-      RAISE WARNING 'Bloqueo de "%" OMITIDO: estas funciones SECURITY INVOKER la escriben con permisos del usuario: %. Pásalas a SECURITY DEFINER (con guardas de tenant) y vuelve a ejecutar esta sección.', t, v_bloq;
+      RAISE WARNING 'Bloqueo de "%" OMITIDO: funciones SECURITY INVOKER (RPC o trigger) la escriben con permisos del usuario. Revisa que tengan guarda de tenant, ejecuta: % y vuelve a correr esta sección.', t, v_bloq;
       CONTINUE;
     END IF;
 

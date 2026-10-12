@@ -2,9 +2,7 @@ import { useState, useMemo } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQueryClient } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
-import { supabase } from "@/integrations/supabase/client";
-import { useEmpresa } from "@/contexts/EmpresaContext";
-import { useAuthStore } from "@/stores/authStore";
+import { rpcLiquidarPrestamo } from "@/lib/rpcIntegridad";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -43,9 +41,7 @@ type LiquidarMode = "completo" | "solo_capital" | "descuento";
 
 export function LiquidarModal({ open, onOpenChange, prestamoId, cuotasPendientes, cajas, rutaId, cobradorId }: LiquidarModalProps) {
   const queryClient = useQueryClient();
-  const { empresaId } = useEmpresa();
   const geo = useGeoLocation();
-  const user = useAuthStore((s) => s.user);
 
   const [mode, setMode] = useState<LiquidarMode>("completo");
   const [descuentoMora, setDescuentoMora] = useState(100);
@@ -76,87 +72,30 @@ export function LiquidarModal({ open, onOpenChange, prestamoId, cuotasPendientes
     if (!cajaId || montoAPagar <= 0) return;
     setSaving(true);
     try {
-      // 1. First, register discounts (descuento_mora) on each cuota so rebuild respects them
-      for (const c of cuotasPendientes) {
-        let descMora = 0;
-        let descInteres = 0;
-
-        if (mode === "solo_capital") {
-          descMora = c.saldo_mora;
-          descInteres = c.saldo_interes;
-        } else if (mode === "descuento") {
-          descMora = c.saldo_mora * (descuentoMora / 100);
-          descInteres = c.saldo_interes * (descuentoInteres / 100);
-        }
-
-        const totalDesc = descMora + descInteres;
-        if (totalDesc > 0) {
-          await supabase.from("amortizacion").update({
-            descuento_mora: totalDesc,
-            saldo_mora: Math.max(0, c.saldo_mora - descMora),
-            saldo_interes: Math.max(0, c.saldo_interes - descInteres),
-            saldo_total: Math.max(0, c.saldo_capital + (c.saldo_interes - descInteres) + (c.saldo_mora - descMora)),
-          }).eq("id", c.id);
-        }
-      }
-
-      // 2. Build distribution for registrar_pago RPC
-      const distribution = cuotasPendientes.map(c => {
-        let moraAplicar = c.saldo_mora;
-        let interesAplicar = c.saldo_interes;
-        const capitalAplicar = c.saldo_capital;
-
-        if (mode === "solo_capital") {
-          moraAplicar = 0;
-          interesAplicar = 0;
-        } else if (mode === "descuento") {
-          moraAplicar = c.saldo_mora * (1 - descuentoMora / 100);
-          interesAplicar = c.saldo_interes * (1 - descuentoInteres / 100);
-        }
-
-        return {
-          cuotaId: c.id,
-          capital: Math.round(capitalAplicar * 100) / 100,
-          interes: Math.round(interesAplicar * 100) / 100,
-          mora: Math.round(moraAplicar * 100) / 100,
-        };
-      }).filter(d => d.capital > 0 || d.interes > 0 || d.mora > 0);
-
-      // 3. Call registrar_pago RPC (handles pago, amortizacion, movimiento_caja, estado atomically)
-      const { data: result, error } = await supabase.rpc("registrar_pago", {
-        p_prestamo_id: prestamoId,
-        p_empresa_id: empresaId!,
-        p_caja_id: cajaId,
-        p_cobrador_id: cobradorId || null,
-        p_ruta_id: rutaId || null,
-        p_registrado_por: user?.id || null,
-        p_monto: Math.round(montoAPagar * 100) / 100,
-        p_metodo: "Efectivo",
-        p_fecha_pago: format(new Date(), "yyyy-MM-dd"),
-        p_gps_lat: geo.lat || null,
-        p_gps_lng: geo.lng || null,
-        p_distribution: distribution,
-      } as any);
-
-      if (error) throw error;
-
-      // 4. If registrar_pago didn't auto-liquidate (e.g. solo_capital mode with condonated interest),
-      //    ensure status is Liquidado and rebuild to be safe
       const notaLiquidacion = mode === "completo"
         ? "Liquidación total"
         : mode === "solo_capital"
           ? `Liquidación solo capital (condonado: ${$$(descuentoTotal)})`
           : `Liquidación con descuento mora ${descuentoMora}%${descuentoInteres > 0 ? ` + interés ${descuentoInteres}%` : ""} (condonado: ${$$(descuentoTotal)})`;
 
-      await supabase.from("prestamos").update({
-        notas: notaLiquidacion,
-      }).eq("id", prestamoId);
-
-      // Rebuild to ensure all saldos, descuentos and statuses are consistent
-      await supabase.rpc("rebuild_amortizacion", { p_prestamo_id: prestamoId });
+      // Una sola transacción: condonaciones por cuota + pago + nota + rebuild de amortización
+      const res = await rpcLiquidarPrestamo({
+        prestamoId,
+        cajaId,
+        modo: mode,
+        descMoraPct: mode === "descuento" ? descuentoMora : 0,
+        descInteresPct: mode === "descuento" ? descuentoInteres : 0,
+        cobradorId: cobradorId || null,
+        rutaId: rutaId || null,
+        fechaPago: format(new Date(), "yyyy-MM-dd"),
+        gpsLat: geo.lat || null,
+        gpsLng: geo.lng || null,
+        montoEsperado: Math.round(montoAPagar * 100) / 100,
+        nota: notaLiquidacion,
+      });
 
       invalidateFinanceQueries(queryClient, { prestamoId });
-      toast.success(`Préstamo liquidado por ${$$(montoAPagar)}`);
+      toast.success(`Préstamo liquidado por ${$$(Number(res?.monto ?? montoAPagar))}`);
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "Error al liquidar");

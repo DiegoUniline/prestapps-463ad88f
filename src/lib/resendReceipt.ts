@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Re-sends the last (or a specific) payment receipt for a loan via WhatsApp.
+ * Re-sends the last (or a specific) payment receipt for a loan via WhatsApp (queued in whatsapp_cola).
  * Returns success boolean and optional error message.
  */
 export async function resendReceiptForPrestamo(opts: {
@@ -109,5 +109,7 @@ export async function resendReceiptForPrestamo(opts: {
       prestamo: { folio, num_cuotas: prestamo?.num_cuotas || 0 },
     },
     `📄 Recibo (reenvío) ${folio} por $${monto.toFixed(2)}.`,
+    false,
+    prestamoId,
   );
 }

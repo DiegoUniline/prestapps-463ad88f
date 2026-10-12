@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,11 @@ import { useNavigate } from "react-router-dom";
 import { useClientes, useUpdateCliente } from "@/hooks/useClientes";
 import { useAtendidos } from "@/hooks/useAtendidos";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { rpc } from "@/lib/supabaseQuery";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
+import { PaginacionControles } from "@/components/PaginacionControles";
 import { toast } from "sonner";
 
 const estadoColors: Record<string, string> = {
@@ -36,36 +38,61 @@ interface EstadoCuenta {
   cobrador_nombre: string | null;
 }
 
-// Agregado en SQL (rpc estados_cuenta_clientes): evita el .in() gigante de préstamos/cuotas.
-function useEstadosCuenta(empresaId: string) {
+interface EstadosCuentaPagina {
+  rows: EstadoCuenta[];
+  total: number;
+  saldo_total: number;
+  saldo_moroso: number;
+  cuotas_vencidas: number;
+}
+
+// Agregado y paginado en SQL (rpc estados_cuenta_listado): totales sobre todos los filtrados, filas solo de la página.
+function useEstadosCuenta(empresaId: string, search: string, page: number, enabled: boolean) {
   return useQuery({
-    queryKey: ["estados-cuenta", empresaId],
-    enabled: !!empresaId,
+    queryKey: ["estados-cuenta", empresaId, search, page],
+    enabled: !!empresaId && enabled,
     staleTime: 2 * 60 * 1000,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await rpc<EstadoCuenta[]>("estados_cuenta_clientes");
+      const { data, error } = await rpc<EstadosCuentaPagina>("estados_cuenta_listado", {
+        p_search: search || null,
+        p_limit: PAGE_SIZE,
+        p_offset: page * PAGE_SIZE,
+      });
       if (error) throw error;
-      return (data || []).map((e) => ({
-        ...e,
-        saldo_total: Number(e.saldo_total || 0),
-        cuotas_vencidas: Number(e.cuotas_vencidas || 0),
-        saldo_moroso: Number(e.saldo_moroso || 0),
-      })) as EstadoCuenta[];
+      return {
+        total: Number(data?.total || 0),
+        saldo_total: Number(data?.saldo_total || 0),
+        saldo_moroso: Number(data?.saldo_moroso || 0),
+        cuotas_vencidas: Number(data?.cuotas_vencidas || 0),
+        rows: (data?.rows || []).map((e) => ({
+          ...e,
+          saldo_total: Number(e.saldo_total || 0),
+          cuotas_vencidas: Number(e.cuotas_vencidas || 0),
+          saldo_moroso: Number(e.saldo_moroso || 0),
+        })),
+      } as EstadosCuentaPagina;
     },
   });
 }
 
 export default function ClientesPage() {
+  const [tab, setTab] = useState("listado");
   const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("todos");
   const [searchEC, setSearchEC] = useState("");
   const navigate = useNavigate();
   const { empresaId } = useEmpresa();
   const debouncedSearch = useDebouncedValue(search, 300);
-  const { data: clientes, isLoading } = useClientes({ search: debouncedSearch, estado: estadoFilter, empresaId });
+  const debouncedSearchEC = useDebouncedValue(searchEC, 300);
+  const [page, setPage] = usePaginacion(`${empresaId}|${estadoFilter}|${debouncedSearch}`);
+  const [pageEC, setPageEC] = usePaginacion(`${empresaId}|${debouncedSearchEC}`);
+  const { data: clientesPage, isLoading, isFetching } = useClientes({ search: debouncedSearch, estado: estadoFilter, empresaId, page });
+  const clientes = clientesPage?.rows;
   const updateCliente = useUpdateCliente();
-  const { data: estados, isLoading: loadingEC } = useEstadosCuenta(empresaId);
-  const { clienteIds: atendidoClienteIds, color: atendidoColor } = useAtendidos(empresaId);
+  const { data: estadosPage, isLoading: loadingEC, isFetching: fetchingEC } = useEstadosCuenta(empresaId, debouncedSearchEC, pageEC, tab === "estados");
+  const clienteIdsPagina = useMemo(() => (clientes || []).map((c) => c.id), [clientes]);
+  const { clienteIds: atendidoClienteIds, color: atendidoColor } = useAtendidos(empresaId, { clienteIds: clienteIdsPagina });
 
   const handleToggleActivo = (e: React.MouseEvent, id: string, activo: boolean) => {
     e.stopPropagation();
@@ -75,15 +102,11 @@ export default function ClientesPage() {
     );
   };
 
-  const filteredEstados = (estados || []).filter(
-    (ec) =>
-      ec.nombre_completo.toLowerCase().includes(searchEC.toLowerCase()) ||
-      ec.id_cliente.toLowerCase().includes(searchEC.toLowerCase())
-  );
-
-  const totalDeuda = filteredEstados.reduce((s, e) => s + e.saldo_total, 0);
-  const totalMoroso = filteredEstados.reduce((s, e) => s + e.saldo_moroso, 0);
-  const totalVencidas = filteredEstados.reduce((s, e) => s + e.cuotas_vencidas, 0);
+  const filteredEstados = estadosPage?.rows || [];
+  const totalDeuda = estadosPage?.saldo_total || 0;
+  const totalMoroso = estadosPage?.saldo_moroso || 0;
+  const totalVencidas = estadosPage?.cuotas_vencidas || 0;
+  const totalEstados = estadosPage?.total || 0;
 
   return (
     <div className="space-y-4">
@@ -100,7 +123,7 @@ export default function ClientesPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="listado" className="space-y-4">
+        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="listado" className="gap-2">
               <Users className="h-4 w-4" />
@@ -214,6 +237,13 @@ export default function ClientesPage() {
                   ))
                 )}
               </div>
+              <PaginacionControles
+                page={page}
+                pageSize={PAGE_SIZE}
+                total={clientesPage?.total}
+                onPageChange={setPage}
+                isFetching={isFetching}
+              />
               </>
             )}
           </TabsContent>
@@ -293,7 +323,7 @@ export default function ClientesPage() {
                         ))}
                         {filteredEstados.length > 0 && (
                           <TableRow className="bg-muted/40 border-t-2 border-border font-bold">
-                            <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={2}>Totales ({filteredEstados.length})</TableCell>
+                            <TableCell className="px-3 text-[11px] uppercase text-muted-foreground font-bold" colSpan={2}>Totales ({totalEstados})</TableCell>
                             <TableCell className="text-right font-bold text-[13px] px-3">{$$(totalDeuda)}</TableCell>
                             <TableCell className="text-center font-bold text-[13px] px-3">{totalVencidas}</TableCell>
                             <TableCell className="text-right font-bold text-destructive text-[13px] px-3">{$$(totalMoroso)}</TableCell>
@@ -306,6 +336,13 @@ export default function ClientesPage() {
                 </Table>
               </div>
             )}
+            <PaginacionControles
+              page={pageEC}
+              pageSize={PAGE_SIZE}
+              total={estadosPage?.total}
+              onPageChange={setPageEC}
+              isFetching={fetchingEC}
+            />
           </TabsContent>
         </Tabs>
     </div>

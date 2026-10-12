@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useEmpresa } from "@/contexts/EmpresaContext";
+import { rpcEditarPrestamo } from "@/lib/rpcIntegridad";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -38,7 +37,6 @@ interface EditPrestamoModalProps {
 
 export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, cobradores }: EditPrestamoModalProps) {
   const queryClient = useQueryClient();
-  const { empresaId } = useEmpresa();
   const [saving, setSaving] = useState(false);
 
   const [tasaInteres, setTasaInteres] = useState("");
@@ -69,8 +67,6 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const cajaChanged = (cajaId || null) !== (prestamo.caja_id || null);
-
       const updates: Record<string, any> = {
         tasa_interes: tasaInteres ? parseFloat(tasaInteres) : null,
         tipo_mora: tipoMora as any,
@@ -83,46 +79,8 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
         codigo_interno: codigoInterno || null,
       };
 
-      const { error } = await supabase
-        .from("prestamos")
-        .update(updates)
-        .eq("id", prestamo.id);
-
-      if (error) throw error;
-
-      // Recalculate amortization so new mora/interest values take effect
-      await supabase.rpc("rebuild_amortizacion", { p_prestamo_id: prestamo.id });
-
-      // If caja changed, move the desembolso in movimientos_caja
-      if (cajaChanged) {
-        const folio = prestamo.id_prestamo || prestamo.id.slice(0, 8);
-        const montoDesembolso = prestamo.monto_solicitado || 0;
-
-        if (montoDesembolso > 0) {
-          // Reverse from old caja (entrada to cancel the salida)
-          if (prestamo.caja_id) {
-            await supabase.from("movimientos_caja").insert({
-              caja_id: prestamo.caja_id,
-              tipo: "entrada" as const,
-              monto: montoDesembolso,
-              prestamo_id: prestamo.id,
-              concepto: `Corrección desembolso ${folio} — salida de caja anterior`,
-              empresa_id: empresaId,
-            });
-          }
-          // Re-enter on new caja (salida = desembolso)
-          if (cajaId) {
-            await supabase.from("movimientos_caja").insert({
-              caja_id: cajaId,
-              tipo: "salida" as const,
-              monto: montoDesembolso,
-              prestamo_id: prestamo.id,
-              concepto: `Corrección desembolso ${folio} — cambio de caja`,
-              empresa_id: empresaId,
-            });
-          }
-        }
-      }
+      // Una sola transacción: condiciones + rebuild de amortización + traslado del desembolso si cambió la caja
+      await rpcEditarPrestamo(prestamo.id, updates);
 
       invalidateFinanceQueries(queryClient, { prestamoId: prestamo.id });
 

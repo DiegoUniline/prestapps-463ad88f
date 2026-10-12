@@ -21,13 +21,14 @@ CREATE INDEX IF NOT EXISTS idx_pagos_gps                       ON public.pagos (
 CREATE INDEX IF NOT EXISTS idx_pagos_gps_created               ON public.pagos (empresa_id, created_at DESC) WHERE gps_lat IS NOT NULL;
 
 -- ── Helpers puros ────────────────────────────────────────────────
+-- Sin SET search_path a propósito: solo usan funciones de pg_catalog (siempre primero en la ruta)
+-- y así _lower_es se puede "inlinear" y las demás no pagan el cambio de GUC en cada fila.
 -- lower() con acentos en mayúscula normalizados (igual que String#toLowerCase para español).
 CREATE OR REPLACE FUNCTION public._lower_es(p text)
 RETURNS text
 LANGUAGE sql
 IMMUTABLE
 PARALLEL SAFE
-SET search_path = public
 AS $$
   SELECT lower(translate(coalesce(p, ''), 'ÁÉÍÓÚÜÑ', 'áéíóúüñ'));
 $$;
@@ -35,12 +36,14 @@ $$;
 -- Igual que classifyConcepto() del kardex de caja (CajaDetallePage).
 CREATE OR REPLACE FUNCTION public._kardex_categoria(p_concepto text, p_tipo text)
 RETURNS text
-LANGUAGE sql
+LANGUAGE plpgsql
 IMMUTABLE
 PARALLEL SAFE
-SET search_path = public
 AS $$
-  SELECT CASE
+DECLARE
+  l text := lower(translate(coalesce(p_concepto, ''), 'ÁÉÍÓÚÜÑ', 'áéíóúüñ'));
+BEGIN
+  RETURN CASE
     WHEN strpos(l, 'corrección') > 0 OR strpos(l, 'correccion') > 0 OR strpos(l, 'movido a caja') > 0 THEN 'Correcciones'
     WHEN strpos(l, 'anulación') > 0 OR strpos(l, 'anulacion') > 0 THEN 'Anulaciones'
     WHEN strpos(l, 'pago') > 0 OR strpos(l, 'cobro') > 0 OR strpos(l, 'cuota') > 0 THEN 'Pagos'
@@ -50,19 +53,21 @@ AS $$
     WHEN strpos(l, '[') > 0 OR strpos(l, 'gasto') > 0 THEN 'Gastos'
     WHEN p_tipo = 'entrada' THEN 'Depósitos'
     ELSE 'Retiros'
-  END
-  FROM (SELECT public._lower_es(p_concepto) AS l) x;
+  END;
+END;
 $$;
 
 -- Igual que extractCategoria() de GastosPage.
 CREATE OR REPLACE FUNCTION public._gasto_categoria(p_concepto text)
 RETURNS text
-LANGUAGE sql
+LANGUAGE plpgsql
 IMMUTABLE
 PARALLEL SAFE
-SET search_path = public
 AS $$
-  SELECT CASE
+DECLARE
+  l text := lower(translate(coalesce(p_concepto, ''), 'ÁÉÍÓÚÜÑ', 'áéíóúüñ'));
+BEGIN
+  RETURN CASE
     WHEN strpos(l, '[oficina]') > 0 THEN 'Oficina'
     WHEN strpos(l, '[transporte]') > 0 THEN 'Transporte'
     WHEN strpos(l, '[servicios]') > 0 THEN 'Servicios'
@@ -77,8 +82,8 @@ AS $$
     WHEN strpos(l, 'desembolso') > 0 OR strpos(l, 'préstamo') > 0 THEN 'Desembolso'
     WHEN strpos(l, 'corte') > 0 OR strpos(l, 'comisión') > 0 THEN 'Comisiones'
     ELSE 'Otros'
-  END
-  FROM (SELECT public._lower_es(p_concepto) AS l) x;
+  END;
+END;
 $$;
 
 -- Puerto exacto de calcularScore() (LeadScoringPage), aritmética float8 como en JS.
@@ -102,7 +107,6 @@ CREATE OR REPLACE FUNCTION public._lead_score(
 LANGUAGE plpgsql
 IMMUTABLE
 PARALLEL SAFE
-SET search_path = public
 AS $$
 DECLARE
   s double precision := 0;
@@ -178,18 +182,25 @@ $$;
 -- ── 1) Clientes: estados de cuenta paginados ─────────────────────
 CREATE OR REPLACE FUNCTION public.estados_cuenta_listado(p_search text DEFAULT NULL, p_limit integer DEFAULT 100, p_offset integer DEFAULT 0)
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  q AS (SELECT lower(nullif(p_search, '')) AS q),
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH q AS (SELECT lower(nullif(p_search, '')) AS q),
   pr AS (
     SELECT p.id, p.cliente_id, p.cobrador_id
-    FROM prestamos p, emp
-    WHERE p.empresa_id = emp.id AND p.estado::text IN ('Activo', 'Al día', 'Vencido')
+    FROM prestamos p
+    WHERE p.empresa_id = v_emp AND p.estado IN ('Activo', 'Al día', 'Vencido')
   ),
   cu AS (
     SELECT pr.cliente_id,
@@ -198,17 +209,15 @@ AS $$
            coalesce(sum(coalesce(a.saldo_total, 0)) FILTER (WHERE a.status = 'Vencida'), 0) AS saldo_moroso
     FROM amortizacion a
     JOIN pr ON pr.id = a.prestamo_id
-    CROSS JOIN emp
-    WHERE a.empresa_id = emp.id AND a.status <> 'Pagada'
+    WHERE a.empresa_id = v_emp AND a.status <> 'Pagada'
     GROUP BY pr.cliente_id
   ),
   f AS (
     SELECT c.id, c.id_cliente, c.nombre_completo, cu.saldo_total, cu.cuotas_vencidas, cu.saldo_moroso
     FROM clientes c
-    CROSS JOIN emp
     CROSS JOIN q
     JOIN cu ON cu.cliente_id = c.id
-    WHERE c.empresa_id = emp.id
+    WHERE c.empresa_id = v_emp
       AND c.activo = true
       AND (cu.saldo_total > 0 OR cu.cuotas_vencidas > 0)
       AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0 OR strpos(lower(c.id_cliente), q.q) > 0)
@@ -239,7 +248,9 @@ AS $$
                  ORDER BY pr.id LIMIT 1)
              ) ORDER BY pg.rn)
       FROM pagina pg), '[]'::jsonb)
+  )
   );
+END;
 $$;
 
 -- ── 2) Atendidos de la semana (pagos + gestiones) ────────────────
@@ -252,25 +263,32 @@ CREATE OR REPLACE FUNCTION public.atendidos_semana(
   p_prestamo_ids uuid[] DEFAULT NULL
 )
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  scope AS (SELECT (p_cliente_ids IS NOT NULL OR p_prestamo_ids IS NOT NULL) AS on_),
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH scope AS (SELECT (p_cliente_ids IS NOT NULL OR p_prestamo_ids IS NOT NULL) AS on_),
   g AS (
     SELECT g.prestamo_id, g.cliente_id
-    FROM crm_gestiones g, emp
-    WHERE g.empresa_id = emp.id
+    FROM crm_gestiones g
+    WHERE g.empresa_id = v_emp
       AND g.created_at >= p_desde::timestamp::timestamptz
       AND g.created_at <= (p_hasta::timestamp + interval '23 hours 59 minutes 59 seconds')::timestamptz
   ),
   pres AS (
     SELECT p.prestamo_id
-    FROM pagos p, emp
-    WHERE p.empresa_id = emp.id AND p.anulado = false
+    FROM pagos p
+    WHERE p.empresa_id = v_emp AND p.anulado = false
       AND p.fecha_pago >= p_desde AND p.fecha_pago <= p_hasta
     UNION
     SELECT g.prestamo_id FROM g WHERE g.prestamo_id IS NOT NULL
@@ -285,138 +303,188 @@ AS $$
                               WHERE NOT scope.on_ OR pres.prestamo_id = ANY (p_prestamo_ids)), '[]'::jsonb),
     'cliente_ids', coalesce((SELECT jsonb_agg(cli.cliente_id) FROM cli, scope
                              WHERE NOT scope.on_ OR cli.cliente_id = ANY (p_cliente_ids)), '[]'::jsonb)
+  )
   );
+END;
 $$;
 
 -- ── 3) Auditoría: bitácora unificada paginada ────────────────────
 -- p_tipo: 'pago' | 'anulacion' | 'gestion' | 'promesa' | NULL (todos).
--- Devuelve p_limit filas + has_more (sin COUNT de toda la bitácora).
+-- Cada fuente se recorre por su índice (empresa_id, fecha DESC) y se corta en offset+limit+1;
+-- devuelve p_limit filas + has_more (sin COUNT de toda la bitácora).
 CREATE OR REPLACE FUNCTION public.auditoria_listado(p_tipo text DEFAULT NULL, p_search text DEFAULT NULL, p_limit integer DEFAULT 100, p_offset integer DEFAULT 0)
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  ev AS (
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH q AS (SELECT lower(nullif(p_search, '')) AS q, greatest(coalesce(p_offset, 0), 0) + p_limit + 1 AS n),
+  pg AS (
     SELECT 'pago'::text AS tipo, p.id, p.created_at AS fecha, p.monto_recibido AS monto,
-           c.nombre_completo AS cliente, NULL::text AS detalle, p.registrado_por AS usuario_id,
-           NULL::text AS tipo_gestion, NULL::text AS resultado, NULL::text AS fecha_prometida, NULL::text AS status
+           c.nombre_completo AS cliente, NULL::text AS detalle, coalesce(pf.nombre_completo, 'Sistema') AS usuario,
+           'Pago registrado'::text AS accion, NULL::text AS tipo_gestion, NULL::text AS fecha_prometida, NULL::text AS status
     FROM pagos p
     JOIN prestamos pr ON pr.id = p.prestamo_id
     JOIN clientes c ON c.id = pr.cliente_id
-    CROSS JOIN emp
-    WHERE p.empresa_id = emp.id AND (p_tipo IS NULL OR p_tipo = 'pago')
-    UNION ALL
-    SELECT 'anulacion', p.id, coalesce(p.anulado_en, p.created_at), p.monto_recibido,
-           c.nombre_completo, p.motivo_anulacion, p.anulado_por,
-           NULL, NULL, NULL, NULL
+    LEFT JOIN profiles pf ON pf.id = p.registrado_por AND pf.empresa_id = p.empresa_id
+    CROSS JOIN q
+    WHERE p.empresa_id = v_emp
+      AND (p_tipo IS NULL OR p_tipo = 'pago')
+      AND (q.q IS NULL
+           OR strpos(lower(coalesce(c.nombre_completo, '—')), q.q) > 0
+           OR strpos(lower(coalesce(pf.nombre_completo, 'Sistema')), q.q) > 0
+           OR strpos('pago registrado', q.q) > 0)
+    ORDER BY p.created_at DESC, p.id
+    LIMIT (SELECT n FROM q)
+  ),
+  an AS (
+    SELECT 'anulacion'::text, p.id, coalesce(p.anulado_en, p.created_at), p.monto_recibido,
+           c.nombre_completo, p.motivo_anulacion, coalesce(pf.nombre_completo, 'Sistema'),
+           'Pago anulado'::text, NULL::text, NULL::text, NULL::text
     FROM pagos p
     JOIN prestamos pr ON pr.id = p.prestamo_id
     JOIN clientes c ON c.id = pr.cliente_id
-    CROSS JOIN emp
-    WHERE p.empresa_id = emp.id AND p.anulado AND (p_tipo IS NULL OR p_tipo = 'anulacion')
-    UNION ALL
-    SELECT 'gestion', g.id, g.created_at, NULL,
-           c.nombre_completo, left(g.notas, 80), g.registrado_por,
-           g.tipo_gestion, g.resultado, NULL, NULL
-    FROM crm_gestiones g
-    JOIN clientes c ON c.id = g.cliente_id
-    CROSS JOIN emp
-    WHERE g.empresa_id = emp.id AND (p_tipo IS NULL OR p_tipo = 'gestion')
-    UNION ALL
-    SELECT 'promesa', pp.id, pp.created_at, pp.monto_prometido,
-           NULL, NULL, NULL,
-           NULL, NULL, pp.fecha_prometida::text, pp.status
-    FROM promesas_pago pp
-    CROSS JOIN emp
-    WHERE pp.empresa_id = emp.id AND (p_tipo IS NULL OR p_tipo = 'promesa')
+    LEFT JOIN profiles pf ON pf.id = p.anulado_por AND pf.empresa_id = p.empresa_id
+    CROSS JOIN q
+    WHERE p.empresa_id = v_emp
+      AND p.anulado
+      AND (p_tipo IS NULL OR p_tipo = 'anulacion')
+      AND (q.q IS NULL
+           OR strpos(lower(coalesce(c.nombre_completo, '—')), q.q) > 0
+           OR strpos(lower(coalesce(p.motivo_anulacion, '')), q.q) > 0
+           OR strpos(lower(coalesce(pf.nombre_completo, 'Sistema')), q.q) > 0
+           OR strpos('pago anulado', q.q) > 0)
+    ORDER BY coalesce(p.anulado_en, p.created_at) DESC, p.id
+    LIMIT (SELECT n FROM q)
   ),
-  ev2 AS (
-    SELECT ev.*,
-           CASE WHEN ev.tipo = 'promesa' THEN 'Sistema' ELSE coalesce(pf.nombre_completo, 'Sistema') END AS usuario,
-           CASE ev.tipo
-             WHEN 'pago' THEN 'Pago registrado'
-             WHEN 'anulacion' THEN 'Pago anulado'
-             WHEN 'promesa' THEN 'Promesa registrada'
-             ELSE CASE ev.tipo_gestion WHEN 'visita' THEN 'Visita' WHEN 'llamada' THEN 'Llamada' WHEN 'whatsapp' THEN 'WhatsApp'
-                  ELSE coalesce(ev.tipo_gestion, '') END || ': ' || coalesce(ev.resultado, '')
-           END AS accion
-    FROM ev
-    CROSS JOIN emp
-    LEFT JOIN profiles pf ON pf.id = ev.usuario_id AND pf.empresa_id = emp.id
-  ),
-  q AS (SELECT lower(nullif(p_search, '')) AS q),
-  f AS (
-    SELECT ev2.*
-    FROM ev2, q
+  ge AS (
+    SELECT 'gestion'::text, x.id, x.created_at, NULL::numeric, x.cliente, x.detalle, x.usuario,
+           x.accion, x.tipo_gestion, NULL::text, NULL::text
+    FROM (
+      SELECT g.id, g.created_at, c.nombre_completo AS cliente, left(g.notas, 80) AS detalle,
+             coalesce(pf.nombre_completo, 'Sistema') AS usuario, g.tipo_gestion,
+             CASE g.tipo_gestion WHEN 'visita' THEN 'Visita' WHEN 'llamada' THEN 'Llamada' WHEN 'whatsapp' THEN 'WhatsApp'
+                  ELSE coalesce(g.tipo_gestion, '') END || ': ' || coalesce(g.resultado, '') AS accion
+      FROM crm_gestiones g
+      JOIN clientes c ON c.id = g.cliente_id
+      LEFT JOIN profiles pf ON pf.id = g.registrado_por AND pf.empresa_id = g.empresa_id
+      WHERE g.empresa_id = v_emp
+        AND (p_tipo IS NULL OR p_tipo = 'gestion')
+    ) x
+    CROSS JOIN q
     WHERE q.q IS NULL
-       OR strpos(lower(coalesce(ev2.cliente, '—')), q.q) > 0
-       OR strpos(lower(coalesce(ev2.detalle, '')), q.q) > 0
-       OR strpos(lower(ev2.usuario), q.q) > 0
-       OR strpos(lower(ev2.accion), q.q) > 0
-       OR strpos(lower(coalesce(ev2.fecha_prometida, '')), q.q) > 0
-       OR strpos(lower(coalesce(ev2.status, '')), q.q) > 0
-    ORDER BY ev2.fecha DESC NULLS LAST, ev2.tipo, ev2.id
-    LIMIT p_limit + 1 OFFSET greatest(coalesce(p_offset, 0), 0)
+       OR strpos(lower(coalesce(x.cliente, '—')), q.q) > 0
+       OR strpos(lower(coalesce(x.detalle, '')), q.q) > 0
+       OR strpos(lower(x.usuario), q.q) > 0
+       OR strpos(lower(x.accion), q.q) > 0
+    ORDER BY x.created_at DESC, x.id
+    LIMIT (SELECT n FROM q)
   ),
-  numerada AS (SELECT f.*, row_number() OVER (ORDER BY f.fecha DESC NULLS LAST, f.tipo, f.id) AS rn FROM f)
+  pp AS (
+    SELECT 'promesa'::text, pp.id, pp.created_at, pp.monto_prometido, NULL::text, NULL::text, 'Sistema'::text,
+           'Promesa registrada'::text, NULL::text, pp.fecha_prometida::text, pp.status
+    FROM promesas_pago pp
+    CROSS JOIN q
+    WHERE pp.empresa_id = v_emp
+      AND (p_tipo IS NULL OR p_tipo = 'promesa')
+      AND (q.q IS NULL
+           OR strpos(lower(pp.fecha_prometida::text), q.q) > 0
+           OR strpos(lower(coalesce(pp.status, '')), q.q) > 0
+           OR strpos('sistema', q.q) > 0
+           OR strpos('promesa registrada', q.q) > 0)
+    ORDER BY pp.created_at DESC, pp.id
+    LIMIT (SELECT n FROM q)
+  ),
+  todo AS (
+    SELECT * FROM pg UNION ALL SELECT * FROM an UNION ALL SELECT * FROM ge UNION ALL SELECT * FROM pp
+  ),
+  numerada AS (
+    SELECT t.*, row_number() OVER (ORDER BY t.fecha DESC, t.tipo, t.id) AS rn
+    FROM todo t
+  )
   SELECT jsonb_build_object(
-    'has_more', (SELECT count(*) > p_limit FROM numerada),
+    'has_more', (SELECT count(*) > greatest(coalesce(p_offset, 0), 0) + p_limit FROM numerada),
     'rows', coalesce((
       SELECT jsonb_agg(jsonb_build_object(
                'id', n.id, 'tipo', n.tipo, 'fecha', n.fecha, 'monto', n.monto, 'cliente', n.cliente,
                'detalle', n.detalle, 'usuario', n.usuario, 'accion', n.accion, 'tipo_gestion', n.tipo_gestion,
                'fecha_prometida', n.fecha_prometida, 'status', n.status) ORDER BY n.rn)
-      FROM numerada n WHERE n.rn <= p_limit), '[]'::jsonb)
+      FROM numerada n
+      WHERE n.rn > greatest(coalesce(p_offset, 0), 0)
+        AND n.rn <= greatest(coalesce(p_offset, 0), 0) + p_limit), '[]'::jsonb)
+  )
   );
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.auditoria_resumen()
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  pg AS (
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH pg AS (
     SELECT count(*) AS pagos, count(*) FILTER (WHERE p.anulado) AS anulaciones
-    FROM pagos p, emp
-    WHERE p.empresa_id = emp.id
+    FROM pagos p
+    WHERE p.empresa_id = v_emp
   ),
   ge AS (
-    SELECT count(*) AS gestiones FROM crm_gestiones g, emp
-    WHERE g.empresa_id = emp.id AND EXISTS (SELECT 1 FROM clientes c WHERE c.id = g.cliente_id)
+    SELECT count(*) AS gestiones FROM crm_gestiones g
+    WHERE g.empresa_id = v_emp AND EXISTS (SELECT 1 FROM clientes c WHERE c.id = g.cliente_id)
   ),
-  pp AS (SELECT count(*) AS promesas FROM promesas_pago pp, emp WHERE pp.empresa_id = emp.id)
+  pp AS (SELECT count(*) AS promesas FROM promesas_pago pp WHERE pp.empresa_id = v_emp)
   SELECT jsonb_build_object(
     'pagos', pg.pagos, 'anulaciones', pg.anulaciones, 'gestiones', ge.gestiones, 'promesas', pp.promesas,
     'total', pg.pagos + pg.anulaciones + ge.gestiones + pp.promesas)
-  FROM pg, ge, pp;
+  FROM pg, ge, pp
+  );
+END;
 $$;
 
 -- ── 4) CRM Cobranza: cartera paginada con agregados por préstamo ─
 -- p_filtro: 'todos' | 'vencido' (con cuotas vencidas) | 'al_dia'.
 CREATE OR REPLACE FUNCTION public.crm_cartera_listado(p_search text DEFAULT NULL, p_filtro text DEFAULT 'todos', p_limit integer DEFAULT 100, p_offset integer DEFAULT 0)
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  pr AS (
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH pr AS (
     SELECT p.id, p.created_at, p.monto_solicitado, p.num_cuotas, p.frecuencia::text AS frecuencia,
            p.estado::text AS estado, p.fecha_registro, c.id AS cliente_id, c.nombre_completo, c.telefono, c.direccion
     FROM prestamos p
     JOIN clientes c ON c.id = p.cliente_id
-    CROSS JOIN emp
-    WHERE p.empresa_id = emp.id AND p.estado::text IN ('Activo', 'Al día', 'Vencido')
+    WHERE p.empresa_id = v_emp AND p.estado IN ('Activo', 'Al día', 'Vencido')
   ),
   ag AS (
     SELECT a.prestamo_id,
@@ -426,8 +494,7 @@ AS $$
            greatest(0, max(coalesce(a.dias_atraso, 0))) AS max_dias
     FROM amortizacion a
     JOIN pr ON pr.id = a.prestamo_id
-    CROSS JOIN emp
-    WHERE a.empresa_id = emp.id
+    WHERE a.empresa_id = v_emp
     GROUP BY a.prestamo_id
   ),
   q AS (SELECT nullif(p_search, '') AS q),
@@ -471,38 +538,45 @@ AS $$
                'ultimaGestion', gs.ultima
              ) ORDER BY pg.rn)
       FROM pagina pg
-      CROSS JOIN emp
       LEFT JOIN LATERAL (
         SELECT count(*) AS n,
                (SELECT jsonb_build_object('resultado', g2.resultado, 'created_at', g2.created_at)
                 FROM crm_gestiones g2
-                WHERE g2.prestamo_id = pg.id AND g2.empresa_id = emp.id
+                WHERE g2.prestamo_id = pg.id AND g2.empresa_id = v_emp
                 ORDER BY g2.created_at DESC NULLS LAST, g2.id
                 LIMIT 1) AS ultima
         FROM crm_gestiones g
-        WHERE g.prestamo_id = pg.id AND g.empresa_id = emp.id
+        WHERE g.prestamo_id = pg.id AND g.empresa_id = v_emp
       ) gs ON true), '[]'::jsonb)
+  )
   );
+END;
 $$;
 
 -- ── 5) Renovación: candidatos paginados + totales ────────────────
 CREATE OR REPLACE FUNCTION public.renovacion_candidatos(p_limit integer DEFAULT 100, p_offset integer DEFAULT 0)
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  pr AS (
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH pr AS (
     SELECT p.id, p.monto_solicitado, p.monto_total_pagar, p.num_cuotas, p.frecuencia::text AS frecuencia,
            p.tasa_interes, p.modalidad::text AS modalidad, p.cliente_id, p.ruta_id, p.caja_id, p.cobrador_id,
            c.nombre_completo, c.telefono
     FROM prestamos p
     JOIN clientes c ON c.id = p.cliente_id
-    CROSS JOIN emp
-    WHERE p.empresa_id = emp.id AND p.estado::text IN ('Activo', 'Al día')
+    WHERE p.empresa_id = v_emp AND p.estado IN ('Activo', 'Al día')
   ),
   ag AS (
     SELECT a.prestamo_id,
@@ -513,8 +587,7 @@ AS $$
            greatest(0, max(coalesce(a.dias_atraso, 0))) AS max_atraso
     FROM amortizacion a
     JOIN pr ON pr.id = a.prestamo_id
-    CROSS JOIN emp
-    WHERE a.empresa_id = emp.id
+    WHERE a.empresa_id = v_emp
     GROUP BY a.prestamo_id
   ),
   x AS (
@@ -554,7 +627,9 @@ AS $$
                'elegible', pg.elegible, 'montoSugerido', pg.monto_sugerido
              ) ORDER BY pg.rn)
       FROM pagina pg), '[]'::jsonb)
+  )
   );
+END;
 $$;
 
 -- ── 6) Mapa GPS: puntos en el área visible (últimos N por tipo) ──
@@ -569,21 +644,28 @@ CREATE OR REPLACE FUNCTION public.mapa_puntos(
   p_limit integer DEFAULT 500
 )
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  q AS (SELECT lower(nullif(p_search, '')) AS q),
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH q AS (SELECT lower(nullif(p_search, '')) AS q),
   bb AS (SELECT (p_min_lat IS NOT NULL AND p_min_lng IS NOT NULL AND p_max_lat IS NOT NULL AND p_max_lng IS NOT NULL) AS on_),
   cl AS (
     SELECT 'cliente'::text AS tipo, c.gps_lat AS lat, c.gps_lng AS lng, c.nombre_completo AS nombre,
            c.id_cliente, c.direccion, NULL::numeric AS monto, c.created_at AS fecha
-    FROM clientes c, emp, q, bb
+    FROM clientes c, q, bb
     WHERE coalesce(p_tipo, 'todos') IN ('todos', 'clientes')
-      AND c.empresa_id = emp.id
+      AND c.empresa_id = v_emp
       AND c.gps_lat IS NOT NULL AND c.gps_lng IS NOT NULL AND c.gps_lat <> 0 AND c.gps_lng <> 0
       AND (NOT bb.on_ OR (c.gps_lat BETWEEN p_min_lat AND p_max_lat AND c.gps_lng BETWEEN p_min_lng AND p_max_lng))
       AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0 OR strpos(lower(c.id_cliente), q.q) > 0
@@ -596,9 +678,9 @@ AS $$
            p.monto_solicitado, p.created_at
     FROM prestamos p
     JOIN clientes c ON c.id = p.cliente_id
-    CROSS JOIN emp CROSS JOIN q CROSS JOIN bb
+    CROSS JOIN q CROSS JOIN bb
     WHERE coalesce(p_tipo, 'todos') IN ('todos', 'prestamos')
-      AND p.empresa_id = emp.id
+      AND p.empresa_id = v_emp
       AND p.gps_lat IS NOT NULL AND p.gps_lng IS NOT NULL AND p.gps_lat <> 0 AND p.gps_lng <> 0
       AND (NOT bb.on_ OR (p.gps_lat BETWEEN p_min_lat AND p_max_lat AND p.gps_lng BETWEEN p_min_lng AND p_max_lng))
       AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0)
@@ -611,9 +693,9 @@ AS $$
     FROM pagos p
     JOIN prestamos pr2 ON pr2.id = p.prestamo_id
     JOIN clientes c ON c.id = pr2.cliente_id
-    CROSS JOIN emp CROSS JOIN q CROSS JOIN bb
+    CROSS JOIN q CROSS JOIN bb
     WHERE coalesce(p_tipo, 'todos') IN ('todos', 'pagos')
-      AND p.empresa_id = emp.id
+      AND p.empresa_id = v_emp
       AND p.gps_lat IS NOT NULL AND p.gps_lng IS NOT NULL AND p.gps_lat <> 0 AND p.gps_lng <> 0
       AND (NOT bb.on_ OR (p.gps_lat BETWEEN p_min_lat AND p_max_lat AND p.gps_lng BETWEEN p_min_lng AND p_max_lng))
       AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0)
@@ -624,39 +706,50 @@ AS $$
   SELECT coalesce(jsonb_agg(jsonb_build_object(
            'tipo', t.tipo, 'lat', t.lat, 'lng', t.lng, 'nombre', t.nombre, 'id_cliente', t.id_cliente,
            'direccion', t.direccion, 'monto', t.monto, 'fecha', t.fecha)), '[]'::jsonb)
-  FROM todo t;
+  FROM todo t
+  );
+END;
 $$;
 
 -- Conteos totales (todo el tenant, con el mismo filtro/búsqueda) para los KPIs del mapa.
 CREATE OR REPLACE FUNCTION public.mapa_totales(p_tipo text DEFAULT 'todos', p_search text DEFAULT NULL)
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  q AS (SELECT lower(nullif(p_search, '')) AS q)
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH q AS (SELECT lower(nullif(p_search, '')) AS q)
   SELECT jsonb_build_object(
     'clientes', CASE WHEN coalesce(p_tipo, 'todos') IN ('todos', 'clientes') THEN (
-      SELECT count(*) FROM clientes c, emp, q
-      WHERE c.empresa_id = emp.id
+      SELECT count(*) FROM clientes c, q
+      WHERE c.empresa_id = v_emp
         AND c.gps_lat IS NOT NULL AND c.gps_lng IS NOT NULL AND c.gps_lat <> 0 AND c.gps_lng <> 0
         AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0 OR strpos(lower(c.id_cliente), q.q) > 0
              OR strpos(lower(coalesce(c.direccion, '')), q.q) > 0)) ELSE 0 END,
     'prestamos', CASE WHEN coalesce(p_tipo, 'todos') IN ('todos', 'prestamos') THEN (
-      SELECT count(*) FROM prestamos p JOIN clientes c ON c.id = p.cliente_id CROSS JOIN emp CROSS JOIN q
-      WHERE p.empresa_id = emp.id
+      SELECT count(*) FROM prestamos p JOIN clientes c ON c.id = p.cliente_id CROSS JOIN q
+      WHERE p.empresa_id = v_emp
         AND p.gps_lat IS NOT NULL AND p.gps_lng IS NOT NULL AND p.gps_lat <> 0 AND p.gps_lng <> 0
         AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0)) ELSE 0 END,
     'pagos', CASE WHEN coalesce(p_tipo, 'todos') IN ('todos', 'pagos') THEN (
       SELECT count(*) FROM pagos p JOIN prestamos pr ON pr.id = p.prestamo_id JOIN clientes c ON c.id = pr.cliente_id
-      CROSS JOIN emp CROSS JOIN q
-      WHERE p.empresa_id = emp.id
+      CROSS JOIN q
+      WHERE p.empresa_id = v_emp
         AND p.gps_lat IS NOT NULL AND p.gps_lng IS NOT NULL AND p.gps_lat <> 0 AND p.gps_lng <> 0
         AND (q.q IS NULL OR strpos(lower(c.nombre_completo), q.q) > 0)) ELSE 0 END
+  )
   );
+END;
 $$;
 
 -- ── 7) Lead scoring: score por cliente en SQL, paginado ──────────
@@ -669,26 +762,35 @@ CREATE OR REPLACE FUNCTION public.lead_scoring_listado(
   p_offset integer DEFAULT 0
 )
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (
-    SELECT e.id, coalesce(e.dias_gracia, 0) AS gracia, coalesce(p_hoy, (now() AT TIME ZONE 'UTC')::date) AS hoy
-    FROM empresas e
-    WHERE e.id = public.get_user_empresa_id()
-  ),
-  cl AS (
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+  v_gracia integer;
+  v_hoy date := coalesce(p_hoy, (now() AT TIME ZONE 'UTC')::date);
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  SELECT coalesce(e.dias_gracia, 0) INTO v_gracia FROM empresas e WHERE e.id = v_emp;
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('total', 0, 'resumen', NULL, 'rows', '[]'::jsonb);
+  END IF;
+  RETURN (
+  WITH   cl AS (
     SELECT c.id, c.id_cliente, c.nombre_completo
-    FROM clientes c, emp
-    WHERE c.empresa_id = emp.id AND c.activo = true
+    FROM clientes c
+    WHERE c.empresa_id = v_emp AND c.activo = true
   ),
   pr AS (
     SELECT p.id, p.cliente_id, p.estado::text AS estado, coalesce(p.monto_solicitado, 0) AS monto
-    FROM prestamos p, emp
-    WHERE p.empresa_id = emp.id
+    FROM prestamos p
+    WHERE p.empresa_id = v_emp
   ),
   pa AS (
     SELECT pr.cliente_id, count(*)::integer AS total, count(*) FILTER (WHERE pr.estado = 'Liquidado')::integer AS liquidados,
@@ -697,11 +799,10 @@ AS $$
   ),
   cuo AS (
     SELECT pr.cliente_id, a.status, coalesce(a.dias_atraso, 0) AS dias, coalesce(a.saldo_total, 0) AS saldo,
-           emp.hoy - a.fecha_vencimiento::date AS diff, emp.gracia
+           v_hoy - a.fecha_vencimiento::date AS diff, v_gracia AS gracia
     FROM amortizacion a
     JOIN pr ON pr.id = a.prestamo_id
-    CROSS JOIN emp
-    WHERE a.empresa_id = emp.id
+    WHERE a.empresa_id = v_emp
   ),
   cls AS (
     SELECT cuo.*,
@@ -742,9 +843,8 @@ AS $$
            coalesce(cu.saldo, 0) AS saldo,
            CASE WHEN coalesce(cu.con_atraso, 0) > 0 THEN cu.total_dias::float8 / cu.con_atraso ELSE 0 END AS avg_dias,
            coalesce(cu.max_dias, 0) AS max_dias,
-           emp.gracia
+           v_gracia AS gracia
     FROM cl
-    CROSS JOIN emp
     LEFT JOIN pa ON pa.cliente_id = cl.id
     LEFT JOIN cu ON cu.cliente_id = cl.id
   ),
@@ -788,25 +888,37 @@ AS $$
                'montoHistorico', pg.monto_historico, 'diasGracia', pg.gracia
              ) ORDER BY pg.rn)
       FROM pagina pg), '[]'::jsonb)
+  )
   );
+END;
 $$;
 
 -- ── 8) Promesas: KPIs ────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.promesas_resumen()
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
   SELECT jsonb_build_object(
     'total', count(*),
     'pendientes', count(*) FILTER (WHERE pp.status = 'Pendiente'),
     'vencidas', count(*) FILTER (WHERE pp.status = 'Vencida'),
     'monto', coalesce(sum(coalesce(pp.monto_prometido, 0)), 0))
   FROM promesas_pago pp
-  WHERE pp.empresa_id = public.get_user_empresa_id();
+  WHERE pp.empresa_id = v_emp
+  );
+END;
 $$;
 
 -- ── 9) Gastos: listado paginado + KPIs con los mismos filtros ────
@@ -821,21 +933,27 @@ CREATE OR REPLACE FUNCTION public.gastos_listado(
   p_offset integer DEFAULT 0
 )
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH emp AS (SELECT public.get_user_empresa_id() AS id),
-  q AS (SELECT lower(nullif(p_search, '')) AS q),
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH q AS (SELECT lower(nullif(p_search, '')) AS q),
   g AS (
     SELECT m.id, m.created_at, coalesce(m.concepto, '') AS concepto, coalesce(m.monto, 0) AS monto,
            coalesce(nullif(cj.nombre, ''), '—') AS caja, m.caja_id, public._gasto_categoria(m.concepto) AS categoria
     FROM movimientos_caja m
-    CROSS JOIN emp
     LEFT JOIN cajas cj ON cj.id = m.caja_id
-    WHERE m.empresa_id = emp.id
+    WHERE m.empresa_id = v_emp
       AND m.tipo = 'salida'
       AND coalesce(m.concepto, '') ~ '^\[[^\n\r]+\]'
   ),
@@ -865,7 +983,9 @@ AS $$
                'id', pg.id, 'fecha', pg.created_at, 'concepto', pg.concepto, 'monto', pg.monto,
                'caja', pg.caja, 'cajaId', pg.caja_id, 'categoria', pg.categoria) ORDER BY pg.rn)
       FROM pagina pg), '[]'::jsonb)
+  )
   );
+END;
 $$;
 
 -- ── 10) Caja: kardex paginado con saldo corrido ──────────────────
@@ -953,18 +1073,26 @@ $$;
 -- p_today: fecha UTC (como new Date().toISOString().slice(0, 10)).
 CREATE OR REPLACE FUNCTION public.caja_detalle_stats(p_caja_id uuid, p_today date DEFAULT NULL)
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH t AS (SELECT coalesce(p_today, (now() AT TIME ZONE 'UTC')::date) AS hoy, public.get_user_empresa_id() AS emp),
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH t AS (SELECT coalesce(p_today, (now() AT TIME ZONE 'UTC')::date) AS hoy),
   pr AS (
     SELECT p.id, coalesce(p.monto_solicitado, 0) AS monto, coalesce(p.monto_total_pagar, 0) AS total,
            p.estado::text AS estado, p.tipo_mora::text AS tipo_mora, coalesce(p.valor_mora, 0) AS valor_mora
     FROM prestamos p, t
-    WHERE p.caja_id = p_caja_id AND p.empresa_id = t.emp AND p.estado::text <> 'Cancelado'
+    WHERE p.caja_id = p_caja_id AND p.empresa_id = v_emp AND p.estado <> 'Cancelado'
   ),
   cu AS (
     SELECT a.prestamo_id,
@@ -985,7 +1113,7 @@ AS $$
     FROM amortizacion a
     JOIN pr ON pr.id = a.prestamo_id
     CROSS JOIN t
-    WHERE a.empresa_id = t.emp
+    WHERE a.empresa_id = v_emp
   ),
   ag AS (
     SELECT cu.prestamo_id,
@@ -1014,56 +1142,74 @@ AS $$
     'ganancia', coalesce(sum((x.total - x.monto) + x.mora_cobrada + x.mora), 0),
     'enMora', count(*) FILTER (WHERE x.tiene_atraso),
     'moraTotal', coalesce(sum(x.mora) FILTER (WHERE x.tiene_atraso), 0))
-  FROM x;
+  FROM x
+  );
+END;
 $$;
 
 -- ── 12) Caja: flujo de efectivo desde tablas fuente ──────────────
 CREATE OR REPLACE FUNCTION public.caja_flujo(p_caja_id uuid)
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH t AS (SELECT public.get_user_empresa_id() AS emp),
-  man AS (
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
+  WITH man AS (
     SELECT x.tipo, x.monto,
            strpos(x.l, 'transferencia') > 0 AS es_transf,
            (strpos(x.l, 'comisión') > 0 OR strpos(x.l, 'comision') > 0 OR strpos(x.l, 'corte') > 0 OR strpos(x.l, 'gasto cobrador') > 0) AS es_comision,
            (strpos(x.l, '[') > 0 OR left(x.l, 5) = 'gasto') AS es_gasto
     FROM (
       SELECT m.tipo::text AS tipo, coalesce(m.monto, 0) AS monto, public._lower_es(m.concepto) AS l
-      FROM movimientos_caja m, t
-      WHERE m.caja_id = p_caja_id AND m.empresa_id = t.emp AND m.prestamo_id IS NULL
+      FROM movimientos_caja m
+      WHERE m.caja_id = p_caja_id AND m.empresa_id = v_emp AND m.prestamo_id IS NULL
     ) x
     WHERE NOT (strpos(x.l, 'corrección') > 0 OR strpos(x.l, 'correccion') > 0 OR strpos(x.l, 'movido a caja') > 0)
   )
   SELECT jsonb_build_object(
-    'cobros', (SELECT coalesce(sum(coalesce(p.monto_recibido, 0)), 0) FROM pagos p, t
-               WHERE p.caja_id = p_caja_id AND p.empresa_id = t.emp AND p.anulado = false),
-    'desembolsos', (SELECT coalesce(sum(coalesce(pr.monto_solicitado, 0)), 0) FROM prestamos pr, t
-                    WHERE pr.caja_id = p_caja_id AND pr.empresa_id = t.emp AND pr.estado::text <> 'Cancelado'),
+    'cobros', (SELECT coalesce(sum(coalesce(p.monto_recibido, 0)), 0) FROM pagos p
+               WHERE p.caja_id = p_caja_id AND p.empresa_id = v_emp AND p.anulado = false),
+    'desembolsos', (SELECT coalesce(sum(coalesce(pr.monto_solicitado, 0)), 0) FROM prestamos pr
+                    WHERE pr.caja_id = p_caja_id AND pr.empresa_id = v_emp AND pr.estado <> 'Cancelado'),
     'transferencias_in', (SELECT coalesce(sum(monto), 0) FROM man WHERE es_transf AND tipo = 'entrada'),
     'transferencias_out', (SELECT coalesce(sum(monto), 0) FROM man WHERE es_transf AND tipo <> 'entrada'),
     'comisiones', (SELECT coalesce(sum(monto), 0) FROM man WHERE NOT es_transf AND es_comision),
     'gastos', (SELECT coalesce(sum(monto), 0) FROM man WHERE NOT es_transf AND NOT es_comision AND es_gasto),
     'depositos', (SELECT coalesce(sum(monto), 0) FROM man WHERE NOT es_transf AND NOT es_comision AND NOT es_gasto AND tipo = 'entrada'),
     'retiros', (SELECT coalesce(sum(monto), 0) FROM man WHERE NOT es_transf AND NOT es_comision AND NOT es_gasto AND tipo <> 'entrada')
+  )
   );
+END;
 $$;
 
 -- ── 13) Caja: totales de las pestañas Préstamos / Pagos / Transferencias ──
 -- p_fuente: 'prestamos' | 'pagos' | 'transferencias'.
 CREATE OR REPLACE FUNCTION public.caja_fuentes_resumen(p_caja_id uuid, p_fuente text)
 RETURNS jsonb
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = public
 SET jit = off
+SET plan_cache_mode = force_custom_plan
 AS $$
-  WITH t AS (SELECT public.get_user_empresa_id() AS emp)
+DECLARE
+  v_emp uuid := public.get_user_empresa_id();
+BEGIN
+  IF v_emp IS NULL THEN
+    RETURN NULL;
+  END IF;
+  RETURN (
   SELECT CASE p_fuente
     WHEN 'prestamos' THEN (
       SELECT jsonb_build_object(
@@ -1071,21 +1217,23 @@ AS $$
         'cancelados', count(*) FILTER (WHERE p.estado::text = 'Cancelado'),
         'colocado', coalesce(sum(coalesce(p.monto_solicitado, 0)) FILTER (WHERE p.estado::text IS DISTINCT FROM 'Cancelado'), 0),
         'totalPagar', coalesce(sum(coalesce(p.monto_total_pagar, 0)) FILTER (WHERE p.estado::text IS DISTINCT FROM 'Cancelado'), 0))
-      FROM prestamos p, t WHERE p.caja_id = p_caja_id AND p.empresa_id = t.emp)
+      FROM prestamos p WHERE p.caja_id = p_caja_id AND p.empresa_id = v_emp)
     WHEN 'pagos' THEN (
       SELECT jsonb_build_object(
         'count', count(*),
         'cobrado', coalesce(sum(coalesce(p.monto_recibido, 0)) FILTER (WHERE NOT coalesce(p.anulado, false)), 0),
         'anulados', coalesce(sum(coalesce(p.monto_recibido, 0)) FILTER (WHERE coalesce(p.anulado, false)), 0))
-      FROM pagos p, t WHERE p.caja_id = p_caja_id AND p.empresa_id = t.emp)
+      FROM pagos p WHERE p.caja_id = p_caja_id AND p.empresa_id = v_emp)
     WHEN 'transferencias' THEN (
       SELECT jsonb_build_object(
         'count', count(*),
         'recibidas', coalesce(sum(coalesce(m.monto, 0)) FILTER (WHERE m.tipo::text = 'entrada'), 0),
         'enviadas', coalesce(sum(coalesce(m.monto, 0)) FILTER (WHERE m.tipo::text <> 'entrada'), 0))
-      FROM movimientos_caja m, t
-      WHERE m.caja_id = p_caja_id AND m.empresa_id = t.emp AND m.prestamo_id IS NULL AND m.concepto ILIKE '%transferencia%')
-  END;
+      FROM movimientos_caja m
+      WHERE m.caja_id = p_caja_id AND m.empresa_id = v_emp AND m.prestamo_id IS NULL AND m.concepto ILIKE '%transferencia%')
+  END
+  );
+END;
 $$;
 
 -- ── Permisos ─────────────────────────────────────────────────────

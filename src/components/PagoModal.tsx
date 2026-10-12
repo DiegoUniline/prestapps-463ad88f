@@ -3,6 +3,7 @@ import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useGeoLocation } from "@/hooks/useGeoLocation";
 import { supabase } from "@/integrations/supabase/client";
+import { rpcRegistrarPagoCompleto } from "@/lib/rpcIntegridad";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useMetodosPagoActivos } from "@/hooks/useCatalogos";
 import { useAuthStore } from "@/stores/authStore";
@@ -165,7 +166,11 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
     return Math.abs(d.total - c.saldo_total) < 0.01;
   }).length;
 
-  const canSubmit = montoNum > 0 && cajaId && distribution.length > 0 && !saving;
+  const cuotaDescuento = cuotasPendientes.find((c) => c.id === distribution[0]?.cuotaId);
+  const moraMaxDescuento = cuotaDescuento ? cuotaDescuento.saldo_mora : 0;
+  const descuentoExcedido = descuentoNum > 0 && descuentoNum - moraMaxDescuento > 0.005;
+
+  const canSubmit = montoNum > 0 && cajaId && distribution.length > 0 && !descuentoExcedido && !saving;
 
   const sendWhatsAppReceipt = async (dist: PaymentDistribution[], monto: number, metodoPago: string, descuentoMonto: number) => {
     try {
@@ -229,6 +234,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
           prestamo: { folio: `PRE-${prestamoId.slice(0, 8)}`, num_cuotas: prestamo?.num_cuotas || 0 },
         },
         `✅ Recibo de pago ${folio} por $${monto.toFixed(2)}. Gracias por su pago.`,
+        false,
+        prestamoId,
       );
     } catch (e) {
       console.error("WhatsApp receipt error:", e);
@@ -249,31 +256,24 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         capital: d.capital,
       }));
 
-      // Apply descuento_mora on first cuota if applicable
-      if (descuentoNum > 0 && distribution.length > 0) {
-        await supabase
-          .from("amortizacion")
-          .update({ descuento_mora: descuentoNum } as any)
-          .eq("id", distribution[0].cuotaId);
-      }
-
-      // Single atomic RPC call: insert pago + update amortizacion + movimiento_caja + cobrador + estado
-      const { data: result, error: rpcErr } = await supabase.rpc("registrar_pago", {
-        p_prestamo_id: prestamoId,
-        p_empresa_id: empresaId,
-        p_caja_id: cajaId,
-        p_cobrador_id: effectiveCobradorId,
-        p_ruta_id: rutaId || null,
-        p_registrado_por: user?.id || null,
-        p_monto: montoNum,
-        p_metodo: metodo,
-        p_fecha_pago: fechaPagoStr,
-        p_gps_lat: geo.lat ?? null,
-        p_gps_lng: geo.lng ?? null,
-        p_distribution: distJsonb,
+      // Una sola transacción: descuento de mora + pago + amortización + caja + cobrador + estado
+      await rpcRegistrarPagoCompleto({
+        prestamoId,
+        empresaId,
+        cajaId,
+        cobradorId: effectiveCobradorId,
+        rutaId: rutaId || null,
+        registradoPor: user?.id || null,
+        monto: montoNum,
+        metodo,
+        fechaPago: fechaPagoStr,
+        gpsLat: geo.lat ?? null,
+        gpsLng: geo.lng ?? null,
+        distribution: distJsonb,
+        descuentos: descuentoNum > 0 && distribution.length > 0
+          ? [{ cuota_id: distribution[0].cuotaId, monto: descuentoNum }]
+          : null,
       });
-
-      if (rpcErr) throw rpcErr;
 
       // Invalidate all finance-related queries
       invalidateFinanceQueries(queryClient, { prestamoId });
@@ -350,6 +350,11 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
                 onChange={(e) => setDescuento(e.target.value)}
                 className="mt-1 h-9 text-[13px]"
               />
+              {descuentoExcedido && (
+                <p className="text-[11px] text-destructive mt-1">
+                  Máximo {$$(moraMaxDescuento)} (mora de la cuota #{cuotaDescuento?.num_cuota ?? "—"})
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Método de Pago</Label>

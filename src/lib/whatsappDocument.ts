@@ -1,7 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import { encolarWhatsApp } from "@/lib/whatsappCola";
 
 /**
- * Uploads a PDF blob to temporary storage, sends it via WhatsApp as a file, then cleans up.
+ * Uploads a PDF blob to temporary storage and queues it for WhatsApp (whatsapp_cola).
  */
 export async function sendDocumentViaWhatsApp(
   empresaId: string,
@@ -9,7 +10,7 @@ export async function sendDocumentViaWhatsApp(
   pdfBlob: Blob,
   fileName: string,
   caption: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; queued?: boolean; error?: string }> {
   const uid = crypto.randomUUID();
   const storagePath = `temp-receipts/${empresaId}/${uid}.pdf`;
 
@@ -36,29 +37,18 @@ export async function sendDocumentViaWhatsApp(
       .from("empresa-assets")
       .getPublicUrl(storagePath);
 
-    // 4. Send the file with caption
-    const { data: result, error: invokeErr } = await supabase.functions.invoke("whatsapp-sender", {
-      body: {
-        action: "send-file",
-        empresa_id: empresaId,
-        phone,
-        url: urlData.publicUrl,
-        fileName,
-        caption,
-        tipo: "documento",
-      },
+    // 4. Encolar: whatsapp-sender lo envía con reintentos y borra el archivo temporal al terminar
+    const result = await encolarWhatsApp({
+      empresaId,
+      telefono: phone,
+      tipo: "documento",
+      mensaje: caption,
+      mediaUrl: urlData.publicUrl,
+      mediaTipo: "file",
+      mediaNombre: fileName,
     });
-
-    if (invokeErr) throw invokeErr;
-
-    // 5. Cleanup after 30s
-    setTimeout(async () => {
-      try {
-        await supabase.storage.from("empresa-assets").remove([storagePath]);
-      } catch { /* silent */ }
-    }, 30000);
-
-    return result || { success: true };
+    if (!result.success) throw new Error(result.error);
+    return result;
   } catch (e: any) {
     // Cleanup on error
     try {
