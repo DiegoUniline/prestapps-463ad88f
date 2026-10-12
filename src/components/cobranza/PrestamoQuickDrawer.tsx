@@ -36,10 +36,10 @@ export function PrestamoQuickDrawer({ open, onOpenChange, prestamoId }: Props) {
     },
   });
 
-  const cliente = (data?.pres as any)?.clientes;
-  const totalPagado = (data?.pagos || []).filter((p: any) => !p.anulado).reduce((s: number, p: any) => s + Number(p.monto_recibido), 0);
-  const saldoPendiente = (data?.amort || []).reduce((s: number, c: any) => s + Number(c.saldo_total || 0), 0);
-  const cuotasPagadas = (data?.amort || []).filter((c: any) => c.status === "Pagada").length;
+  const cliente = data?.pres?.clientes;
+  const totalPagado = (data?.pagos || []).filter((p) => !p.anulado).reduce((s: number, p) => s + Number(p.monto_recibido), 0);
+  const saldoPendiente = (data?.amort || []).reduce((s: number, c) => s + Number(c.saldo_total || 0), 0);
+  const cuotasPagadas = (data?.amort || []).filter((c) => c.status === "Pagada").length;
   const totalCuotas = (data?.amort || []).length;
   const pct = totalCuotas > 0 ? (cuotasPagadas / totalCuotas) * 100 : 0;
 
@@ -50,7 +50,7 @@ export function PrestamoQuickDrawer({ open, onOpenChange, prestamoId }: Props) {
           <SheetTitle className="flex items-center justify-between gap-2 text-base">
             <span className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
-              {(data?.pres as any)?.id_prestamo || "Préstamo"}
+              {data?.pres?.id_prestamo || "Préstamo"}
             </span>
             <Button size="sm" variant="ghost" className="h-7 text-xs"
               onClick={() => { onOpenChange(false); navigate(`/prestamos/${prestamoId}`); }}>
@@ -101,7 +101,7 @@ export function PrestamoQuickDrawer({ open, onOpenChange, prestamoId }: Props) {
 
             {/* KPIs */}
             <div className="grid grid-cols-3 gap-2">
-              <KPI label="Monto" value={$$(Number((data?.pres as any)?.monto_solicitado || 0))} />
+              <KPI label="Monto" value={$$(Number(data?.pres?.monto_solicitado || 0))} />
               <KPI label="Pagado" value={$$(totalPagado)} accent="emerald" />
               <KPI label="Saldo" value={$$(saldoPendiente)} accent={saldoPendiente > 0 ? "destructive" : "muted"} />
             </div>
@@ -118,7 +118,7 @@ export function PrestamoQuickDrawer({ open, onOpenChange, prestamoId }: Props) {
                 <TabsTrigger value="pagos"><Receipt className="h-3 w-3 mr-1" /> Pagos ({(data?.pagos || []).length})</TabsTrigger>
               </TabsList>
               <TabsContent value="amortizacion" className="mt-3 space-y-1 max-h-[40vh] overflow-y-auto">
-                {(data?.amort || []).map((c: any) => (
+                {(data?.amort || []).map((c) => (
                   <div key={c.id} className={cn(
                     "flex items-center justify-between text-xs px-2 py-1.5 rounded",
                     c.status === "Pagada" ? "bg-emerald-500/10" :
@@ -138,7 +138,7 @@ export function PrestamoQuickDrawer({ open, onOpenChange, prestamoId }: Props) {
               <TabsContent value="pagos" className="mt-3 space-y-1 max-h-[40vh] overflow-y-auto">
                 {(data?.pagos || []).length === 0 ? (
                   <p className="text-center text-xs text-muted-foreground py-6">Sin pagos aún</p>
-                ) : (data?.pagos || []).map((p: any) => (
+                ) : (data?.pagos || []).map((p) => (
                   <div key={p.id} className={cn(
                     "flex items-center justify-between text-xs px-2 py-1.5 rounded bg-secondary/40",
                     p.anulado && "opacity-50"

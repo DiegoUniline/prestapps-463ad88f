@@ -16,7 +16,8 @@ import { EditPrestamoModal } from "@/components/EditPrestamoModal";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { $$, fmtDate } from "@/lib/utils";
+import { $$, fmtDate, errorMessage } from "@/lib/utils";
+import type { ComponentProps } from "react";
 import { usePrestamoDetalle, useAmortizacion, usePagos, usePromesas, useCajas } from "@/hooks/usePrestamoDetalle";
 import { useRutasOptions } from "@/hooks/usePrestamos";
 import { generarEstadoCuenta, generarContrato, generarReciboPagos } from "@/lib/pdfDocuments";
@@ -25,7 +26,7 @@ import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 import { sendReceiptAsImage } from "@/lib/whatsappReceipt";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
-import { cuotaVisualStatus, type Actividad } from "@/pages/prestamo-detalle/utils";
+import { cuotaVisualStatus, type Actividad, type CuotaAmort, type PagoRow } from "@/pages/prestamo-detalle/utils";
 import { KpiCards } from "@/pages/prestamo-detalle/ui";
 import { buildActividad, buildPdfData } from "@/pages/prestamo-detalle/documentos";
 import { PrestamoHeader } from "@/pages/prestamo-detalle/PrestamoHeader";
@@ -35,6 +36,9 @@ import { TabPagos } from "@/pages/prestamo-detalle/TabPagos";
 import { TabPromesas } from "@/pages/prestamo-detalle/TabPromesas";
 import { TabActividad } from "@/pages/prestamo-detalle/TabActividad";
 
+// Campos que usePagos no selecciona (llegan undefined en runtime) pero el recibo consulta de forma opcional.
+type PagoRecibo = PagoRow & { fecha_pago?: string | null; cobrador_nombre?: string | null };
+
 export default function PrestamoDetallePage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -43,21 +47,21 @@ export default function PrestamoDetallePage() {
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [pagoOpen, setPagoOpen] = useState(false);
   const [promesaOpen, setPromesaOpen] = useState(false);
-  const [selectedCuota, setSelectedCuota] = useState<any>(null);
+  const [selectedCuota, setSelectedCuota] = useState<CuotaAmort | null>(null);
   const [showOptional, setShowOptional] = useState(false);
   const [amortFilter, setAmortFilter] = useState<"todas" | "Pagada" | "Pendiente" | "Vencida">("todas");
   const [reasignarOpen, setReasignarOpen] = useState(false);
   const [anularPagoOpen, setAnularPagoOpen] = useState(false);
-  const [selectedPago, setSelectedPago] = useState<any>(null);
+  const [selectedPago, setSelectedPago] = useState<ComponentProps<typeof AnularPagoModal>["pago"]>(null);
   const [cancelarOpen, setCancelarOpen] = useState(false);
   const [reestructurarOpen, setReestructurarOpen] = useState(false);
   const [editarOpen, setEditarOpen] = useState(false);
   const [liquidarOpen, setLiquidarOpen] = useState(false);
   const [docPreview, setDocPreview] = useState<{ open: boolean; type: "estado" | "contrato" | "pagos" | null }>({ open: false, type: null });
   const [editPagoOpen, setEditPagoOpen] = useState(false);
-  const [editPagoData, setEditPagoData] = useState<any>(null);
+  const [editPagoData, setEditPagoData] = useState<ComponentProps<typeof EditPagoModal>["pago"]>(null);
   const [fotoLightbox, setFotoLightbox] = useState(false);
-  const [waPreview, setWaPreview] = useState<{ open: boolean; pg: any; idx: number } | null>(null);
+  const [waPreview, setWaPreview] = useState<{ open: boolean; pg: PagoRow; idx: number } | null>(null);
   const [eliminarOpen, setEliminarOpen] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const { role } = useCurrentUserRole();
@@ -115,9 +119,9 @@ export default function PrestamoDetallePage() {
     );
   }
 
-  const cliente = prestamo.clientes as any;
-  const caja = prestamo.cajas as any;
-  const ruta = prestamo.rutas as any;
+  const cliente = prestamo.clientes;
+  const caja = prestamo.cajas;
+  const ruta = prestamo.rutas;
 
   // KPI calculations
   const totalPagado = amort.reduce((s, c) => s + Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0), 0);
@@ -140,7 +144,7 @@ export default function PrestamoDetallePage() {
 
   const estado = (prestamo.estado || "Activo") as string;
   const isCancelado = estado === "Cancelado" || estado === "Reestructurado";
-  const folioId = (prestamo as any).id_prestamo || `PRE-${(prestamo.id?.slice(0, 8) || id)}`;
+  const folioId = prestamo.id_prestamo || `PRE-${(prestamo.id?.slice(0, 8) || id)}`;
   const shortId = folioId;
 
   const kpis = [
@@ -154,7 +158,7 @@ export default function PrestamoDetallePage() {
   ];
 
   // Pagos totals (exclude annulled)
-  const validPagos = pagosRaw.filter((pg) => !(pg as any).anulado);
+  const validPagos = pagosRaw.filter((pg) => !pg.anulado);
   const totalPagosMonto = validPagos.reduce((s, pg) => s + Number(pg.monto_recibido || 0), 0);
   const totalPagosMora = validPagos.reduce((s, pg) => s + Number(pg.aplicado_mora || 0), 0);
   const totalPagosInteres = validPagos.reduce((s, pg) => s + Number(pg.aplicado_interes || 0), 0);
@@ -184,18 +188,18 @@ export default function PrestamoDetallePage() {
     return generarReciboPagos(pdfPrestamo, pdfPagos);
   };
 
-  const buildReceiptCaption = (pg: any, i: number) => {
+  const buildReceiptCaption = (pg: PagoRow, i: number) => {
     const cuotaMatch = amort.find(c => c.id === pg.cuota_id);
     return `✅ *Comprobante de pago recibido*\n\n👤 *${cliente?.nombre_completo}*\n💰 Monto: *${$$(Number(pg.monto_recibido))}*\n📋 Préstamo: ${folioId}\n📅 Cuota ${cuotaMatch?.num_cuota || (i + 1)} de ${prestamo.num_cuotas}\n\n🙏 ¡Gracias por tu pago! Tu compromiso es muy importante para nosotros.`;
   };
 
-  const handleSendReceiptWA = (pg: any, i: number) => {
+  const handleSendReceiptWA = (pg: PagoRow, i: number) => {
     const telefono = cliente?.telefono;
     if (!telefono) { toast.error("Cliente sin teléfono"); return; }
     setWaPreview({ open: true, pg, idx: i });
   };
 
-  const doSendReceiptWA = async (pg: any, i: number, caption: string) => {
+  const doSendReceiptWA = async (pg: PagoRecibo, i: number, caption: string) => {
     const telefono = cliente?.telefono;
     if (!telefono) return;
     const cuotaMatch = amort.find(c => c.id === pg.cuota_id);
@@ -227,8 +231,8 @@ export default function PrestamoDetallePage() {
         },
         empresa: {
           nombre: empresaData?.nombre || "Empresa",
-          telefono: (empresaData as any)?.telefono || undefined,
-          direccion: (empresaData as any)?.direccion || undefined,
+          telefono: empresaData?.telefono || undefined,
+          direccion: empresaData?.direccion || undefined,
           logo_url: empresaData?.logo_url || null,
         },
         cliente: { nombre: cliente?.nombre_completo || "Cliente", telefono: cliente?.telefono || undefined },
@@ -501,8 +505,8 @@ export default function PrestamoDetallePage() {
             setEliminarOpen(false);
             queryClient.invalidateQueries();
             navigate("/prestamos");
-          } catch (e: any) {
-            toast.error(e.message || "No se pudo eliminar");
+          } catch (e) {
+            toast.error(errorMessage(e) || "No se pudo eliminar");
           } finally {
             setEliminando(false);
           }
@@ -546,7 +550,7 @@ export default function PrestamoDetallePage() {
           ruta_id: prestamo.ruta_id,
           cobrador_id: prestamo.cobrador_id,
           notas: prestamo.notas || null,
-          codigo_interno: (prestamo as any).codigo_interno || null,
+          codigo_interno: prestamo.codigo_interno || null,
         }}
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
         rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}

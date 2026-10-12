@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Receipt, TrendingDown, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { $$, fmtDateTime, parseLocalDate } from "@/lib/utils";
+import { $$, errorMessage, fmtDateTime, parseLocalDate } from "@/lib/utils";
 const CATEGORIAS_GASTO = [
   "Oficina",
   "Transporte",
@@ -140,8 +140,8 @@ export default function GastosPage() {
       toast.success(`Gasto de ${$$(montoNum)} registrado`);
       invalidateFinanceQueries(queryClient);
       resetForm();
-    } catch (err: any) {
-      toast.error("Error: " + err.message);
+    } catch (err) {
+      toast.error("Error: " + errorMessage(err));
     } finally {
       setSaving(false);
     }

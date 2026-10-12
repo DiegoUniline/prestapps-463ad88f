@@ -35,6 +35,8 @@ import { RangoFechas } from "@/pages/cobrador-view/RangoFechas";
 
 const MiRutaMap = lazy(() => import("@/components/cobranza/MiRutaMap").then((module) => ({ default: module.MiRutaMap })));
 
+type PagoCuota = React.ComponentProps<typeof PagoModal>["cuotasPendientes"][number];
+
 export default function CobradorViewPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -68,7 +70,7 @@ export default function CobradorViewPage() {
   // Payment modal
   const [pagoOpen, setPagoOpen] = useState(false);
   const [pagoPrestamoId, setPagoPrestamoId] = useState("");
-  const [pagoCuotas, setPagoCuotas] = useState<any[]>([]);
+  const [pagoCuotas, setPagoCuotas] = useState<PagoCuota[]>([]);
   const [pagoRutaId, setPagoRutaId] = useState<string | null>(null);
   const [pagoCobradorId, setPagoCobradorId] = useState<string | null>(null);
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();
@@ -231,7 +233,7 @@ export default function CobradorViewPage() {
       .order("num_cuota");
 
     setPagoPrestamoId(item.prestamoId);
-    setPagoCuotas((data || []).map((c: any) => ({
+    setPagoCuotas((data || []).map((c) => ({
       id: c.id,
       num_cuota: c.num_cuota,
       saldo_mora: Number(c.saldo_mora || 0),
@@ -241,7 +243,7 @@ export default function CobradorViewPage() {
       mora_pagada: Number(c.mora_pagada || 0),
       interes_pagado: Number(c.interes_pagado || 0),
       capital_pagado: Number(c.capital_pagado || 0),
-      status: c.status,
+      status: c.status as string, // non-null: the .neq("status") filter excludes NULLs
       fecha_vencimiento: c.fecha_vencimiento,
     })));
     setPagoRutaId(item.rutaId);

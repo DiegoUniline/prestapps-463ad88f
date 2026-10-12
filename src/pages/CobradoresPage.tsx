@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Search, UserCheck, Wallet, DollarSign, Percent, Scissors, ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
-import { cn, $$, fmtDateTime } from "@/lib/utils";
+import { cn, $$, fmtDateTime, errorMessage } from "@/lib/utils";
 // ── Data hooks ────────────────────────────────────────────────────
 interface Cobrador {
   id: string;
@@ -32,7 +32,7 @@ function useCobradores(empresaId: string) {
   return useQuery({
     queryKey: ["profiles-cobradores", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("profiles")
+      const { data, error } = await supabase.from("profiles")
         .select("id, nombre_completo, telefono, porcentaje_comision, efectivo_en_mano, activo, created_at, empresa_id")
         .eq("empresa_id", empresaId)
         .order("nombre_completo");
@@ -83,7 +83,7 @@ async function fetchPagosSinCorte(empresaId: string, cobradorId: string) {
       .eq("empresa_id", empresaId)
       .eq("cobrador_id", cobradorId)
       .eq("anulado", false)
-      .is("corte_id" as any, null)
+      .is("corte_id", null)
       .order("created_at", { ascending: true })
   );
 }
@@ -145,7 +145,7 @@ export default function CobradoresPage() {
     });
     if (sortKey && sortDir) {
       data = [...data].sort((a, b) => {
-        const av = a[sortKey] as any; const bv = b[sortKey] as any;
+        const av = a[sortKey]; const bv = b[sortKey];
         if (typeof av === "number" && typeof bv === "number") return sortDir === "asc" ? av - bv : bv - av;
         if (typeof av === "boolean") return sortDir === "asc" ? (av ? 1 : -1) - (bv ? 1 : -1) : (bv ? 1 : -1) - (av ? 1 : -1);
         return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
@@ -172,8 +172,8 @@ export default function CobradoresPage() {
       setCorteTotal(totalCobrado);
       setCorteComision(comision);
       setCorteDeposito(efectivo);
-    } catch (err: any) {
-      toast.error("Error cargando datos: " + err.message);
+    } catch (err) {
+      toast.error("Error cargando datos: " + errorMessage(err));
     } finally {
       setLoadingCorte(false);
     }
@@ -201,8 +201,8 @@ export default function CobradoresPage() {
       queryClient.invalidateQueries({ queryKey: ["pagos-no-liquidados"] });
       queryClient.invalidateQueries({ queryKey: ["historial-cortes"] });
       resetModal();
-    } catch (err: any) {
-      toast.error("Error: " + err.message);
+    } catch (err) {
+      toast.error("Error: " + errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -358,7 +358,7 @@ export default function CobradoresPage() {
           <h2 className="text-[14px] font-semibold mb-2">Historial de Cortes</h2>
           {/* Mobile cortes cards */}
           <div className="md:hidden space-y-2">
-            {cortes.map((ct: any) => (
+            {cortes.map((ct) => (
               <div key={ct.id} className="bg-card rounded-lg border border-border p-3 text-[12px]">
                 <div className="flex justify-between items-start">
                   <div><p className="font-medium text-[13px]">{ct.cobrador_nombre || "—"}</p><p className="text-muted-foreground">{ct.created_at ? fmtDateTime(ct.created_at) : "—"}</p></div>
@@ -385,7 +385,7 @@ export default function CobradoresPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cortes.map((ct: any) => (
+                {cortes.map((ct) => (
                   <TableRow key={ct.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                     <TableCell className="text-[12px] text-muted-foreground px-3 whitespace-nowrap">{ct.created_at ? fmtDateTime(ct.created_at) : "—"}</TableCell>
                     <TableCell className="font-medium text-[13px] px-3">{ct.cobrador_nombre || "—"}</TableCell>

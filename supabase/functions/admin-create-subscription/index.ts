@@ -22,7 +22,7 @@ const withCors = (handler: (req: Request) => Response | Promise<Response>) => as
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[ADMIN-CREATE-SUB] ${step}${d}`);
 };
@@ -140,11 +140,12 @@ serve(withCors(async (req) => {
                 await stripe.subscriptions.cancel(ex.stripe_subscription_id!);
               }
               logStep("Stripe subscription cancelled", { id: ex.stripe_subscription_id });
-            } catch (e: any) {
-              if (e?.code === "resource_missing") {
+            } catch (e) {
+              const err = e as { code?: string; message?: string } | null;
+              if (err?.code === "resource_missing") {
                 logStep("Stripe subscription not found, skipping", { id: ex.stripe_subscription_id });
               } else {
-                throw new Error(`No se pudo cancelar la suscripción de Stripe ${ex.stripe_subscription_id}: ${e?.message || e}`);
+                throw new Error(`No se pudo cancelar la suscripción de Stripe ${ex.stripe_subscription_id}: ${err?.message || e}`);
               }
             }
           }

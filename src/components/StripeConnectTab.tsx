@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/utils";
 import { CreditCard, ExternalLink, CheckCircle2, XCircle, Loader2, RefreshCw } from "lucide-react";
 
 interface ConnectStatus {
@@ -61,8 +62,8 @@ export function StripeConnectTab() {
         window.open(data.url, "_blank");
         toast.info("Se abrió Stripe en una nueva pestaña. Completa el proceso y luego regresa aquí.");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Error al conectar con Stripe");
+    } catch (err) {
+      toast.error(errorMessage(err) || "Error al conectar con Stripe");
     } finally {
       setLoading(false);
     }

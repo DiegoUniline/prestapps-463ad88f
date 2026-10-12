@@ -269,7 +269,7 @@ export default function NuevoPrestamoPage() {
       invalidateFinanceQueries(queryClient);
       navigate(`/prestamos/${data.id}`);
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast.error(err.message || "Error al crear préstamo");
     },
   });
@@ -366,7 +366,7 @@ export default function NuevoPrestamoPage() {
               <div className="space-y-1.5">
                 <Label className="text-[13px]">Caja {tipoCuenta === "prestamo" && !esInicial ? "*" : ""}</Label>
                 <SearchableSelect
-                  options={cajas.map((c: any) => ({ value: c.id, label: c.nombre, subtitle: `Saldo: ${$$(Number(c.saldo_actual || 0))}` }))}
+                  options={cajas.map((c) => ({ value: c.id, label: c.nombre, subtitle: `Saldo: ${$$(Number(c.saldo_actual || 0))}` }))}
                   value={cajaId}
                   onValueChange={setCajaId}
                   placeholder="Seleccionar caja"
@@ -374,8 +374,8 @@ export default function NuevoPrestamoPage() {
                   createLabel="Crear nueva caja"
                 />
                 {cajaId && (() => {
-                  const cajaSelec = cajas.find((c: any) => c.id === cajaId);
-                  const saldo = Number((cajaSelec as any)?.saldo_actual || 0);
+                  const cajaSelec = cajas.find((c) => c.id === cajaId);
+                  const saldo = Number(cajaSelec?.saldo_actual || 0);
                   return (
                     <p className={cn("text-[11px] font-medium", saldo > 0 ? "text-green-600" : "text-destructive")}>
                       Disponible: {$$(saldo)}
@@ -403,8 +403,8 @@ export default function NuevoPrestamoPage() {
                 <Input type="number" min="0" value={montoSolicitado} onChange={(e) => setMontoSolicitado(e.target.value)} placeholder="0.00" />
                 {(() => {
                   if (esInicial || tipoCuenta !== "prestamo" || !cajaId || !monto) return null;
-                  const cajaSelec = cajas.find((c: any) => c.id === cajaId);
-                  const saldo = Number((cajaSelec as any)?.saldo_actual || 0);
+                  const cajaSelec = cajas.find((c) => c.id === cajaId);
+                  const saldo = Number(cajaSelec?.saldo_actual || 0);
                   if (monto > saldo) {
                     return (
                       <p className="text-[11px] text-destructive flex items-center gap-1">
@@ -688,7 +688,7 @@ export default function NuevoPrestamoPage() {
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="outline" onClick={() => navigate("/prestamos")}>Cancelar</Button>
-              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !!errorAmortizacion || (!esInicial && tipoCuenta === "prestamo" && !!cajaId && monto > Number((cajas.find((c: any) => c.id === cajaId) as any)?.saldo_actual || 0))}>
+              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !!errorAmortizacion || (!esInicial && tipoCuenta === "prestamo" && !!cajaId && monto > Number(cajas.find((c) => c.id === cajaId)?.saldo_actual || 0))}>
                 <Save className="h-4 w-4 mr-1.5" />
                 {createMutation.isPending ? "Guardando..." : tipoCuenta === "prestamo" ? "Crear Préstamo" : "Crear Venta"}
               </Button>

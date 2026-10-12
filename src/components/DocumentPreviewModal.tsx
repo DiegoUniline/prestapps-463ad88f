@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { sendDocumentViaWhatsApp } from "@/lib/whatsappDocument";
 import { WhatsAppPreviewModal } from "@/components/WhatsAppPreviewModal";
 import type { jsPDF } from "jspdf";
+import { errorMessage } from "@/lib/utils";
 
 interface DocumentPreviewModalProps {
   open: boolean;
@@ -115,8 +116,8 @@ export function DocumentPreviewModal({
         }
       }
       setShowPhoneInput(false);
-    } catch (e: any) {
-      toast.error(e.message || "Error al enviar");
+    } catch (e) {
+      toast.error(errorMessage(e) || "Error al enviar");
     } finally {
       setSending(false);
     }

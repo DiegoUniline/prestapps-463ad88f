@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -33,7 +33,7 @@ type Caller = {
   superAdmin: boolean;
 };
 
-async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+async function getCaller(req: Request, admin: SupabaseClient): Promise<Caller | null> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -53,7 +53,7 @@ async function getCaller(req: Request, admin: any): Promise<Caller | null> {
     userId: user.id,
     email,
     empresaId: profile?.empresa_id ?? null,
-    roles: (roleRows || []).map((r: any) => r.role),
+    roles: (roleRows || []).map((r: { role: string }) => r.role),
     superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
   };
 }
@@ -136,7 +136,7 @@ serve(withCors(async (req) => {
         .eq("prestamo_id", prestamo_id)
         .in("status", ["Pendiente", "Parcial", "Vencida"]);
       if (cErr) throw cErr;
-      monto = (cuotas || []).reduce((s: number, c: any) => s + Number(c.saldo_total || 0), 0);
+      monto = (cuotas || []).reduce((s: number, c: { saldo_total: number | null }) => s + Number(c.saldo_total || 0), 0);
     }
     monto = Math.round(monto * 100) / 100;
     if (!(monto > 0)) throw new AppError("No hay saldo pendiente por cobrar");

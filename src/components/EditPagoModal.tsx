@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { Loader2, Pencil } from "lucide-react";
-import { $$ } from "@/lib/utils";
+import { $$, errorMessage } from "@/lib/utils";
 
 interface EditPagoModalProps {
   open: boolean;
@@ -101,8 +101,8 @@ export function EditPagoModal({ open, onOpenChange, pago, cajas }: EditPagoModal
 
       toast.success("Pago actualizado correctamente");
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error("Error al editar pago: " + (err.message || err));
+    } catch (err) {
+      toast.error("Error al editar pago: " + (errorMessage(err) || err));
     } finally {
       setSaving(false);
     }

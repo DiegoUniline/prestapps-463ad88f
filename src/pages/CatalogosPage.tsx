@@ -40,8 +40,8 @@ function SimpleCrudTab({
   title: string;
   icon: LucideIcon;
   query: UseQueryResult<CatalogoSimple[]>;
-  upsertMutation: UseMutationResult<void, any, any>;
-  deleteMutation: UseMutationResult<void, any, string>;
+  upsertMutation: UseMutationResult<void, Error, Partial<CatalogoSimple> & { nombre: string }>;
+  deleteMutation: UseMutationResult<void, Error, string>;
 }) {
   const { data: items = [], isLoading } = query;
   const [editing, setEditing] = useState<Partial<CatalogoSimple> | null>(null);

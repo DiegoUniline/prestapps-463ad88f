@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -31,7 +31,7 @@ type Caller = {
   superAdmin: boolean;
 };
 
-async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+async function getCaller(req: Request, admin: SupabaseClient): Promise<Caller | null> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -51,7 +51,7 @@ async function getCaller(req: Request, admin: any): Promise<Caller | null> {
     userId: user.id,
     email,
     empresaId: profile?.empresa_id ?? null,
-    roles: (roleRows || []).map((r: any) => r.role),
+    roles: (roleRows || []).map((r: { role: string }) => r.role),
     superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
   };
 }
@@ -70,13 +70,19 @@ const roleMap: Record<string, string> = { Admin: "admin", Supervisor: "superviso
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+// profiles.select("*"): only id is read directly; every other column is passed through as-is.
+interface ProfileRow {
+  id: string;
+  [column: string]: unknown;
+}
+
 function chunk<T>(arr: T[], size = 200): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 }
 
-function authErrorMessage(err: any): AppError | null {
+function authErrorMessage(err: { message?: string } | null | undefined): AppError | null {
   const m = String(err?.message || "").toLowerCase();
   if (m.includes("already") && (m.includes("registered") || m.includes("exists"))) {
     return new AppError("Este correo ya está registrado.");
@@ -90,7 +96,7 @@ function authErrorMessage(err: any): AppError | null {
   return null;
 }
 
-async function validarRutas(supabase: any, rutas: unknown, empresaId: string): Promise<string[]> {
+async function validarRutas(supabase: SupabaseClient, rutas: unknown, empresaId: string): Promise<string[]> {
   if (!Array.isArray(rutas) || !rutas.length) return [];
   const ids = Array.from(new Set(rutas.map((r) => String(r))));
   const { data, error } = await supabase.from("rutas").select("id").eq("empresa_id", empresaId).in("id", ids);
@@ -99,7 +105,7 @@ async function validarRutas(supabase: any, rutas: unknown, empresaId: string): P
   return ids;
 }
 
-async function getTarget(supabase: any, userId: string) {
+async function getTarget(supabase: SupabaseClient, userId: string) {
   if (!userId) throw new AppError("Falta user_id");
   const { data: profile, error } = await supabase.from("profiles").select("id, empresa_id").eq("id", userId).maybeSingle();
   if (error) throw error;
@@ -302,7 +308,7 @@ Deno.serve(withCors(async (req) => {
     if (action === "list") {
       const empresaFiltro: string | null = isSuper ? (body.empresa_id || null) : caller.empresaId;
 
-      const profiles: any[] = [];
+      const profiles: ProfileRow[] = [];
       const PAGE = 1000;
       for (let from = 0; ; from += PAGE) {
         let query = supabase.from("profiles").select("*").order("nombre_completo").order("id").range(from, from + PAGE - 1);
@@ -313,7 +319,7 @@ Deno.serve(withCors(async (req) => {
         if (!data || data.length < PAGE) break;
       }
 
-      const ids = profiles.map((p: any) => p.id);
+      const ids = profiles.map((p) => p.id);
       const rolesByUser: Record<string, string> = {};
       const rutasMap: Record<string, string[]> = {};
       for (const part of chunk(ids)) {
@@ -346,7 +352,7 @@ Deno.serve(withCors(async (req) => {
         if (users.length < PER_PAGE) break;
       }
 
-      const result = profiles.map((p: any) => ({
+      const result = profiles.map((p) => ({
         ...p,
         email: emailMap[p.id] || "",
         rol: rolesByUser[p.id] || "cobrador",
@@ -357,9 +363,9 @@ Deno.serve(withCors(async (req) => {
     }
 
     return json({ error: "Unknown action" }, 400);
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof AppError) return json({ error: error.message }, error.status);
-    console.error("manage-users error:", error?.message || error);
+    console.error("manage-users error:", (error as { message?: unknown } | null)?.message || error);
     return json({ error: "No se pudo completar la operación. Intenta de nuevo." }, 400);
   }
 }));

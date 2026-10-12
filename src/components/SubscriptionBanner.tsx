@@ -3,7 +3,7 @@ import { useAccesoApp } from "@/hooks/useAccesoApp";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertTriangle, Lock, CreditCard, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { $$, cn } from "@/lib/utils";
+import { $$, cn, errorMessage } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -32,8 +32,8 @@ export function SubscriptionBanner() {
       if (!checkoutData?.url) throw new Error("No se pudo generar el enlace de pago");
 
       window.open(checkoutData.url, "_blank");
-    } catch (err: any) {
-      toast.error(err?.message || "No se pudo abrir Stripe, intenta de nuevo.");
+    } catch (err) {
+      toast.error(errorMessage(err) || "No se pudo abrir Stripe, intenta de nuevo.");
     } finally {
       setPaying(false);
     }

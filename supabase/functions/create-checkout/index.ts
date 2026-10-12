@@ -22,7 +22,7 @@ const withCors = (handler: (req: Request) => Response | Promise<Response>) => as
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[CREATE-CHECKOUT] ${step}${d}`);
 };
@@ -92,7 +92,7 @@ serve(withCors(async (req) => {
 
     const extraUsers = Math.max(0, num_usuarios - plan.usuarios_incluidos);
 
-    const lineItems: any[] = [
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
       {
         price: plan.stripe_price_id,
         quantity: 1,

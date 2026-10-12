@@ -32,18 +32,18 @@ export function TabCartera({
             </div>
             <div className="bg-secondary rounded-lg p-3 text-center">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Saldo total</p>
-              <p className="text-lg font-bold">{$$(perfil!.prestamos.reduce((s: number, p: any) => s + p.saldo, 0))}</p>
+              <p className="text-lg font-bold">{$$(perfil!.prestamos.reduce((s, p) => s + p.saldo, 0))}</p>
             </div>
             <div className="bg-destructive/10 rounded-lg p-3 text-center">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Mora total</p>
-              <p className="text-lg font-bold text-destructive">{$$(perfil!.prestamos.reduce((s: number, p: any) => s + p.mora, 0))}</p>
+              <p className="text-lg font-bold text-destructive">{$$(perfil!.prestamos.reduce((s, p) => s + p.mora, 0))}</p>
             </div>
           </div>
 
           {/* Loan cards */}
           {perfil!.prestamos
-            .filter((p: any) => !search || p.cliente.toLowerCase().includes(search.toLowerCase()))
-            .map((p: any) => (
+            .filter((p) => !search || p.cliente.toLowerCase().includes(search.toLowerCase()))
+            .map((p) => (
             <Card key={p.id} className="border-border/50">
               <CardContent className="p-3 space-y-2">
                 <div className="flex items-start justify-between gap-2">

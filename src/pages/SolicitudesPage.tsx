@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
-import { $$, parseLocalDate, fmtDate } from "@/lib/utils";
+import { $$, parseLocalDate, fmtDate, errorMessage } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
-import { useSolicitudesPaginadas, useUpdateSolicitud } from "@/hooks/useSolicitudes";
+import { useSolicitudesPaginadas, useUpdateSolicitud, type Solicitud } from "@/hooks/useSolicitudes";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { usePaginacion, PAGE_SIZE } from "@/hooks/usePaginacion";
 import { PaginacionControles } from "@/components/PaginacionControles";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { calcNextDate, validarCuotaRedondeada } from "@/lib/financial";
+import { calcNextDate, validarCuotaRedondeada, type Frecuencia } from "@/lib/financial";
 import { rpcCrearPrestamo } from "@/lib/rpcIntegridad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { encolarWhatsApp } from "@/lib/whatsappCola";
 
-function calculosSolicitud(sol: any) {
+function calculosSolicitud(sol: Solicitud) {
   const monto = Number(sol.monto_solicitado);
   const tasa = Number(sol.tasa_interes || 0);
   const cuotas = Number(sol.num_cuotas);
@@ -68,7 +68,7 @@ export default function SolicitudesPage() {
 
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
-  const [detailSol, setDetailSol] = useState<any>(null);
+  const [detailSol, setDetailSol] = useState<Solicitud | null>(null);
   const [esCargaInicial, setEsCargaInicial] = useState(false);
 
   // Only admin and supervisor can approve/reject
@@ -78,7 +78,7 @@ export default function SolicitudesPage() {
 
   // Approve: create the prestamo + amortization + validate caja balance + optional WhatsApp
   const approveMutation = useMutation({
-    mutationFn: async ({ sol, cargaInicial }: { sol: any; cargaInicial: boolean }) => {
+    mutationFn: async ({ sol, cargaInicial }: { sol: Solicitud; cargaInicial: boolean }) => {
       const { monto, tasa, cuotas, montoTotalPagar, cuotaCalculada, cuotaFinal, errorCuota } = calculosSolicitud(sol);
       if (errorCuota) throw new Error(`No se puede aprobar: ${errorCuota}`);
 
@@ -113,7 +113,7 @@ export default function SolicitudesPage() {
           capital,
           interes,
           capital_interes: cuotaVal,
-          fecha_vencimiento: format(calcNextDate(baseDate, sol.frecuencia, i), "yyyy-MM-dd"),
+          fecha_vencimiento: format(calcNextDate(baseDate, sol.frecuencia as Frecuencia, i), "yyyy-MM-dd"),
           saldo_capital: capital,
           saldo_interes: interes,
           saldo_total: cuotaVal,
@@ -170,8 +170,8 @@ export default function SolicitudesPage() {
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
       invalidateFinanceQueries(queryClient);
     },
-    onError: (err: any) => {
-      toast.error(err.message || "Error al aprobar");
+    onError: (err) => {
+      toast.error(errorMessage(err) || "Error al aprobar");
       queryClient.invalidateQueries({ queryKey: ["solicitudes"] });
     },
   });
@@ -198,13 +198,13 @@ export default function SolicitudesPage() {
           setRejectId(null);
           setMotivo("");
         },
-        onError: (err: any) => toast.error(err.message),
+        onError: (err) => toast.error(errorMessage(err)),
       }
     );
   };
 
   // State for approve confirmation dialog
-  const [approveTarget, setApproveTarget] = useState<any>(null);
+  const [approveTarget, setApproveTarget] = useState<Solicitud | null>(null);
 
   return (
     <div className="space-y-5">
@@ -406,7 +406,7 @@ export default function SolicitudesPage() {
             </Button>
             <Button
               onClick={() => {
-                approveMutation.mutate({ sol: approveTarget, cargaInicial: esCargaInicial });
+                if (approveTarget) approveMutation.mutate({ sol: approveTarget, cargaInicial: esCargaInicial });
                 setApproveTarget(null);
               }}
               disabled={approveMutation.isPending || (!!approveTarget && !!calculosSolicitud(approveTarget).errorCuota)}
@@ -471,7 +471,7 @@ export default function SolicitudesPage() {
 
 /** Fire-and-forget WhatsApp notification for solicitud status change */
 async function sendWhatsAppNotification(
-  sol: any,
+  sol: Solicitud,
   resultado: "aprobada" | "rechazada",
   empresaId: string,
   motivoRechazo?: string

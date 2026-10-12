@@ -80,12 +80,12 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
           .select("id, nombre_completo, activo")
           .eq("empresa_id", empresaId),
         // 2. Prestamos per cobrador
-        fetchAllRows<any>(supabase
+        fetchAllRows(supabase
           .from("prestamos")
           .select("id, cobrador_id, generado_por, monto_solicitado, estado, created_at, fecha_registro, cliente_id")
           .eq("empresa_id", empresaId)),
         // 3. Pagos in period & previous
-        fetchAllRows<any>(supabase
+        fetchAllRows(supabase
           .from("pagos")
           .select("id, cobrador_id, registrado_por, monto_recibido, created_at, prestamo_id, fecha_pago")
           .eq("empresa_id", empresaId)
@@ -95,7 +95,7 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
         // 4. Mora vencida por asesor (préstamos Activo/Al día/Vencido)
         rpc<{ advisor_id: string | null; clientes_morosos: number; monto_mora: number | string }[]>("productividad_mora", { p_today: today }),
         // 5. CRM gestiones (visits) in period
-        fetchAllRows<any>(supabase
+        fetchAllRows(supabase
           .from("crm_gestiones")
           .select("id, registrado_por, tipo_gestion, cliente_id, created_at")
           .eq("empresa_id", empresaId)
@@ -104,7 +104,7 @@ function useProductividadData(empresaId: string, desde: Date, hasta: Date) {
         // 6. Última visita por cliente
         rpc<Record<string, string>>("clientes_ultima_visita"),
         // 7. Clientes for name mapping
-        fetchAllRows<any>(supabase
+        fetchAllRows(supabase
           .from("clientes")
           .select("id, nombre_completo")
           .eq("empresa_id", empresaId)),

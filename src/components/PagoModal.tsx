@@ -20,7 +20,7 @@ import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDi
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn, $$ } from "@/lib/utils";
+import { cn, $$, errorMessage } from "@/lib/utils";
 import { HandCoins, Info, Loader2, AlertTriangle, CalendarIcon } from "lucide-react";
 
 interface Cuota {
@@ -174,7 +174,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
 
   const sendWhatsAppReceipt = async (dist: PaymentDistribution[], monto: number, metodoPago: string, descuentoMonto: number) => {
     try {
-      const { data: waConfig } = await (supabase.from as any)("whatsapp_config")
+      const { data: waConfig } = await supabase.from("whatsapp_config")
         .select("activo, enviar_recibo_pago")
         .eq("empresa_id", empresaId)
         .maybeSingle();
@@ -187,7 +187,7 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         .eq("id", prestamoId)
         .single();
 
-      const cliente = (prestamo as any)?.clientes;
+      const cliente = prestamo?.clientes;
       if (!cliente?.telefono) return;
 
       const { data: empresa } = await supabase
@@ -203,13 +203,13 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         .neq("status", "Pagada")
         .order("num_cuota");
 
-      const saldoRestante = (remainingCuotas || []).reduce((s: number, c: any) => s + (c.saldo_total || 0), 0);
+      const saldoRestante = (remainingCuotas || []).reduce((s, c) => s + (c.saldo_total || 0), 0);
       const proxima = remainingCuotas?.[0];
 
       const totalMora = dist.reduce((s, d) => s + d.mora, 0);
       const totalInteres = dist.reduce((s, d) => s + d.interes, 0);
       const totalCapital = dist.reduce((s, d) => s + d.capital, 0);
-      const folio = (prestamo as any)?.id_prestamo || `PRE-${prestamoId.slice(0, 8)}`;
+      const folio = prestamo?.id_prestamo || `PRE-${prestamoId.slice(0, 8)}`;
 
       const { sendReceiptAsImage } = await import("@/lib/whatsappReceipt");
       await sendReceiptAsImage(
@@ -289,8 +289,8 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
       setMontoRecibido("");
       setDescuento("");
       setFechaPago(new Date());
-    } catch (err: any) {
-      const msg = err?.message || String(err);
+    } catch (err) {
+      const msg = errorMessage(err) || String(err);
       if (msg.includes("Load failed") || msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
         toast.error("Error de conexión. Verifica tu internet e intenta de nuevo.");
       } else {

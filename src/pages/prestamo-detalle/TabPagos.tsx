@@ -3,12 +3,15 @@ import type { AnularPagoModal } from "@/components/AnularPagoModal";
 import type { EditPagoModal } from "@/components/EditPagoModal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pencil, Check, Ban, XCircle, Eye, Send, Download } from "lucide-react";
-import { cn, $$, fmtDate } from "@/lib/utils";
+import { cn, $$, fmtDate, errorMessage } from "@/lib/utils";
 import { generarReciboPagos } from "@/lib/pdfDocuments";
 import type { ComponentProps } from "react";
 import { dash, type PagoRow, type DocType, type PdfPrestamo, type PdfPagos } from "./utils";
 import { MetodoDot } from "./ui";
 import { useCan } from "@/hooks/usePermisos";
+
+// usePagos no selecciona fecha_pago: en runtime llega undefined (EditPagoModal no lo usa).
+type PagoConFecha = PagoRow & { fecha_pago?: string | null };
 
 interface TabPagosProps {
   pagosRaw: PagoRow[];
@@ -44,8 +47,8 @@ export function TabPagos({
         ) : (
           <>
             {pagosRaw.map((pg, i) => {
-              const cajaName = (pg.cajas as any)?.nombre || "—";
-              const isAnulado = (pg as any).anulado === true;
+              const cajaName = pg.cajas?.nombre || "—";
+              const isAnulado = pg.anulado === true;
               return (
                 <div key={pg.id} className={cn("border rounded-lg p-3 bg-card", isAnulado && "opacity-50")}>
                   <div className="flex items-center justify-between mb-2">
@@ -77,9 +80,9 @@ export function TabPagos({
                     {!isAnulado && (
                       <div className="flex items-center gap-1">
                         <button title="Ver" onClick={() => setDocPreview({ open: true, type: "pagos" })} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"><Eye className="h-3.5 w-3.5" /></button>
-                        <button title="Descargar" onClick={async () => { try { const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]); doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`); } catch (err: any) { toast.error("Error: " + err.message); } }} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"><Download className="h-3.5 w-3.5" /></button>
+                        <button title="Descargar" onClick={async () => { try { const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]); doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`); } catch (err) { toast.error("Error: " + errorMessage(err)); } }} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10"><Download className="h-3.5 w-3.5" /></button>
                         {!isCancelado && canAnularPago && (
-                          <button title="Anular" onClick={() => { setSelectedPago({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id }); setAnularPagoOpen(true); }} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Ban className="h-3.5 w-3.5" /></button>
+                          <button title="Anular" onClick={() => { setSelectedPago({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), caja_id: pg.caja_id, cobrador_id: pg.cobrador_id }); setAnularPagoOpen(true); }} className="h-7 w-7 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"><Ban className="h-3.5 w-3.5" /></button>
                         )}
                       </div>
                     )}
@@ -118,8 +121,8 @@ export function TabPagos({
             ) : (
               <>
                 {pagosRaw.map((pg, i) => {
-                  const cajaName = (pg.cajas as any)?.nombre || "—";
-                  const isAnulado = (pg as any).anulado === true;
+                  const cajaName = pg.cajas?.nombre || "—";
+                  const isAnulado = pg.anulado === true;
                   return (
                     <TableRow key={pg.id} className={cn(
                       "border-b border-[hsl(220,14%,96%)] hover:bg-[hsl(210,20%,98%)]",
@@ -135,7 +138,7 @@ export function TabPagos({
                       <TableCell className="px-3"><MetodoDot metodo={pg.metodo_pago || "Efectivo"} /></TableCell>
                       <TableCell className="px-3">
                         {isAnulado ? (
-                          <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border border-destructive text-destructive" title={(pg as any).motivo_anulacion || ""}>
+                          <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-medium border border-destructive text-destructive" title={pg.motivo_anulacion || ""}>
                             <XCircle className="h-3 w-3 mr-0.5" />Anulado
                           </span>
                         ) : (
@@ -148,7 +151,7 @@ export function TabPagos({
                         {!isAnulado && (
                           <div className="flex items-center gap-0.5">
                             {!isCancelado && canEditarPago && (
-                              <button title="Editar pago" onClick={() => { setEditPagoData({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), metodo_pago: pg.metodo_pago || "Efectivo", caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id, fecha_pago: (pg as any).fecha_pago }); setEditPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                              <button title="Editar pago" onClick={() => { setEditPagoData({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), metodo_pago: pg.metodo_pago || "Efectivo", caja_id: pg.caja_id, cobrador_id: pg.cobrador_id, fecha_pago: (pg as PagoConFecha).fecha_pago ?? null }); setEditPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
                             )}
@@ -162,11 +165,11 @@ export function TabPagos({
                             >
                               <Send className="h-3.5 w-3.5" />
                             </button>
-                            <button title="Descargar" onClick={async () => { try { const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]); doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`); } catch (err: any) { toast.error("Error: " + err.message); } }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
+                            <button title="Descargar" onClick={async () => { try { const doc = await generarReciboPagos(pdfPrestamo, [pdfPagos[i]]); doc.save(`recibo-pago-${i + 1}-${shortId}.pdf`); } catch (err) { toast.error("Error: " + errorMessage(err)); } }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors">
                               <Download className="h-3.5 w-3.5" />
                             </button>
                             {!isCancelado && canAnularPago && (
-                              <button title="Anular pago" onClick={() => { setSelectedPago({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), caja_id: pg.caja_id, cobrador_id: (pg as any).cobrador_id }); setAnularPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                              <button title="Anular pago" onClick={() => { setSelectedPago({ id: pg.id, prestamo_id: pg.prestamo_id, cuota_id: pg.cuota_id, monto_recibido: Number(pg.monto_recibido), aplicado_mora: Number(pg.aplicado_mora || 0), aplicado_interes: Number(pg.aplicado_interes || 0), aplicado_capital: Number(pg.aplicado_capital || 0), caja_id: pg.caja_id, cobrador_id: pg.cobrador_id }); setAnularPagoOpen(true); }} className="h-6 w-6 inline-flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
                                 <Ban className="h-3.5 w-3.5" />
                               </button>
                             )}

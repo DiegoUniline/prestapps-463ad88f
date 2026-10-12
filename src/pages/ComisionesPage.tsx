@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { DollarSign, Calculator, Loader2, Percent, UserCheck, Wallet, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { $$, fmtDateTime } from "@/lib/utils";
+import { $$, fmtDateTime, errorMessage } from "@/lib/utils";
 import { hoyNegocio, inicioDiaNegocio } from "@/lib/fechaNegocio";
 // ── Types & hooks ─────────────────────────────────────────────────
 interface Cobrador {
@@ -204,7 +204,7 @@ export default function ComisionesPage() {
         if (!cobrador) return;
 
         // Get last corte date
-        const { data: lastCorte } = await (supabase.from as any)("cortes")
+        const { data: lastCorte } = await supabase.from("cortes")
           .select("created_at")
           .eq("cobrador_id", cobrador.id)
           .order("created_at", { ascending: false })
@@ -265,8 +265,8 @@ export default function ComisionesPage() {
         setComisionCalculada(comision);
         setDetalle(detalles.join("\n") || "Sin configuración de comisiones");
       }
-    } catch (err: any) {
-      toast.error("Error calculando: " + err.message);
+    } catch (err) {
+      toast.error("Error calculando: " + errorMessage(err));
     } finally {
       setCalculating(false);
     }
@@ -298,8 +298,8 @@ export default function ComisionesPage() {
       toast.success(`Comisión de ${$$(comisionCalculada)} pagada a ${nombre}`);
       invalidateFinanceQueries(queryClient);
       resetModal();
-    } catch (err: any) {
-      toast.error("Error: " + err.message);
+    } catch (err) {
+      toast.error("Error: " + errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -309,14 +309,14 @@ export default function ComisionesPage() {
   const totalComisionesMes = useMemo(() => {
     const now = new Date();
     return historial
-      .filter((h: any) => {
-        const d = new Date(h.created_at);
+      .filter((h) => {
+        const d = new Date(h.created_at!);
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       })
-      .reduce((s: number, h: any) => s + Number(h.monto || 0), 0);
+      .reduce((s: number, h) => s + Number(h.monto || 0), 0);
   }, [historial]);
 
-  const totalComisionesHistorico = historial.reduce((s: number, h: any) => s + Number(h.monto || 0), 0);
+  const totalComisionesHistorico = historial.reduce((s: number, h) => s + Number(h.monto || 0), 0);
 
   return (
     <div className="space-y-4">
@@ -429,12 +429,12 @@ export default function ComisionesPage() {
             <div className="md:hidden space-y-2">
               {historial.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground text-[13px]">No hay comisiones pagadas</p>
-              ) : historial.map((h: any) => (
+              ) : historial.map((h) => (
                 <div key={h.id} className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0">
                       <p className="text-[12px] font-medium truncate">{(h.concepto || "").replace(/\[.*?\]\s*/, "")}</p>
-                      <p className="text-[10px] text-muted-foreground">{fmtDateTime(h.created_at)} · {(h.cajas as any)?.nombre || "—"}</p>
+                      <p className="text-[10px] text-muted-foreground">{fmtDateTime(h.created_at)} · {h.cajas?.nombre || "—"}</p>
                     </div>
                     <p className="font-semibold text-destructive text-[13px] shrink-0 ml-2">-{$$(Number(h.monto || 0))}</p>
                   </div>
@@ -461,7 +461,7 @@ export default function ComisionesPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    historial.map((h: any) => (
+                    historial.map((h) => (
                       <TableRow key={h.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                         <TableCell className="text-[13px] px-3">
                           {fmtDateTime(h.created_at)}
@@ -469,7 +469,7 @@ export default function ComisionesPage() {
                         <TableCell className="text-[13px] px-3 max-w-[300px] truncate">
                           {(h.concepto || "").replace(/\[.*?\]\s*/, "")}
                         </TableCell>
-                        <TableCell className="text-[13px] px-3">{(h.cajas as any)?.nombre || "—"}</TableCell>
+                        <TableCell className="text-[13px] px-3">{h.cajas?.nombre || "—"}</TableCell>
                         <TableCell className="text-right font-semibold text-destructive text-[13px] px-3">
                           -{$$(Number(h.monto || 0))}
                         </TableCell>
@@ -496,7 +496,7 @@ export default function ComisionesPage() {
             {/* Type selector */}
             <div>
               <Label>Tipo</Label>
-              <Select value={tipoComision} onValueChange={(v) => { setTipoComision(v as any); setSelectedId(""); setComisionCalculada(0); setDetalle(""); }}>
+              <Select value={tipoComision} onValueChange={(v) => { setTipoComision(v as "cobrador" | "supervisor"); setSelectedId(""); setComisionCalculada(0); setDetalle(""); }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

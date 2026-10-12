@@ -14,6 +14,7 @@ import { cn, $$, fmtDate } from "@/lib/utils";
 import {
   AlertTriangle, Bell, CalendarCheck, Clock, Users, TrendingDown,
   ChevronRight, XCircle, Eye, HandCoins, MessageSquare, Loader2,
+  type LucideIcon,
 } from "lucide-react";
 interface Alerta {
   id: string;
@@ -92,12 +93,12 @@ export default function AlertasPage() {
         if (!lastGestion[g.prestamo_id]) lastGestion[g.prestamo_id] = g.created_at || "";
       }
 
-      const presMap: Record<string, any> = {};
+      const presMap: Record<string, NonNullable<typeof prestamos>[number]> = {};
       for (const p of prestamos || []) presMap[p.id] = p;
 
       return cuotas.map(c => ({
         ...c,
-        cliente: (presMap[c.prestamo_id]?.clientes as any)?.nombre_completo || "—",
+        cliente: presMap[c.prestamo_id]?.clientes?.nombre_completo || "—",
         clienteId: presMap[c.prestamo_id]?.cliente_id,
         ultimaGestion: lastGestion[c.prestamo_id] || null,
         diasSinGestion: lastGestion[c.prestamo_id]
@@ -128,7 +129,7 @@ export default function AlertasPage() {
 
     // Promesas incumplidas
     for (const p of promesas || []) {
-      const cliente = (p as any).prestamos?.clientes;
+      const cliente = p.prestamos?.clientes;
       list.push({
         id: `promesa-${p.id}`,
         tipo: "promesa_incumplida",
@@ -161,7 +162,7 @@ export default function AlertasPage() {
 
     // Vence mañana
     for (const c of venceManana || []) {
-      const cliente = (c as any).prestamos?.clientes;
+      const cliente = c.prestamos?.clientes;
       list.push({
         id: `manana-${c.id}`,
         tipo: "vence_manana",
@@ -253,7 +254,7 @@ export default function AlertasPage() {
   );
 }
 
-function SummaryCard({ label, count, icon: Icon, color }: { label: string; count: number; icon: any; color: string }) {
+function SummaryCard({ label, count, icon: Icon, color }: { label: string; count: number; icon: LucideIcon; color: string }) {
   return (
     <Card>
       <CardContent className="p-3">

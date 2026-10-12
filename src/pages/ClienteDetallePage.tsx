@@ -18,7 +18,7 @@ import { rpcSiguienteIdCliente } from "@/lib/rpcIntegridad";
 import { fetchAllRows } from "@/lib/supabaseQuery";
 import { toast } from "sonner";
 import type { ClienteInsert } from "@/types/cliente";
-import { $$ } from "@/lib/utils";
+import { $$, errorMessage } from "@/lib/utils";
 import BuroCreditoSection from "@/components/BuroCreditoSection";
 
 // ── Hooks ────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ function useClientePrestamos(clienteId: string | undefined) {
         amortMap[a.prestamo_id].total += 1;
         if (a.status === "Pagada") amortMap[a.prestamo_id].pagadas += 1;
       }
-      return (prestamos || []).map((p: any) => ({
+      return (prestamos || []).map((p) => ({
         ...p, caja: p.cajas?.nombre || "—", ruta: p.rutas?.nombre || "—",
         saldo: amortMap[p.id]?.saldo || 0, mora: amortMap[p.id]?.mora || 0,
         cuotasPagadas: amortMap[p.id]?.pagadas || 0, totalCuotas: amortMap[p.id]?.total || p.num_cuotas,
@@ -104,14 +104,20 @@ const ESTADOS_MX = ["AGS","BCN","BCS","CAM","CHS","CHI","CDMX","COA","COL","DGO"
   .map((e) => ({ value: e, label: e }));
 
 // ── Field helpers ────────────────────────────────────────────────
-function ReadOrInput({ label, value, formValue, onChange, editing, type = "text", placeholder }: {
-  label: string; value: string; formValue: string | number | null; onChange: (v: any) => void; editing: boolean; type?: string; placeholder?: string;
-}) {
+type ReadOrInputProps = {
+  label: string; value: string; formValue: string | number | null; editing: boolean; placeholder?: string;
+} & (
+  | { type?: "text" | "date"; onChange: (v: string) => void }
+  | { type: "number"; onChange: (v: number | null) => void }
+);
+
+function ReadOrInput(props: ReadOrInputProps) {
+  const { label, value, formValue, editing, type = "text", placeholder } = props;
   return (
     <div>
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {editing ? (
-        <Input type={type} value={formValue ?? ""} onChange={(e) => onChange(type === "number" ? (e.target.value ? Number(e.target.value) : null) : e.target.value)} placeholder={placeholder} />
+        <Input type={type} value={formValue ?? ""} onChange={(e) => { if (props.type === "number") props.onChange(e.target.value ? Number(e.target.value) : null); else props.onChange(e.target.value); }} placeholder={placeholder} />
       ) : (
         <p className="text-sm font-medium mt-1">{value || "—"}</p>
       )}
@@ -201,8 +207,8 @@ export default function ClienteDetallePage() {
       const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(fileName);
       updateField("foto_cliente", urlData.publicUrl);
       toast.success("Foto subida correctamente");
-    } catch (err: any) {
-      const msg = err?.message || String(err);
+    } catch (err) {
+      const msg = errorMessage(err) || String(err);
       if (msg.includes("Load failed") || msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
         toast.error("Error de conexión al subir foto. Verifica tu internet e intenta de nuevo.");
       } else {
@@ -255,7 +261,7 @@ export default function ClienteDetallePage() {
     if (isNew) {
       let payload = form;
       // Si el usuario dejó el código sugerido, se recalcula justo antes de guardar
-      if (idClienteSugerido.current && (form as any).id_cliente === idClienteSugerido.current) {
+      if (idClienteSugerido.current && form.id_cliente === idClienteSugerido.current) {
         try {
           payload = { ...form, id_cliente: await rpcSiguienteIdCliente() } as typeof form;
         } catch {
@@ -346,7 +352,7 @@ export default function ClienteDetallePage() {
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2"><Building2 className="h-4 w-4" />Datos Fiscales</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <ReadOrSelect label="Tipo de Persona" value={form.tipo_persona === "moral" ? "Moral" : "Física"} formValue={form.tipo_persona} onChange={(v) => updateField("tipo_persona", v as any)} editing={editing}
+              <ReadOrSelect label="Tipo de Persona" value={form.tipo_persona === "moral" ? "Moral" : "Física"} formValue={form.tipo_persona} onChange={(v) => updateField("tipo_persona", v as ClienteInsert["tipo_persona"])} editing={editing}
                 options={[{ value: "fisica", label: "Física" }, { value: "moral", label: "Moral" }]} />
               <ReadOrInput label="RFC" value={form.rfc || ""} formValue={form.rfc} onChange={(v) => updateField("rfc", v ? v.toUpperCase().trim() : null)} editing={editing} placeholder={form.tipo_persona === "moral" ? "ABC010101AB1" : "ABCD010101AB1"} />
               {form.tipo_persona === "moral" && (
@@ -367,14 +373,14 @@ export default function ClienteDetallePage() {
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información Personal</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-4">
-                <ReadOrInput label="Cód. Interno" value={isNew ? "" : (cliente?.id_cliente || "")} formValue={(form as any).id_cliente ?? ""} onChange={(v) => setForm((p) => ({ ...p, id_cliente: v } as any))} editing={editing} placeholder="CLI-001" />
+                <ReadOrInput label="Cód. Interno" value={isNew ? "" : (cliente?.id_cliente || "")} formValue={form.id_cliente ?? ""} onChange={(v) => setForm((p) => ({ ...p, id_cliente: v }))} editing={editing} placeholder="CLI-001" />
                 <ReadOrInput label="Nombre Completo *" value={form.nombre_completo} formValue={form.nombre_completo} onChange={(v) => updateField("nombre_completo", v)} editing={editing} />
                 <ReadOrInput label="Teléfono" value={form.telefono || ""} formValue={form.telefono} onChange={(v) => updateField("telefono", v)} editing={editing} />
                 <ReadOrInput label="Correo Electrónico" value={form.correo || ""} formValue={form.correo} onChange={(v) => updateField("correo", v)} editing={editing} />
-                <ReadOrSelect label="Sexo" value={form.sexo || ""} formValue={form.sexo} onChange={(v) => updateField("sexo", v as any)} editing={editing}
+                <ReadOrSelect label="Sexo" value={form.sexo || ""} formValue={form.sexo} onChange={(v) => updateField("sexo", v as ClienteInsert["sexo"])} editing={editing}
                   options={[{ value: "Masculino", label: "Masculino" }, { value: "Femenino", label: "Femenino" }, { value: "Otro", label: "Otro" }]} />
                 <ReadOrInput label="Fecha de Nacimiento" value={form.fecha_nacimiento || ""} formValue={form.fecha_nacimiento} onChange={(v) => updateField("fecha_nacimiento", v || null)} editing={editing} type="date" />
-                <ReadOrSelect label="Estado Civil" value={form.estado_civil || ""} formValue={form.estado_civil} onChange={(v) => updateField("estado_civil", v as any)} editing={editing}
+                <ReadOrSelect label="Estado Civil" value={form.estado_civil || ""} formValue={form.estado_civil} onChange={(v) => updateField("estado_civil", v as ClienteInsert["estado_civil"])} editing={editing}
                   options={[{ value: "Soltero", label: "Soltero" }, { value: "Casado", label: "Casado" }, { value: "Unión libre", label: "Unión libre" }, { value: "Divorciado", label: "Divorciado" }, { value: "Viudo", label: "Viudo" }]} />
                 <ReadOrInput label="Dependientes" value={String(form.dependientes)} formValue={form.dependientes} onChange={(v) => updateField("dependientes", v ?? 0)} editing={editing} type="number" />
                 <ReadOrSelect label="Tipo de Vivienda" value={form.tipo_vivienda || ""} formValue={form.tipo_vivienda} onChange={(v) => updateField("tipo_vivienda", v)} editing={editing}
@@ -388,10 +394,10 @@ export default function ClienteDetallePage() {
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Identificación y Estado</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <ReadOrSelect label="Tipo de Documento" value={form.documento_identidad} formValue={form.documento_identidad} onChange={(v) => updateField("documento_identidad", v as any)} editing={editing}
+                <ReadOrSelect label="Tipo de Documento" value={form.documento_identidad} formValue={form.documento_identidad} onChange={(v) => updateField("documento_identidad", v as ClienteInsert["documento_identidad"])} editing={editing}
                   options={[{ value: "INE", label: "INE" }, { value: "DUI", label: "DUI" }, { value: "Pasaporte", label: "Pasaporte" }, { value: "NIT", label: "NIT" }, { value: "Otro", label: "Otro" }]} />
                 <ReadOrInput label="Número de Documento" value={form.dni || ""} formValue={form.dni} onChange={(v) => updateField("dni", v)} editing={editing} />
-                <ReadOrSelect label="Estado del Cliente" value={form.estado} formValue={form.estado} onChange={(v) => updateField("estado", v as any)} editing={editing}
+                <ReadOrSelect label="Estado del Cliente" value={form.estado} formValue={form.estado} onChange={(v) => updateField("estado", v as ClienteInsert["estado"])} editing={editing}
                   options={[{ value: "Activo", label: "Activo" }, { value: "Inactivo", label: "Inactivo" }, { value: "Bloqueado", label: "Bloqueado" }, { value: "En mora", label: "En mora" }]} />
                 <div>
                   <Label className="text-xs text-muted-foreground">Activo</Label>
@@ -488,7 +494,7 @@ export default function ClienteDetallePage() {
           <Card>
             <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Información Laboral</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <ReadOrSelect label="Situación Laboral" value={form.situacion_laboral || ""} formValue={form.situacion_laboral} onChange={(v) => updateField("situacion_laboral", v as any)} editing={editing}
+              <ReadOrSelect label="Situación Laboral" value={form.situacion_laboral || ""} formValue={form.situacion_laboral} onChange={(v) => updateField("situacion_laboral", v as ClienteInsert["situacion_laboral"])} editing={editing}
                 options={[{ value: "Empleado", label: "Empleado" }, { value: "Independiente", label: "Independiente" }, { value: "Desempleado", label: "Desempleado" }, { value: "Pensionado", label: "Pensionado" }, { value: "Otro", label: "Otro" }]} />
               <ReadOrInput label="Empresa / Negocio" value={form.trabajo_empresa || ""} formValue={form.trabajo_empresa} onChange={(v) => updateField("trabajo_empresa", v || null)} editing={editing} placeholder="Nombre de la empresa" />
               <ReadOrInput label="Cargo / Puesto" value={form.trabajo_cargo || ""} formValue={form.trabajo_cargo} onChange={(v) => updateField("trabajo_cargo", v || null)} editing={editing} placeholder="Ej: Vendedor, Gerente" />
@@ -606,7 +612,7 @@ function ClientePrestamosSection({ clienteId }: { clienteId: string }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {prestamos.map((p: any) => (
+                  {prestamos.map((p) => (
                     <TableRow key={p.id} className="cursor-pointer border-b border-border/50 hover:bg-table-hover transition-colors" onClick={() => navigate(`/prestamos/${p.id}`)}>
                       <TableCell className="text-[12px] px-3">{p.fecha_registro || "—"}</TableCell>
                       <TableCell className="text-[13px] px-3 capitalize">{p.modalidad === "fijo" ? "Interés Fijo" : "Saldos Insolutos"}</TableCell>
@@ -617,7 +623,7 @@ function ClientePrestamosSection({ clienteId }: { clienteId: string }) {
                         <span className={p.mora > 0 ? "text-destructive font-semibold text-[13px]" : "text-muted-foreground text-[13px]"}>{$$(p.mora)}</span>
                       </TableCell>
                       <TableCell className="px-3">
-                        <Badge className={estadoPrestamoColors[p.estado] || "bg-muted text-muted-foreground"}>{p.estado}</Badge>
+                        <Badge className={estadoPrestamoColors[p.estado ?? ""] || "bg-muted text-muted-foreground"}>{p.estado}</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -626,11 +632,11 @@ function ClientePrestamosSection({ clienteId }: { clienteId: string }) {
             </div>
             {/* Mobile */}
             <div className="md:hidden space-y-2 p-3">
-              {prestamos.map((p: any) => (
+              {prestamos.map((p) => (
                 <div key={p.id} className="border rounded-lg p-3 cursor-pointer active:bg-muted/50 space-y-1" onClick={() => navigate(`/prestamos/${p.id}`)}>
                   <div className="flex items-center justify-between">
                     <span className="text-[12px] text-muted-foreground">{p.fecha_registro}</span>
-                    <Badge className={estadoPrestamoColors[p.estado] || "bg-muted text-muted-foreground"}>{p.estado}</Badge>
+                    <Badge className={estadoPrestamoColors[p.estado ?? ""] || "bg-muted text-muted-foreground"}>{p.estado}</Badge>
                   </div>
                   <div className="flex justify-between items-baseline">
                     <span className="font-semibold text-sm">{$$(Number(p.monto_solicitado))}</span>
@@ -677,7 +683,7 @@ function ClientePagosSection({ clienteId }: { clienteId: string }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pagos.map((p: any) => (
+                  {pagos.map((p) => (
                     <TableRow key={p.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                       <TableCell className="text-[12px] px-3">{p.created_at ? new Date(p.created_at).toLocaleDateString() : "—"}</TableCell>
                       <TableCell className="text-right font-semibold text-[13px] px-3">{$$(Number(p.monto_recibido))}</TableCell>
@@ -692,7 +698,7 @@ function ClientePagosSection({ clienteId }: { clienteId: string }) {
             </div>
             {/* Mobile */}
             <div className="md:hidden space-y-2 p-3">
-              {pagos.map((p: any) => (
+              {pagos.map((p) => (
                 <div key={p.id} className="border rounded-lg p-3 space-y-1">
                   <div className="flex justify-between items-center">
                     <span className="text-[12px] text-muted-foreground">{p.created_at ? new Date(p.created_at).toLocaleDateString() : "—"}</span>

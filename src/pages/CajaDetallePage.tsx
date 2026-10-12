@@ -9,7 +9,7 @@ import { rpcRegistrarMovimientoCaja, rpcTransferirCaja } from "@/lib/rpcIntegrid
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { toast } from "sonner";
-import { cn, $$, fmtDate, parseLocalDate } from "@/lib/utils";
+import { cn, $$, fmtDate, parseLocalDate, errorMessage } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -212,8 +212,8 @@ export default function CajaDetallePage() {
     setSaving(true);
     try {
       await rpcRegistrarMovimientoCaja(id, tipo, m, concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"));
-    } catch (err: any) {
-      toast.error(err.message); setSaving(false); return;
+    } catch (err) {
+      toast.error(errorMessage(err)); setSaving(false); return;
     }
     setSaving(false);
     toast.success(tipo === "entrada" ? `Depósito de ${$$(m)}` : `Retiro de ${$$(m)}`);
@@ -235,8 +235,8 @@ export default function CajaDetallePage() {
     const nota = concepto.trim() || `Transferencia ${caja?.nombre} → ${destino?.nombre}`;
     try {
       await rpcTransferirCaja(id, cajaDestinoId, m, nota);
-    } catch (err: any) {
-      toast.error(err.message); setSaving(false); return;
+    } catch (err) {
+      toast.error(errorMessage(err)); setSaving(false); return;
     }
     setSaving(false);
     toast.success(`Transferencia de ${$$(m)} completada`);

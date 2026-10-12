@@ -22,7 +22,7 @@ const withCors = (handler: (req: Request) => Response | Promise<Response>) => as
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[CUSTOMER-PORTAL] ${step}${d}`);
 };

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -33,7 +33,7 @@ type Caller = {
   superAdmin: boolean;
 };
 
-async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+async function getCaller(req: Request, admin: SupabaseClient): Promise<Caller | null> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -53,13 +53,13 @@ async function getCaller(req: Request, admin: any): Promise<Caller | null> {
     userId: user.id,
     email,
     empresaId: profile?.empresa_id ?? null,
-    roles: (roleRows || []).map((r: any) => r.role),
+    roles: (roleRows || []).map((r: { role: string }) => r.role),
     superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
   };
 }
 
 // Service role and super admin run freely; any other caller (e.g. pg_cron with the anon key) is throttled.
-async function cronGate(req: Request, admin: any, nombre: string): Promise<Response | null> {
+async function cronGate(req: Request, admin: SupabaseClient, nombre: string): Promise<Response | null> {
   const caller = await getCaller(req, admin);
   if (caller?.service || caller?.superAdmin) return null;
   const { data: claimed, error } = await admin.rpc("cron_claim", { p_nombre: nombre, p_min_minutes: 50 });
@@ -72,7 +72,7 @@ async function cronGate(req: Request, admin: any, nombre: string): Promise<Respo
   return null;
 }
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[BILLING-CYCLE] ${step}${d}`);
 };
@@ -97,6 +97,32 @@ function getPhoneCandidates(phone: string): string[] {
   return Array.from(candidates);
 }
 
+// Pre-"basil" top-level invoice fields; the current Stripe typings no longer declare them.
+type InvoiceLegacy = Stripe.Invoice & { charge?: unknown; payment_intent?: unknown };
+
+interface AdminProfile {
+  id: string;
+  telefono: string | null;
+  nombre_completo: string;
+}
+
+interface BillingResult {
+  empresa_id: string;
+  action: string;
+  reason?: string;
+  error?: string;
+  amount?: number;
+  total?: number;
+  daysSinceGracia?: number;
+}
+
+// Same semantics as `e?.message`: Error instances and plain error objects alike.
+function errorMessage(e: unknown): string | undefined {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "object" && e !== null && "message" in e && typeof e.message === "string") return e.message;
+  return undefined;
+}
+
 const WA_BACKOFFS_MS = [0, 1500, 4000];
 
 // Retries transient failures (network, 5xx, 429, connection closed) with backoff; never throws.
@@ -118,8 +144,8 @@ async function postWhatsApp(apiUrl: string, apiToken: string, phone: string, mes
       transient = res.status >= 500 || res.status === 429 ||
         errStr.includes("connection closed") || errStr.includes("timeout") || errStr.includes("econn");
       if (!transient) break;
-    } catch (e: any) {
-      lastError = e?.message || "Network error";
+    } catch (e) {
+      lastError = errorMessage(e) || "Network error";
       transient = true;
     }
   }
@@ -143,23 +169,23 @@ async function sendWhatsAppWithFallback(
   return { success: false, phoneUsed: candidates[0] || null, error: lastError };
 }
 
-async function getEmpresaAdmins(supabase: any, empresaId: string) {
+async function getEmpresaAdmins(supabase: SupabaseClient, empresaId: string): Promise<AdminProfile[]> {
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, telefono, nombre_completo")
     .eq("empresa_id", empresaId);
-  const ids = (profiles || []).map((p: any) => p.id);
+  const ids = (profiles || []).map((p: AdminProfile) => p.id);
   if (!ids.length) return [];
   const { data: admins } = await supabase
     .from("user_roles")
     .select("user_id")
     .eq("role", "admin")
     .in("user_id", ids);
-  const adminSet = new Set((admins || []).map((a: any) => a.user_id));
-  return (profiles || []).filter((p: any) => adminSet.has(p.id));
+  const adminSet = new Set((admins || []).map((a: { user_id: string }) => a.user_id));
+  return (profiles || []).filter((p: AdminProfile) => adminSet.has(p.id));
 }
 
-async function getSystemWaConfig(supabase: any) {
+async function getSystemWaConfig(supabase: SupabaseClient) {
   try {
     // Get system token
     const { data } = await supabase
@@ -187,7 +213,7 @@ async function getSystemWaConfig(supabase: any) {
 }
 
 async function notifyEmpresaAdmins(
-  supabase: any,
+  supabase: SupabaseClient,
   empresaId: string,
   mensaje: string,
   tipo: string,
@@ -215,8 +241,8 @@ async function notifyEmpresaAdmins(
         error_detalle: result.success ? null : (result.error || "No se pudo entregar"),
       });
     }
-  } catch (e: any) {
-    logStep("notifyEmpresaAdmins error", { error: e.message });
+  } catch (e) {
+    logStep("notifyEmpresaAdmins error", { error: errorMessage(e) });
   }
 }
 
@@ -248,7 +274,7 @@ serve(withCors(async (req) => {
   const today = now.toISOString().split("T")[0];
   const isFirstOfMonth = now.getUTCDate() === 1;
 
-  const results: any[] = [];
+  const results: BillingResult[] = [];
 
   try {
     logStep("Function started", { today, isFirstOfMonth });
@@ -399,7 +425,7 @@ serve(withCors(async (req) => {
                 logStep("No payment method, set to gracia", { empresa_id: sub.empresa_id });
                 results.push({ empresa_id: sub.empresa_id, action: "gracia", reason: "no_payment_method" });
               }
-            } catch (chargeErr: any) {
+            } catch (chargeErr) {
               const msg = chargeErr instanceof Error ? chargeErr.message : String(chargeErr);
               logStep("Charge failed, set to gracia", { empresa_id: sub.empresa_id, error: msg });
 
@@ -440,7 +466,8 @@ serve(withCors(async (req) => {
                 }
 
                 if (inv.status === "paid") {
-                  const pi = typeof (inv as any).payment_intent === "string" ? (inv as any).payment_intent : null;
+                  const invLegacy: InvoiceLegacy = inv;
+                  const pi = typeof invLegacy.payment_intent === "string" ? invLegacy.payment_intent : null;
                   const facPagada = { estado: "pagada", stripe_payment_intent_id: pi, fecha_pago: now.toISOString() };
                   const { error: facUpErr } = await supabase.from("facturas")
                     .update({ ...facPagada, stripe_invoice_id: inv.id })
@@ -460,7 +487,7 @@ serve(withCors(async (req) => {
 
                   await supabase.from("intentos_cobro").insert({
                     factura_id: facRow?.id ?? null,
-                    stripe_charge_id: typeof (inv as any).charge === "string" ? (inv as any).charge : null,
+                    stripe_charge_id: typeof invLegacy.charge === "string" ? invLegacy.charge : null,
                     monto: (inv.total || 0) / 100,
                     estado: "exitoso",
                   });
@@ -471,8 +498,8 @@ serve(withCors(async (req) => {
                   logStep("Stripe invoice unexpected status", { empresa_id: sub.empresa_id, status: inv.status });
                 }
               }
-            } catch (sErr: any) {
-              const msg = sErr?.message || String(sErr);
+            } catch (sErr) {
+              const msg = errorMessage(sErr) || String(sErr);
               logStep("Stripe sub charge failed", { empresa_id: sub.empresa_id, error: msg });
               await supabase.from("suscripciones").update({
                 estado: "gracia",
@@ -487,7 +514,7 @@ serve(withCors(async (req) => {
               results.push({ empresa_id: sub.empresa_id, action: "gracia", reason: "stripe_sub_charge_failed", error: msg });
             }
           }
-        } catch (subErr: any) {
+        } catch (subErr) {
           logStep("Error processing sub", { empresa_id: sub.empresa_id, error: String(subErr) });
           results.push({ empresa_id: sub.empresa_id, action: "error", error: String(subErr) });
         }

@@ -34,6 +34,7 @@ import {
   CalendarIcon, Filter, X, Eye, CreditCard, BadgeDollarSign,
   MapPin, Phone, ChevronRight, HandCoins, Building2, CircleAlert,
   Plus, CheckCircle2,
+  type LucideIcon,
 } from "lucide-react";
 import { cn, $$, fmtDate } from "@/lib/utils";
 
@@ -228,7 +229,7 @@ function buildDashboardStats(d: DashboardRpc, meses: { ym: string; label: string
 }
 
 function KPI({ title, value, icon: Icon, accent, sub, trend, large }: {
-  title: string; value: string; icon: any; accent: string; sub?: string;
+  title: string; value: string; icon: LucideIcon; accent: string; sub?: string;
   trend?: "up" | "down" | null; large?: boolean;
 }) {
   return (
@@ -685,7 +686,7 @@ export default function DashboardPage() {
                   { label: "Eficiencia", pct: stats.eficienciaCobranza },
                 ].map(item => (
                   <div key={item.label}>
-                    <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">{item.label}</span><span className="font-medium">{(item as any).extra || pct(item.pct)}</span></div>
+                    <div className="flex justify-between text-[12px] mb-1"><span className="text-muted-foreground">{item.label}</span><span className="font-medium">{item.extra || pct(item.pct)}</span></div>
                     <Progress value={Math.min(item.pct, 100)} className="h-2.5" />
                   </div>
                 ))}
@@ -748,7 +749,7 @@ export default function DashboardPage() {
               <CardContent>
                 {stats.cajasData.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin cajas</p> : (
                   <div className="space-y-3">
-                    {stats.cajasData.map((c: any) => (
+                    {stats.cajasData.map((c) => (
                       <div key={c.nombre} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                         <div className="flex items-center gap-2"><Landmark className="h-4 w-4 text-muted-foreground" /><p className="text-[13px] font-medium">{c.nombre}</p></div>
                         <p className={cn("text-[13px] font-semibold", c.saldo > 0 ? "text-success" : "text-muted-foreground")}>{$$(c.saldo)}</p>
@@ -774,7 +775,7 @@ export default function DashboardPage() {
               <CardContent>
                 {stats.cobradorStats.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin cobradores</p> : (
                   <div className="space-y-2">
-                    {stats.cobradorStats.slice(0, 8).map((c: any) => (
+                    {stats.cobradorStats.slice(0, 8).map((c) => (
                       <div key={c.nombre} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
                         <div className="min-w-0 flex-1"><p className="text-[13px] font-medium truncate">{c.nombre}</p><p className="text-[11px] text-muted-foreground">{c.prestamos} prést · Ef: {$$(c.efectivo)}</p></div>
                         <div className="text-right ml-3"><p className="text-[13px] font-semibold text-success">{$$(c.cobrado)}</p><p className="text-[10px] text-muted-foreground">Mora: {$$(c.mora)}</p></div>
@@ -936,7 +937,7 @@ export default function DashboardPage() {
             <CardContent>
               {stats.rutaStats.length === 0 ? <p className="text-sm text-muted-foreground text-center py-6">Sin rutas</p> : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {stats.rutaStats.map((r: any) => (
+                  {stats.rutaStats.map((r) => (
                     <div key={r.nombre} className="flex items-center justify-between py-2 px-3 border rounded-lg">
                       <div><p className="text-[13px] font-medium">{r.nombre}</p><p className="text-[11px] text-muted-foreground">{r.prestamos} préstamos · Mora: {$$(r.mora)}</p></div>
                       <p className="text-[13px] font-semibold">{$$(r.saldo)}</p>

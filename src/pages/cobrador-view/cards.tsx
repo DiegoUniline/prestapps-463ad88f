@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn, $$, fmtDateTime } from "@/lib/utils";
@@ -25,7 +26,7 @@ function getStatusInfo(item: CuotaCobrador) {
 
 
 export function KPICard({ label, value, sub, icon: Icon, color }: {
-  label: string; value: string; sub?: string; icon: any; color: string;
+  label: string; value: string; sub?: string; icon: ComponentType<{ className?: string }>; color: string;
 }) {
   return (
     <Card className="border-border/50">
@@ -281,7 +282,7 @@ export function PagoCard({ pago, onNavigate }: { pago: PagoHistorial; onNavigate
   );
 }
 
-export function EmptyCard({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
+export function EmptyCard({ icon: Icon, title, subtitle }: { icon: ComponentType<{ className?: string }>; title: string; subtitle: string }) {
   return (
     <Card className="border-border/50">
       <CardContent className="p-8 text-center">

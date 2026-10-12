@@ -92,7 +92,7 @@ export default function PromesasPage() {
           <div key={i} className="bg-card rounded-lg border border-border p-4"><Skeleton className="h-4 w-3/4 mb-2" /><Skeleton className="h-3 w-1/2" /></div>
         )) : promesas.length === 0 ? (
           <p className="text-center py-8 text-muted-foreground text-[13px]">No hay promesas de pago</p>
-        ) : promesas.map((p: any) => (
+        ) : promesas.map((p) => (
           <div key={p.id} className="bg-card rounded-lg border border-border p-3 shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
             <div className="flex items-start justify-between">
               <div className="min-w-0">
@@ -101,7 +101,7 @@ export default function PromesasPage() {
               </div>
               <div className="text-right shrink-0 ml-2">
                 <p className="font-bold text-[14px]">{$$(Number(p.monto_prometido))}</p>
-                <Badge className={cn("text-[9px]", statusBadge[p.status] || "bg-muted text-muted-foreground")}>{p.status}</Badge>
+                <Badge className={cn("text-[9px]", statusBadge[p.status ?? ""] || "bg-muted text-muted-foreground")}>{p.status}</Badge>
               </div>
             </div>
             {p.notas && <p className="text-[11px] text-muted-foreground mt-1 truncate">{p.notas}</p>}
@@ -128,14 +128,14 @@ export default function PromesasPage() {
               ))
             ) : promesas.length === 0 ? (
               <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-[13px]">No hay promesas de pago</TableCell></TableRow>
-            ) : promesas.map((p: any) => (
+            ) : promesas.map((p) => (
               <TableRow key={p.id} className="border-b border-border/50 hover:bg-table-hover transition-colors">
                 <TableCell className="font-medium text-[13px] px-3">{p.prestamos?.clientes?.nombre_completo || "—"}</TableCell>
                 <TableCell className="text-[13px] px-3">{p.fecha_prometida}</TableCell>
                 <TableCell className="text-right font-semibold text-[13px] px-3">{$$(Number(p.monto_prometido))}</TableCell>
                 <TableCell className="text-[12px] text-muted-foreground px-3 max-w-[200px] truncate">{p.notas || "—"}</TableCell>
                 <TableCell className="px-3">
-                  <Badge className={statusBadge[p.status] || "bg-muted text-muted-foreground"}>{p.status}</Badge>
+                  <Badge className={statusBadge[p.status ?? ""] || "bg-muted text-muted-foreground"}>{p.status}</Badge>
                 </TableCell>
               </TableRow>
             ))}

@@ -19,7 +19,7 @@ import {
   RefreshCw, Receipt, ArrowRight, CalendarDays, AlertCircle,
   ShoppingCart, Minus, Plus, ChevronRight, Clock, FileText
 } from "lucide-react";
-import { $$, cn } from "@/lib/utils";
+import { $$, cn, errorMessage } from "@/lib/utils";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { encolarWhatsApp } from "@/lib/whatsappCola";
@@ -196,8 +196,8 @@ export default function MiSuscripcionPage() {
       } else {
         throw new Error("No checkout URL returned");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Error al crear sesión de pago");
+    } catch (err) {
+      toast.error(errorMessage(err) || "Error al crear sesión de pago");
     } finally {
       setCheckoutLoading(null);
     }
@@ -211,8 +211,8 @@ export default function MiSuscripcionPage() {
       if (data?.url) {
         window.open(data.url, "_blank");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Error al abrir portal");
+    } catch (err) {
+      toast.error(errorMessage(err) || "Error al abrir portal");
     } finally {
       setPortalLoading(false);
     }
@@ -869,8 +869,8 @@ export default function MiSuscripcionPage() {
                     if (checkoutData?.url) {
                       window.open(checkoutData.url, "_blank");
                     }
-                  } catch (err: any) {
-                    toast.error(err.message || "Error al seleccionar plan");
+                  } catch (err) {
+                    toast.error(errorMessage(err) || "Error al seleccionar plan");
                   } finally {
                     setSelectPlanLoading(false);
                   }

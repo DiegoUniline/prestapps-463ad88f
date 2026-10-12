@@ -123,7 +123,7 @@ async function verificar(body: string, firmaHex: string, publicPem: string) {
 }
 
 // ── Mapeo Círculo de Crédito RCC PM ───────────────────────────────────────────
-function buildRequest(c: Record<string, any>, folioOtorgante: string) {
+function buildRequest(c: Record<string, unknown>, folioOtorgante: string) {
   return {
     folioOtorgante,
     persona: {
@@ -145,11 +145,25 @@ function buildRequest(c: Record<string, any>, folioOtorgante: string) {
 const num = (v: unknown) => (isNaN(Number(v)) ? 0 : Number(v));
 const BUCKETS_VENCIDO = ["29dias", "59dias", "89dias", "119dias", "179dias", "180MasDias"];
 
-function parseResponse(d: any) {
-  const fin: any[] = d?.credito?.cuentasFinancieras ?? [];
-  const com: any[] = d?.credito?.cuentasComerciales ?? [];
+type CuentaCirculo = Record<string, unknown> | null | undefined;
+
+// Respuesta JSON de Círculo (solo los campos que se leen aquí; raw = cuerpo no-JSON)
+interface RespuestaCirculo {
+  folioConsulta?: unknown;
+  claveRetorno?: unknown;
+  credito?: { cuentasFinancieras?: CuentaCirculo[]; cuentasComerciales?: CuentaCirculo[] } | null;
+  calificacionCartera?: ({ calificacion?: unknown } | null | undefined)[] | null;
+  consultasInstitucionales?: { consultasFinancieras?: unknown[] | null; consultasComerciales?: unknown[] | null } | null;
+  clavePrevenciones?: unknown[] | null;
+  errores?: { codigo?: unknown; mensaje?: unknown }[] | null;
+  raw?: string;
+}
+
+function parseResponse(d: RespuestaCirculo | null | undefined) {
+  const fin: CuentaCirculo[] = d?.credito?.cuentasFinancieras ?? [];
+  const com: CuentaCirculo[] = d?.credito?.cuentasComerciales ?? [];
   const cuentas = [...fin, ...com];
-  const califs: string[] = (d?.calificacionCartera ?? []).map((x: any) => String(x?.calificacion ?? "")).filter(Boolean);
+  const califs: string[] = (d?.calificacionCartera ?? []).map((x) => String(x?.calificacion ?? "")).filter(Boolean);
   const peor = califs.sort().at(-1) ?? null;
   return {
     folio: d?.folioConsulta != null ? String(d.folioConsulta) : null,
@@ -198,7 +212,7 @@ async function callApi(payload: unknown, cred: Credenciales) {
       });
       if (res.status === 204) return { ok: false as const, status: 204, data: null, error: "Sin historial", intentos: i };
       const text = await res.text();
-      let data: any;
+      let data: RespuestaCirculo | null;
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
       if (res.ok && produccion && cred.cdc_public_key) {
@@ -209,7 +223,7 @@ async function callApi(payload: unknown, cred: Credenciales) {
       }
       if (res.ok) return { ok: true as const, status: res.status, data, intentos: i };
 
-      const errs = (data?.errores ?? []).map((e: any) => `${e.codigo}: ${e.mensaje}`).join(" | ");
+      const errs = (data?.errores ?? []).map((e) => `${e.codigo}: ${e.mensaje}`).join(" | ");
       lastErr = `HTTP ${res.status}${errs ? ` — ${errs}` : `: ${text.slice(0, 300)}`}`;
       if (res.status < 500 && res.status !== 429) return { ok: false as const, status: res.status, data, error: lastErr, intentos: i };
     } catch (e) {

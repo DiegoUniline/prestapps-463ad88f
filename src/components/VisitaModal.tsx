@@ -29,7 +29,7 @@ interface VisitaModalProps {
   cuotaNum: number;
   saldoTotal: number;
 }
-import { $$ } from "@/lib/utils";
+import { $$, errorMessage } from "@/lib/utils";
 export function VisitaModal({ open, onOpenChange, prestamoId, clienteId, clienteNombre, cuotaId, cuotaNum, saldoTotal }: VisitaModalProps) {
   const queryClient = useQueryClient();
 
@@ -62,8 +62,8 @@ export function VisitaModal({ open, onOpenChange, prestamoId, clienteId, cliente
       queryClient.invalidateQueries({ queryKey: ["promesas"] });
       onOpenChange(false);
       resetForm();
-    } catch (err: any) {
-      toast.error("Error: " + err.message);
+    } catch (err) {
+      toast.error("Error: " + errorMessage(err));
     } finally {
       setSaving(false);
     }

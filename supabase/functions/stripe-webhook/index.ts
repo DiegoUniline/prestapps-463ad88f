@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -22,7 +22,7 @@ const withCors = (handler: (req: Request) => Response | Promise<Response>) => as
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[STRIPE-WEBHOOK] ${step}${d}`);
 };
@@ -43,8 +43,28 @@ function getReadableError(code: string, message: string): string {
   return map[code] || message || "Error al procesar el pago";
 }
 
+// Pre-"basil" top-level fields; the current Stripe typings no longer declare them.
+type InvoiceLegacy = Stripe.Invoice & {
+  subscription?: string | Stripe.Subscription | null;
+  payment_intent?: string | Stripe.PaymentIntent | null;
+};
+type ChargeLegacy = Stripe.Charge & { invoice?: string | Stripe.Invoice | null };
+
+interface AdminProfile {
+  id: string;
+  telefono: string | null;
+  nombre_completo: string;
+}
+
+// Same semantics as `e?.message`: Error instances and plain error objects alike.
+function errorMessage(e: unknown): string | undefined {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "object" && e !== null && "message" in e && typeof e.message === "string") return e.message;
+  return undefined;
+}
+
 // True when the subscription already has a paid invoice covering today.
-async function hasPaidCurrentPeriod(supabase: any, suscripcionId: string): Promise<boolean> {
+async function hasPaidCurrentPeriod(supabase: SupabaseClient, suscripcionId: string): Promise<boolean> {
   const today = new Date().toISOString().slice(0, 10);
   const { data } = await supabase
     .from("facturas")
@@ -175,7 +195,7 @@ serve(withCors(async (req) => {
       // ── Invoice paid: keep subscription active, log factura ──
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = (invoice as any).subscription as string;
+        const subscriptionId = (invoice as InvoiceLegacy).subscription as string;
         if (!subscriptionId) break;
 
         logStep("Invoice paid", { subscriptionId, amount: invoice.amount_paid });
@@ -214,7 +234,7 @@ serve(withCors(async (req) => {
         const facNum = `FAC-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`;
 
         const periodoInicio = periodStart ? new Date(periodStart * 1000).toISOString().split("T")[0] : now.toISOString().split("T")[0];
-        const piId = (invoice as any).payment_intent as string || null;
+        const piId = (invoice as InvoiceLegacy).payment_intent as string || null;
         let facturaNumero = facNum;
 
         // Idempotent on stripe_invoice_id: reuse the row billing-cycle/billing-fix-drafts may have created
@@ -368,11 +388,11 @@ serve(withCors(async (req) => {
           // Ignore charges coming from a duplicate / unlinked Stripe subscription
           let chargeSubId: string | null = null;
           try {
-            const invoiceId = ((charge as any).invoice as string) || null;
+            const invoiceId = ((charge as ChargeLegacy).invoice as string) || null;
             if (invoiceId) {
               const inv = await stripe.invoices.retrieve(invoiceId);
-              chargeSubId = ((inv as any).subscription as string) ||
-                ((inv as any).parent?.subscription_details?.subscription as string) || null;
+              chargeSubId = ((inv as InvoiceLegacy).subscription as string) ||
+                (inv.parent?.subscription_details?.subscription as string) || null;
             }
           } catch (e) {
             logStep("Could not resolve invoice for charge", { error: String(e) });
@@ -504,8 +524,8 @@ async function postWhatsApp(apiUrl: string, apiToken: string, phone: string, mes
       transient = res.status >= 500 || res.status === 429 ||
         errStr.includes("connection closed") || errStr.includes("timeout") || errStr.includes("econn");
       if (!transient) break;
-    } catch (e: any) {
-      lastError = e?.message || "Network error";
+    } catch (e) {
+      lastError = errorMessage(e) || "Network error";
       transient = true;
     }
   }
@@ -529,23 +549,23 @@ async function sendWhatsAppWithFallback(
   return { success: false, phoneUsed: candidates[0] || null, error: lastError };
 }
 
-async function getEmpresaAdmins(supabase: any, empresaId: string) {
+async function getEmpresaAdmins(supabase: SupabaseClient, empresaId: string): Promise<AdminProfile[]> {
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, telefono, nombre_completo")
     .eq("empresa_id", empresaId);
-  const ids = (profiles || []).map((p: any) => p.id);
+  const ids = (profiles || []).map((p: AdminProfile) => p.id);
   if (!ids.length) return [];
   const { data: admins } = await supabase
     .from("user_roles")
     .select("user_id")
     .eq("role", "admin")
     .in("user_id", ids);
-  const adminSet = new Set((admins || []).map((a: any) => a.user_id));
-  return (profiles || []).filter((p: any) => adminSet.has(p.id));
+  const adminSet = new Set((admins || []).map((a: { user_id: string }) => a.user_id));
+  return (profiles || []).filter((p: AdminProfile) => adminSet.has(p.id));
 }
 
-async function getSystemWaConfig(supabase: any) {
+async function getSystemWaConfig(supabase: SupabaseClient) {
   try {
     // Get system token
     const { data } = await supabase
@@ -573,7 +593,7 @@ async function getSystemWaConfig(supabase: any) {
 }
 
 async function sendWhatsAppAlert(
-  supabase: any,
+  supabase: SupabaseClient,
   empresaId: string,
   opts: { tipo: string; mensaje: string }
 ) {
@@ -630,7 +650,7 @@ async function sendWhatsAppAlert(
         error_detalle: result.success ? null : (result.error || "No se pudo entregar"),
       });
     }
-  } catch (e: any) {
-    logStep("sendWhatsAppAlert error", { error: e.message });
+  } catch (e) {
+    logStep("sendWhatsAppAlert error", { error: errorMessage(e) });
   }
 }

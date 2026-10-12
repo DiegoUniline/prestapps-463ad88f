@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { $$ } from "@/lib/utils";
+import { $$, errorMessage } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -227,8 +227,8 @@ function RutaDetallePage() {
       queryClient.invalidateQueries({ queryKey: ["ruta-detalle", id] });
       if (isNew) navigate("/rutas");
       else setEditing(false);
-    } catch (err: any) {
-      toast.error("Error: " + err.message);
+    } catch (err) {
+      toast.error("Error: " + errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -238,7 +238,7 @@ function RutaDetallePage() {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  const cobradorNombre = cobradores.find((c: any) => c.id === cobradorId || c.id === (cobradorId === "__none__" ? null : cobradorId))?.nombre || "Sin asignar";
+  const cobradorNombre = cobradores.find((c) => c.id === cobradorId || c.id === (cobradorId === "__none__" ? null : cobradorId))?.nombre || "Sin asignar";
 
   return (
     <div className="space-y-6">
@@ -277,7 +277,7 @@ function RutaDetallePage() {
                 <SelectTrigger><SelectValue placeholder="Seleccionar cobrador" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Sin asignar</SelectItem>
-                  {cobradores.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
+                  {cobradores.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>
             ) : <p className="text-sm font-medium mt-1">{cobradorNombre}</p>}
@@ -304,9 +304,9 @@ function RutaDetallePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {prestamosRuta.map((p: any) => (
+                  {prestamosRuta.map((p) => (
                     <TableRow key={p.id} className="border-b border-border/50 hover:bg-table-hover cursor-pointer" onClick={() => navigate(`/prestamos/${p.id}`)}>
-                      <TableCell className="text-[13px] px-3">{(p.clientes as any)?.nombre_completo || "—"}</TableCell>
+                      <TableCell className="text-[13px] px-3">{p.clientes?.nombre_completo || "—"}</TableCell>
                       <TableCell className="text-[13px] px-3 text-right">{$$(Number(p.monto_solicitado))}</TableCell>
                       <TableCell className="text-[13px] px-3">{p.estado}</TableCell>
                     </TableRow>

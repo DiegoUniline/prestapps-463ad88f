@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ComponentProps } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -32,7 +32,7 @@ interface CuentaCliente {
   tipoCuenta: string;
   montoSolicitado: number;
   montoTotalPagar: number;
-  estado: string;
+  estado: string | null;
   rutaId: string | null;
   cobradorId: string | null;
   cajaId: string | null;
@@ -80,7 +80,7 @@ function useEstadoCuentaCliente(clienteId: string, empresaId: string) {
     queryKey: ["estado-cuenta", clienteId, empresaId],
     queryFn: async (): Promise<CuentaCliente[]> => {
       // Get all active prestamos for this client
-      const { data: prestamos, error } = await (supabase.from as any)("prestamos")
+      const { data: prestamos, error } = await supabase.from("prestamos")
         .select(`
           id, id_prestamo, tipo_cuenta, monto_solicitado, monto_total_pagar,
           estado, num_cuotas, ruta_id, cobrador_id, caja_id,
@@ -94,7 +94,7 @@ function useEstadoCuentaCliente(clienteId: string, empresaId: string) {
       if (error) throw error;
       if (!prestamos || prestamos.length === 0) return [];
 
-      const prestamoIds = prestamos.map((p: any) => p.id);
+      const prestamoIds = prestamos.map((p) => p.id);
 
       // Get all cuotas for these prestamos
       const { data: cuotas } = await supabase
@@ -107,16 +107,16 @@ function useEstadoCuentaCliente(clienteId: string, empresaId: string) {
         .in("prestamo_id", prestamoIds)
         .order("num_cuota", { ascending: true });
 
-      const cuotasByPrestamo: Record<string, any[]> = {};
+      const cuotasByPrestamo: Record<string, NonNullable<typeof cuotas>> = {};
       for (const c of cuotas || []) {
         if (!cuotasByPrestamo[c.prestamo_id]) cuotasByPrestamo[c.prestamo_id] = [];
         cuotasByPrestamo[c.prestamo_id].push(c);
       }
 
-      return prestamos.map((p: any): CuentaCliente => {
+      return prestamos.map((p): CuentaCliente => {
         const allCuotas = cuotasByPrestamo[p.id] || [];
-        const pendientes = allCuotas.filter((c: any) => c.status !== "Pagada");
-        const pagadas = allCuotas.filter((c: any) => c.status === "Pagada");
+        const pendientes = allCuotas.filter((c) => c.status !== "Pagada");
+        const pagadas = allCuotas.filter((c) => c.status === "Pagada");
 
         return {
           prestamoId: p.id,
@@ -130,7 +130,7 @@ function useEstadoCuentaCliente(clienteId: string, empresaId: string) {
           cajaId: p.caja_id,
           rutaNombre: p.rutas?.nombre || "Sin ruta",
           cajaNombre: p.cajas?.nombre || "—",
-          cuotasPendientes: pendientes.map((c: any): CuotaPendiente => ({
+          cuotasPendientes: pendientes.map((c): CuotaPendiente => ({
             id: c.id,
             numCuota: c.num_cuota,
             capitalInteres: Number(c.capital_interes || 0),
@@ -145,8 +145,8 @@ function useEstadoCuentaCliente(clienteId: string, empresaId: string) {
             status: c.status || "Pendiente",
             diasAtraso: Number(c.dias_atraso || 0),
           })),
-          totalSaldo: pendientes.reduce((s: number, c: any) => s + Number(c.saldo_total || 0), 0),
-          totalMora: pendientes.reduce((s: number, c: any) => s + Number(c.saldo_mora || 0), 0),
+          totalSaldo: pendientes.reduce((s, c) => s + Number(c.saldo_total || 0), 0),
+          totalMora: pendientes.reduce((s, c) => s + Number(c.saldo_mora || 0), 0),
           cuotasTotales: allCuotas.length,
           cuotasPagadas: pagadas.length,
           proximaCuota: pendientes.length > 0 ? {
@@ -182,7 +182,7 @@ export function ClienteEstadoCuentaSheet({
   // Pago modal state
   const [pagoOpen, setPagoOpen] = useState(false);
   const [pagoPrestamoId, setPagoPrestamoId] = useState("");
-  const [pagoCuotas, setPagoCuotas] = useState<any[]>([]);
+  const [pagoCuotas, setPagoCuotas] = useState<ComponentProps<typeof PagoModal>["cuotasPendientes"]>([]);
   const [pagoRutaId, setPagoRutaId] = useState<string | null>(null);
   const [pagoCobradorId, setPagoCobradorId] = useState<string | null>(null);
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();

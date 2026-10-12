@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -31,7 +31,7 @@ type Caller = {
   superAdmin: boolean;
 };
 
-async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+async function getCaller(req: Request, admin: SupabaseClient): Promise<Caller | null> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -51,13 +51,13 @@ async function getCaller(req: Request, admin: any): Promise<Caller | null> {
     userId: user.id,
     email,
     empresaId: profile?.empresa_id ?? null,
-    roles: (roleRows || []).map((r: any) => r.role),
+    roles: (roleRows || []).map((r: { role: string }) => r.role),
     superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
   };
 }
 
 // Service role and super admin run freely; any other caller (e.g. pg_cron with the anon key) is throttled.
-async function cronGate(req: Request, admin: any, nombre: string): Promise<Response | null> {
+async function cronGate(req: Request, admin: SupabaseClient, nombre: string): Promise<Response | null> {
   const caller = await getCaller(req, admin);
   if (caller?.service || caller?.superAdmin) return null;
   const { data: claimed, error } = await admin.rpc("cron_claim", { p_nombre: nombre, p_min_minutes: 50 });
@@ -117,7 +117,7 @@ Deno.serve(withCors(async (req) => {
             errors: data.errors || 0,
             total: data.total || 0,
           });
-        } catch (e: any) {
+        } catch {
           results.push({ empresa_id: cfg.empresa_id, tipo: "dia_antes", sent: 0, errors: 1, total: 0 });
         }
       }
@@ -145,14 +145,14 @@ Deno.serve(withCors(async (req) => {
             errors: data.errors || 0,
             total: data.total || 0,
           });
-        } catch (e: any) {
+        } catch {
           results.push({ empresa_id: cfg.empresa_id, tipo: "vencido", sent: 0, errors: 1, total: 0 });
         }
       }
     }
 
     // Cola de WhatsApp (recibos, documentos): procesa lo pendiente de todas las empresas
-    let queue: any = null;
+    let queue: unknown = null;
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/whatsapp-sender`, {
         method: "POST",
@@ -163,9 +163,10 @@ Deno.serve(withCors(async (req) => {
         body: JSON.stringify({ action: "process-queue" }),
       });
       queue = await res.json().catch(() => ({ status: res.status }));
-    } catch (e: any) {
-      console.error("WhatsApp queue error:", e?.message || e);
-      queue = { error: e?.message || String(e) };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("WhatsApp queue error:", msg || e);
+      queue = { error: msg || String(e) };
     }
 
     console.log("WhatsApp cron results:", JSON.stringify(results), "queue:", JSON.stringify(queue));
@@ -173,9 +174,11 @@ Deno.serve(withCors(async (req) => {
     return new Response(JSON.stringify({ success: true, results, queue }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("WhatsApp cron error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    // cfgErr (PostgrestError) is a plain object with .message, not always an Error instance
+    const msg = error instanceof Error ? error.message : String((error as { message?: unknown } | null)?.message ?? error);
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

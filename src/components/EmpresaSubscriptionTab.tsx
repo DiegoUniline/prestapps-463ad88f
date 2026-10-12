@@ -136,7 +136,7 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
       queryClient.invalidateQueries({ queryKey: ["empresa-facturas", empresaId] });
       setFormOpen(false);
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err) => toast.error(err.message),
   });
 
   const cancelMutation = useMutation({
@@ -152,7 +152,7 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
       toast.success("Suscripción cancelada");
       queryClient.invalidateQueries({ queryKey: ["empresa-suscripcion", empresaId] });
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err) => toast.error(err.message),
   });
 
   const facturaEstadoMutation = useMutation({
@@ -169,7 +169,7 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
       queryClient.invalidateQueries({ queryKey: ["empresa-facturas", empresaId] });
       queryClient.invalidateQueries({ queryKey: ["empresa-suscripcion", empresaId] });
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err) => toast.error(err.message),
   });
 
   const selectedPlan = planes.find((p) => p.id === form.plan_id);
@@ -199,7 +199,7 @@ export default function EmpresaSubscriptionTab({ empresaId, empresaNombre }: Pro
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
               <div>
                 <span className="text-muted-foreground text-xs block">Plan</span>
-                <span className="font-medium">{(suscripcion as any).planes?.nombre || "Manual"}</span>
+                <span className="font-medium">{suscripcion.planes?.nombre || "Manual"}</span>
               </div>
               <div>
                 <span className="text-muted-foreground text-xs block">Usuarios</span>

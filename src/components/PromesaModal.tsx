@@ -18,7 +18,7 @@ interface PromesaModalProps {
   saldoTotal: number;
   fechaVencimiento: string;
 }
-import { $$ } from "@/lib/utils";
+import { $$, errorMessage } from "@/lib/utils";
 export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId, saldoTotal, fechaVencimiento }: PromesaModalProps) {
   const [monto, setMonto] = useState(saldoTotal.toString());
   const [fecha, setFecha] = useState("");
@@ -43,8 +43,8 @@ export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId
       setMonto(saldoTotal.toString());
       setFecha("");
       setNotas("");
-    } catch (err: any) {
-      toast.error("Error al registrar promesa: " + err.message);
+    } catch (err) {
+      toast.error("Error al registrar promesa: " + errorMessage(err));
     } finally {
       setSaving(false);
     }

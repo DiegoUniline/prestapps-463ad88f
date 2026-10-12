@@ -46,13 +46,13 @@ export function DatosGeneralesTab() {
   const { data: empresa, isLoading } = useQuery({
     queryKey: ["empresa-datos", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("empresas")
         .select("id, nombre, ruc, telefono, direccion, logo_url, activa, dias_gracia, dias_por_vencer, lada_pais, moneda_simbolo, moneda_codigo")
         .eq("id", empresaId)
         .single();
       if (error) throw error;
-      return data as { id: string; nombre: string; ruc: string | null; telefono: string | null; direccion: string | null; logo_url: string | null; activa: boolean; dias_gracia: number; dias_por_vencer: number; lada_pais: string; moneda_simbolo: string; moneda_codigo: string };
+      return data;
     },
   });
 
@@ -77,7 +77,7 @@ export function DatosGeneralesTab() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!form.nombre.trim()) throw new Error("El nombre es requerido");
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("empresas")
         .update({
           nombre: form.nombre.trim(),
@@ -102,7 +102,7 @@ export function DatosGeneralesTab() {
       toast.success("Datos actualizados");
       setEditing(false);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e) => toast.error(e.message),
   });
 
   const handleCancel = () => {

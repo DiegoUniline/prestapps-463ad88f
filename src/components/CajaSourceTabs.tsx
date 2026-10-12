@@ -75,7 +75,7 @@ export function PrestamosTab({ cajaId }: { cajaId: string }) {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-medium">{p.id_prestamo}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{(p.clientes as any)?.nombre_completo || "—"}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{p.clientes?.nombre_completo || "—"}</p>
                 <p className="text-[11px] text-muted-foreground">{p.created_at ? fmtDate(p.created_at, "dd/MM/yy") : "—"}</p>
               </div>
               <div className="text-right shrink-0">
@@ -114,7 +114,7 @@ export function PrestamosTab({ cajaId }: { cajaId: string }) {
               <TableRow key={p.id} className="border-b border-border/50 cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/prestamos/${p.id}`)}>
                 <TableCell className="text-[12px] px-3 whitespace-nowrap">{p.created_at ? fmtDate(p.created_at, "dd/MM/yy") : "—"}</TableCell>
                 <TableCell className="text-[13px] px-3 font-medium">{p.id_prestamo}</TableCell>
-                <TableCell className="text-[13px] px-3 max-w-[200px] truncate">{(p.clientes as any)?.nombre_completo || "—"}</TableCell>
+                <TableCell className="text-[13px] px-3 max-w-[200px] truncate">{p.clientes?.nombre_completo || "—"}</TableCell>
                 <TableCell className="text-[12px] px-3">
                   <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-medium",
                     p.estado === "Activo" ? "bg-primary/10 text-primary" :
@@ -184,7 +184,7 @@ export function PagosTab({ cajaId }: { cajaId: string }) {
       {/* Mobile */}
       <div className="md:hidden divide-y divide-border bg-card rounded-lg border">
         {pagos.map(p => {
-          const prestamo = p.prestamos as any;
+          const prestamo = p.prestamos;
           return (
             <div key={p.id} className={cn("px-4 py-3", p.anulado && "opacity-50")}>
               <div className="flex items-start justify-between gap-2">
@@ -227,7 +227,7 @@ export function PagosTab({ cajaId }: { cajaId: string }) {
           </TableHeader>
           <TableBody>
             {pagos.map(p => {
-              const prestamo = p.prestamos as any;
+              const prestamo = p.prestamos;
               return (
                 <TableRow key={p.id} className={cn("border-b border-border/50", p.anulado && "opacity-50")}>
                   <TableCell className="text-[12px] px-3 whitespace-nowrap">{p.fecha_pago ? fmtDate(p.fecha_pago, "dd/MM/yy") : "—"}</TableCell>

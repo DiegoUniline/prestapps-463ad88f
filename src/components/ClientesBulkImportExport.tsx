@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Upload, FileSpreadsheet, AlertTriangle, CheckCircle2, Loader2, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
+import type { Enums } from "@/integrations/supabase/types";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -44,7 +45,7 @@ const CSV_COLUMNS = [
   { key: "aval_parentesco", label: "aval_parentesco", required: false },
 ];
 
-function escapeCSV(val: string | null | undefined): string {
+function escapeCSV(val: string | number | boolean | null | undefined): string {
   if (val == null) return "";
   const s = String(val);
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
@@ -157,12 +158,14 @@ export default function ClientesBulkImportExport() {
       .from("clientes")
       .select(CSV_COLUMNS.map((c) => c.key).join(","))
       .eq("empresa_id", empresaId)
-      .order("nombre_completo");
+      .order("nombre_completo")
+      // select string is built dynamically, so supabase-js cannot infer the row shape
+      .overrideTypes<Record<string, string | number | boolean | null>[], { merge: false }>();
     if (error) { toast.error("Error exportando"); return; }
     if (!data || data.length === 0) { toast.info("No hay clientes para exportar"); return; }
 
     const header = CSV_COLUMNS.map((c) => c.label).join(",");
-    const rows = data.map((row: any) =>
+    const rows = data.map((row) =>
       CSV_COLUMNS.map((c) => escapeCSV(row[c.key])).join(",")
     );
     const csv = [header, ...rows].join("\n");
@@ -216,12 +219,12 @@ export default function ClientesBulkImportExport() {
         telefono: r.telefono || null,
         correo: r.correo || null,
         dni: r.dni || null,
-        documento_identidad: (["DUI", "Pasaporte", "NIT", "Otro", "INE"].includes(r.documento_identidad) ? r.documento_identidad : null) as any,
+        documento_identidad: (["DUI", "Pasaporte", "NIT", "Otro", "INE"].includes(r.documento_identidad) ? r.documento_identidad : null) as Enums<"documento_tipo"> | null,
         direccion: r.direccion || null,
-        sexo: (["Masculino", "Femenino", "Otro"].includes(r.sexo) ? r.sexo : null) as any,
+        sexo: (["Masculino", "Femenino", "Otro"].includes(r.sexo) ? r.sexo : null) as Enums<"sexo_tipo"> | null,
         fecha_nacimiento: r.fecha_nacimiento || null,
-        estado_civil: (["Soltero", "Casado", "Unión libre", "Divorciado", "Viudo"].includes(r.estado_civil) ? r.estado_civil : null) as any,
-        situacion_laboral: (["Empleado", "Independiente", "Desempleado", "Pensionado", "Otro"].includes(r.situacion_laboral) ? r.situacion_laboral : null) as any,
+        estado_civil: (["Soltero", "Casado", "Unión libre", "Divorciado", "Viudo"].includes(r.estado_civil) ? r.estado_civil : null) as Enums<"estado_civil"> | null,
+        situacion_laboral: (["Empleado", "Independiente", "Desempleado", "Pensionado", "Otro"].includes(r.situacion_laboral) ? r.situacion_laboral : null) as Enums<"situacion_laboral"> | null,
         ingresos: r.ingresos ? Number(r.ingresos) : null,
         gastos_mensuales: r.gastos_mensuales ? Number(r.gastos_mensuales) : null,
         dependientes: r.dependientes ? Number(r.dependientes) : null,

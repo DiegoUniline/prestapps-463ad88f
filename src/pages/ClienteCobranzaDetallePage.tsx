@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ComponentProps } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,7 +52,7 @@ interface CuentaCliente {
   montoTotalPagar: number;
   estado: string;
   frecuencia: string;
-  fechaRegistro: string;
+  fechaRegistro: string | null;
   rutaId: string | null;
   cobradorId: string | null;
   cajaId: string | null;
@@ -106,7 +106,7 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
     queryKey: ["cobranza-cuentas", clienteId, empresaId],
     queryFn: async (): Promise<CuentaCliente[]> => {
       if (!clienteId) return [];
-      const { data: prestamos, error } = await (supabase.from as any)("prestamos")
+      const { data: prestamos, error } = await supabase.from("prestamos")
         .select(`
           id, id_prestamo, tipo_cuenta, monto_solicitado, monto_total_pagar,
           estado, num_cuotas, frecuencia, fecha_registro, ruta_id, cobrador_id, caja_id,
@@ -119,9 +119,9 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
       if (error) throw error;
       if (!prestamos || prestamos.length === 0) return [];
 
-      const prestamoIds = prestamos.map((p: any) => p.id);
+      const prestamoIds = prestamos.map((p) => p.id);
 
-      const cobIds = [...new Set(prestamos.map((p: any) => p.cobrador_id).filter(Boolean))] as string[];
+      const cobIds = [...new Set(prestamos.map((p) => p.cobrador_id).filter(Boolean))] as string[];
       const cobMap: Record<string, string> = {};
       if (cobIds.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
@@ -139,13 +139,13 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
         .in("prestamo_id", prestamoIds)
         .order("num_cuota", { ascending: true }));
 
-      const cuotasByPrestamo: Record<string, any[]> = {};
+      const cuotasByPrestamo: Record<string, typeof cuotas> = {};
       for (const c of cuotas || []) {
         if (!cuotasByPrestamo[c.prestamo_id]) cuotasByPrestamo[c.prestamo_id] = [];
         cuotasByPrestamo[c.prestamo_id].push(c);
       }
 
-      const mapCuota = (c: any): Cuota => ({
+      const mapCuota = (c: (typeof cuotas)[number]): Cuota => ({
         id: c.id,
         prestamoId: c.prestamo_id,
         numCuota: c.num_cuota,
@@ -163,7 +163,7 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
         diasAtraso: Number(c.dias_atraso || 0),
       });
 
-      return prestamos.map((p: any): CuentaCliente => {
+      return prestamos.map((p): CuentaCliente => {
         const allCuotas = (cuotasByPrestamo[p.id] || []).map(mapCuota);
         const pendientes = allCuotas.filter((c) => c.status !== "Pagada");
         const pagadas = allCuotas.filter((c) => c.status === "Pagada");
@@ -176,7 +176,7 @@ function useCuentasCliente(clienteId: string | undefined, empresaId: string) {
           tipoCuenta: p.tipo_cuenta || "prestamo",
           montoSolicitado: Number(p.monto_solicitado),
           montoTotalPagar: Number(p.monto_total_pagar || 0),
-          estado: p.estado,
+          estado: p.estado ?? "", // never null here: the query filters .in("estado", [...])
           frecuencia: p.frecuencia,
           fechaRegistro: p.fecha_registro,
           rutaId: p.ruta_id,
@@ -217,7 +217,7 @@ function usePagosCliente(clienteId: string | undefined) {
         .in("prestamo_id", ids)
         .order("created_at", { ascending: false })
         .limit(50);
-      return (pagos || []).map((p: any) => ({ ...p, idPrestamo: nameMap[p.prestamo_id] || "—" }));
+      return (pagos || []).map((p) => ({ ...p, idPrestamo: nameMap[p.prestamo_id] || "—" }));
     },
     enabled: !!clienteId,
     staleTime: 1000 * 60 * 2,
@@ -256,7 +256,7 @@ export default function ClienteCobranzaDetallePage() {
   // Pago modal
   const [pagoOpen, setPagoOpen] = useState(false);
   const [pagoPrestamoId, setPagoPrestamoId] = useState("");
-  const [pagoCuotas, setPagoCuotas] = useState<any[]>([]);
+  const [pagoCuotas, setPagoCuotas] = useState<ComponentProps<typeof PagoModal>["cuotasPendientes"]>([]);
   const [pagoRutaId, setPagoRutaId] = useState<string | null>(null);
   const [pagoCobradorId, setPagoCobradorId] = useState<string | null>(null);
   const [pagoMontoInicial, setPagoMontoInicial] = useState<number | undefined>();
@@ -282,7 +282,7 @@ export default function ClienteCobranzaDetallePage() {
     const cuotasPagadas = cuentas.reduce((s, c) => s + c.cuotasPagadas, 0);
 
     // Total abonado = total pagos no anulados
-    const totalAbonado = (pagos || []).filter((p: any) => !p.anulado).reduce((s: number, p: any) => s + Number(p.monto_recibido || 0), 0);
+    const totalAbonado = (pagos || []).filter((p) => !p.anulado).reduce((s, p) => s + Number(p.monto_recibido || 0), 0);
 
     // Liquidación = solo saldo capital restante (sin intereses futuros ni mora)
     const liquidacion = cuentas.reduce((s, c) => s + c.cuotasPendientes.reduce((sc, q) => sc + q.saldoCapital, 0), 0);
@@ -439,7 +439,7 @@ export default function ClienteCobranzaDetallePage() {
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Ha Abonado</span>
               </div>
               <p className="text-lg font-bold text-success">{$$(totales.totalAbonado)}</p>
-              <p className="text-[10px] text-muted-foreground">{(pagos || []).filter((p: any) => !p.anulado).length} pagos</p>
+              <p className="text-[10px] text-muted-foreground">{(pagos || []).filter((p) => !p.anulado).length} pagos</p>
             </div>
 
             {/* Deuda Pendiente */}
@@ -617,7 +617,7 @@ export default function ClienteCobranzaDetallePage() {
             </SelectContent>
           </Select>
           {vistaActiva === "cuotas" && (
-            <Select value={filtroCuota} onValueChange={(v) => setFiltroCuota(v as any)}>
+            <Select value={filtroCuota} onValueChange={(v) => setFiltroCuota(v as typeof filtroCuota)}>
               <SelectTrigger className="h-8 w-[150px] text-xs">
                 <SelectValue />
               </SelectTrigger>
@@ -752,8 +752,8 @@ export default function ClienteCobranzaDetallePage() {
               </TableHeader>
               <TableBody>
                 {pagos
-                  .filter((p: any) => filtroPrestamo === "todos" || p.prestamo_id === filtroPrestamo)
-                  .map((p: any) => (
+                  .filter((p) => filtroPrestamo === "todos" || p.prestamo_id === filtroPrestamo)
+                  .map((p) => (
                     <TableRow key={p.id} className={cn("text-xs", p.anulado && "opacity-40 line-through")}>
                       <TableCell>{p.created_at ? fmtDate(p.created_at, "dd/MM/yy HH:mm") : "—"}</TableCell>
                       <TableCell className="font-medium">{p.idPrestamo}</TableCell>

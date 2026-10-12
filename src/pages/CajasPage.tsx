@@ -20,22 +20,22 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Plus, ArrowDownLeft, ArrowUpRight, ArrowLeftRight, DollarSign, Wallet, TrendingUp, Loader2, FileText, AlertTriangle, PiggyBank, LayoutGrid, List, MoreHorizontal, Eye, Trash2, Archive, RotateCcw } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { cn, $$, parseLocalDate } from "@/lib/utils";
+import { cn, $$, errorMessage, parseLocalDate } from "@/lib/utils";
 // ── Data hooks ────────────────────────────────────────────────────
 function useCajas(empresaId: string) {
   return useQuery({
     queryKey: ["cajas-page", empresaId],
     queryFn: async () => {
       const baseColumns = "id, nombre, descripcion, saldo_actual, empresa_id, created_at, activo";
-      const { data, error } = await (supabase
+      const { data, error } = await supabase
         .from("cajas")
         .select(baseColumns)
         .eq("empresa_id", empresaId)
-        .order("nombre") as any);
+        .order("nombre");
       if (error) throw error;
 
       if (data && data.length > 0) {
-        return data.map((c: any) => ({ ...c, activo: c.activo !== false })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
+        return data.map((c) => ({ ...c, activo: c.activo !== false })) as Array<{ id: string; nombre: string; descripcion: string | null; saldo_actual: number; empresa_id: string; created_at: string; activo: boolean }>;
       }
 
       const { data: prestamos, error: prestamosError } = await supabase
@@ -74,7 +74,7 @@ function usePrestamosByCaja(empresaId?: string) {
       if (empresaId) q = q.eq("empresa_id", empresaId);
       const { data: prestamos, error } = await q;
       if (error) throw error;
-      if (!prestamos || prestamos.length === 0) return { global: { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 }, byCaja: {} as Record<string, any> };
+      if (!prestamos || prestamos.length === 0) return { global: { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 }, byCaja: {} as Record<string, { activos: number; colocado: number; totalPagar: number; porCobrar: number; gananciaProyectada: number; enMora: number; moraTotal: number }> };
 
       const ids = prestamos.map((p) => p.id);
       const prestamoMap = new Map(prestamos.map((p) => [p.id, p]));
@@ -205,7 +205,7 @@ export default function CajasPage() {
   const handleCrearCaja = async () => {
     if (!nombreCaja.trim()) return;
     setSaving(true);
-    const { error } = await (supabase.from("cajas") as any).insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId, activo: true });
+    const { error } = await supabase.from("cajas").insert({ nombre: nombreCaja.trim(), descripcion: descCaja.trim() || null, empresa_id: empresaId, activo: true });
     setSaving(false);
     if (error) { toast.error("Error: " + error.message); return; }
     toast.success("Caja creada");
@@ -217,7 +217,7 @@ export default function CajasPage() {
   const handleToggleActivo = async () => {
     if (!confirmActivo) return;
     setSaving(true);
-    const { error } = await (supabase.from("cajas") as any)
+    const { error } = await supabase.from("cajas")
       .update({ activo: !confirmActivo.activo })
       .eq("id", confirmActivo.id)
       .eq("empresa_id", empresaId);
@@ -243,8 +243,8 @@ export default function CajasPage() {
 
     try {
       await rpcRegistrarMovimientoCaja(cajaId, tipo, m, concepto.trim() || (tipo === "entrada" ? "Depósito manual" : "Retiro manual"));
-    } catch (err: any) {
-      toast.error("Error: " + err.message); setSaving(false); return;
+    } catch (err) {
+      toast.error("Error: " + errorMessage(err)); setSaving(false); return;
     }
 
     setSaving(false);
@@ -271,8 +271,8 @@ export default function CajasPage() {
 
     try {
       await rpcTransferirCaja(cajaId, cajaDestinoId, m, nota);
-    } catch (err: any) {
-      toast.error("Error: " + err.message); setSaving(false); return;
+    } catch (err) {
+      toast.error("Error: " + errorMessage(err)); setSaving(false); return;
     }
 
     setSaving(false);

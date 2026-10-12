@@ -38,7 +38,7 @@ export function PrestamoSidebar({
             cliente ? <Link to={`/clientes/${cliente.id}`} className="text-primary hover:underline font-medium">{cliente.nombre_completo}</Link> : "—"
           } />
           <SidebarField label="EMPRESA" value={dashStr(prestamo.empresa)} />
-          <SidebarField label="COBRADOR" value={cobradoresAll.find((c: any) => c.id === prestamo.cobrador_id)?.nombre || "Sin asignar"} />
+          <SidebarField label="COBRADOR" value={cobradoresAll.find((c) => c.id === prestamo.cobrador_id)?.nombre || "Sin asignar"} />
           <SidebarField label="RUTA" value={
             <span className="flex items-center gap-1.5">
               {ruta?.nombre || "—"}
@@ -48,8 +48,8 @@ export function PrestamoSidebar({
             </span>
           } />
           <SidebarField label="CAJA" value={caja?.nombre || "—"} />
-          {(prestamo as any).codigo_interno && (
-            <SidebarField label="CÓD. INTERNO" value={<span className="font-mono font-semibold">{(prestamo as any).codigo_interno}</span>} />
+          {prestamo.codigo_interno && (
+            <SidebarField label="CÓD. INTERNO" value={<span className="font-mono font-semibold">{prestamo.codigo_interno}</span>} />
           )}
           <SidebarField label="F. REGISTRO" value={fmtDate(prestamo.fecha_registro)} />
           <SidebarField label="F. PRIMER PAGO" value={fmtDate(prestamo.fecha_primer_pago)} />
@@ -94,18 +94,18 @@ export function PrestamoSidebar({
           {prestamo.notas && (
             <SidebarField full label="NOTAS" value={<span className="italic text-muted-foreground">{prestamo.notas}</span>} />
           )}
-          {(prestamo as any).reestructurado_de && (
+          {prestamo.reestructurado_de && (
             <SidebarField full label="REESTRUCTURADO DE" value={
-              <Link to={`/prestamos/${(prestamo as any).reestructurado_de}`} className="text-primary hover:underline text-[12px]">
-                PRE-{((prestamo as any).reestructurado_de as string).slice(0, 8)}
+              <Link to={`/prestamos/${prestamo.reestructurado_de}`} className="text-primary hover:underline text-[12px]">
+                PRE-{prestamo.reestructurado_de.slice(0, 8)}
               </Link>
             } />
           )}
-          {(prestamo as any).cancelado_en && (
+          {prestamo.cancelado_en && (
             <SidebarField full label="CANCELADO/REEST." value={
               <span className="text-destructive text-[12px]">
-                {fmtDateTime((prestamo as any).cancelado_en)}
-                {(prestamo as any).motivo_cancelacion && <><br /><span className="italic text-muted-foreground">{(prestamo as any).motivo_cancelacion}</span></>}
+                {fmtDateTime(prestamo.cancelado_en)}
+                {prestamo.motivo_cancelacion && <><br /><span className="italic text-muted-foreground">{prestamo.motivo_cancelacion}</span></>}
               </span>
             } />
           )}
@@ -117,7 +117,7 @@ export function PrestamoSidebar({
       {/* Cobro Automático Stripe */}
       <StripeAutoChargeToggle
         prestamoId={prestamo.id}
-        enabled={(prestamo as any).cobro_automatico_stripe ?? false}
+        enabled={prestamo.cobro_automatico_stripe ?? false}
         disabled={estado === "Liquidado" || estado === "Cancelado" || estado === "Reestructurado"}
         onToggled={() => queryClient.invalidateQueries({ queryKey: ["prestamo-detalle", id] })}
         empresaId={empresaId}

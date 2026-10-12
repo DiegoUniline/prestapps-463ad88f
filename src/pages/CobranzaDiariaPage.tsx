@@ -51,7 +51,7 @@ function useEmpresaCorteConfig(empresaId: string) {
   return useQuery({
     queryKey: ["empresa-corte", empresaId],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("empresas")
+      const { data } = await supabase.from("empresas")
         .select("corte_dia_semana, corte_color_cobrado")
         .eq("id", empresaId)
         .single();
@@ -156,7 +156,7 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
           ),
           pagos!pagos_cuota_id_fkey ( monto_recibido, anulado )
         `;
-      const cuotas = await fetchAllRows<any>((supabase.from as any)("amortizacion")
+      const cuotas = await fetchAllRows(supabase.from("amortizacion")
         .select(cuotaSelect)
         .eq("empresa_id", empresaId)
         .or(`fecha_vencimiento.eq.${fecha},and(fecha_vencimiento.lt.${fecha},status.neq.Pagada),fecha_pagada.eq.${fecha}`)
@@ -172,29 +172,30 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
         .eq("fecha_prometida", fecha)
         .eq("status", "Pendiente");
 
-      const promesaCuotaIds = new Set((promesas || []).map((p: any) => p.cuota_id));
+      const promesaCuotaIds = new Set((promesas || []).map((p) => p.cuota_id));
 
       // Merge: add any promised cuotas not already in the list
       const allCuotaIds = new Set(cuotas.map((c) => c.id));
-      const missingPromesaIds = [...promesaCuotaIds].filter((id) => id && !allCuotaIds.has(id));
+      const missingPromesaIds = [...promesaCuotaIds].filter((id): id is string => !!id && !allCuotaIds.has(id));
 
       const extraCuotas = await mapChunks(missingPromesaIds, 200, async (chunk) => {
-        const { data: extra, error } = await (supabase.from as any)("amortizacion")
+        const { data: extra, error } = await supabase.from("amortizacion")
           .select(cuotaSelect)
           .in("id", chunk);
         if (error) throw error;
-        return (extra || []) as any[];
+        return extra || [];
       });
 
       const allCuotas = [...cuotas, ...extraCuotas];
+      type PrestamoEmbebido = NonNullable<(typeof allCuotas)[number]["prestamos"]>;
 
       // 2) Préstamos (embebidos en cada cuota)
-      const presMap: Record<string, any> = {};
+      const presMap: Record<string, PrestamoEmbebido> = {};
       for (const c of allCuotas) if (c.prestamos) presMap[c.prestamo_id] = c.prestamos;
       const prestamoIds = [...new Set(allCuotas.map((c) => c.prestamo_id as string))];
 
       // 3) Get cobradores names from profiles (pocos ids distintos)
-      const cobIds = [...new Set(Object.values(presMap).map((p: any) => p.cobrador_id).filter(Boolean))] as string[];
+      const cobIds = [...new Set(Object.values(presMap).map((p) => p.cobrador_id).filter(Boolean))] as string[];
       const cobMap: Record<string, string> = {};
       // 5) Gestiones count per prestamo (agregado en SQL; ids en el body del RPC)
       const [profilesRes, gestionesRes] = await Promise.all([
@@ -216,10 +217,10 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
       }
 
       return allCuotas.map((c): CuotaDiaria => {
-        const pres = presMap[c.prestamo_id] || {};
-        const cliente = pres.clientes as any;
-        const ruta = pres.rutas as any;
-        const caja = pres.cajas as any;
+        const pres: Partial<PrestamoEmbebido> = presMap[c.prestamo_id] || {};
+        const cliente = pres.clientes;
+        const ruta = pres.rutas;
+        const caja = pres.cajas;
         const pago = pagosByCuota[c.id];
 
         return {

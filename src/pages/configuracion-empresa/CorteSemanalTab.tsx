@@ -27,7 +27,7 @@ export function CorteSemanalTab() {
   const { data: empresa, isLoading } = useQuery({
     queryKey: ["empresa-corte-config", empresaId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from as any)("empresas")
+      const { data, error } = await supabase.from("empresas")
         .select("corte_dia_semana, corte_color_cobrado")
         .eq("id", empresaId)
         .single();
@@ -48,7 +48,7 @@ export function CorteSemanalTab() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await (supabase.from as any)("empresas")
+      const { error } = await supabase.from("empresas")
         .update({ corte_dia_semana: parseInt(dia), corte_color_cobrado: color })
         .eq("id", empresaId);
       if (error) throw error;
@@ -58,7 +58,7 @@ export function CorteSemanalTab() {
       qc.invalidateQueries({ queryKey: ["empresa-corte-config"] });
       toast.success("Configuración de corte guardada");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e) => toast.error(e.message),
   });
 
   if (isLoading) {

@@ -86,7 +86,7 @@ export function TabPerfil({
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-2">Últimos cortes</p>
                   <div className="space-y-1.5">
-                    {perfil!.cortes.slice(0, 5).map((c: any) => (
+                    {perfil!.cortes.slice(0, 5).map((c) => (
                       <div key={c.id} className="flex items-center justify-between bg-secondary/50 rounded-md px-3 py-2">
                         <span className="text-xs text-muted-foreground">
                           {fmtDate(c.created_at)}
@@ -159,7 +159,7 @@ export function TabPerfil({
               {(perfil?.prestamos || []).length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">Sin préstamos asignados</p>
               ) : (
-                perfil!.prestamos.map((p: any) => (
+                perfil!.prestamos.map((p) => (
                   <div key={p.id} className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">

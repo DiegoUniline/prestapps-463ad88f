@@ -120,8 +120,8 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
           map[s.empresa_id] = {
             estado: s.estado,
             num_usuarios: s.num_usuarios,
-            plan_nombre: (s.planes as any)?.nombre || "Manual",
-            precio: (s.planes as any)?.precio_base_mes || 0,
+            plan_nombre: s.planes?.nombre || "Manual",
+            precio: s.planes?.precio_base_mes || 0,
             fecha_inicio: s.fecha_inicio,
             fecha_vencimiento: s.fecha_vencimiento,
           };
@@ -223,7 +223,7 @@ export default function EmpresasPage({ embedded }: { embedded?: boolean } = {}) 
       setEditId(null);
       setForm(emptyForm);
     },
-    onError: (err: any) => toast.error(err.message),
+    onError: (err) => toast.error(err.message),
   });
 
   const openNew = () => { setEditId(null); setForm(emptyForm); setOpen(true); };

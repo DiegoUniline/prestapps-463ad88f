@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers":
@@ -34,7 +34,7 @@ type Caller = {
   superAdmin: boolean;
 };
 
-async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+async function getCaller(req: Request, admin: SupabaseClient): Promise<Caller | null> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -54,9 +54,28 @@ async function getCaller(req: Request, admin: any): Promise<Caller | null> {
     userId: user.id,
     email,
     empresaId: profile?.empresa_id ?? null,
-    roles: (roleRows || []).map((r: any) => r.role),
+    roles: (roleRows || []).map((r: { role: string }) => r.role),
     superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
   };
+}
+
+// Pre-"basil" top-level invoice fields; the current Stripe typings no longer declare them.
+type InvoiceLegacy = Stripe.Invoice & { charge?: unknown; payment_intent?: unknown };
+
+interface FixDraftResult {
+  suscripcion_id: string;
+  action: string;
+  invoice?: string;
+  status?: Stripe.Invoice.Status | null;
+  error?: string;
+  amount?: number;
+}
+
+// Same semantics as `e?.message`: Error instances and plain error objects (e.g. PostgrestError) alike.
+function errorMessage(e: unknown): string | undefined {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "object" && e !== null && "message" in e && typeof e.message === "string") return e.message;
+  return undefined;
 }
 
 const log = (step: string, details?: unknown) => {
@@ -107,7 +126,7 @@ serve(withCors(async (req) => {
   let body: { suscripcion_id?: string; dry_run?: boolean } = {};
   try { body = await req.json(); } catch { /* no body */ }
 
-  const results: any[] = [];
+  const results: FixDraftResult[] = [];
 
   try {
     let q = supabase
@@ -161,8 +180,8 @@ serve(withCors(async (req) => {
         let paid: Stripe.Invoice;
         try {
           paid = await stripe.invoices.pay(finalInv.id!, { off_session: true });
-        } catch (payErr: any) {
-          const msg = payErr?.message || String(payErr);
+        } catch (payErr) {
+          const msg = errorMessage(payErr) || String(payErr);
           log("Pay failed", { invoice: finalInv.id, error: msg });
 
           await supabase.from("intentos_cobro").insert({
@@ -184,9 +203,10 @@ serve(withCors(async (req) => {
 
         if (paid.status === "paid") {
           await syncLocalPaid(supabase, sub, paid);
+          const paidLegacy: InvoiceLegacy = paid;
           await supabase.from("intentos_cobro").insert({
             factura_id: null,
-            stripe_charge_id: typeof (paid as any).charge === "string" ? (paid as any).charge : null,
+            stripe_charge_id: typeof paidLegacy.charge === "string" ? paidLegacy.charge : null,
             monto: (paid.total || 0) / 100,
             estado: "exitoso",
           });
@@ -194,25 +214,25 @@ serve(withCors(async (req) => {
         } else {
           results.push({ suscripcion_id: sub.id, invoice: paid.id, action: "unexpected_status", status: paid.status });
         }
-      } catch (e: any) {
-        log("Sub error", { sub: sub.id, error: e?.message });
-        results.push({ suscripcion_id: sub.id, action: "error", error: e?.message || String(e) });
+      } catch (e) {
+        log("Sub error", { sub: sub.id, error: errorMessage(e) });
+        results.push({ suscripcion_id: sub.id, action: "error", error: errorMessage(e) || String(e) });
       }
     }
 
     return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e: any) {
-    log("FATAL", { error: e?.message });
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), {
+  } catch (e) {
+    log("FATAL", { error: errorMessage(e) });
+    return new Response(JSON.stringify({ error: errorMessage(e) || String(e) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 }));
 
-async function syncLocalPaid(supabase: any, sub: any, inv: Stripe.Invoice) {
+async function syncLocalPaid(supabase: SupabaseClient, sub: { id: string }, inv: Stripe.Invoice) {
   // Find local factura matching this period (most recent procesando/pendiente)
   const { data: facs } = await supabase
     .from("facturas")
@@ -223,8 +243,9 @@ async function syncLocalPaid(supabase: any, sub: any, inv: Stripe.Invoice) {
     .limit(1);
 
   const now = new Date();
-  const charge = typeof (inv as any).charge === "string" ? (inv as any).charge : null;
-  const pi = typeof (inv as any).payment_intent === "string" ? (inv as any).payment_intent : null;
+  const legacy: InvoiceLegacy = inv;
+  const charge = typeof legacy.charge === "string" ? legacy.charge : null;
+  const pi = typeof legacy.payment_intent === "string" ? legacy.payment_intent : null;
 
   if (facs && facs.length > 0) {
     const facPagada = { estado: "pagada", stripe_payment_intent_id: pi, fecha_pago: now.toISOString() };

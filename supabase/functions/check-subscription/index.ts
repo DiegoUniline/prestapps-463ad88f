@@ -22,7 +22,17 @@ const withCors = (handler: (req: Request) => Response | Promise<Response>) => as
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
-const logStep = (step: string, details?: any) => {
+interface FacturaPendiente {
+  id: string;
+  numero_factura: string | null;
+  total: number;
+  estado: string | null;
+  periodo_inicio: string;
+  periodo_fin: string;
+  es_prorrateo?: boolean | null;
+}
+
+const logStep = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[CHECK-SUB] ${step}${d}`);
 };
@@ -154,7 +164,7 @@ serve(withCors(async (req) => {
       }
 
       // Check for pending invoice (trial_expirado or pendiente_pago)
-      let facturaPendiente: any = null;
+      let facturaPendiente: FacturaPendiente | null = null;
       if (estado === "trial_expirado" || estado === "pendiente_pago") {
         const { data: factura } = await supabaseClient
           .from("facturas")
@@ -211,7 +221,7 @@ serve(withCors(async (req) => {
           }
 
           if (dbEstado !== suscripcion.estado) {
-            const updateData: any = { estado: dbEstado, actualizado_en: new Date().toISOString() };
+            const updateData: { estado: string; actualizado_en: string } = { estado: dbEstado, actualizado_en: new Date().toISOString() };
             await supabaseClient
               .from("suscripciones")
               .update(updateData)
@@ -236,7 +246,7 @@ serve(withCors(async (req) => {
     }
 
     // ── Check for pending invoice ──
-    let facturaPendiente: any = null;
+    let facturaPendiente: FacturaPendiente | null = null;
     if (suscripcion.estado === "gracia" || suscripcion.estado === "suspendida") {
       const { data: factura } = await supabaseClient
         .from("facturas")

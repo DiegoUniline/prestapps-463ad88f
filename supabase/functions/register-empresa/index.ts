@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -21,7 +21,7 @@ const withCors = (handler: (req: Request) => Response | Promise<Response>) => as
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
 };
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[REGISTER-EMPRESA] ${step}${d}`);
 };
@@ -34,17 +34,29 @@ async function sha256(t: string) {
   return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 
-async function getWaConfig(supabase: any) {
+interface WaConfig {
+  api_url: string;
+  api_token: string;
+}
+
+interface OtpRow {
+  id: string;
+  code_hash: string;
+  intentos: number;
+  usado: boolean;
+}
+
+async function getWaConfig(supabase: SupabaseClient): Promise<WaConfig | null> {
   const { data } = await supabase.from("system_notification_templates")
     .select("message_template").eq("template_key", "__system_wa_config").maybeSingle();
   try {
-    const cfg = JSON.parse(data?.message_template || "{}");
-    if (cfg.api_url && cfg.api_token) return cfg;
+    const cfg: Partial<WaConfig> = JSON.parse(data?.message_template || "{}");
+    if (cfg.api_url && cfg.api_token) return cfg as WaConfig;
   } catch {}
   return null;
 }
 
-async function sendWa(supabase: any, phones: string[], message: string) {
+async function sendWa(supabase: SupabaseClient, phones: string[], message: string) {
   const cfg = await getWaConfig(supabase);
   if (!cfg) return false;
   for (const phone of phones) {
@@ -62,7 +74,7 @@ async function sendWa(supabase: any, phones: string[], message: string) {
   return false;
 }
 
-async function sendWaRetry(supabase: any, phones: string[], message: string, tries = 3) {
+async function sendWaRetry(supabase: SupabaseClient, phones: string[], message: string, tries = 3) {
   for (let i = 0; i < tries; i++) {
     if (await sendWa(supabase, phones, message)) return true;
     if (i < tries - 1) {
@@ -142,9 +154,9 @@ serve(withCors(async (req) => {
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false });
     if (otpErr) throw otpErr;
-    const activos = otpRows || [];
+    const activos: OtpRow[] = otpRows || [];
     if (!activos.length) throw new AppError("El código expiró. Solicita uno nuevo.");
-    if (activos.some((r: any) => (r.intentos || 0) >= MAX_INTENTOS_OTP)) {
+    if (activos.some((r) => (r.intentos || 0) >= MAX_INTENTOS_OTP)) {
       throw new AppError("Demasiados intentos. Espera 10 minutos y solicita un código nuevo.");
     }
 
@@ -157,7 +169,7 @@ serve(withCors(async (req) => {
     if (!intentoOk?.length) throw new AppError("No pudimos validar el código. Intenta de nuevo.");
 
     const hash = await sha256(`${email}:${String(otp).trim()}`);
-    const otpRow = activos.find((r: any) => r.code_hash === hash);
+    const otpRow = activos.find((r) => r.code_hash === hash);
     if (!otpRow) throw new AppError("Código incorrecto");
 
     const { data: consumido } = await supabase.from("otp_registro")

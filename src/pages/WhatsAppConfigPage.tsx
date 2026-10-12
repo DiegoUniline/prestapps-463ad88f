@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { fmtDateTime } from "@/lib/utils";
+import { errorMessage, fmtDateTime } from "@/lib/utils";
 
 const TEMPLATE_TYPES = [
   {
@@ -63,7 +63,7 @@ export default function WhatsAppConfigPage() {
   const { data: config, isLoading: loadingConfig } = useQuery({
     queryKey: ["whatsapp-config", empresaId],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("whatsapp_config")
+      const { data } = await supabase.from("whatsapp_config")
         .select("id, empresa_id, activo, api_url, api_token, aviso_dia_antes, aviso_vencido, enviar_recibo_pago, created_at")
         .eq("empresa_id", empresaId)
         .maybeSingle();
@@ -99,19 +99,19 @@ export default function WhatsAppConfigPage() {
     const payload = { ...formData };
     try {
       if (config?.id) {
-        const { error } = await (supabase.from as any)("whatsapp_config")
+        const { error } = await supabase.from("whatsapp_config")
           .update(payload)
           .eq("id", config.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from as any)("whatsapp_config")
+        const { error } = await supabase.from("whatsapp_config")
           .insert({ ...payload, empresa_id: empresaId });
         if (error) throw error;
       }
       queryClient.invalidateQueries({ queryKey: ["whatsapp-config", empresaId] });
       toast.success("Configuración guardada");
-    } catch (e: any) {
-      toast.error("Error: " + e.message);
+    } catch (e) {
+      toast.error("Error: " + errorMessage(e));
     }
   }, [config, empresaId, queryClient]);
 
@@ -137,7 +137,7 @@ export default function WhatsAppConfigPage() {
   const { data: templates, isLoading: loadingTemplates } = useQuery({
     queryKey: ["whatsapp-templates", empresaId],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("whatsapp_templates")
+      const { data } = await supabase.from("whatsapp_templates")
         .select("id, empresa_id, tipo, nombre, mensaje, activo, created_at")
         .eq("empresa_id", empresaId);
       
@@ -150,17 +150,17 @@ export default function WhatsAppConfigPage() {
           mensaje: t.default,
           activo: true,
         }));
-        const { data: inserted, error } = await (supabase.from as any)("whatsapp_templates")
+        const { data: inserted, error } = await supabase.from("whatsapp_templates")
           .insert(defaults)
           .select("id, empresa_id, tipo, nombre, mensaje, activo, created_at");
         if (error) {
           console.error("Error seeding templates:", error);
           return [];
         }
-        return (inserted || []) as any[];
+        return inserted || [];
       }
       
-      return (data || []) as any[];
+      return data || [];
     },
   });
 
@@ -169,15 +169,15 @@ export default function WhatsAppConfigPage() {
 
   const saveTemplate = useMutation({
     mutationFn: async ({ tipo, mensaje }: { tipo: string; mensaje: string }) => {
-      const existing = templates?.find((t: any) => t.tipo === tipo);
+      const existing = templates?.find((t) => t.tipo === tipo);
       const nombre = TEMPLATE_TYPES.find((t) => t.tipo === tipo)?.nombre || tipo;
       if (existing) {
-        const { error } = await (supabase.from as any)("whatsapp_templates")
+        const { error } = await supabase.from("whatsapp_templates")
           .update({ mensaje })
           .eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase.from as any)("whatsapp_templates")
+        const { error } = await supabase.from("whatsapp_templates")
           .insert({ empresa_id: empresaId, tipo, nombre, mensaje });
         if (error) throw error;
       }
@@ -187,19 +187,19 @@ export default function WhatsAppConfigPage() {
       setEditingTemplate(null);
       toast.success("Plantilla guardada");
     },
-    onError: (e: any) => toast.error("Error: " + e.message),
+    onError: (e) => toast.error("Error: " + errorMessage(e)),
   });
 
   // ── Log ────────────────────────────────
   const { data: logs, isLoading: loadingLogs, refetch: refetchLogs } = useQuery({
     queryKey: ["whatsapp-log", empresaId],
     queryFn: async () => {
-      const { data } = await (supabase.from as any)("whatsapp_log")
+      const { data } = await supabase.from("whatsapp_log")
         .select("id, telefono, tipo, mensaje, status, error_detalle, created_at")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false })
         .limit(100);
-      return (data || []) as any[];
+      return data || [];
     },
   });
 
@@ -234,8 +234,8 @@ export default function WhatsAppConfigPage() {
         toast.error("Error: " + (data?.error || "No se pudo enviar"));
       }
       refetchLogs();
-    } catch (e: any) {
-      toast.error("Error: " + (e.message || "Intenta de nuevo"));
+    } catch (e) {
+      toast.error("Error: " + (errorMessage(e) || "Intenta de nuevo"));
     } finally {
       setSendingTest(false);
     }
@@ -286,8 +286,8 @@ export default function WhatsAppConfigPage() {
         detalles: data.detalles || [],
       });
       refetchLogs();
-    } catch (e: any) {
-      toast.error("Error al enviar avisos: " + (e.message || "Intenta de nuevo"));
+    } catch (e) {
+      toast.error("Error al enviar avisos: " + (errorMessage(e) || "Intenta de nuevo"));
     } finally {
       setSendingReminder(null);
     }
@@ -456,7 +456,7 @@ export default function WhatsAppConfigPage() {
         <TabsContent value="templates">
           <div className="space-y-4">
             {TEMPLATE_TYPES.map((tt) => {
-              const saved = templates?.find((t: any) => t.tipo === tt.tipo);
+              const saved = templates?.find((t) => t.tipo === tt.tipo);
               const isEditing = editingTemplate === tt.tipo;
               const currentMsg = isEditing ? templateMsg : (saved?.mensaje || tt.default);
 
@@ -573,7 +573,7 @@ export default function WhatsAppConfigPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {logs.map((log: any) => (
+                      {logs.map((log) => (
                         <TableRow key={log.id}>
                           <TableCell className="text-xs whitespace-nowrap">
                             {log.created_at ? fmtDateTime(log.created_at) : "---"}

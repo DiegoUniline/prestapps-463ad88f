@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn, $$, parseLocalDate, fmtDateTime } from "@/lib/utils";
+import { cn, $$, errorMessage, parseLocalDate, fmtDateTime } from "@/lib/utils";
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { fetchAllRows } from "@/lib/supabaseQuery";
 import { rpcLiquidarRuta } from "@/lib/rpcIntegridad";
@@ -48,7 +48,7 @@ interface PagoNoLiquidado {
   aplicado_capital: number;
   aplicado_interes: number;
   aplicado_mora: number;
-  created_at: string;
+  created_at: string | null;
 }
 
 /* ─── Hooks ─── */
@@ -98,42 +98,42 @@ function usePagosNoLiquidados(empresaId: string, cobradorId: string | null, fech
     queryFn: async (): Promise<PagoNoLiquidado[]> => {
       if (!cobradorId || !fechaHasta) return [];
 
-      const pagos = await fetchAllRows<any>(
+      const pagos = await fetchAllRows(
         supabase
           .from("pagos")
           .select("id, prestamo_id, monto_recibido, metodo_pago, fecha_pago, aplicado_capital, aplicado_interes, aplicado_mora, created_at")
           .eq("empresa_id", empresaId)
           .eq("cobrador_id", cobradorId)
           .eq("anulado", false)
-          .is("corte_id" as any, null)
+          .is("corte_id", null)
           .lte("fecha_pago", fechaHasta)
           .order("fecha_pago", { ascending: true })
       );
 
       if (!pagos.length) return [];
 
-      const prestamoIds = [...new Set(pagos.map((p: any) => p.prestamo_id))];
+      const prestamoIds = [...new Set(pagos.map((p) => p.prestamo_id))];
       const { data: prestamos } = await supabase
         .from("prestamos")
         .select("id, id_prestamo, cliente_id, clientes ( nombre_completo )")
         .in("id", prestamoIds);
 
       const prMap: Record<string, { id_prestamo: string; cliente: string }> = {};
-      for (const pr of (prestamos || []) as any[]) {
+      for (const pr of prestamos || []) {
         prMap[pr.id] = {
           id_prestamo: pr.id_prestamo || pr.id.slice(0, 8),
           cliente: pr.clientes?.nombre_completo || "—",
         };
       }
 
-      return pagos.map((p: any) => ({
+      return pagos.map((p) => ({
         id: p.id,
         prestamo_id: p.prestamo_id,
         id_prestamo: prMap[p.prestamo_id]?.id_prestamo || "—",
         cliente_nombre: prMap[p.prestamo_id]?.cliente || "—",
         monto_recibido: Number(p.monto_recibido || 0),
         metodo_pago: p.metodo_pago || "Efectivo",
-        fecha_pago: p.fecha_pago,
+        fecha_pago: p.fecha_pago as string, // non-null: the .lte("fecha_pago") filter excludes NULLs
         aplicado_capital: Number(p.aplicado_capital || 0),
         aplicado_interes: Number(p.aplicado_interes || 0),
         aplicado_mora: Number(p.aplicado_mora || 0),
@@ -156,13 +156,13 @@ function useHistorialCortes(empresaId: string) {
         .limit(50);
       if (!data?.length) return [];
 
-      const cobIds = [...new Set(data.map((d: any) => d.cobrador_id).filter(Boolean))];
+      const cobIds = [...new Set(data.map((d) => d.cobrador_id).filter(Boolean))];
       const cobMap: Record<string, string> = {};
       if (cobIds.length) {
         const { data: profiles } = await supabase.from("profiles").select("id, nombre_completo").in("id", cobIds);
         for (const p of profiles || []) cobMap[p.id] = p.nombre_completo;
       }
-      return data.map((l: any) => ({ ...l, cobrador_nombre: cobMap[l.cobrador_id] || "—" }));
+      return data.map((l) => ({ ...l, cobrador_nombre: cobMap[l.cobrador_id] || "—" }));
     },
   });
 }
@@ -238,8 +238,8 @@ export default function LiquidarRutaPage() {
       toast.success(`Ruta liquidada: ${res.pagos} pagos cerrados (${$$(Number(res.total_cobrado || 0))}). Comisión: ${$$(comision)}`);
       setShowLiquidar(false);
       setConsulted(false);
-    } catch (err: any) {
-      toast.error("Error: " + (err.message || err));
+    } catch (err) {
+      toast.error("Error: " + (errorMessage(err) || String(err)));
       queryClient.invalidateQueries({ queryKey: ["pagos-no-liquidados"] });
     } finally {
       setSaving(false);
@@ -502,7 +502,7 @@ export default function LiquidarRutaPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {historial.map((l: any) => (
+                {historial.map((l) => (
                   <TableRow key={l.id}>
                     <TableCell className="text-[12px]">{fmtDateTime(l.created_at)}</TableCell>
                     <TableCell className="text-[13px] font-medium">{l.cobrador_nombre || "—"}</TableCell>
@@ -566,7 +566,7 @@ export default function LiquidarRutaPage() {
             <div className="space-y-1.5">
               <Label className="text-[12px] uppercase tracking-wider text-muted-foreground">Caja Destino *</Label>
               <SearchableSelect
-                options={cajas.map((c: any) => ({ value: c.id, label: c.nombre }))}
+                options={cajas.map((c) => ({ value: c.id, label: c.nombre }))}
                 value={cajaId}
                 onValueChange={setCajaId}
                 placeholder="Seleccionar caja"

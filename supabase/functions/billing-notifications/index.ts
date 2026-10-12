@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -33,7 +33,7 @@ type Caller = {
   superAdmin: boolean;
 };
 
-async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+async function getCaller(req: Request, admin: SupabaseClient): Promise<Caller | null> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -53,13 +53,13 @@ async function getCaller(req: Request, admin: any): Promise<Caller | null> {
     userId: user.id,
     email,
     empresaId: profile?.empresa_id ?? null,
-    roles: (roleRows || []).map((r: any) => r.role),
+    roles: (roleRows || []).map((r: { role: string }) => r.role),
     superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
   };
 }
 
 // Service role and super admin run freely; any other caller (e.g. pg_cron with the anon key) is throttled.
-async function cronGate(req: Request, admin: any, nombre: string): Promise<Response | null> {
+async function cronGate(req: Request, admin: SupabaseClient, nombre: string): Promise<Response | null> {
   const caller = await getCaller(req, admin);
   if (caller?.service || caller?.superAdmin) return null;
   const { data: claimed, error } = await admin.rpc("cron_claim", { p_nombre: nombre, p_min_minutes: 50 });
@@ -72,7 +72,7 @@ async function cronGate(req: Request, admin: any, nombre: string): Promise<Respo
   return null;
 }
 
-const logStep = (step: string, details?: any) => {
+const logStep = (step: string, details?: unknown) => {
   const d = details ? ` - ${JSON.stringify(details)}` : "";
   console.log(`[BILLING-NOTIF] ${step}${d}`);
 };
@@ -80,9 +80,38 @@ const logStep = (step: string, details?: any) => {
 const DIAS_GRACIA = 3;
 const SUPERADMIN_PHONE = "523171035768";
 
+interface AdminProfile {
+  id: string;
+  telefono: string | null;
+  nombre_completo: string;
+}
+
+interface FailedCharge {
+  empresa_id: string;
+  prestamo_id: string;
+  monto: number;
+  error_mensaje: string | null;
+  cliente_id: string;
+}
+
+interface NotificationResult {
+  empresa_id: string;
+  action: string;
+  daysLeft?: number;
+  esTrial?: boolean;
+  count?: number;
+}
+
+// Same semantics as `e?.message`: Error instances and plain error objects alike.
+function errorMessage(e: unknown): string | undefined {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "object" && e !== null && "message" in e && typeof e.message === "string") return e.message;
+  return undefined;
+}
+
 // ── Notify Super Admin directly ──
 async function notifySuperAdmin(
-  supabase: any,
+  supabase: SupabaseClient,
   apiUrl: string,
   apiToken: string,
   mensaje: string,
@@ -99,8 +128,8 @@ async function notifySuperAdmin(
       status: result.success ? "enviado" : "error",
       error_detalle: result.success ? null : (result.error || "No se pudo entregar"),
     });
-  } catch (e: any) {
-    logStep("notifySuperAdmin error", { error: e?.message });
+  } catch (e) {
+    logStep("notifySuperAdmin error", { error: errorMessage(e) });
   }
 }
 
@@ -142,8 +171,8 @@ async function postWhatsApp(apiUrl: string, apiToken: string, phone: string, mes
       transient = res.status >= 500 || res.status === 429 ||
         errStr.includes("connection closed") || errStr.includes("timeout") || errStr.includes("econn");
       if (!transient) break;
-    } catch (e: any) {
-      lastError = e?.message || "Network error";
+    } catch (e) {
+      lastError = errorMessage(e) || "Network error";
       transient = true;
     }
   }
@@ -167,23 +196,23 @@ async function sendWhatsAppWithFallback(
   return { success: false, phoneUsed: candidates[0] || null, error: lastError };
 }
 
-async function getEmpresaAdmins(supabase: any, empresaId: string) {
+async function getEmpresaAdmins(supabase: SupabaseClient, empresaId: string): Promise<AdminProfile[]> {
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, telefono, nombre_completo")
     .eq("empresa_id", empresaId);
-  const ids = (profiles || []).map((p: any) => p.id);
+  const ids = (profiles || []).map((p: AdminProfile) => p.id);
   if (!ids.length) return [];
   const { data: admins } = await supabase
     .from("user_roles")
     .select("user_id")
     .eq("role", "admin")
     .in("user_id", ids);
-  const adminSet = new Set((admins || []).map((a: any) => a.user_id));
-  return (profiles || []).filter((p: any) => adminSet.has(p.id));
+  const adminSet = new Set((admins || []).map((a: { user_id: string }) => a.user_id));
+  return (profiles || []).filter((p: AdminProfile) => adminSet.has(p.id));
 }
 
-async function alreadyNotifiedToday(supabase: any, empresaId: string, tipo: string, today: string) {
+async function alreadyNotifiedToday(supabase: SupabaseClient, empresaId: string, tipo: string, today: string) {
   const { data } = await supabase
     .from("whatsapp_log")
     .select("id")
@@ -195,7 +224,7 @@ async function alreadyNotifiedToday(supabase: any, empresaId: string, tipo: stri
   return !!data?.length;
 }
 
-async function getSystemWaConfig(supabase: any) {
+async function getSystemWaConfig(supabase: SupabaseClient) {
   try {
     const { data } = await supabase
       .from("system_notification_templates")
@@ -211,7 +240,7 @@ async function getSystemWaConfig(supabase: any) {
 }
 
 async function notifyEmpresaAdmins(
-  supabase: any,
+  supabase: SupabaseClient,
   empresaId: string,
   mensaje: string,
   tipo: string,
@@ -236,8 +265,8 @@ async function notifyEmpresaAdmins(
         error_detalle: result.success ? null : (result.error || "No se pudo entregar"),
       });
     }
-  } catch (e: any) {
-    logStep("notifyEmpresaAdmins error", { error: e.message });
+  } catch (e) {
+    logStep("notifyEmpresaAdmins error", { error: errorMessage(e) });
   }
 }
 
@@ -265,7 +294,7 @@ serve(withCors(async (req) => {
 
   const now = new Date();
   const today = now.toISOString().split("T")[0];
-  const results: any[] = [];
+  const results: NotificationResult[] = [];
 
   try {
     logStep("Function started", { today });
@@ -507,7 +536,7 @@ serve(withCors(async (req) => {
             }
 
             const extraUsers = Math.max(0, sub.num_usuarios - (sub.planes?.usuarios_incluidos || 1));
-            const lineItems: any[] = [{ price: sub.planes.stripe_price_id, quantity: 1 }];
+            const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: sub.planes.stripe_price_id, quantity: 1 }];
             if (extraUsers > 0 && sub.planes.stripe_product_id) {
               lineItems.push({
                 price_data: {
@@ -524,7 +553,7 @@ serve(withCors(async (req) => {
             const nextFirst = new Date(Date.UTC(postExpiry.getUTCFullYear(), postExpiry.getUTCMonth() + 1, 1));
             const anchorTs = Math.floor(nextFirst.getTime() / 1000);
 
-            const sessionParams: any = {
+            const sessionParams: Stripe.Checkout.SessionCreateParams = {
               line_items: lineItems,
               mode: "subscription",
               success_url: `https://prestapps.lovable.app/mi-suscripcion?checkout=success`,
@@ -541,8 +570,8 @@ serve(withCors(async (req) => {
 
             const session = await stripe.checkout.sessions.create(sessionParams);
             checkoutUrl = session.url || "";
-          } catch (stripeErr: any) {
-            logStep("Error creating checkout", { empresa_id: sub.empresa_id, error: stripeErr?.message });
+          } catch (stripeErr) {
+            logStep("Error creating checkout", { empresa_id: sub.empresa_id, error: errorMessage(stripeErr) });
           }
         }
 
@@ -579,8 +608,8 @@ serve(withCors(async (req) => {
 
         await notifyEmpresaAdmins(supabase, sub.empresa_id, mensaje, "recordatorio_vencimiento");
         results.push({ empresa_id: sub.empresa_id, action: "expiration_reminder", esTrial });
-      } catch (err: any) {
-        logStep("Error expiration reminder", { empresa_id: sub.empresa_id, error: err?.message });
+      } catch (err) {
+        logStep("Error expiration reminder", { empresa_id: sub.empresa_id, error: errorMessage(err) });
       }
     }
 
@@ -594,8 +623,8 @@ serve(withCors(async (req) => {
       .gte("created_at", today);
 
     // Group by empresa
-    const failedByEmpresa = new Map<string, any[]>();
-    for (const charge of (failedCharges || [])) {
+    const failedByEmpresa = new Map<string, FailedCharge[]>();
+    for (const charge of (failedCharges || []) as FailedCharge[]) {
       const arr = failedByEmpresa.get(charge.empresa_id) || [];
       arr.push(charge);
       failedByEmpresa.set(charge.empresa_id, arr);

@@ -7,7 +7,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { $$ } from "@/lib/utils";
+import { $$, errorMessage } from "@/lib/utils";
 
 interface CancelarPrestamoModalProps {
   open: boolean;
@@ -41,8 +41,8 @@ export function CancelarPrestamoModal({ open, onOpenChange, prestamoId, clienteN
       toast.success("Préstamo cancelado correctamente");
       onOpenChange(false);
       setMotivo("");
-    } catch (err: any) {
-      toast.error("Error: " + (err.message || err));
+    } catch (err) {
+      toast.error("Error: " + String(errorMessage(err) || err));
     } finally {
       setSaving(false);
     }

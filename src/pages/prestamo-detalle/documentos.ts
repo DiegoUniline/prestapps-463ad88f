@@ -10,7 +10,7 @@ export function buildActividad({ prestamo, pagosRaw, promesasRaw, cobradoresAll 
   // Activity timeline
   const findUserName = (userId: string | null | undefined) => {
     if (!userId) return "—";
-    const profile = cobradoresAll.find((c: any) => c.id === userId);
+    const profile = cobradoresAll.find((c) => c.id === userId);
     return profile?.nombre || userId.slice(0, 8);
   };
 
@@ -96,7 +96,7 @@ export function buildPdfData({ prestamo, cliente, caja, ruta, estado, empresaDat
     aplicado_interes: Number(p.aplicado_interes || 0),
     aplicado_capital: Number(p.aplicado_capital || 0),
     metodo_pago: p.metodo_pago || "Efectivo",
-    cajaNombre: (p.cajas as any)?.nombre || "—",
+    cajaNombre: p.cajas?.nombre || "—",
   }));
 
   return { pdfPrestamo, pdfCuotas, pdfPagos };

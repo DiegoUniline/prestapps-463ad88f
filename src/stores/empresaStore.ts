@@ -6,6 +6,7 @@ interface Empresa {
   id: string;
   nombre: string;
   moneda_simbolo?: string;
+  moneda_codigo?: string;
 }
 
 interface EmpresaState {
@@ -37,7 +38,7 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
     localStorage.setItem("empresa_id", id);
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      await (supabase.rpc as any)("switch_empresa", { p_empresa_id: id });
+      await supabase.rpc("switch_empresa", { p_empresa_id: id });
     }
     const empresa = get().empresas.find((e) => e.id === id);
     const simbolo = empresa?.moneda_simbolo || "$";
@@ -112,12 +113,12 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
     });
 
     // Load empresas list including currency
-    (supabase as any)
+    supabase
       .from("empresas")
       .select("id, nombre, moneda_simbolo, moneda_codigo")
       .eq("activa", true)
       .order("nombre")
-      .then(({ data }: any) => {
+      .then(({ data }) => {
         const empresas: Empresa[] = data || [];
         const currentId = get().empresaId;
         const empresa = empresas.find((e) => e.id === currentId);
@@ -127,7 +128,7 @@ export const useEmpresaStore = create<EmpresaState>((set, get) => ({
           empresas,
           empresaNombre: empresa?.nombre || "Empresa",
           monedaSimbolo: simbolo,
-          monedaCodigo: (empresa as any)?.moneda_codigo || "USD",
+          monedaCodigo: empresa?.moneda_codigo || "USD",
         });
         empresasLoaded = true;
         maybeFinishLoading();

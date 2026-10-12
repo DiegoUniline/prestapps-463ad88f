@@ -8,7 +8,7 @@ import { useCreateSolicitud } from "@/hooks/useSolicitudes";
 import type { Enums } from "@/integrations/supabase/types";
 import { useFrecuenciasPagoActivas } from "@/hooks/useCatalogos";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
-import { calcNextDate, calcularAmortizacion } from "@/lib/financial";
+import { calcNextDate, calcularAmortizacion, type Frecuencia } from "@/lib/financial";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,7 +103,7 @@ export default function SolicitudPrestamoPage() {
         monto, cuotas, tasa,
         modalidad as "fijo" | "insolutos",
         format(fechaPrimerPago, "yyyy-MM-dd"),
-        frecuencia as any
+        frecuencia as Frecuencia
       );
     } catch {
       return [];
@@ -155,7 +155,7 @@ export default function SolicitudPrestamoPage() {
           toast.success("Solicitud enviada correctamente");
           navigate("/solicitudes");
         },
-        onError: (err: any) => toast.error(err.message || "Error al enviar solicitud"),
+        onError: (err) => toast.error(err.message || "Error al enviar solicitud"),
       }
     );
   };

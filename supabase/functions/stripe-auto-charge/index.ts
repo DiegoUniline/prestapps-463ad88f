@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "npm:stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -33,7 +33,7 @@ type Caller = {
   superAdmin: boolean;
 };
 
-async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+async function getCaller(req: Request, admin: SupabaseClient): Promise<Caller | null> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -53,13 +53,28 @@ async function getCaller(req: Request, admin: any): Promise<Caller | null> {
     userId: user.id,
     email,
     empresaId: profile?.empresa_id ?? null,
-    roles: (roleRows || []).map((r: any) => r.role),
+    roles: (roleRows || []).map((r: { role: string }) => r.role),
     superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
   };
 }
 
+interface PrestamoAutoCharge {
+  id: string;
+  cliente_id: string;
+  empresa_id: string | null;
+}
+
+interface AutoChargeResult {
+  prestamo_id: string;
+  status: string;
+  reason?: string;
+  cuota_id?: string;
+  monto?: number;
+  error?: string;
+}
+
 // Service role and super admin run freely; any other caller (e.g. pg_cron with the anon key) is throttled.
-async function cronGate(req: Request, admin: any, nombre: string): Promise<Response | null> {
+async function cronGate(req: Request, admin: SupabaseClient, nombre: string): Promise<Response | null> {
   const caller = await getCaller(req, admin);
   if (caller?.service || caller?.superAdmin) return null;
   const { data: claimed, error } = await admin.rpc("cron_claim", { p_nombre: nombre, p_min_minutes: 50 });
@@ -94,10 +109,10 @@ serve(withCors(async (req) => {
   }
 
   const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-  const results: any[] = [];
-  const monedaPorEmpresa = new Map<string, string>();
+  const results: AutoChargeResult[] = [];
+  const monedaPorEmpresa = new Map<string | null, string>();
 
-  const getMoneda = async (empresaId: string) => {
+  const getMoneda = async (empresaId: string | null) => {
     if (!monedaPorEmpresa.has(empresaId)) {
       const { data: emp } = await supabase
         .from("empresas")
@@ -112,7 +127,7 @@ serve(withCors(async (req) => {
   try {
     // Find all active loans with auto-charge enabled
     const PAGE = 1000;
-    const prestamos: any[] = [];
+    const prestamos: PrestamoAutoCharge[] = [];
     for (let from = 0; ; from += PAGE) {
       const { data: page, error: pErr } = await supabase
         .from("prestamos")
@@ -242,7 +257,7 @@ serve(withCors(async (req) => {
           status: paymentIntent.status,
           monto,
         });
-      } catch (chargeErr: any) {
+      } catch (chargeErr) {
         const msg = chargeErr instanceof Error ? chargeErr.message : "Unknown";
         console.error(`Auto-charge error for ${prestamo.id}:`, msg);
 

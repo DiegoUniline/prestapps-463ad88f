@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, Loader2, ShieldAlert } from "lucide-react";
-import { $$ } from "@/lib/utils";
+import { $$, errorMessage } from "@/lib/utils";
+import { rpc } from "@/lib/supabaseQuery";
 
 interface AnularPagoModalProps {
   open: boolean;
@@ -97,7 +98,8 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
       const { data: { user } } = await supabase.auth.getUser();
 
       // Single atomic RPC: reverses cuotas, marks pago, creates caja movement, updates cobrador
-      const { error: rpcErr } = await (supabase.rpc as any)("revertir_pago", {
+      // Untyped rpc(): generated Args declare p_user_id as optional string, but null is sent explicitly when there is no user
+      const { error: rpcErr } = await rpc("revertir_pago", {
         p_pago_id: pago.id,
         p_motivo: motivo.trim(),
         p_user_id: user?.id || null,
@@ -108,8 +110,8 @@ export function AnularPagoModal({ open, onOpenChange, pago }: AnularPagoModalPro
       toast.success("Pago anulado correctamente");
       onOpenChange(false);
       setMotivo("");
-    } catch (err: any) {
-      toast.error("Error al anular: " + (err.message || err));
+    } catch (err) {
+      toast.error("Error al anular: " + (errorMessage(err) || String(err)));
     } finally {
       setSaving(false);
     }

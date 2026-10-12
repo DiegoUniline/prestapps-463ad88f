@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SearchableSelect } from "@/components/shared/SearchableSelect";
 import { QuickCreateDialog, EntityType } from "@/components/shared/QuickCreateDialog";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { toast } from "sonner";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
@@ -48,7 +49,7 @@ export function ReasignarModal({ open, onOpenChange, prestamoId, currentRutaId, 
 
   const handleSave = async () => {
     setSaving(true);
-    const update: Record<string, any> = {};
+    const update: TablesUpdate<"prestamos"> = {};
     update.ruta_id = rutaId === "__none__" ? null : rutaId;
     update.cobrador_id = cobradorId === "__none__" ? null : cobradorId;
 

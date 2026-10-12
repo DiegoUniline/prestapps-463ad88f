@@ -34,7 +34,8 @@ const estadoBadge: Record<string, string> = {
   Juridico: "bg-badge-juridico text-badge-juridico-foreground",
 };
 
-type SortKey = keyof PrestamoListItem;
+// "diasParaVencer" is a computed column with no field on PrestamoListItem (sorting by it compares undefined values).
+type SortKey = keyof PrestamoListItem | "diasParaVencer";
 const ROW_STEP = 100;
 const estadoOptions = ["Activo", "Vencido", "Al día", "Liquidado", "Juridico", "Cancelado"];
 
@@ -139,12 +140,12 @@ const ALL_COLUMNS: ColumnDef[] = [
     className: "text-right",
   },
   {
-    key: "saldoCapital", label: "Cap. Pte", sortKey: "saldoCapital" as any, defaultVisible: false,
+    key: "saldoCapital", label: "Cap. Pte", sortKey: "saldoCapital", defaultVisible: false,
     render: (p) => <span className="text-right font-medium text-[13px]">{$$(p.saldoCapital)}</span>,
     className: "text-right",
   },
   {
-    key: "saldoInteres", label: "Int. Pte", sortKey: "saldoInteres" as any, defaultVisible: false,
+    key: "saldoInteres", label: "Int. Pte", sortKey: "saldoInteres", defaultVisible: false,
     render: (p) => <span className="text-right font-medium text-[13px]">{$$(p.saldoInteres)}</span>,
     className: "text-right",
   },
@@ -158,7 +159,7 @@ const ALL_COLUMNS: ColumnDef[] = [
     className: "text-right",
   },
   {
-    key: "saldoAPagar", label: "Saldo a Pagar", sortKey: "saldoAtrasado" as any, defaultVisible: true,
+    key: "saldoAPagar", label: "Saldo a Pagar", sortKey: "saldoAtrasado", defaultVisible: true,
     render: (p) => {
       const total = (p.saldoAtrasado || 0) + (p.moraAtrasada || 0);
       if (total <= 0) return <span className="text-muted-foreground text-[12px]">—</span>;
@@ -187,13 +188,13 @@ const ALL_COLUMNS: ColumnDef[] = [
     },
   },
   {
-    key: "proximoVencimiento", label: "Próx. Venc.", sortKey: "proximoVencimiento" as any, defaultVisible: true,
+    key: "proximoVencimiento", label: "Próx. Venc.", sortKey: "proximoVencimiento", defaultVisible: true,
     render: (p) => p.proximoVencimiento
       ? <span className="text-[12px] text-muted-foreground whitespace-nowrap">{fmtDate(p.proximoVencimiento)}</span>
       : <span className="text-muted-foreground text-[12px]">—</span>,
   },
   {
-    key: "diasParaVencer", label: "Días p/ Vencer", sortKey: "diasParaVencer" as any, defaultVisible: true,
+    key: "diasParaVencer", label: "Días p/ Vencer", sortKey: "diasParaVencer", defaultVisible: true,
     render: (p) => {
       if (!p.proximoVencimiento || p.estado === "Liquidado" || p.estado === "Cancelado") {
         return <span className="text-muted-foreground text-[12px]">—</span>;
@@ -369,8 +370,18 @@ function ColumnPicker({ visible, toggle, selectAll, resetDefaults }: ReturnType<
 }
 
 // ── Filters for mobile sheet ──────────────────────────────────────
+interface FiltersContentProps {
+  selEstado: Set<string>; setSelEstado: (v: Set<string>) => void;
+  selCaja: Set<string>; setSelCaja: (v: Set<string>) => void;
+  selRuta: Set<string>; setSelRuta: (v: Set<string>) => void;
+  cajasOpts: string[]; rutasOpts: string[];
+  regDesde: Date | undefined; setRegDesde: (v: Date | undefined) => void;
+  regHasta: Date | undefined; setRegHasta: (v: Date | undefined) => void;
+  clearAll: () => void;
+}
+
 function FiltersContent({ selEstado, setSelEstado, selCaja, setSelCaja, selRuta, setSelRuta, cajasOpts, rutasOpts,
-  regDesde, setRegDesde, regHasta, setRegHasta, clearAll }: any) {
+  regDesde, setRegDesde, regHasta, setRegHasta, clearAll }: FiltersContentProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -431,7 +442,7 @@ export default function PrestamosPage() {
   const { data: empresaData } = useQuery({
     queryKey: ["empresa-dias-vencer", empresaId],
     queryFn: async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("empresas")
         .select("dias_por_vencer")
         .eq("id", empresaId)
@@ -550,7 +561,8 @@ export default function PrestamosPage() {
     });
     if (sortKey && sortDir) {
       data = [...data].sort((a, b) => {
-        const av = a[sortKey]; const bv = b[sortKey];
+        const ar: Partial<Record<SortKey, unknown>> = a; const br: Partial<Record<SortKey, unknown>> = b;
+        const av = ar[sortKey]; const bv = br[sortKey];
         if (typeof av === "number" && typeof bv === "number") return sortDir === "asc" ? av - bv : bv - av;
         return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
       });

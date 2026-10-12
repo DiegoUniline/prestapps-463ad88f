@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -31,7 +31,7 @@ type Caller = {
   superAdmin: boolean;
 };
 
-async function getCaller(req: Request, admin: any): Promise<Caller | null> {
+async function getCaller(req: Request, admin: SupabaseClient): Promise<Caller | null> {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return null;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -51,9 +51,68 @@ async function getCaller(req: Request, admin: any): Promise<Caller | null> {
     userId: user.id,
     email,
     empresaId: profile?.empresa_id ?? null,
-    roles: (roleRows || []).map((r: any) => r.role),
+    roles: (roleRows || []).map((r: { role: string }) => r.role),
     superAdmin: !!email && email === SUPER_ADMIN_EMAIL,
   };
+}
+
+// whatsapp_config.select("*"): only these columns are read.
+interface WhatsappConfigRow {
+  activo: boolean;
+  api_url: string;
+  api_token: string;
+}
+
+// whatsapp_cola row (whatsapp_cola_claim RETURNS SETOF public.whatsapp_cola)
+interface ColaRow {
+  id: string;
+  empresa_id: string;
+  telefono: string;
+  tipo: string;
+  mensaje: string | null;
+  media_url: string | null;
+  media_tipo: string | null;
+  media_nombre: string | null;
+  referencia_id: string | null;
+}
+
+interface ClienteRecordatorio {
+  nombre_completo: string;
+  telefono: string | null;
+}
+
+interface PrestamoRecordatorio {
+  id: string;
+  cliente_id: string;
+  num_cuotas: number;
+  monto_solicitado: number;
+  id_prestamo: string;
+  clientes: ClienteRecordatorio | null;
+}
+
+interface CuotaRecordatorio {
+  id: string;
+  num_cuota: number;
+  fecha_vencimiento: string;
+  saldo_total: number | null;
+  saldo_mora: number | null;
+  saldo_capital: number | null;
+  saldo_interes: number | null;
+  capital_interes: number | null;
+  prestamo_id: string;
+  empresa_id: string | null;
+  prestamos: PrestamoRecordatorio | null;
+}
+
+type CuotaConPrestamo = CuotaRecordatorio & { prestamo: PrestamoRecordatorio | null };
+
+type WaPayload = Record<string, unknown>;
+
+// Same semantics as `e?.message`: Error instances and plain error objects (e.g. PostgrestError) alike.
+function errorMessage(e: unknown): string | undefined {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "object" && e !== null && "message" in e && typeof e.message === "string") return e.message;
+  return undefined;
 }
 
 Deno.serve(withCors(async (req) => {
@@ -284,11 +343,13 @@ Deno.serve(withCors(async (req) => {
       };
 
       const PAGE = 1000;
-      const cuotas: any[] = [];
+      const cuotas: CuotaRecordatorio[] = [];
       for (let from = 0; ; from += PAGE) {
         const { data: page, error: pageErr } = await buildQuery().range(from, from + PAGE - 1);
         if (pageErr) throw pageErr;
-        cuotas.push(...(page || []));
+        // prestamos!inner / clientes!inner are many-to-one embeds: PostgREST returns objects, but the
+        // untyped client's select parser infers arrays, hence the cast.
+        cuotas.push(...((page || []) as unknown as CuotaRecordatorio[]));
         if (!page || page.length < PAGE) break;
       }
 
@@ -313,9 +374,9 @@ Deno.serve(withCors(async (req) => {
       const detalles: { cliente: string; telefono: string; cuotas_detalle: string; monto_total: string; num_cuotas: number; status: string; error?: string }[] = [];
 
       // Group cuotas by client (using cliente_id from prestamo)
-      const clienteMap = new Map<string, { cliente: any; cuotasList: any[] }>();
+      const clienteMap = new Map<string, { cliente: ClienteRecordatorio | null | undefined; cuotasList: CuotaConPrestamo[] }>();
       for (const cuota of (cuotas || [])) {
-        const prestamo = (cuota as any).prestamos;
+        const prestamo = cuota.prestamos;
         const cliente = prestamo?.clientes;
         const clienteKey = prestamo?.cliente_id || cuota.prestamo_id;
         if (!clienteMap.has(clienteKey)) {
@@ -327,14 +388,14 @@ Deno.serve(withCors(async (req) => {
       for (const [, { cliente, cuotasList }] of clienteMap) {
         if (!cliente?.telefono) {
           const cuotasResumen = cuotasList.map(c => `#${c.num_cuota}`).join(", ");
-          const montoTotal = cuotasList.reduce((sum: number, c: any) => sum + (c.saldo_total || 0), 0);
+          const montoTotal = cuotasList.reduce((sum: number, c) => sum + (c.saldo_total || 0), 0);
           detalles.push({ cliente: cliente?.nombre_completo || "Sin nombre", telefono: "Sin teléfono", cuotas_detalle: cuotasResumen, monto_total: montoTotal.toFixed(2), num_cuotas: cuotasList.length, status: "omitido", error: "Sin teléfono registrado" });
           continue;
         }
 
         // Build cuotas detail lines for the message
-        const montoTotal = cuotasList.reduce((sum: number, c: any) => sum + (c.saldo_total || 0), 0);
-        const moraTotal = cuotasList.reduce((sum: number, c: any) => sum + (c.saldo_mora || 0), 0);
+        const montoTotal = cuotasList.reduce((sum: number, c) => sum + (c.saldo_total || 0), 0);
+        const moraTotal = cuotasList.reduce((sum: number, c) => sum + (c.saldo_mora || 0), 0);
         const saldoSinMora = montoTotal - moraTotal;
         const cuotasNums = cuotasList.map(c => `#${c.num_cuota}`).join(", ");
         const cuotasDetalle = cuotasList.map(c => {
@@ -386,15 +447,15 @@ Deno.serve(withCors(async (req) => {
 
           if (result.success) {
             sent++;
-            const cuotaIds = cuotasList.map((c: any) => c.id);
+            const cuotaIds = cuotasList.map((c) => c.id);
             await supabase.from("amortizacion").update({ avisado: true }).in("id", cuotaIds);
           } else {
             errors++;
           }
           detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuotas_detalle: cuotasNums, monto_total: montoTotal.toFixed(2), num_cuotas: cuotasList.length, status: result.success ? "enviado" : "error", error: result.error || undefined });
-        } catch (e: any) {
+        } catch (e) {
           errors++;
-          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuotas_detalle: cuotasNums, monto_total: montoTotal.toFixed(2), num_cuotas: cuotasList.length, status: "error", error: e.message });
+          detalles.push({ cliente: cliente.nombre_completo, telefono: normalizedPhone, cuotas_detalle: cuotasNums, monto_total: montoTotal.toFixed(2), num_cuotas: cuotasList.length, status: "error", error: errorMessage(e) });
         }
       }
 
@@ -406,8 +467,8 @@ Deno.serve(withCors(async (req) => {
     return new Response(JSON.stringify({ error: "Unknown action" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error) {
+    return new Response(JSON.stringify({ error: errorMessage(error) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -418,12 +479,12 @@ const QUEUE_BATCH = 50;
 // Límite de Edge Functions ~150 s; un envío puede tardar ~65 s (3 intentos × 20 s + backoff).
 const QUEUE_BUDGET_MS = 60_000;
 
-async function processQueue(supabase: any, supabaseUrl: string, empresaId: string | null) {
+async function processQueue(supabase: SupabaseClient, supabaseUrl: string, empresaId: string | null) {
   const started = Date.now();
   const { data: rows, error } = await supabase.rpc("whatsapp_cola_claim", { p_limit: QUEUE_BATCH, p_empresa: empresaId });
   if (error) throw error;
 
-  const configs = new Map<string, { config: any; lada: string }>();
+  const configs = new Map<string, { config: WhatsappConfigRow | null; lada: string }>();
   const getConfig = async (empresa: string) => {
     if (!configs.has(empresa)) {
       const [{ data: config }, { data: emp }] = await Promise.all([
@@ -438,7 +499,7 @@ async function processQueue(supabase: any, supabaseUrl: string, empresaId: strin
   let sent = 0, retry = 0, failed = 0;
   const pendientes: string[] = [];
 
-  for (const row of (rows || []) as any[]) {
+  for (const row of (rows || []) as ColaRow[]) {
     if (Date.now() - started > QUEUE_BUDGET_MS) {
       pendientes.push(row.id);
       continue;
@@ -453,7 +514,7 @@ async function processQueue(supabase: any, supabaseUrl: string, empresaId: strin
       }
 
       const phone = normalizePhone(row.telefono || "", lada);
-      const payload: Record<string, any> = row.media_tipo === "image"
+      const payload: WaPayload = row.media_tipo === "image"
         ? { action: "send-image", phone, url: row.media_url, caption: row.mensaje || "" }
         : row.media_tipo === "file"
           ? { action: "send-file", phone, url: row.media_url, fileName: row.media_nombre || "documento.pdf" }
@@ -464,10 +525,10 @@ async function processQueue(supabase: any, supabaseUrl: string, empresaId: strin
       if (estado === "enviado") sent++;
       else if (estado === "error") failed++;
       else retry++;
-    } catch (e: any) {
-      console.error("[whatsapp-queue] row error:", row.id, e?.message || e);
+    } catch (e) {
+      console.error("[whatsapp-queue] row error:", row.id, errorMessage(e) || e);
       try {
-        await finishRow(supabase, supabaseUrl, row, { success: false, error: e?.message || "Error inesperado" }, "", false);
+        await finishRow(supabase, supabaseUrl, row, { success: false, error: errorMessage(e) || "Error inesperado" }, "", false);
       } catch { /* el lease de 10 min lo devolverá a la cola */ }
       retry++;
     }
@@ -481,9 +542,9 @@ async function processQueue(supabase: any, supabaseUrl: string, empresaId: strin
 }
 
 async function finishRow(
-  supabase: any,
+  supabase: SupabaseClient,
   supabaseUrl: string,
-  row: any,
+  row: ColaRow,
   result: { success: boolean; error?: string | null },
   phone: string,
   permanente: boolean,
@@ -514,7 +575,7 @@ async function finishRow(
 }
 
 // Solo archivos temporales de la propia empresa en empresa-assets/temp-receipts/<empresa_id>/
-function tempPaths(supabaseUrl: string, row: any): string[] {
+function tempPaths(supabaseUrl: string, row: ColaRow): string[] {
   const prefix = `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/empresa-assets/`;
   const url: string = row.media_url || "";
   if (!url.startsWith(prefix)) return [];
@@ -524,7 +585,7 @@ function tempPaths(supabaseUrl: string, row: any): string[] {
 }
 
 // ── Helpers ────────────────────────────────────────
-async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<string, any>) {
+async function sendWhatsApp(apiUrl: string, apiToken: string, payload: WaPayload) {
   // Retry with exponential backoff. Retries on:
   //  - Network/fetch errors (transient)
   //  - HTTP 5xx
@@ -533,7 +594,7 @@ async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<st
   const MAX_ATTEMPTS = 3;
   const BACKOFFS_MS = [0, 1500, 4000]; // attempt 1: immediate, 2: 1.5s, 3: 4s
   let lastError: string | null = null;
-  let lastData: any = null;
+  let lastData: unknown = null;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     if (BACKOFFS_MS[attempt] > 0) {
@@ -563,8 +624,8 @@ async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<st
         errStr.includes("timeout") ||
         errStr.includes("econn");
       if (!isTransient) break; // permanent error (auth, bad number, etc.) — don't retry
-    } catch (e: any) {
-      lastError = e.message || "Network error";
+    } catch (e) {
+      lastError = errorMessage(e) || "Network error";
       // Network errors are always transient — keep retrying
     }
   }
@@ -572,7 +633,7 @@ async function sendWhatsApp(apiUrl: string, apiToken: string, payload: Record<st
   return { success: false, data: lastData, error: lastError, attempts: MAX_ATTEMPTS };
 }
 
-function replaceVariables(template: string, vars: Record<string, any>): string {
+function replaceVariables(template: string, vars: Record<string, unknown>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => {
     return vars[key] !== undefined ? String(vars[key]) : `{${key}}`;
   });
@@ -604,9 +665,34 @@ function normalizePhone(raw: string, ladaPais: string): string {
   return ladaPais + digits;
 }
 
-function buildReceiptHtml(pago: any, empresa: any, cliente: any, prestamo: any): string {
+interface ReciboPago {
+  folio?: string | null;
+  metodo_pago?: string | null;
+  aplicado_mora: number;
+  aplicado_interes: number;
+  aplicado_capital: number;
+  descuento: number;
+  monto_recibido: number;
+  cuota_num?: number | string | null;
+  saldo_restante: number;
+  proxima_cuota?: string | null;
+  monto_proxima?: number | null;
+}
+
+interface ReciboEmpresa {
+  nombre?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+}
+
+function buildReceiptHtml(
+  pago: ReciboPago,
+  empresa: ReciboEmpresa | null | undefined,
+  cliente: { nombre?: string | null } | null | undefined,
+  prestamo: { folio?: string | null; num_cuotas?: number | null } | null | undefined,
+): string {
   const fecha = new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  const $$ = (n: number) => `$${(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const $$ = (n: number | null | undefined) => `$${(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return `<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
@@ -680,7 +766,7 @@ function buildReceiptHtml(pago: any, empresa: any, cliente: any, prestamo: any):
 }
 
 async function generateReceiptImage(
-  supabase: any,
+  supabase: SupabaseClient,
   html: string,
   empresaId: string
 ): Promise<{ imageUrl: string | null; cleanupPaths: string[] }> {
@@ -732,7 +818,7 @@ async function generateReceiptImage(
   }
 }
 
-async function cleanupStorage(supabase: any, paths: string[]) {
+async function cleanupStorage(supabase: SupabaseClient, paths: string[]) {
   if (paths.length === 0) return;
   try {
     await supabase.storage.from("empresa-assets").remove(paths);

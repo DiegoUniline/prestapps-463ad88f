@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn, $$, fmtDate } from "@/lib/utils";
-import { ScrollText, Search, HandCoins, XCircle, CreditCard, CalendarCheck, MapPin, MessageSquare } from "lucide-react";
+import { type LucideIcon, ScrollText, Search, HandCoins, XCircle, CreditCard, CalendarCheck, MapPin, MessageSquare } from "lucide-react";
 interface AuditEntry {
   id: string;
   tipo: string;
@@ -24,7 +24,7 @@ interface AuditEntry {
   usuario: string;
   fecha: string;
   monto?: number;
-  icono: any;
+  icono: LucideIcon;
   color: string;
 }
 

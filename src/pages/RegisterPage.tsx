@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/utils";
 import { Eye, EyeOff, Building2, User, Mail, Lock, Phone, Sparkles } from "lucide-react";
 import logoFull from "@/assets/logo-full.png";
 
@@ -87,15 +88,15 @@ export default function RegisterPage() {
           },
         });
         if (error) {
-          const ctx: any = (error as any).context;
+          const ctx = (error as { context?: { text?: () => Promise<string> } }).context;
           const txt = ctx?.text ? await ctx.text() : "";
           throw new Error((() => { try { return JSON.parse(txt).error; } catch { return error.message; } })());
         }
         if (data?.error) throw new Error(data.error);
         setOtpSent(true);
         toast.success("Te enviamos un código por WhatsApp");
-      } catch (err: any) {
-        toast.error(err.message || "No se pudo enviar el código");
+      } catch (err) {
+        toast.error(errorMessage(err) || "No se pudo enviar el código");
       } finally {
         setLoading(false);
       }
@@ -122,7 +123,7 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        const ctx: any = (error as any).context;
+        const ctx = (error as { context?: { text?: () => Promise<string> } }).context;
         const txt = ctx?.text ? await ctx.text() : "";
         throw new Error((() => { try { return JSON.parse(txt).error; } catch { return error.message; } })());
       }
@@ -141,8 +142,8 @@ export default function RegisterPage() {
       } else {
         navigate("/dashboard");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Error al crear la cuenta");
+    } catch (err) {
+      toast.error(errorMessage(err) || "Error al crear la cuenta");
     } finally {
       setLoading(false);
     }

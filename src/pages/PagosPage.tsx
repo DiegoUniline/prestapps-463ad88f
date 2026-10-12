@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, type ComponentProps } from "react";
 import { usePersistedString, usePersistedSet, usePersistedDate } from "@/hooks/usePersistedFilters";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,7 @@ import { Search, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight as C
 import { GroupByDropdown } from "@/components/shared/GroupByDropdown";
 import { usePersistedGroupBy } from "@/hooks/usePersistedGroupBy";
 import { format } from "date-fns";
-import { cn, $$, fmtDate, parseLocalDate } from "@/lib/utils";
+import { cn, $$, fmtDate, parseLocalDate, errorMessage } from "@/lib/utils";
 import { useCajasOptions, useRutasOptions } from "@/hooks/usePrestamos";
 import { AnularPagoModal } from "@/components/AnularPagoModal";
 import { EditPagoModal } from "@/components/EditPagoModal";
@@ -263,8 +263,8 @@ export default function PagosPage() {
   };
 
   // Modals
-  const [anularPago, setAnularPago] = useState<any>(null);
-  const [editPago, setEditPago] = useState<any>(null);
+  const [anularPago, setAnularPago] = useState<ComponentProps<typeof AnularPagoModal>["pago"]>(null);
+  const [editPago, setEditPago] = useState<ComponentProps<typeof EditPagoModal>["pago"]>(null);
   const [docPreview, setDocPreview] = useState<{ open: boolean; pago: PagoListItem | null }>({ open: false, pago: null });
   const [waPreview, setWaPreview] = useState<{ open: boolean; pago: PagoListItem | null }>({ open: false, pago: null });
 
@@ -361,8 +361,8 @@ export default function PagosPage() {
         .eq("prestamo_id", p.prestamoId)
         .order("num_cuota");
       
-      const saldoRestante = (cuotasData || []).reduce((s: number, c: any) => s + Number(c.saldo_total || 0), 0);
-      const nextUnpaid = (cuotasData || []).find((c: any) => c.status !== "Pagada");
+      const saldoRestante = (cuotasData || []).reduce((s: number, c) => s + Number(c.saldo_total || 0), 0);
+      const nextUnpaid = (cuotasData || []).find((c) => c.status !== "Pagada");
 
       const result = await sendReceiptAsImage(
         empresaId,
@@ -395,9 +395,9 @@ export default function PagosPage() {
       toast.dismiss(t);
       if (result.success) toast.success("Recibo enviado por WhatsApp");
       else toast.error("No se pudo enviar el recibo por WhatsApp. Intenta de nuevo.");
-    } catch (e: any) {
+    } catch (e) {
       toast.dismiss(t);
-      toast.error(e.message || "Error al enviar");
+      toast.error(errorMessage(e) || "Error al enviar");
     }
   };
 
@@ -901,8 +901,8 @@ export default function PagosPage() {
               .select("saldo_total, num_cuota, fecha_vencimiento, status")
               .eq("prestamo_id", p.prestamoId)
               .order("num_cuota");
-            const saldoRestante = (cuotasData || []).reduce((s: number, c: any) => s + Number(c.saldo_total || 0), 0);
-            const nextUnpaid = (cuotasData || []).find((c: any) => c.status !== "Pagada");
+            const saldoRestante = (cuotasData || []).reduce((s: number, c) => s + Number(c.saldo_total || 0), 0);
+            const nextUnpaid = (cuotasData || []).find((c) => c.status !== "Pagada");
 
             const result = await sendReceiptAsImage(
               empresaId,

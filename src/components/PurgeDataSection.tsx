@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertTriangle, Trash2, Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, errorMessage } from "@/lib/utils";
 
 const CONFIRM_CODE = "BORRAR-TODO";
 
@@ -55,8 +55,8 @@ export function PurgeDataSection() {
       toast.success(data.message);
       qc.invalidateQueries();
       setOpen(false);
-    } catch (err: any) {
-      toast.error(err.message || "Error al purgar datos");
+    } catch (err) {
+      toast.error(errorMessage(err) || "Error al purgar datos");
     } finally {
       setPurging(false);
     }

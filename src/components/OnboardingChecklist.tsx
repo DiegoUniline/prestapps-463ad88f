@@ -9,16 +9,26 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, Circle, ChevronDown, ChevronUp,
   Building2, Wallet, Users, FileText, MapPin, UserCheck, Rocket, X,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface OnboardingData {
+  empresa: { nombre: string | null } | null;
+  cajas: unknown[] | null;
+  rutas: unknown[] | null;
+  cobradores: unknown[] | null;
+  clientes: unknown[] | null;
+  prestamos: unknown[] | null;
+}
 
 interface Step {
   id: string;
   title: string;
   description: string;
-  icon: any;
+  icon: LucideIcon;
   route: string;
-  check: (data: any) => boolean;
+  check: (data: OnboardingData) => boolean;
 }
 
 const STEPS: Step[] = [

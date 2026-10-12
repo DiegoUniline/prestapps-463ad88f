@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows, mapChunks } from "@/lib/supabaseQuery";
 import { format, startOfWeek, endOfWeek } from "date-fns";
+import type { QueryData } from "@supabase/supabase-js";
 import type { CuotaCobrador, PagoHistorial } from "./types";
 
 // ── Hooks ───────────────────────────────────────────────────────
@@ -27,11 +28,12 @@ export function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresa
         `and(fecha_vencimiento.gte.${fechaDesde},fecha_vencimiento.lte.${fechaHasta}),` +
         `and(fecha_vencimiento.lt.${fechaDesde},status.neq.Pagada),` +
         `and(fecha_pagada.gte.${fechaDesde},fecha_pagada.lte.${fechaHasta})`;
-      const presMap: Record<string, any> = {};
+      type CuotaRow = QueryData<ReturnType<typeof cuotasQuery>>[number];
+      const presMap: Record<string, CuotaRow["prestamos"]> = {};
       const pagosByPrestamo: Record<string, number> = {};
 
       const cuotasQuery = () => {
-        let q = (supabase.from as any)("amortizacion").select(amortizacionSelect);
+        let q = supabase.from("amortizacion").select(amortizacionSelect);
         if (cobradorId) {
           q = q.eq("prestamos.empresa_id", empresaId).eq("prestamos.cobrador_id", cobradorId);
         } else {
@@ -41,7 +43,7 @@ export function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresa
       };
 
       // Pagos del rango (por préstamo) para repartir montos en cuotas sin pago directo
-      let pagosRangoQuery = (supabase.from as any)("pagos")
+      let pagosRangoQuery = supabase.from("pagos")
         .select("id, prestamo_id, monto_recibido, prestamos!pagos_prestamo_id_fkey!inner ( cobrador_id, empresa_id )")
         .eq("empresa_id", empresaId)
         .eq("anulado", false)
@@ -55,10 +57,10 @@ export function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresa
       }
 
       const [cuotasRango, pagosRango] = await Promise.all([
-        fetchAllRows<any>(cuotasQuery().or(rangoFilter).order("fecha_vencimiento", { ascending: true })),
-        fetchAllRows<any>(pagosRangoQuery),
+        fetchAllRows(cuotasQuery().or(rangoFilter).order("fecha_vencimiento", { ascending: true })),
+        fetchAllRows(pagosRangoQuery),
       ]);
-      let cuotas: any[] = cuotasRango;
+      let cuotas: CuotaRow[] = cuotasRango;
       for (const c of cuotas) presMap[c.prestamo_id] = c.prestamos;
       for (const p of pagosRango) {
         if (!p.prestamo_id) continue;
@@ -70,7 +72,7 @@ export function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresa
         const prestamosConPago = Object.keys(pagosByPrestamo);
         if (prestamosConPago.length > 0) {
           const cuotasTocadas = await mapChunks(prestamosConPago, 150, (chunk) =>
-            fetchAllRows<any>(cuotasQuery()
+            fetchAllRows(cuotasQuery()
               .in("prestamo_id", chunk)
               .or("status.eq.Pagada,status.eq.Parcial,capital_pagado.gt.0,interes_pagado.gt.0,mora_pagada.gt.0")
               .order("fecha_vencimiento", { ascending: true }))
@@ -102,8 +104,8 @@ export function useCobranzaRango(fechaDesde: string, fechaHasta: string, empresa
         .filter((c) => presMap[c.prestamo_id]) // only cuotas belonging to this cobrador's prestamos
         .map((c): CuotaCobrador => {
           const pres = presMap[c.prestamo_id];
-          const cliente = pres.clientes as any;
-          const ruta = pres.rutas as any;
+          const cliente = pres.clientes;
+          const ruta = pres.rutas;
           const pagadoHistorico = Number(c.capital_pagado || 0) + Number(c.interes_pagado || 0) + Number(c.mora_pagada || 0);
           const fechaPagadaEnRango = c.fecha_pagada && c.fecha_pagada >= fechaDesde && c.fecha_pagada <= fechaHasta;
           let montoPagado = pagosByCuota[c.id] || 0;
@@ -171,9 +173,9 @@ export function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresa
         pagosQuery = pagosQuery.eq("cobrador_id", cobradorId);
       }
 
-      const data = await fetchAllRows<any>(pagosQuery);
+      const data = await fetchAllRows(pagosQuery);
 
-      return data.map((p: any): PagoHistorial => ({
+      return data.map((p): PagoHistorial => ({
         id: p.id,
         prestamoId: p.prestamo_id,
         clienteNombre: p.prestamos?.clientes?.nombre_completo || "—",
@@ -184,7 +186,7 @@ export function usePagosCobrador(fechaDesde: string, fechaHasta: string, empresa
         metodoPago: p.metodo_pago || "Efectivo",
         fechaPago: p.fecha_pago || p.created_at || "",
         anulado: p.anulado || false,
-        numCuota: (p.amortizacion as any)?.num_cuota || null,
+        numCuota: p.amortizacion?.num_cuota || null,
       }));
     },
   });
@@ -223,10 +225,14 @@ export function useResumenSemanal(empresaId: string, cobradorId: string | null, 
     enabled: enabled && !!empresaId,
     queryFn: async () => {
       // Cuotas de la semana con pagos embebidos (no anulados, de la empresa); filtro por cobrador en servidor.
-      let cuotasQuery = (supabase.from as any)("amortizacion")
+      // El select es dinámico (el join !inner sólo existe para filtrar por cobrador) y el parser de tipos
+      // de supabase-js no resuelve strings no literales: se tipa con la variante sin join, cuyas columnas
+      // son exactamente las que se leen abajo.
+      type SelectSemana = "id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento, pagos!pagos_cuota_id_fkey ( monto_recibido )";
+      let cuotasQuery = supabase.from("amortizacion")
         .select(`id, prestamo_id, capital_interes, saldo_total, status, fecha_vencimiento,
           ${cobradorId ? "prestamos!amortizacion_prestamo_id_fkey!inner ( cobrador_id, empresa_id )," : ""}
-          pagos!pagos_cuota_id_fkey ( monto_recibido )`)
+          pagos!pagos_cuota_id_fkey ( monto_recibido )` as SelectSemana)
         .gte("fecha_vencimiento", desde)
         .lte("fecha_vencimiento", hasta)
         .eq("pagos.anulado", false)
@@ -234,7 +240,7 @@ export function useResumenSemanal(empresaId: string, cobradorId: string | null, 
       cuotasQuery = cobradorId
         ? cuotasQuery.eq("prestamos.empresa_id", empresaId).eq("prestamos.cobrador_id", cobradorId)
         : cuotasQuery.eq("empresa_id", empresaId);
-      const cuotas = await fetchAllRows<any>(cuotasQuery);
+      const cuotas = await fetchAllRows(cuotasQuery);
       if (!cuotas.length) return { porCobrar: 0, cobrado: 0, total: 0, pct: 0, start, end };
       const filtered = cuotas;
 
@@ -290,7 +296,7 @@ export function usePerfilCobrador(cobradorId: string | null, empresaId: string, 
       const totalCobrado = (cortes || []).reduce((s, c) => s + Number(c.total_cobrado || 0), 0);
 
       // All assigned loans (active) con su amortización embebida (sin .in() de prestamo_ids)
-      const prestamos = await fetchAllRows<any>((supabase.from as any)("prestamos")
+      const prestamos = await fetchAllRows(supabase.from("prestamos")
         .select(`
           id, monto_solicitado, monto_total_pagar, num_cuotas, estado, fecha_registro,
           frecuencia, fecha_primer_pago,
@@ -320,7 +326,7 @@ export function usePerfilCobrador(cobradorId: string | null, empresaId: string, 
         cortes: cortes || [],
         totalComisionesGanadas,
         totalCobrado,
-        prestamos: (prestamos || []).map((p: any) => ({
+        prestamos: (prestamos || []).map((p) => ({
           id: p.id,
           cliente: p.clientes?.nombre_completo || "—",
           ruta: p.rutas?.nombre || "Sin ruta",

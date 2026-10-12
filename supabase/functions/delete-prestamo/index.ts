@@ -104,9 +104,11 @@ Deno.serve(withCors(async (req) => {
       JSON.stringify({ success: true, message: `Préstamo ${prestamo.id_prestamo} eliminado` }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err: any) {
+  } catch (err) {
+    // delErr (PostgrestError) is a plain object with .message, not always an Error instance
+    const msg = err instanceof Error ? err.message : String((err as { message?: unknown } | null)?.message ?? err);
     return new Response(
-      JSON.stringify({ success: false, error: err.message }),
+      JSON.stringify({ success: false, error: msg }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
