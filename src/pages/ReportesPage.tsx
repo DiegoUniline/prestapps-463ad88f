@@ -75,13 +75,13 @@ function ReportTable({
   totals,
 }: {
   columns: { key: string; header: string; format?: "money" | "date" | "number"; align?: string }[];
-  rows: Record<string, any>[];
+  rows: Record<string, unknown>[];
   totals?: Record<string, number>;
 }) {
-  const fmt = (val: any, f?: string) => {
+  const fmt = (val: unknown, f?: string) => {
     if (val == null) return "—";
     if (f === "money") return $$(Number(val));
-    if (f === "date") return fmtDate(val);
+    if (f === "date") return fmtDate(val as string | Date); // date columns hold ISO date strings
     if (f === "number") return (Number(val) || 0).toLocaleString("en-US");
     return String(val);
   };
@@ -195,23 +195,23 @@ export default function ReportesPage() {
 
   // PRÉSTAMOS
   const prestamosData = useMemo(() => {
-    let d = prestamosRaw.map((p: any) => ({
+    let d = prestamosRaw.map((p) => ({
       ...p,
       cliente: p.clientes?.nombre_completo || "—",
       ruta: p.rutas?.nombre || "—",
     }));
-    if (estadoFilter !== "todos") d = d.filter((p: any) => p.estado === estadoFilter);
+    if (estadoFilter !== "todos") d = d.filter((p) => p.estado === estadoFilter);
     if (searchFilter) {
       const s = searchFilter.toLowerCase();
-      d = d.filter((p: any) => p.cliente.toLowerCase().includes(s) || p.id.includes(s));
+      d = d.filter((p) => p.cliente.toLowerCase().includes(s) || p.id.includes(s));
     }
     return d;
   }, [prestamosRaw, estadoFilter, searchFilter]);
 
   const prestamosTotals = useMemo(() => ({
-    monto_solicitado: prestamosData.reduce((a: number, p: any) => a + Number(p.monto_solicitado || 0), 0),
-    monto_total_pagar: prestamosData.reduce((a: number, p: any) => a + Number(p.monto_total_pagar || 0), 0),
-    gastos_legales: prestamosData.reduce((a: number, p: any) => a + Number(p.gastos_legales || 0), 0),
+    monto_solicitado: prestamosData.reduce((a, p) => a + Number(p.monto_solicitado || 0), 0),
+    monto_total_pagar: prestamosData.reduce((a, p) => a + Number(p.monto_total_pagar || 0), 0),
+    gastos_legales: prestamosData.reduce((a, p) => a + Number(p.gastos_legales || 0), 0),
   }), [prestamosData]);
 
   const prestamosColumns = [
@@ -230,7 +230,7 @@ export default function ReportesPage() {
 
   // PAGOS / COBRANZA
   const pagosData = useMemo(() => {
-    let d = pagosRaw.map((p: any) => ({
+    let d = pagosRaw.map((p) => ({
       ...p,
       cliente: p.prestamos?.clientes?.nombre_completo || "—",
       ruta: p.rutas?.nombre || "—",
@@ -238,17 +238,17 @@ export default function ReportesPage() {
     }));
     if (searchFilter) {
       const s = searchFilter.toLowerCase();
-      d = d.filter((p: any) => p.cliente.toLowerCase().includes(s));
+      d = d.filter((p) => p.cliente.toLowerCase().includes(s));
     }
     return d;
   }, [pagosRaw, searchFilter]);
 
-  const pagosActivos = useMemo(() => pagosData.filter((p: any) => !p.anulado), [pagosData]);
+  const pagosActivos = useMemo(() => pagosData.filter((p) => !p.anulado), [pagosData]);
   const pagosTotals = useMemo(() => ({
-    monto_recibido: pagosActivos.reduce((a: number, p: any) => a + Number(p.monto_recibido || 0), 0),
-    aplicado_capital: pagosActivos.reduce((a: number, p: any) => a + Number(p.aplicado_capital || 0), 0),
-    aplicado_interes: pagosActivos.reduce((a: number, p: any) => a + Number(p.aplicado_interes || 0), 0),
-    aplicado_mora: pagosActivos.reduce((a: number, p: any) => a + Number(p.aplicado_mora || 0), 0),
+    monto_recibido: pagosActivos.reduce((a, p) => a + Number(p.monto_recibido || 0), 0),
+    aplicado_capital: pagosActivos.reduce((a, p) => a + Number(p.aplicado_capital || 0), 0),
+    aplicado_interes: pagosActivos.reduce((a, p) => a + Number(p.aplicado_interes || 0), 0),
+    aplicado_mora: pagosActivos.reduce((a, p) => a + Number(p.aplicado_mora || 0), 0),
   }), [pagosActivos]);
 
   const pagosColumns = [
@@ -265,28 +265,28 @@ export default function ReportesPage() {
 
   // CUOTAS
   const cuotasData = useMemo(() => {
-    let d = cuotasRaw.map((c: any) => ({
+    let d = cuotasRaw.map((c) => ({
       ...c,
       cliente: c.prestamos?.clientes?.nombre_completo || "—",
       ruta: c.prestamos?.rutas?.nombre || "—",
     }));
-    if (cuotaStatusFilter !== "todos") d = d.filter((c: any) => c.status === cuotaStatusFilter);
+    if (cuotaStatusFilter !== "todos") d = d.filter((c) => c.status === cuotaStatusFilter);
     if (searchFilter) {
       const s = searchFilter.toLowerCase();
-      d = d.filter((c: any) => c.cliente.toLowerCase().includes(s));
+      d = d.filter((c) => c.cliente.toLowerCase().includes(s));
     }
     return d;
   }, [cuotasRaw, cuotaStatusFilter, searchFilter]);
 
   const cuotasTotals = useMemo(() => ({
-    capital: cuotasData.reduce((a: number, c: any) => a + Number(c.capital || 0), 0),
-    interes: cuotasData.reduce((a: number, c: any) => a + Number(c.interes || 0), 0),
-    capital_interes: cuotasData.reduce((a: number, c: any) => a + Number(c.capital_interes || 0), 0),
-    mora: cuotasData.reduce((a: number, c: any) => a + Number(c.mora || 0), 0),
-    capital_pagado: cuotasData.reduce((a: number, c: any) => a + Number(c.capital_pagado || 0), 0),
-    interes_pagado: cuotasData.reduce((a: number, c: any) => a + Number(c.interes_pagado || 0), 0),
-    mora_pagada: cuotasData.reduce((a: number, c: any) => a + Number(c.mora_pagada || 0), 0),
-    saldo_total: cuotasData.reduce((a: number, c: any) => a + Number(c.saldo_total || 0), 0),
+    capital: cuotasData.reduce((a, c) => a + Number(c.capital || 0), 0),
+    interes: cuotasData.reduce((a, c) => a + Number(c.interes || 0), 0),
+    capital_interes: cuotasData.reduce((a, c) => a + Number(c.capital_interes || 0), 0),
+    mora: cuotasData.reduce((a, c) => a + Number(c.mora || 0), 0),
+    capital_pagado: cuotasData.reduce((a, c) => a + Number(c.capital_pagado || 0), 0),
+    interes_pagado: cuotasData.reduce((a, c) => a + Number(c.interes_pagado || 0), 0),
+    mora_pagada: cuotasData.reduce((a, c) => a + Number(c.mora_pagada || 0), 0),
+    saldo_total: cuotasData.reduce((a, c) => a + Number(c.saldo_total || 0), 0),
   }), [cuotasData]);
 
   const cuotasColumns = [
@@ -314,13 +314,13 @@ export default function ReportesPage() {
     const totalCobrado = pagosTotals.monto_recibido;
     const totalPrestado = prestamosTotals.monto_solicitado;
     const totalPorCobrar = prestamosTotals.monto_total_pagar;
-    const cuotasPendientes = cuotasRaw.filter((c: any) => c.status === "Pendiente").length;
-    const cuotasVencidas = cuotasRaw.filter((c: any) => c.status === "Vencida").length;
-    const cuotasPagadas = cuotasRaw.filter((c: any) => c.status === "Pagada").length;
-    const cuotasParciales = cuotasRaw.filter((c: any) => c.status === "Parcial").length;
+    const cuotasPendientes = cuotasRaw.filter((c) => c.status === "Pendiente").length;
+    const cuotasVencidas = cuotasRaw.filter((c) => c.status === "Vencida").length;
+    const cuotasPagadas = cuotasRaw.filter((c) => c.status === "Pagada").length;
+    const cuotasParciales = cuotasRaw.filter((c) => c.status === "Parcial").length;
     const totalPagos = pagosActivos.length;
     const totalPrestamos = prestamosRaw.length;
-    const pagosAnulados = pagosData.filter((p: any) => p.anulado).length;
+    const pagosAnulados = pagosData.filter((p) => p.anulado).length;
 
     return [
       { concepto: "Total Préstamos Generados", cantidad: totalPrestamos, monto: totalPrestado },
@@ -348,7 +348,7 @@ export default function ReportesPage() {
   const dateRange = { from: format(from, "dd/MM/yyyy"), to: format(to, "dd/MM/yyyy") };
 
   const handleExport = (type: "pdf" | "csv") => {
-    const configs: Record<string, any> = {
+    const configs: Record<string, Omit<Parameters<typeof exportToPDF>[0], "dateRange">> = {
       resumen: { title: "Reporte Resumen", columns: resumenColumns, rows: resumenData },
       prestamos: { title: "Reporte de Préstamos", columns: prestamosColumns, rows: prestamosData, totals: prestamosTotals },
       cobranza: { title: "Reporte de Cobranza", columns: pagosColumns, rows: pagosData, totals: pagosTotals },

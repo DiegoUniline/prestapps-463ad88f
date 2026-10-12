@@ -8,6 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/utils";
+
+// La tabla destino depende de entityType y las filas se arman desde FieldDef dinámicos: el cliente
+// tipado no acepta un nombre de tabla en unión con un Record genérico, así que este insert usa una
+// vista mínima sin tipos de fila (frontera sin tipos).
+type DynamicInsertClient = {
+  from(table: string): {
+    insert(row: Record<string, string>): {
+      select(columns: "id"): { single(): PromiseLike<{ data: { id: string } | null; error: unknown }> };
+    };
+  };
+};
 
 export type EntityType = "cliente" | "caja" | "ruta" | "metodo_pago";
 
@@ -89,16 +101,16 @@ export function QuickCreateDialog({ entityType, open, onOpenChange, onCreated }:
 
     setSaving(true);
     try {
-      const insertData: Record<string, any> = { empresa_id: empresaId };
+      const insertData: Record<string, string> = { empresa_id: empresaId };
       for (const field of config.fields) {
         if (values[field.key]?.trim()) {
           insertData[field.key] = values[field.key].trim();
         }
       }
 
-      const { data, error } = await supabase
-        .from(config.table as any)
-        .insert(insertData as any)
+      const { data, error } = await (supabase as unknown as DynamicInsertClient)
+        .from(config.table)
+        .insert(insertData)
         .select("id")
         .single();
 
@@ -113,10 +125,10 @@ export function QuickCreateDialog({ entityType, open, onOpenChange, onCreated }:
       }
 
       toast.success(`${config.title.replace("Nuev", "Cread").replace("a C", "a c").replace("o M", "o m")} exitosamente`);
-      onCreated((data as any).id, label);
+      onCreated(data!.id, label);
       handleOpen(false);
-    } catch (err: any) {
-      toast.error("Error al crear: " + (err.message || err));
+    } catch (err) {
+      toast.error("Error al crear: " + String(errorMessage(err) || err));
     } finally {
       setSaving(false);
     }
