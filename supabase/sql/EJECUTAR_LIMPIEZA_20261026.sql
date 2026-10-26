@@ -23,7 +23,7 @@ BEGIN
   $job$);
 END $$;
 
--- 2) Historial de pg_cron: borrar lo viejo y limpiarlo a diario (3:30 a.m. CDMX)
+-- 2) Limpieza diaria (3:30 a.m. CDMX): historial de pg_cron y archivos viejos de storage (Edge Function limpieza-storage)
 DELETE FROM cron.job_run_details WHERE end_time < now() - interval '3 days';
 
 DO $$
@@ -31,6 +31,15 @@ BEGIN
   PERFORM cron.unschedule(jobid) FROM cron.job WHERE jobname = 'limpieza-diaria';
   PERFORM cron.schedule('limpieza-diaria', '30 9 * * *', $job$
     DELETE FROM cron.job_run_details WHERE end_time < now() - interval '3 days';
+    SELECT net.http_post(
+      url := 'https://oewuzgugsjqtznmgnfhp.supabase.co/functions/v1/limpieza-storage',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'apikey', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ld3V6Z3Vnc2pxdHpubWduZmhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDQ1NDgsImV4cCI6MjA4ODkyMDU0OH0.sLR4Y7cBqD9bqT4KRc6CUTUxJ2y_BqoQ0l15Avk5BbU',
+        'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ld3V6Z3Vnc2pxdHpubWduZmhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDQ1NDgsImV4cCI6MjA4ODkyMDU0OH0.sLR4Y7cBqD9bqT4KRc6CUTUxJ2y_BqoQ0l15Avk5BbU'),
+      body := '{}'::jsonb,
+      timeout_milliseconds := 120000
+    );
   $job$);
 END $$;
 
