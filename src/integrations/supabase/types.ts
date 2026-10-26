@@ -111,7 +111,7 @@ export type Database = {
         Row: {
           autorizacion_fecha: string
           autorizacion_path: string | null
-          cliente_id: string
+          cliente_id: string | null
           consultado_por: string | null
           created_at: string
           empresa_id: string
@@ -133,7 +133,7 @@ export type Database = {
         Insert: {
           autorizacion_fecha: string
           autorizacion_path?: string | null
-          cliente_id: string
+          cliente_id?: string | null
           consultado_por?: string | null
           created_at?: string
           empresa_id: string
@@ -155,7 +155,7 @@ export type Database = {
         Update: {
           autorizacion_fecha?: string
           autorizacion_path?: string | null
-          cliente_id?: string
+          cliente_id?: string | null
           consultado_por?: string | null
           created_at?: string
           empresa_id?: string
@@ -589,6 +589,7 @@ export type Database = {
           activo: boolean
           api_key: string | null
           api_url: string | null
+          api_url_pf: string | null
           cdc_public_key: string | null
           certificado: string | null
           id: number
@@ -601,6 +602,7 @@ export type Database = {
           activo?: boolean
           api_key?: string | null
           api_url?: string | null
+          api_url_pf?: string | null
           cdc_public_key?: string | null
           certificado?: string | null
           id?: number
@@ -613,6 +615,7 @@ export type Database = {
           activo?: boolean
           api_key?: string | null
           api_url?: string | null
+          api_url_pf?: string | null
           cdc_public_key?: string | null
           certificado?: string | null
           id?: number
@@ -623,9 +626,50 @@ export type Database = {
         }
         Relationships: []
       }
+      client_errors: {
+        Row: {
+          created_at: string
+          empresa_id: string | null
+          extra: Json | null
+          id: number
+          mensaje: string
+          stack: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+          version: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id?: string | null
+          extra?: Json | null
+          id?: never
+          mensaje: string
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string | null
+          extra?: Json | null
+          id?: never
+          mensaje?: string
+          stack?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+          version?: string | null
+        }
+        Relationships: []
+      }
       clientes: {
         Row: {
           activo: boolean | null
+          apellido_materno: string | null
+          apellido_paterno: string | null
           aval_direccion: string | null
           aval_dni: string | null
           aval_nombre: string | null
@@ -633,6 +677,7 @@ export type Database = {
           aval_telefono: string | null
           correo: string | null
           created_at: string | null
+          curp: string | null
           dependientes: number | null
           direccion: string | null
           direccion_trabajo: string | null
@@ -660,6 +705,7 @@ export type Database = {
           ingresos: number | null
           lada_pais: string | null
           nombre_completo: string
+          nombres: string | null
           notas: string | null
           razon_social: string | null
           ref1_nombre: string | null
@@ -683,6 +729,8 @@ export type Database = {
         }
         Insert: {
           activo?: boolean | null
+          apellido_materno?: string | null
+          apellido_paterno?: string | null
           aval_direccion?: string | null
           aval_dni?: string | null
           aval_nombre?: string | null
@@ -690,6 +738,7 @@ export type Database = {
           aval_telefono?: string | null
           correo?: string | null
           created_at?: string | null
+          curp?: string | null
           dependientes?: number | null
           direccion?: string | null
           direccion_trabajo?: string | null
@@ -717,6 +766,7 @@ export type Database = {
           ingresos?: number | null
           lada_pais?: string | null
           nombre_completo: string
+          nombres?: string | null
           notas?: string | null
           razon_social?: string | null
           ref1_nombre?: string | null
@@ -740,6 +790,8 @@ export type Database = {
         }
         Update: {
           activo?: boolean | null
+          apellido_materno?: string | null
+          apellido_paterno?: string | null
           aval_direccion?: string | null
           aval_dni?: string | null
           aval_nombre?: string | null
@@ -747,6 +799,7 @@ export type Database = {
           aval_telefono?: string | null
           correo?: string | null
           created_at?: string | null
+          curp?: string | null
           dependientes?: number | null
           direccion?: string | null
           direccion_trabajo?: string | null
@@ -774,6 +827,7 @@ export type Database = {
           ingresos?: number | null
           lada_pais?: string | null
           nombre_completo?: string
+          nombres?: string | null
           notas?: string | null
           razon_social?: string | null
           ref1_nombre?: string | null
@@ -2641,6 +2695,55 @@ export type Database = {
         Args: { p_empresa_id?: string }
         Returns: number
       }
+      admin_client_errors: {
+        Args: { p_desde?: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      admin_slow_queries: {
+        Args: { p_limit?: number }
+        Returns: {
+          calls: number
+          filas: number
+          mean_ms: number
+          query: string
+          total_ms: number
+        }[]
+      }
+      admin_table_stats: {
+        Args: never
+        Returns: {
+          filas: number
+          filas_muertas: number
+          idx_scan: number
+          seq_scan: number
+          tabla: string
+          tamano_bytes: number
+          ultimo_analyze: string
+          ultimo_vacuum: string
+        }[]
+      }
+      admin_tenant_summary: {
+        Args: never
+        Returns: {
+          activa: boolean
+          empresa_id: string
+          errores_cliente_24h: number
+          monto_pagos_30d: number
+          nombre: string
+          pagos_30d: number
+          plan: string
+          prestamos_activos: number
+          prestamos_total: number
+          stripe_conectado: boolean
+          suscripcion_estado: string
+          usuarios: number
+          usuarios_activos: number
+          wa_activo: boolean
+          wa_errores_24h: number
+          wa_ultimo_envio: string
+          wa_ultimo_estado: string
+        }[]
+      }
       buro_mover_creditos: {
         Args: {
           p_cantidad: number
@@ -2740,6 +2843,17 @@ export type Database = {
           p_periodo_hasta?: string
         }
         Returns: Json
+      }
+      log_client_error: {
+        Args: {
+          p_extra?: Json
+          p_mensaje: string
+          p_stack?: string
+          p_url?: string
+          p_user_agent?: string
+          p_version?: string
+        }
+        Returns: undefined
       }
       next_folio: {
         Args: { p_empresa_id: string; p_tipo: string }
