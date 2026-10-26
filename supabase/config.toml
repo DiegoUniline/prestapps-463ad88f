@@ -50,6 +50,3 @@ verify_jwt = false
 
 [functions.buro-admin]
 verify_jwt = false
-
-[functions.limpieza-storage]
-verify_jwt = false

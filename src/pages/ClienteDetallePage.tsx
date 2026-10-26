@@ -19,7 +19,6 @@ import { fetchAllRows } from "@/lib/supabaseQuery";
 import { toast } from "sonner";
 import type { ClienteInsert } from "@/types/cliente";
 import { $$, errorMessage } from "@/lib/utils";
-import { comprimirImagen } from "@/lib/imagen";
 import BuroCreditoSection from "@/components/BuroCreditoSection";
 
 // ── Hooks ────────────────────────────────────────────────────────
@@ -198,13 +197,12 @@ export default function ClienteDetallePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) { toast.error("Solo se permiten imágenes"); return; }
-    if (file.size > 15 * 1024 * 1024) { toast.error("La imagen no debe superar 15MB"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("La imagen no debe superar 5MB"); return; }
     setUploadingFoto(true);
     try {
-      const foto = await comprimirImagen(file);
-      const ext = foto.type === "image/jpeg" ? "jpg" : file.name.split(".").pop() || "jpg";
+      const ext = file.name.split(".").pop() || "jpg";
       const fileName = `clientes/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("empresa-assets").upload(fileName, foto, { upsert: true, contentType: foto.type || file.type });
+      const { error: upErr } = await supabase.storage.from("empresa-assets").upload(fileName, file, { upsert: true });
       if (upErr) throw upErr;
       const { data: urlData } = supabase.storage.from("empresa-assets").getPublicUrl(fileName);
       updateField("foto_cliente", urlData.publicUrl);
