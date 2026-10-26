@@ -156,6 +156,7 @@ interface RespuestaCirculo {
   consultasInstitucionales?: { consultasFinancieras?: unknown[] | null; consultasComerciales?: unknown[] | null } | null;
   clavePrevenciones?: unknown[] | null;
   errores?: { codigo?: unknown; mensaje?: unknown }[] | null;
+  errors?: { code?: unknown; message?: unknown }[] | null;
   raw?: string;
 }
 
@@ -223,7 +224,10 @@ async function callApi(payload: unknown, cred: Credenciales) {
       }
       if (res.ok) return { ok: true as const, status: res.status, data, intentos: i };
 
-      const errs = (data?.errores ?? []).map((e) => `${e.codigo}: ${e.mensaje}`).join(" | ");
+      const errs = [
+        ...(data?.errores ?? []).map((e) => `${e.codigo}: ${e.mensaje}`),
+        ...(data?.errors ?? []).map((e) => `${e.code}: ${e.message}`),
+      ].join(" | ");
       lastErr = `HTTP ${res.status}${errs ? ` — ${errs}` : `: ${text.slice(0, 300)}`}`;
       if (res.status < 500 && res.status !== 429) return { ok: false as const, status: res.status, data, error: lastErr, intentos: i };
     } catch (e) {
@@ -325,7 +329,7 @@ Deno.serve(withCors(async (req) => {
       return json({ error: "Sin créditos de consulta disponibles" }, 402);
     }
 
-    const folioOtorgante = consulta.id.replace(/-/g, "").slice(0, 25);
+    const folioOtorgante = consulta.id.replace(/-/g, "").slice(0, 22); // Círculo: máximo 22
 
     let update: Record<string, unknown>;
     try {
