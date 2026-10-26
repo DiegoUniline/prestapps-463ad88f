@@ -149,49 +149,49 @@ export default function LeadScoringPage() {
       <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Score Promedio</p>
-          <p className="text-2xl font-bold mt-1">{totals.avg}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{totals.avg}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <div className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-emerald-500" />
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Excelentes</p>
           </div>
-          <p className="text-2xl font-bold mt-1">{totals.excelentes}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{totals.excelentes}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <div className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-blue-500" />
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Buenos</p>
           </div>
-          <p className="text-2xl font-bold mt-1">{totals.buenos}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{totals.buenos}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <div className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-amber-500" />
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Regulares</p>
           </div>
-          <p className="text-2xl font-bold mt-1">{totals.regulares}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{totals.regulares}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <div className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-orange-500" />
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Riesgosos</p>
           </div>
-          <p className="text-2xl font-bold mt-1">{totals.riesgosos}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{totals.riesgosos}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <div className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-red-500" />
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Críticos</p>
           </div>
-          <p className="text-2xl font-bold mt-1">{totals.criticos}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{totals.criticos}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <div className="flex items-center gap-1.5">
             <div className="h-2 w-2 rounded-full bg-slate-400" />
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Nuevos</p>
           </div>
-          <p className="text-2xl font-bold mt-1">{totals.nuevos}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{totals.nuevos}</p>
         </div>
       </div>
 

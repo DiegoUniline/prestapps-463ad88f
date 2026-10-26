@@ -615,17 +615,17 @@ export default function WhatsAppConfigPage() {
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 p-3 text-center">
               <CheckCircle2 className="h-5 w-5 mx-auto mb-1 text-green-600" />
-              <p className="text-lg font-bold text-green-700 dark:text-green-400">{reminderResults.sent}</p>
+              <p className="kpi-num text-lg font-bold text-green-700 dark:text-green-400">{reminderResults.sent}</p>
               <p className="text-[10px] text-muted-foreground">Enviados</p>
             </div>
             <div className="rounded-lg border bg-red-50 dark:bg-red-950/30 p-3 text-center">
               <XCircle className="h-5 w-5 mx-auto mb-1 text-red-500" />
-              <p className="text-lg font-bold text-red-600 dark:text-red-400">{reminderResults.errors}</p>
+              <p className="kpi-num text-lg font-bold text-red-600 dark:text-red-400">{reminderResults.errors}</p>
               <p className="text-[10px] text-muted-foreground">Errores</p>
             </div>
             <div className="rounded-lg border p-3 text-center">
               <MessageSquare className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <p className="text-lg font-bold">{reminderResults.total}</p>
+              <p className="kpi-num text-lg font-bold">{reminderResults.total}</p>
               <p className="text-[10px] text-muted-foreground">Total clientes</p>
             </div>
           </div>

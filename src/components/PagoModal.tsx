@@ -314,13 +314,13 @@ export function PagoModal({ open, onOpenChange, prestamoId, cuotasPendientes, ca
         <div className="px-5 space-y-4 pb-4 overflow-y-auto flex-1 min-h-0">
           {/* Summary bar */}
           <div className="bg-secondary rounded-lg px-4 py-3 flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Total Adeudado</p>
-              <p className="text-lg font-semibold">{$$(totalAdeudado)}</p>
+              <p className="kpi-num text-lg font-semibold">{$$(totalAdeudado)}</p>
             </div>
             <div className="text-right">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Cuotas Pendientes</p>
-              <p className="text-lg font-semibold">{cuotasPendientes.filter(c => c.saldo_total > 0).length}</p>
+              <p className="kpi-num text-lg font-semibold">{cuotasPendientes.filter(c => c.saldo_total > 0).length}</p>
             </div>
           </div>
 

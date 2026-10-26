@@ -337,7 +337,7 @@ export default function CajasPage() {
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
               <k.icon className={cn("h-4 w-4", k.accent)} />
             </div>
-            <p className="text-lg font-semibold mt-1">{isLoading ? "—" : k.value}</p>
+            <p className="kpi-num text-lg font-semibold mt-1">{isLoading ? "—" : k.value}</p>
           </div>
         ))}
       </div>
@@ -495,7 +495,7 @@ export default function CajasPage() {
                     </DropdownMenu>
                   </div>
                 </div>
-                <p className="text-2xl font-bold mt-1">{$$(getSaldo(c.id))}</p>
+                <p className="kpi-num text-2xl font-bold mt-1">{$$(getSaldo(c.id))}</p>
                 {c.descripcion && <p className="text-[12px] text-muted-foreground mt-0.5">{c.descripcion}</p>}
                 <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border/50">
                   <div>

@@ -28,14 +28,14 @@ export const KPICard = React.memo(function KPICard({ label, value, icon: Icon, c
   return (
     <Card>
       <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 space-y-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
+            <p className="kpi-num text-2xl font-bold tracking-tight">{value}</p>
             {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
           {Icon && (
-            <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", color || "bg-primary/10")}>
+            <div className={cn("h-10 w-10 shrink-0 rounded-lg flex items-center justify-center", color || "bg-primary/10")}>
               <Icon className={cn("h-5 w-5", color ? "text-inherit" : "text-primary")} />
             </div>
           )}

@@ -81,7 +81,7 @@ export default function PromesasPage() {
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
               <k.icon className={cn("h-4 w-4", k.accent)} />
             </div>
-            <p className="text-lg font-semibold mt-1">{loadingResumen ? "—" : k.value}</p>
+            <p className="kpi-num text-lg font-semibold mt-1">{loadingResumen ? "—" : k.value}</p>
           </div>
         ))}
       </div>

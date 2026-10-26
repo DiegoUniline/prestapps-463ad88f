@@ -261,19 +261,19 @@ export function ClienteEstadoCuentaSheet({
                   <Card className="border-border/60">
                     <CardContent className="p-3 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Cuentas</p>
-                      <p className="text-xl font-bold">{totales.cuentas}</p>
+                      <p className="kpi-num text-xl font-bold">{totales.cuentas}</p>
                     </CardContent>
                   </Card>
                   <Card className="border-border/60">
                     <CardContent className="p-3 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Saldo Total</p>
-                      <p className="text-xl font-bold text-destructive">{$$(totales.saldo)}</p>
+                      <p className="kpi-num text-xl font-bold text-destructive">{$$(totales.saldo)}</p>
                     </CardContent>
                   </Card>
                   <Card className="border-border/60">
                     <CardContent className="p-3 text-center">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Mora</p>
-                      <p className={cn("text-xl font-bold", totales.mora > 0 ? "text-destructive" : "text-muted-foreground")}>
+                      <p className={cn("kpi-num text-xl font-bold", totales.mora > 0 ? "text-destructive" : "text-muted-foreground")}>
                         {$$(totales.mora)}
                       </p>
                     </CardContent>
@@ -409,9 +409,9 @@ export function ClienteEstadoCuentaSheet({
           {/* Footer: total and CTA */}
           {cuentas && cuentas.length > 0 && (
             <div className="border-t bg-secondary/30 px-5 py-3 flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Deuda Total</p>
-                <p className="text-lg font-bold text-destructive">{$$(totales.saldo)}</p>
+                <p className="kpi-num text-lg font-bold text-destructive">{$$(totales.saldo)}</p>
               </div>
               {cuentas.length === 1 ? (
                 <Button size="sm" className="h-9 text-[12px] px-4" onClick={() => openPagoCuenta(cuentas[0])}>

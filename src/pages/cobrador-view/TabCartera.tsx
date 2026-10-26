@@ -28,15 +28,15 @@ export function TabCartera({
           <div className="grid grid-cols-3 gap-2 mb-2">
             <div className="bg-primary/10 rounded-lg p-3 text-center">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Préstamos</p>
-              <p className="text-lg font-bold text-primary">{perfil!.prestamos.length}</p>
+              <p className="kpi-num text-lg font-bold text-primary">{perfil!.prestamos.length}</p>
             </div>
             <div className="bg-secondary rounded-lg p-3 text-center">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Saldo total</p>
-              <p className="text-lg font-bold">{$$(perfil!.prestamos.reduce((s, p) => s + p.saldo, 0))}</p>
+              <p className="kpi-num text-lg font-bold">{$$(perfil!.prestamos.reduce((s, p) => s + p.saldo, 0))}</p>
             </div>
             <div className="bg-destructive/10 rounded-lg p-3 text-center">
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground">Mora total</p>
-              <p className="text-lg font-bold text-destructive">{$$(perfil!.prestamos.reduce((s, p) => s + p.mora, 0))}</p>
+              <p className="kpi-num text-lg font-bold text-destructive">{$$(perfil!.prestamos.reduce((s, p) => s + p.mora, 0))}</p>
             </div>
           </div>
 

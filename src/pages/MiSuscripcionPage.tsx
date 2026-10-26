@@ -558,7 +558,7 @@ export default function MiSuscripcionPage() {
                 <div className="pt-3">
                   {plan.precio_base_mes > 0 ? (
                     <>
-                      <span className="text-3xl font-extrabold">{$$(plan.precio_base_mes)}</span>
+                      <span className="kpi-num text-3xl font-extrabold">{$$(plan.precio_base_mes)}</span>
                       <span className="text-muted-foreground text-sm">/mes</span>
                     </>
                   ) : (

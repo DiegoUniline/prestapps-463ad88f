@@ -135,7 +135,7 @@ export function MiRutaMap({
           </span>
           <h3 className="mt-4 text-lg font-bold">Ruta completada</h3>
           <p className="mt-1 max-w-xs text-sm text-muted-foreground">No quedan cobros pendientes en el periodo seleccionado.</p>
-          <p className="mt-4 text-2xl font-bold text-success">{$$(collectedAmount)}</p>
+          <p className="kpi-num mt-4 text-2xl font-bold text-success">{$$(collectedAmount)}</p>
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">recaudado</p>
         </CardContent>
       </Card>
@@ -152,7 +152,7 @@ export function MiRutaMap({
             <p className="mt-0.5 text-[11px] text-white/50">{$$(pendingAmount)} por recuperar</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold tabular-nums">{progress}%</p>
+            <p className="kpi-num text-2xl font-bold tabular-nums">{progress}%</p>
             <p className="text-[9px] uppercase tracking-wider text-white/45">completado</p>
           </div>
         </div>

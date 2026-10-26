@@ -467,7 +467,7 @@ export default function DashboardPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-                      <p className="text-xl md:text-2xl font-bold tracking-tight mt-1 truncate">{value}</p>
+                      <p className="kpi-num text-xl md:text-2xl font-bold tracking-tight mt-1">{value}</p>
                     </div>
                     <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center shrink-0", tone)}>
                       <Icon className="h-4 w-4" />

@@ -159,3 +159,21 @@
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Responsivo: los hijos de un grid pueden encogerse por debajo de su contenido
+   (evita que un monto largo ensanche la columna y desborde la tarjeta). */
+.grid > * {
+  min-width: 0;
+}
+
+/* Montos/cifras de tarjetas KPI: una sola línea; src/lib/ajusteKpi.ts reduce la letra si no cabe. */
+.kpi-num {
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+span.kpi-num {
+  display: inline-block;
+  vertical-align: bottom;
+}

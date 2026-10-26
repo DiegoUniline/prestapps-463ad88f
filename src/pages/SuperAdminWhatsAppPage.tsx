@@ -335,13 +335,13 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-4 text-center">
-                <div className="text-2xl font-bold">{logs?.length || 0}</div>
+                <div className="kpi-num text-2xl font-bold">{logs?.length || 0}</div>
                 <div className="text-xs text-muted-foreground">Total mensajes</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <div className="text-2xl font-bold text-emerald-600">
+                <div className="kpi-num text-2xl font-bold text-emerald-600">
                   {logs?.filter((l) => l.status === "enviado").length || 0}
                 </div>
                 <div className="text-xs text-muted-foreground">Enviados</div>
@@ -349,7 +349,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <div className="text-2xl font-bold text-destructive">
+                <div className="kpi-num text-2xl font-bold text-destructive">
                   {logs?.filter((l) => l.status === "error").length || 0}
                 </div>
                 <div className="text-xs text-muted-foreground">Errores</div>
@@ -357,7 +357,7 @@ export default function SuperAdminWhatsAppPage({ embedded }: { embedded?: boolea
             </Card>
             <Card>
               <CardContent className="pt-4 text-center">
-                <div className="text-2xl font-bold">{filtered.length}</div>
+                <div className="kpi-num text-2xl font-bold">{filtered.length}</div>
                 <div className="text-xs text-muted-foreground">Filtrados</div>
               </CardContent>
             </Card>

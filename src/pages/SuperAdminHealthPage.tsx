@@ -159,9 +159,9 @@ export default function SuperAdminHealthPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Empresas</p>
-                <p className="text-2xl font-bold mt-1">{loading ? "—" : empresas.length}</p>
+                <p className="kpi-num text-2xl font-bold mt-1">{loading ? "—" : empresas.length}</p>
               </div>
               <Database className="h-5 w-5 text-muted-foreground" />
             </div>
@@ -170,9 +170,9 @@ export default function SuperAdminHealthPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs uppercase tracking-wider text-muted-foreground">Préstamos activos</p>
-                <p className="text-2xl font-bold mt-1">{loading ? "—" : fmtNum(totalActivos)}</p>
+                <p className="kpi-num text-2xl font-bold mt-1">{loading ? "—" : fmtNum(totalActivos)}</p>
               </div>
               <Activity className="h-5 w-5 text-muted-foreground" />
             </div>

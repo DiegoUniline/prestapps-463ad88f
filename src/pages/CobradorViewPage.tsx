@@ -469,7 +469,7 @@ export default function CobradorViewPage() {
         <TabsContent value="pagos" className="mt-3 space-y-2">
           <div className="bg-primary/10 rounded-lg px-4 py-3 flex items-center justify-between">
             <span className="text-sm font-medium">Total recaudado</span>
-            <span className="text-lg font-bold text-primary">{$$(totalPagosRecibidos)}</span>
+            <span className="kpi-num text-lg font-bold text-primary">{$$(totalPagosRecibidos)}</span>
           </div>
 
           {loadingPagos ? (

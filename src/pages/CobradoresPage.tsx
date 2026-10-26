@@ -236,7 +236,7 @@ export default function CobradoresPage() {
               <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
               <k.icon className={cn("h-4 w-4", k.accent)} />
             </div>
-            <p className="text-lg font-semibold mt-1">{isLoading ? "—" : k.value}</p>
+            <p className="kpi-num text-lg font-semibold mt-1">{isLoading ? "—" : k.value}</p>
           </div>
         ))}
       </div>
@@ -434,7 +434,7 @@ export default function CobradoresPage() {
                   </div>
                   <div className="flex justify-between text-[13px]">
                     <span className="text-muted-foreground">Efectivo a depositar</span>
-                    <span className="font-bold text-lg">{$$(corteDeposito)}</span>
+                    <span className="kpi-num font-bold text-lg">{$$(corteDeposito)}</span>
                   </div>
                 </div>
 

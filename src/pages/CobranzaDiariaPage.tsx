@@ -722,7 +722,7 @@ export default function CobranzaDiariaPage() {
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{kpi.label}</span>
                 <kpi.icon className={cn("h-3.5 w-3.5", kpi.color)} />
               </div>
-              <p className={cn("text-lg font-bold", kpi.color)}>{kpi.value}</p>
+              <p className={cn("kpi-num text-lg font-bold", kpi.color)}>{kpi.value}</p>
             </CardContent>
           </Card>
         ))}

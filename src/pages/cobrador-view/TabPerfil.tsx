@@ -73,11 +73,11 @@ export function TabPerfil({
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-primary/10 rounded-lg p-3 text-center">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total ganadas</p>
-                  <p className="text-lg font-bold text-primary">{$$(perfil?.totalComisionesGanadas || 0)}</p>
+                  <p className="kpi-num text-lg font-bold text-primary">{$$(perfil?.totalComisionesGanadas || 0)}</p>
                 </div>
                 <div className="bg-secondary rounded-lg p-3 text-center">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total cobrado</p>
-                  <p className="text-lg font-bold">{$$(perfil?.totalCobrado || 0)}</p>
+                  <p className="kpi-num text-lg font-bold">{$$(perfil?.totalCobrado || 0)}</p>
                 </div>
               </div>
 

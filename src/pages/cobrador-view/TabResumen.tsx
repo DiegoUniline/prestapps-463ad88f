@@ -39,7 +39,7 @@ export function TabResumen({
           <div className="mt-5 grid grid-cols-3 gap-2">
             <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
               <p className="text-[9px] uppercase tracking-wider text-white/45">Pendientes</p>
-              <p className="mt-1 text-xl font-bold">{pendientesGrupos.length}</p>
+              <p className="kpi-num mt-1 text-xl font-bold">{pendientesGrupos.length}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
               <p className="text-[9px] uppercase tracking-wider text-white/45">Cobrado</p>

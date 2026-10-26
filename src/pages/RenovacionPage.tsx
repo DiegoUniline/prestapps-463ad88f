@@ -95,19 +95,19 @@ export default function RenovacionPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Candidatos</p>
-          <p className="text-xl font-bold">{resultado?.total ?? 0}</p>
+          <p className="kpi-num text-xl font-bold">{resultado?.total ?? 0}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Elegibles</p>
-          <p className="text-xl font-bold text-success">{resultado?.elegibles ?? 0}</p>
+          <p className="kpi-num text-xl font-bold text-success">{resultado?.elegibles ?? 0}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Colocación potencial</p>
-          <p className="text-xl font-bold text-primary">{$$(resultado?.colocacion ?? 0)}</p>
+          <p className="kpi-num text-xl font-bold text-primary">{$$(resultado?.colocacion ?? 0)}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Score promedio</p>
-          <p className="text-xl font-bold">{resultado?.score_promedio ?? 0}%</p>
+          <p className="kpi-num text-xl font-bold">{resultado?.score_promedio ?? 0}%</p>
         </Card>
       </div>
 

@@ -214,14 +214,14 @@ export function LiquidarModal({ open, onOpenChange, prestamoId, cuotasPendientes
         {/* Summary */}
         <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Monto a Cobrar</p>
-              <p className="text-2xl font-bold text-primary">{$$(montoAPagar)}</p>
+              <p className="kpi-num text-2xl font-bold text-primary">{$$(montoAPagar)}</p>
             </div>
             {descuentoTotal > 0 && (
               <div className="text-right">
                 <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Condonado</p>
-                <p className="text-lg font-semibold text-destructive line-through">{$$(descuentoTotal)}</p>
+                <p className="kpi-num text-lg font-semibold text-destructive line-through">{$$(descuentoTotal)}</p>
               </div>
             )}
           </div>
