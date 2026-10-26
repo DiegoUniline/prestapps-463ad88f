@@ -1,4 +1,4 @@
-// Super Admin: configuración global de Círculo de Crédito y créditos de consulta por empresa
+// Super Admin: configuración global de Círculo de Crédito (PM y PF) y créditos de consulta por empresa
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import * as x509 from "npm:@peculiar/x509@1.12.3";
 
@@ -79,6 +79,7 @@ Deno.serve(withCors(async (req) => {
       return json({
         config: {
           api_url: cfg?.api_url ?? "",
+          api_url_pf: cfg?.api_url_pf ?? "",
           usuario: cfg?.usuario ?? "",
           api_key_mask: mask(cfg?.api_key ?? null),
           tiene_password: !!cfg?.password,
@@ -103,6 +104,7 @@ Deno.serve(withCors(async (req) => {
     if (action === "save_config") {
       const upd: Record<string, unknown> = {
         api_url: String(body.api_url ?? "").trim() || null,
+        api_url_pf: String(body.api_url_pf ?? "").trim() || null,
         usuario: String(body.usuario ?? "").trim() || null,
         activo: !!body.activo,
         updated_at: new Date().toISOString(),

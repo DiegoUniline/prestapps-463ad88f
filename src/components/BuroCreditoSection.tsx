@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Search, Upload, FileText } from "lucide-react";
+import { Loader2, Search, Upload, FileText, FileSearch } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { $$ } from "@/lib/utils";
+import BuroReporteDialog from "@/components/BuroReporteDialog";
 
 interface BuroConsulta {
   id: string;
@@ -18,7 +19,8 @@ interface BuroConsulta {
   estatus: "pendiente" | "exitosa" | "sin_hit" | "error";
   folio_consulta: string | null;
   score: number | null;
-  resumen: { num_creditos?: number; saldo_total?: number; saldo_vencido?: number; atraso_mayor?: number; peor_calificacion?: string | null; claves_prevencion?: number } | null;
+  tipo_persona: "fisica" | "moral";
+  resumen: { num_creditos?: number; saldo_total?: number; saldo_vencido?: number; atraso_mayor?: number; peor_calificacion?: string | null; claves_prevencion?: number; mensajes?: string[] } | null;
   error: string | null;
   autorizacion_fecha: string;
   autorizacion_path: string | null;
@@ -32,6 +34,18 @@ const estatusColors: Record<string, string> = {
   pendiente: "bg-warning text-warning-foreground",
 };
 const estatusLabel: Record<string, string> = { exitosa: "Exitosa", sin_hit: "Sin historial", error: "Error", pendiente: "Pendiente" };
+
+const REUSO_DIAS = 30;
+const CAMPOS: Record<"fisica" | "moral", Record<string, string>> = {
+  moral: {
+    rfc: "RFC", razon_social: "Razón social", dom_calle: "Calle", dom_colonia: "Colonia",
+    dom_municipio: "Municipio / Alcaldía", dom_estado: "Estado", dom_cp: "Código postal",
+  },
+  fisica: {
+    rfc: "RFC", nombres: "Nombre(s)", apellido_paterno: "Apellido paterno", fecha_nacimiento: "Fecha de nacimiento",
+    dom_calle: "Calle", dom_colonia: "Colonia", dom_municipio: "Municipio / Alcaldía", dom_estado: "Estado", dom_cp: "Código postal",
+  },
+};
 
 async function invokeError(error: { message?: string; context?: { json?: () => Promise<{ error?: string }> } }): Promise<string> {
   try {
@@ -48,13 +62,15 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
   const [archivo, setArchivo] = useState<File | null>(null);
   const [acepto, setAcepto] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reporte, setReporte] = useState<BuroConsulta | null>(null);
+  const moral = tipoPersona === "moral";
 
   const { data: consultas, isLoading } = useQuery({
     queryKey: ["buro-consultas", clienteId],
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tabla aún no está en types.ts generado
       const { data, error } = await (supabase.from as any)("buro_consultas")
-        .select("id, rfc, razon_social, estatus, folio_consulta, score, resumen, error, autorizacion_fecha, autorizacion_path, created_at")
+        .select("id, rfc, razon_social, tipo_persona, estatus, folio_consulta, score, resumen, error, autorizacion_fecha, autorizacion_path, created_at")
         .eq("cliente_id", clienteId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -71,22 +87,26 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
     },
   });
 
-  const consultar = async (forzar = false) => {
+  const consultar = async () => {
     if (!fecha) { toast.error("Captura la fecha de la autorización firmada"); return; }
-    if (!archivo) { toast.error("Adjunta la autorización firmada por el representante legal"); return; }
+    if (!archivo) { toast.error(`Adjunta la autorización firmada por ${moral ? "el representante legal" : "el cliente"}`); return; }
     if (!acepto) { toast.error("Confirma que cuentas con la autorización"); return; }
-    const { data: cli } = await supabase.from("clientes")
-      .select("rfc, razon_social, dom_calle, dom_colonia, dom_municipio, dom_estado, dom_cp")
-      .eq("id", clienteId).maybeSingle();
-    const etiquetas: Record<string, string> = {
-      rfc: "RFC", razon_social: "Razón social", dom_calle: "Calle", dom_colonia: "Colonia",
-      dom_municipio: "Municipio / Alcaldía", dom_estado: "Estado", dom_cp: "Código postal",
-    };
+    const etiquetas = CAMPOS[moral ? "moral" : "fisica"];
+    const { data: cli } = await supabase.from("clientes").select(Object.keys(etiquetas).join(", ")).eq("id", clienteId).maybeSingle();
     const faltan = Object.keys(etiquetas).filter((k) => !String((cli as Record<string, unknown> | null)?.[k] ?? "").trim());
     if (faltan.length) {
       toast.error(`Completa en la pestaña Personal: ${faltan.map((k) => etiquetas[k]).join(", ")}`);
       return;
     }
+
+    // Antes de subir el archivo: si hay consulta vigente, se decide aquí si se paga otra.
+    const desde = new Date(Date.now() - REUSO_DIAS * 86400_000).toISOString();
+    const vigente = consultas?.find((c) => (c.estatus === "exitosa" || c.estatus === "sin_hit") && c.created_at >= desde);
+    if (vigente && !confirm(`Ya existe una consulta del ${new Date(vigente.created_at).toLocaleDateString()}. ¿Hacer una nueva consulta (con costo)?`)) {
+      toast.info("Se muestra la consulta vigente");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data: empresaId, error: empErr } = await supabase.rpc("get_user_empresa_id");
@@ -96,17 +116,14 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
       const { error: upErr } = await supabase.storage.from("buro-autorizaciones").upload(path, archivo);
       if (upErr) throw upErr;
 
-      const { data, error } = await supabase.functions.invoke("buro-consulta-pm", {
-        body: { cliente_id: clienteId, autorizacion_fecha: fecha, autorizacion_path: path, forzar },
+      // El servidor borra el archivo si la consulta no se registra.
+      const { data, error } = await supabase.functions.invoke("buro-consulta", {
+        body: { cliente_id: clienteId, autorizacion_fecha: fecha, autorizacion_path: path, forzar: !!vigente },
       });
       if (error) throw new Error(await invokeError(error));
 
       const c = data?.consulta as BuroConsulta | undefined;
       if (data?.reutilizada) {
-        if (confirm(`Ya existe una consulta del ${new Date(c!.created_at).toLocaleDateString()}. ¿Hacer una nueva consulta (con costo)?`)) {
-          setLoading(false);
-          return consultar(true);
-        }
         toast.info("Se muestra la consulta vigente");
       } else if (c?.estatus === "error") {
         toast.error("Buró respondió con error: " + (c.error || ""));
@@ -129,19 +146,11 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
     window.open(data.signedUrl, "_blank");
   };
 
-  if (tipoPersona !== "moral") {
-    return (
-      <Card><CardContent className="py-8 text-center text-[13px] text-muted-foreground">
-        La consulta a Buró está disponible para clientes Persona Moral. Cambia el tipo de persona en la pestaña Personal.
-      </CardContent></Card>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Nueva consulta Círculo de Crédito (PM)</CardTitle>
+          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Nueva consulta Círculo de Crédito ({moral ? "PM" : "PF"})</CardTitle>
           <Badge variant={plan?.creditos ? "default" : "secondary"}>{plan?.creditos ?? 0} créditos</Badge>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
@@ -156,7 +165,7 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
               <Upload className="h-4 w-4 mr-2 shrink-0" /><span className="truncate">{archivo?.name || "Seleccionar archivo"}</span>
             </Button>
           </div>
-          <Button onClick={() => consultar(false)} disabled={loading || !plan?.habilitado || !plan?.creditos}>
+          <Button onClick={consultar} disabled={loading || !plan?.habilitado || !plan?.creditos}>
             {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}Consultar
           </Button>
           {plan && (!plan.habilitado || !plan.creditos) && (
@@ -166,7 +175,9 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
           )}
           <label className="sm:col-span-3 flex items-start gap-2 text-xs text-muted-foreground">
             <Checkbox checked={acepto} onCheckedChange={(v) => setAcepto(!!v)} className="mt-0.5" />
-            Confirmo que el representante legal firmó la autorización para consultar el historial crediticio de la empresa.
+            {moral
+              ? "Confirmo que el representante legal firmó la autorización para consultar el historial crediticio de la empresa."
+              : "Confirmo que el cliente firmó la autorización para consultar su historial crediticio."}
           </label>
         </CardContent>
       </Card>
@@ -188,8 +199,12 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
                 <p className="text-xs text-destructive break-words">{c.error}</p>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
-                  <div><span className="text-xs text-muted-foreground block">Calificación</span><b>{c.resumen?.peor_calificacion ?? "—"}</b></div>
-                  <div><span className="text-xs text-muted-foreground block">Atraso mayor</span><b className={Number(c.resumen?.atraso_mayor) > 0 ? "text-destructive" : ""}>{c.resumen?.atraso_mayor ?? 0} días</b></div>
+                  {c.tipo_persona === "fisica" ? (
+                    <div><span className="text-xs text-muted-foreground block">FICO Score</span><b>{c.score ?? "—"}</b></div>
+                  ) : (
+                    <div><span className="text-xs text-muted-foreground block">Calificación</span><b>{c.resumen?.peor_calificacion ?? "—"}</b></div>
+                  )}
+                  <div><span className="text-xs text-muted-foreground block">Peor atraso</span><b className={Number(c.resumen?.atraso_mayor) > 0 ? "text-destructive" : ""}>{c.resumen?.atraso_mayor ?? 0}{c.tipo_persona === "moral" ? " días" : ""}</b></div>
                   <div><span className="text-xs text-muted-foreground block">Créditos</span><b>{c.resumen?.num_creditos ?? 0}</b></div>
                   <div><span className="text-xs text-muted-foreground block">Saldo total</span><b>{$$(Number(c.resumen?.saldo_total || 0))}</b></div>
                   <div><span className="text-xs text-muted-foreground block">Saldo vencido</span>
@@ -198,16 +213,24 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
               )}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Folio: {c.folio_consulta || "—"} · Autorización: {c.autorizacion_fecha}</span>
-                {c.autorizacion_path && (
-                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => verAutorizacion(c.autorizacion_path!)}>
-                    <FileText className="h-3.5 w-3.5 mr-1" />Ver
-                  </Button>
-                )}
+                <div className="flex items-center gap-1">
+                  {c.estatus === "exitosa" && (
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setReporte(c)}>
+                      <FileSearch className="h-3.5 w-3.5 mr-1" />Reporte
+                    </Button>
+                  )}
+                  {c.autorizacion_path && (
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => verAutorizacion(c.autorizacion_path!)}>
+                      <FileText className="h-3.5 w-3.5 mr-1" />Autorización
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </CardContent>
       </Card>
+      <BuroReporteDialog consulta={reporte} onClose={() => setReporte(null)} />
     </div>
   );
 }

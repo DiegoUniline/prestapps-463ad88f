@@ -8,7 +8,7 @@
 # El usuario debe ser superusuario (crea roles, SET ROLE anon/authenticated/service_role).
 #
 # Pasos: mock del esquema de prod (00_mock_schema.sql) → helpers (01_test_helpers.sql) →
-# migraciones 20261012*/20261013* en orden, DOS veces (idempotencia) → datos fijos
+# migraciones 20261012*/20261013*/20261026* en orden, DOS veces (idempotencia) → datos fijos
 # (05_fixtures.sql) → cada [1-9][0-9]_*.sql (BEGIN … ROLLBACK). Las aserciones imprimen
 # líneas "ok - …" / "not ok - …"; cualquier "not ok" o error de psql hace salir con 1.
 set -uo pipefail
@@ -18,7 +18,7 @@ ROOT="$(cd "$DIR/../.." && pwd)"
 MIGR_DIR="$ROOT/supabase/migrations"
 DB="${PGDATABASE:-prestapp_sql_tests}"
 ADMIN_DB="${SQLTEST_ADMIN_DB:-postgres}"
-MIGR_PATTERNS=("20261012*.sql" "20261013*.sql")
+MIGR_PATTERNS=("20261012*.sql" "20261013*.sql" "20261026*.sql")
 
 if [ -t 1 ]; then RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; RESET=$'\e[0m'; else RED=; GREEN=; YELLOW=; RESET=; fi
 

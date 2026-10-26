@@ -15,6 +15,7 @@ import { $$ } from "@/lib/utils";
 
 interface BuroConfig {
   api_url: string;
+  api_url_pf: string;
   usuario: string;
   api_key_mask: string | null;
   tiene_password: boolean;
@@ -45,6 +46,7 @@ async function buroAdmin<T = { ok: boolean }>(action: string, payload: Record<st
 }
 
 const URL_HINT = "https://services.circulodecredito.com.mx/reporte-pm/v2/rcc-pm";
+const URL_HINT_PF = "https://services.circulodecredito.com.mx/v2/rccficoscore";
 
 function Estado({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -63,13 +65,13 @@ export default function SuperAdminBuroPage() {
     queryFn: () => buroAdmin<{ config: BuroConfig; empresas: EmpresaBuro[] }>("get"),
   });
 
-  const [form, setForm] = useState({ api_url: "", usuario: "", api_key: "", password: "", activo: false });
+  const [form, setForm] = useState({ api_url: "", api_url_pf: "", usuario: "", api_key: "", password: "", activo: false });
   const [busy, setBusy] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, { habilitado: boolean; precio_consulta: string; cantidad: string }>>({});
 
   useEffect(() => {
     if (data?.config) {
-      setForm((f) => ({ ...f, api_url: data.config.api_url, usuario: data.config.usuario, activo: data.config.activo, api_key: "", password: "" }));
+      setForm((f) => ({ ...f, api_url: data.config.api_url, api_url_pf: data.config.api_url_pf, usuario: data.config.usuario, activo: data.config.activo, api_key: "", password: "" }));
     }
     if (data?.empresas) {
       setEdits(Object.fromEntries(data.empresas.map((e) => [e.id, { habilitado: e.habilitado, precio_consulta: String(e.precio_consulta), cantidad: "" }])));
@@ -122,13 +124,13 @@ export default function SuperAdminBuroPage() {
 
   const cfg = data.config;
   const produccion = !!cfg.usuario && cfg.tiene_password;
-  const listo = !!cfg.api_key_mask && !!cfg.api_url && (!produccion || (cfg.tiene_llave && cfg.tiene_cert_cdc));
+  const listo = !!cfg.api_key_mask && (!!cfg.api_url || !!cfg.api_url_pf) && (!produccion || (cfg.tiene_llave && cfg.tiene_cert_cdc));
   const totalMes = data.empresas.reduce((s, e) => s + e.importe_mes, 0);
   const consultasMes = data.empresas.reduce((s, e) => s + e.consultas_mes, 0);
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Círculo de Crédito" description="Credenciales globales y venta de consultas PM por empresa" />
+      <PageHeader title="Círculo de Crédito" description="Credenciales globales y venta de consultas PM / PF por empresa" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Paso 1: llaves */}
@@ -167,9 +169,13 @@ export default function SuperAdminBuroPage() {
             <CardDescription>Datos de la app "prestaapp" en el portal de Círculo.</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <Label className="text-xs text-muted-foreground">URL del API (RCC PM v2)</Label>
+            <div>
+              <Label className="text-xs text-muted-foreground">URL del API Persona Moral (RCC PM v2)</Label>
               <Input value={form.api_url} placeholder={URL_HINT} onChange={(e) => setForm({ ...form, api_url: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">URL del API Persona Física (RCC FICO Score)</Label>
+              <Input value={form.api_url_pf} placeholder={URL_HINT_PF} onChange={(e) => setForm({ ...form, api_url_pf: e.target.value })} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">x-api-key (Consumer Key)</Label>
