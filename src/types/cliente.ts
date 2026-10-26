@@ -46,6 +46,10 @@ export interface Cliente {
   tipo_persona: "fisica" | "moral";
   rfc: string | null;
   razon_social: string | null;
+  apellido_paterno: string | null;
+  apellido_materno: string | null;
+  nombres: string | null;
+  curp: string | null;
   dom_calle: string | null;
   dom_numero: string | null;
   dom_colonia: string | null;

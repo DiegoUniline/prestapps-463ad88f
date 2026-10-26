@@ -111,7 +111,7 @@ export type Database = {
         Row: {
           autorizacion_fecha: string
           autorizacion_path: string | null
-          cliente_id: string
+          cliente_id: string | null
           consultado_por: string | null
           created_at: string
           empresa_id: string
@@ -133,7 +133,7 @@ export type Database = {
         Insert: {
           autorizacion_fecha: string
           autorizacion_path?: string | null
-          cliente_id: string
+          cliente_id?: string | null
           consultado_por?: string | null
           created_at?: string
           empresa_id: string
@@ -155,7 +155,7 @@ export type Database = {
         Update: {
           autorizacion_fecha?: string
           autorizacion_path?: string | null
-          cliente_id?: string
+          cliente_id?: string | null
           consultado_por?: string | null
           created_at?: string
           empresa_id?: string
@@ -589,6 +589,7 @@ export type Database = {
           activo: boolean
           api_key: string | null
           api_url: string | null
+          api_url_pf: string | null
           cdc_public_key: string | null
           certificado: string | null
           id: number
@@ -601,6 +602,7 @@ export type Database = {
           activo?: boolean
           api_key?: string | null
           api_url?: string | null
+          api_url_pf?: string | null
           cdc_public_key?: string | null
           certificado?: string | null
           id?: number
@@ -613,6 +615,7 @@ export type Database = {
           activo?: boolean
           api_key?: string | null
           api_url?: string | null
+          api_url_pf?: string | null
           cdc_public_key?: string | null
           certificado?: string | null
           id?: number
@@ -631,8 +634,11 @@ export type Database = {
           aval_nombre: string | null
           aval_parentesco: string | null
           aval_telefono: string | null
+          apellido_materno: string | null
+          apellido_paterno: string | null
           correo: string | null
           created_at: string | null
+          curp: string | null
           dependientes: number | null
           direccion: string | null
           direccion_trabajo: string | null
@@ -661,6 +667,7 @@ export type Database = {
           lada_pais: string | null
           nombre_completo: string
           notas: string | null
+          nombres: string | null
           razon_social: string | null
           ref1_nombre: string | null
           ref1_parentesco: string | null
@@ -688,8 +695,11 @@ export type Database = {
           aval_nombre?: string | null
           aval_parentesco?: string | null
           aval_telefono?: string | null
+          apellido_materno?: string | null
+          apellido_paterno?: string | null
           correo?: string | null
           created_at?: string | null
+          curp?: string | null
           dependientes?: number | null
           direccion?: string | null
           direccion_trabajo?: string | null
@@ -718,6 +728,7 @@ export type Database = {
           lada_pais?: string | null
           nombre_completo: string
           notas?: string | null
+          nombres?: string | null
           razon_social?: string | null
           ref1_nombre?: string | null
           ref1_parentesco?: string | null
@@ -745,8 +756,11 @@ export type Database = {
           aval_nombre?: string | null
           aval_parentesco?: string | null
           aval_telefono?: string | null
+          apellido_materno?: string | null
+          apellido_paterno?: string | null
           correo?: string | null
           created_at?: string | null
+          curp?: string | null
           dependientes?: number | null
           direccion?: string | null
           direccion_trabajo?: string | null
@@ -775,6 +789,7 @@ export type Database = {
           lada_pais?: string | null
           nombre_completo?: string
           notas?: string | null
+          nombres?: string | null
           razon_social?: string | null
           ref1_nombre?: string | null
           ref1_parentesco?: string | null

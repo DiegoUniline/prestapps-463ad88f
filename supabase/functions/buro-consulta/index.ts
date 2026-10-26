@@ -1,4 +1,5 @@
-// Reporte de Crédito Consolidado Persona Moral — Círculo de Crédito (APIHub)
+// Reporte de Crédito Consolidado — Círculo de Crédito (APIHub)
+// Persona Moral: RCC PM (api_url). Persona Física: RCC con FICO Score (api_url_pf).
 // Firma: ECDSA + SHA-256 sobre el body, DER en hex, header x-signature.
 // buro-admin genera llaves P-256 (prime256v1: Deno no firma P-384 con SHA-256); la curva se detecta
 // desde la llave guardada para seguir aceptando llaves P-384 cargadas antes.
@@ -26,6 +27,10 @@ const withCors = (handler: (req: Request) => Response | Promise<Response>) => as
 };
 
 const RFC_PM = /^[A-ZÑ&]{3}\d{6}[A-Z0-9]{3}$/;
+const RFC_PF = /^[A-ZÑ&]{4}\d{6}([A-Z0-9]{3})?$/;
+const CURP_RE = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/;
+const BUCKET = "buro-autorizaciones";
+const SUPER_ADMIN_EMAIL = (Deno.env.get("SUPER_ADMIN_EMAIL") || "diego.leon@uniline.mx").trim().toLowerCase();
 const ESTADOS = new Set([
   "AGS", "BCN", "BCS", "CAM", "CHS", "CHI", "COA", "COL", "CDMX", "DF", "DGO", "EM", "GTO", "GRO", "HGO", "JAL",
   "MICH", "MOR", "NAY", "NL", "OAX", "PUE", "QRO", "QR", "SLP", "SIN", "SON", "TAB", "TAM", "TLA", "VER", "YUC", "ZAC",
@@ -35,7 +40,8 @@ const TIMEOUT_MS = 30_000;
 const MAX_INTENTOS = 3;
 
 type Credenciales = {
-  api_url: string;
+  api_url: string | null;
+  api_url_pf: string | null;
   api_key: string;
   usuario: string;
   password: string;
@@ -123,24 +129,49 @@ async function verificar(body: string, firmaHex: string, publicPem: string) {
 }
 
 // ── Mapeo Círculo de Crédito RCC PM ───────────────────────────────────────────
-function buildRequest(c: Record<string, unknown>, folioOtorgante: string) {
+type Cliente = Record<string, unknown>;
+
+function domicilio(c: Cliente) {
+  return {
+    direccion: limpio(`${c.dom_calle ?? ""} ${c.dom_numero ?? ""}`, 40),
+    coloniaPoblacion: limpio(c.dom_colonia, 60),
+    delegacionMunicipio: limpio(c.dom_municipio, 60),
+    ciudad: limpio(c.dom_ciudad || c.dom_municipio, 40),
+    estado: limpio(c.dom_estado, 4),
+    CP: String(c.dom_cp ?? "").replace(/\D/g, "").padStart(5, "0"),
+  };
+}
+
+function buildRequestPM(c: Cliente, folioOtorgante: string) {
   return {
     folioOtorgante,
     persona: {
       RFC: normRfc(c.rfc),
       nombre: limpio(c.razon_social || c.nombre_completo, 75),
-      domicilio: {
-        direccion: limpio(`${c.dom_calle ?? ""} ${c.dom_numero ?? ""}`, 40),
-        coloniaPoblacion: limpio(c.dom_colonia, 60),
-        delegacionMunicipio: limpio(c.dom_municipio, 60),
-        ciudad: limpio(c.dom_ciudad || c.dom_municipio, 40),
-        estado: limpio(c.dom_estado, 4),
-        CP: String(c.dom_cp ?? "").replace(/\D/g, "").padStart(5, "0"),
-        pais: "MX",
-      },
+      domicilio: { ...domicilio(c), pais: "MX" },
     },
   };
 }
+
+// ── Mapeo Círculo de Crédito RCC PF (FICO Score) ─────────────────────────────
+function buildRequestPF(c: Cliente) {
+  const [primerNombre, ...resto] = limpio(c.nombres, 80).split(" ");
+  const curp = normRfc(c.curp);
+  return {
+    apellidoPaterno: limpio(c.apellido_paterno, 30),
+    apellidoMaterno: limpio(c.apellido_materno, 30) || "NO PROPORCIONADO",
+    primerNombre: primerNombre.slice(0, 40),
+    ...(resto.length ? { segundoNombre: resto.join(" ").slice(0, 40) } : {}),
+    fechaNacimiento: String(c.fecha_nacimiento).slice(0, 10),
+    RFC: normRfc(c.rfc),
+    ...(curp ? { CURP: curp } : {}),
+    nacionalidad: "MX",
+    domicilio: domicilio(c),
+  };
+}
+
+const nombrePF = (c: Cliente) =>
+  [c.nombres, c.apellido_paterno, c.apellido_materno].map((x) => String(x ?? "").trim()).filter(Boolean).join(" ");
 
 const num = (v: unknown) => (isNaN(Number(v)) ? 0 : Number(v));
 const BUCKETS_VENCIDO = ["29dias", "59dias", "89dias", "119dias", "179dias", "180MasDias"];
@@ -151,15 +182,21 @@ type CuentaCirculo = Record<string, unknown> | null | undefined;
 interface RespuestaCirculo {
   folioConsulta?: unknown;
   claveRetorno?: unknown;
+  // PM
   credito?: { cuentasFinancieras?: CuentaCirculo[]; cuentasComerciales?: CuentaCirculo[] } | null;
   calificacionCartera?: ({ calificacion?: unknown } | null | undefined)[] | null;
   consultasInstitucionales?: { consultasFinancieras?: unknown[] | null; consultasComerciales?: unknown[] | null } | null;
   clavePrevenciones?: unknown[] | null;
+  // PF
+  creditos?: CuentaCirculo[] | null;
+  consultas?: unknown[] | null;
+  scores?: ({ nombreScore?: unknown; valor?: unknown; razones?: unknown[] } | null | undefined)[] | null;
+  mensajes?: ({ tipoMensaje?: unknown; leyenda?: unknown } | null | undefined)[] | null;
   errores?: { codigo?: unknown; mensaje?: unknown }[] | null;
   raw?: string;
 }
 
-function parseResponse(d: RespuestaCirculo | null | undefined) {
+function parseResponsePM(d: RespuestaCirculo | null | undefined) {
   const fin: CuentaCirculo[] = d?.credito?.cuentasFinancieras ?? [];
   const com: CuentaCirculo[] = d?.credito?.cuentasComerciales ?? [];
   const cuentas = [...fin, ...com];
@@ -167,6 +204,7 @@ function parseResponse(d: RespuestaCirculo | null | undefined) {
   const peor = califs.sort().at(-1) ?? null;
   return {
     folio: d?.folioConsulta != null ? String(d.folioConsulta) : null,
+    score: null as number | null,
     sinHit: cuentas.length === 0 && !(d?.consultasInstitucionales?.consultasFinancieras?.length),
     resumen: {
       clave_retorno: d?.claveRetorno ?? null,
@@ -185,7 +223,30 @@ function parseResponse(d: RespuestaCirculo | null | undefined) {
   };
 }
 
-async function callApi(payload: unknown, cred: Credenciales) {
+function parseResponsePF(d: RespuestaCirculo | null | undefined) {
+  const cuentas: CuentaCirculo[] = d?.creditos ?? [];
+  const scores = (d?.scores ?? []).filter((s) => s && s.valor != null && !isNaN(Number(s.valor)));
+  const fico = scores.find((s) => /FICO/i.test(String(s?.nombreScore ?? ""))) ?? scores[0];
+  return {
+    folio: d?.folioConsulta != null ? String(d.folioConsulta) : null,
+    score: fico ? Number(fico.valor) : null,
+    sinHit: cuentas.length === 0 && !(d?.consultas?.length),
+    resumen: {
+      num_creditos: cuentas.length,
+      num_abiertos: cuentas.filter((x) => !x?.fechaCierreCuenta).length,
+      saldo_total: cuentas.reduce((s, x) => s + num(x?.saldoActual), 0),
+      saldo_vencido: cuentas.reduce((s, x) => s + num(x?.saldoVencido), 0),
+      atraso_mayor: cuentas.reduce((m, x) => Math.max(m, num(x?.peorAtraso)), 0),
+      pagos_vencidos: cuentas.reduce((s, x) => s + num(x?.numeroPagosVencidos), 0),
+      score_nombre: fico?.nombreScore ?? null,
+      score_razones: fico?.razones ?? [],
+      consultas: (d?.consultas ?? []).length,
+      mensajes: (d?.mensajes ?? []).map((m) => String(m?.leyenda ?? "")).filter(Boolean),
+    },
+  };
+}
+
+async function callApi(url: string, payload: unknown, cred: Credenciales, extra: Record<string, string> = {}) {
   const body = JSON.stringify(payload);
   // Sandbox: solo x-api-key. Producción: usuario/contraseña + firma.
   const produccion = !!(cred.usuario && cred.password);
@@ -193,6 +254,7 @@ async function callApi(payload: unknown, cred: Credenciales) {
     "Content-Type": "application/json",
     Accept: "application/json",
     "x-api-key": cred.api_key,
+    ...extra,
   };
   if (produccion) {
     headers.username = cred.usuario;
@@ -204,7 +266,7 @@ async function callApi(payload: unknown, cred: Credenciales) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(cred.api_url, {
+      const res = await fetch(url, {
         method: "POST",
         headers,
         body,
@@ -215,9 +277,9 @@ async function callApi(payload: unknown, cred: Credenciales) {
       let data: RespuestaCirculo | null;
       try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
-      if (res.ok && produccion && cred.cdc_public_key) {
+      if (res.ok && produccion) {
         const sig = res.headers.get("x-signature");
-        if (!sig || !(await verificar(text, sig, cred.cdc_public_key))) {
+        if (!sig || !cred.cdc_public_key || !(await verificar(text, sig, cred.cdc_public_key))) {
           return { ok: false as const, status: res.status, data, error: "Firma de respuesta inválida", intentos: i };
         }
       }
@@ -239,83 +301,112 @@ async function callApi(payload: unknown, cred: Credenciales) {
 Deno.serve(withCors(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  // Archivo de autorización subido por el cliente; se borra si no queda ligado a una consulta.
+  let archivo: string | null = null;
+  const descartar = async () => {
+    if (!archivo) return;
+    const { error } = await admin.storage.from(BUCKET).remove([archivo]);
+    if (error) console.error("buro-consulta descartar archivo:", error.message);
+    archivo = null;
+  };
+  const fail = async (error: string, status: number) => {
+    await descartar();
+    return json({ error }, status);
+  };
+
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) return json({ error: "No autorizado" }, 401);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "No autorizado" }, 401);
 
-    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", user.id);
-    if (!(roles || []).some((r) => r.role === "admin" || r.role === "supervisor")) {
-      return json({ error: "Solo administradores o supervisores pueden consultar Buró" }, 403);
-    }
-
     const { data: profile } = await admin.from("profiles").select("empresa_id").eq("id", user.id).single();
     if (!profile?.empresa_id) return json({ error: "Sin empresa asociada" }, 400);
 
     const { cliente_id, autorizacion_fecha, autorizacion_path, forzar } = await req.json();
-    if (!cliente_id) return json({ error: "Falta cliente_id" }, 400);
-    if (!autorizacion_fecha) return json({ error: "Falta fecha de autorización firmada" }, 400);
-    if (new Date(autorizacion_fecha) > new Date()) return json({ error: "Fecha de autorización inválida" }, 400);
-    if (autorizacion_path && !String(autorizacion_path).startsWith(`${profile.empresa_id}/`)) {
+    if (autorizacion_path && String(autorizacion_path).startsWith(`${profile.empresa_id}/`)) {
+      archivo = String(autorizacion_path);
+    } else if (autorizacion_path) {
       return json({ error: "Archivo de autorización inválido" }, 400);
     }
 
+    // Mismo criterio que has_role(): rol de la empresa actual (o global) y super admin.
+    const { data: roles } = await admin.from("user_roles").select("role, empresa_id").eq("user_id", user.id);
+    const esSuperAdmin = user.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+    const autorizado = esSuperAdmin || (roles || []).some((r) =>
+      (r.role === "admin" || r.role === "supervisor") && (r.empresa_id == null || r.empresa_id === profile.empresa_id));
+    if (!autorizado) return fail("Solo administradores o supervisores pueden consultar Buró", 403);
+
+    if (!cliente_id) return fail("Falta cliente_id", 400);
+    if (!autorizacion_fecha) return fail("Falta fecha de autorización firmada", 400);
+    if (new Date(autorizacion_fecha) > new Date()) return fail("Fecha de autorización inválida", 400);
+
     const { data: c } = await admin.from("clientes").select("*").eq("id", cliente_id).single();
-    if (!c || c.empresa_id !== profile.empresa_id) return json({ error: "Cliente no encontrado" }, 404);
-    if (c.tipo_persona !== "moral") return json({ error: "El cliente no es persona moral" }, 400);
+    if (!c || c.empresa_id !== profile.empresa_id) return fail("Cliente no encontrado", 404);
+    const moral = c.tipo_persona === "moral";
 
     const rfc = normRfc(c.rfc);
-    if (!RFC_PM.test(rfc)) return json({ error: "RFC de persona moral inválido (12 caracteres)" }, 400);
-    const faltan = ["razon_social", "dom_calle", "dom_colonia", "dom_municipio", "dom_estado", "dom_cp"]
-      .filter((k) => !String(c[k] ?? "").trim());
-    if (faltan.length) return json({ error: `Faltan datos: ${faltan.join(", ")}` }, 400);
-    if (!ESTADOS.has(String(c.dom_estado).toUpperCase())) return json({ error: "Estado inválido para Círculo de Crédito" }, 400);
+    if (moral && !RFC_PM.test(rfc)) return fail("RFC de persona moral inválido (12 caracteres)", 400);
+    if (!moral && !RFC_PF.test(rfc)) return fail("RFC de persona física inválido (10 o 13 caracteres)", 400);
+    if (!moral && c.curp && !CURP_RE.test(normRfc(c.curp))) return fail("CURP inválida", 400);
+    const requeridos = moral
+      ? ["razon_social", "dom_calle", "dom_colonia", "dom_municipio", "dom_estado", "dom_cp"]
+      : ["nombres", "apellido_paterno", "fecha_nacimiento", "dom_calle", "dom_colonia", "dom_municipio", "dom_estado", "dom_cp"];
+    const faltan = requeridos.filter((k) => !String(c[k] ?? "").trim());
+    if (faltan.length) return fail(`Faltan datos: ${faltan.join(", ")}`, 400);
+    if (!ESTADOS.has(String(c.dom_estado).toUpperCase())) return fail("Estado inválido para Círculo de Crédito", 400);
 
     if (!forzar) {
       const desde = new Date(Date.now() - REUSO_DIAS * 86400_000).toISOString();
       const { data: previa } = await admin.from("buro_consultas").select("*")
         .eq("cliente_id", cliente_id).eq("rfc", rfc).in("estatus", ["exitosa", "sin_hit"])
         .gte("created_at", desde).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      if (previa) return json({ reutilizada: true, consulta: previa });
+      if (previa) {
+        await descartar();
+        return json({ reutilizada: true, consulta: previa });
+      }
     }
 
     const { data: cred } = await admin.from("circulo_config").select("*").eq("id", 1).maybeSingle();
+    const url = moral ? cred?.api_url : cred?.api_url_pf;
+    const produccion = !!(cred?.usuario && cred?.password);
     const faltaCfg = [
       !cred?.activo && "servicio inactivo",
-      !cred?.api_url && "URL",
+      !url && (moral ? "URL PM" : "URL PF"),
       !cred?.api_key && "x-api-key",
-      cred?.usuario && cred?.password && !cred?.private_key && "llave privada",
+      produccion && !cred?.private_key && "llave privada",
+      produccion && !cred?.cdc_public_key && "certificado de Círculo",
     ].filter(Boolean);
     if (faltaCfg.length) {
-      return json({ error: `Servicio de consulta no disponible (${faltaCfg.join(", ")})` }, 503);
+      return fail(`Servicio de consulta no disponible (${faltaCfg.join(", ")})`, 503);
     }
 
     const { data: plan } = await admin.from("buro_empresa_config").select("*")
       .eq("empresa_id", profile.empresa_id).maybeSingle();
-    if (!plan?.habilitado) return json({ error: "Tu empresa no tiene contratado el servicio de consultas" }, 403);
-    if (plan.creditos <= 0) return json({ error: "Sin créditos de consulta disponibles" }, 402);
+    if (!plan?.habilitado) return fail("Tu empresa no tiene contratado el servicio de consultas", 403);
+    if (plan.creditos <= 0) return fail("Sin créditos de consulta disponibles", 402);
 
     const { data: consulta, error: insErr } = await admin.from("buro_consultas").insert({
       empresa_id: profile.empresa_id,
       cliente_id,
       proveedor: "circulo",
-      tipo_persona: "moral",
+      tipo_persona: moral ? "moral" : "fisica",
       rfc,
-      razon_social: c.razon_social,
+      razon_social: moral ? c.razon_social : nombrePF(c),
       estatus: "pendiente",
       autorizacion_fecha,
-      autorizacion_path: autorizacion_path ?? null,
+      autorizacion_path: archivo,
       consultado_por: user.id,
       precio: plan.precio_consulta,
     }).select("id").single();
     if (insErr) throw insErr;
+    archivo = null; // ya ligado a la consulta: forma parte de la bitácora
 
     const { data: saldo, error: credErr } = await admin.rpc("buro_mover_creditos", {
       p_empresa_id: profile.empresa_id, p_cantidad: -1, p_tipo: "consumo", p_consulta_id: consulta.id, p_user: user.id,
@@ -329,12 +420,15 @@ Deno.serve(withCors(async (req) => {
 
     let update: Record<string, unknown>;
     try {
-      const r = await callApi(buildRequest(c, folioOtorgante), cred);
+      const r = moral
+        ? await callApi(url, buildRequestPM(c, folioOtorgante), cred)
+        : await callApi(url, buildRequestPF(c), cred, { "x-full-report": "true" });
       if (r.ok) {
-        const p = parseResponse(r.data);
+        const p = moral ? parseResponsePM(r.data) : parseResponsePF(r.data);
         update = {
           estatus: p.sinHit ? "sin_hit" : "exitosa",
           folio_consulta: p.folio,
+          score: p.score,
           resumen: p.resumen,
           respuesta: r.data,
           intentos: r.intentos,
@@ -346,7 +440,7 @@ Deno.serve(withCors(async (req) => {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("buro-consulta-pm callApi error:", msg);
+      console.error("buro-consulta callApi error:", msg);
       update = { estatus: "error", error: msg, precio: null };
     }
 
@@ -354,7 +448,7 @@ Deno.serve(withCors(async (req) => {
       const { error: refundErr } = await admin.rpc("buro_mover_creditos", {
         p_empresa_id: profile.empresa_id, p_cantidad: 1, p_tipo: "reembolso", p_consulta_id: consulta.id, p_user: user.id,
       });
-      if (refundErr) console.error("buro-consulta-pm reembolso error:", refundErr.message);
+      if (refundErr) console.error("buro-consulta reembolso error:", refundErr.message);
     }
 
     const { data: final } = await admin.from("buro_consultas")
@@ -364,7 +458,7 @@ Deno.serve(withCors(async (req) => {
     return json({ reutilizada: false, consulta: final });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Error desconocido";
-    console.error("buro-consulta-pm error:", msg);
-    return json({ error: msg }, 500);
+    console.error("buro-consulta error:", msg);
+    return fail(msg, 500);
   }
 }));

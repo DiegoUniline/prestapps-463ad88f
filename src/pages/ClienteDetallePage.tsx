@@ -96,7 +96,7 @@ const emptyForm: ClienteInsert = {
   ref1_nombre: null, ref1_telefono: null, ref1_parentesco: null,
   ref2_nombre: null, ref2_telefono: null, ref2_parentesco: null,
   aval_nombre: null, aval_telefono: null, aval_direccion: null, aval_dni: null, aval_parentesco: null,
-  tipo_persona: "fisica", rfc: null, razon_social: null, dom_calle: null, dom_numero: null, dom_colonia: null,
+  tipo_persona: "fisica", rfc: null, razon_social: null, apellido_paterno: null, apellido_materno: null, nombres: null, curp: null, dom_calle: null, dom_numero: null, dom_colonia: null,
   dom_municipio: null, dom_ciudad: null, dom_estado: null, dom_cp: null,
 };
 
@@ -225,6 +225,12 @@ export default function ClienteDetallePage() {
     if (!nombre) { toast.error("El nombre es obligatorio"); return; }
     if (form.tipo_persona === "moral" && form.rfc && !/^[A-ZÑ&]{3}\d{6}[A-Z0-9]{3}$/.test(form.rfc)) {
       toast.error("RFC de persona moral inválido (12 caracteres)"); return;
+    }
+    if (form.tipo_persona === "fisica" && form.rfc && !/^[A-ZÑ&]{4}\d{6}([A-Z0-9]{3})?$/.test(form.rfc)) {
+      toast.error("RFC de persona física inválido (10 o 13 caracteres)"); return;
+    }
+    if (form.tipo_persona === "fisica" && form.curp && !/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(form.curp)) {
+      toast.error("CURP inválida (18 caracteres)"); return;
     }
 
     // ── Validación de duplicados ──
@@ -359,6 +365,16 @@ export default function ClienteDetallePage() {
                 <div className="sm:col-span-2">
                   <ReadOrInput label="Razón Social" value={form.razon_social || ""} formValue={form.razon_social} onChange={(v) => updateField("razon_social", v || null)} editing={editing} placeholder="Sin régimen (SA de CV, etc.)" />
                 </div>
+              )}
+              {form.tipo_persona === "fisica" && (
+                <>
+                  <ReadOrInput label="CURP" value={form.curp || ""} formValue={form.curp} onChange={(v) => updateField("curp", v ? v.toUpperCase().trim() : null)} editing={editing} placeholder="ABCD010101HDFXXX01" />
+                  <div />
+                  <ReadOrInput label="Nombre(s)" value={form.nombres || ""} formValue={form.nombres} onChange={(v) => updateField("nombres", v || null)} editing={editing} />
+                  <ReadOrInput label="Apellido Paterno" value={form.apellido_paterno || ""} formValue={form.apellido_paterno} onChange={(v) => updateField("apellido_paterno", v || null)} editing={editing} />
+                  <ReadOrInput label="Apellido Materno" value={form.apellido_materno || ""} formValue={form.apellido_materno} onChange={(v) => updateField("apellido_materno", v || null)} editing={editing} />
+                  <div />
+                </>
               )}
               <ReadOrInput label="Calle" value={form.dom_calle || ""} formValue={form.dom_calle} onChange={(v) => updateField("dom_calle", v || null)} editing={editing} />
               <ReadOrInput label="Número" value={form.dom_numero || ""} formValue={form.dom_numero} onChange={(v) => updateField("dom_numero", v || null)} editing={editing} />

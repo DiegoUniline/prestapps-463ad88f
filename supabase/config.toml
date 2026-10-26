@@ -45,7 +45,7 @@ verify_jwt = false
 [functions.select-plan]
 verify_jwt = false
 
-[functions.buro-consulta-pm]
+[functions.buro-consulta]
 verify_jwt = false
 
 [functions.buro-admin]
