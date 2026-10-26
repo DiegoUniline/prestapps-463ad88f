@@ -50,7 +50,7 @@ async function cronGate(req: Request, admin: SupabaseClient): Promise<Response |
   if (caller?.service || caller?.superAdmin) return null;
   const { data: claimed, error } = await admin.rpc("cron_claim", {
     p_nombre: "limpieza-storage",
-    p_min_minutes: DIAS * 24 * 60,
+    p_min_minutes: 60,
   });
   if (error) console.error("[limpieza-storage] cron_claim error:", error.message);
   if (error || claimed !== true) {
