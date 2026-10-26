@@ -552,6 +552,7 @@ export default function PrestamoDetallePage() {
           notas: prestamo.notas || null,
           codigo_interno: prestamo.codigo_interno || null,
         }}
+        siguientePago={amort.find((c) => Number(c.saldo_total || 0) > 0.009)?.fecha_vencimiento ?? null}
         cajas={cajasAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
         rutas={rutasAll.map((r) => ({ id: r.id, nombre: r.nombre }))}
         cobradores={cobradoresAll.map((c) => ({ id: c.id, nombre: c.nombre }))}
