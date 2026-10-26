@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Search, Upload, FileText } from "lucide-react";
+import { Loader2, Search, Upload, FileText, FileSearch } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { $$ } from "@/lib/utils";
+import BuroReporteDialog from "@/components/BuroReporteDialog";
 
 interface BuroConsulta {
   id: string;
@@ -61,6 +62,7 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
   const [archivo, setArchivo] = useState<File | null>(null);
   const [acepto, setAcepto] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reporte, setReporte] = useState<BuroConsulta | null>(null);
   const moral = tipoPersona === "moral";
 
   const { data: consultas, isLoading } = useQuery({
@@ -211,16 +213,24 @@ export default function BuroCreditoSection({ clienteId, tipoPersona }: { cliente
               )}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>Folio: {c.folio_consulta || "—"} · Autorización: {c.autorizacion_fecha}</span>
-                {c.autorizacion_path && (
-                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => verAutorizacion(c.autorizacion_path!)}>
-                    <FileText className="h-3.5 w-3.5 mr-1" />Ver
-                  </Button>
-                )}
+                <div className="flex items-center gap-1">
+                  {c.estatus === "exitosa" && (
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setReporte(c)}>
+                      <FileSearch className="h-3.5 w-3.5 mr-1" />Reporte
+                    </Button>
+                  )}
+                  {c.autorizacion_path && (
+                    <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => verAutorizacion(c.autorizacion_path!)}>
+                      <FileText className="h-3.5 w-3.5 mr-1" />Autorización
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
         </CardContent>
       </Card>
+      <BuroReporteDialog consulta={reporte} onClose={() => setReporte(null)} />
     </div>
   );
 }
