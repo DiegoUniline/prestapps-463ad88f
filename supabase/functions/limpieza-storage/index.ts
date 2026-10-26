@@ -62,19 +62,22 @@ async function cronGate(req: Request, admin: SupabaseClient): Promise<Response |
   return null;
 }
 
+type Objeto = { name: string; created_at: string | null; metadata: unknown };
+
 function esArchivoTemporal(name: string): boolean {
   const lower = name.toLowerCase();
   return EXTENSIONES.some((ext) => lower.endsWith(ext));
 }
 
-function tamano(obj: { metadata: Record<string, unknown> | null }): number {
-  const meta: Record<string, unknown> | null = obj.metadata ? { ...obj.metadata } : null;
-  const size = Number(meta?.size ?? 0);
+function tamano(metadata: unknown): number {
+  if (!metadata || typeof metadata !== "object") return 0;
+  const meta = metadata as Record<string, unknown>;
+  const size = Number(meta.size ?? 0);
   return Number.isFinite(size) && size > 0 ? size : 0;
 }
 
-async function listar(supabase: SupabaseClient, prefix: string) {
-  const todos: NonNullable<Awaited<ReturnType<typeof supabase.storage.from<"empresa-assets">.list>>["data"]> = [];
+// Recorre todos los archivos de una carpeta, paginados de 1000 en 1000.
+async function recorrer(supabase: SupabaseClient, prefix: string, fn: (o: Objeto) => void): Promise<void> {
   let offset = 0;
   for (;;) {
     const { data, error } = await supabase.storage.from(BUCKET).list(prefix, {
@@ -84,11 +87,10 @@ async function listar(supabase: SupabaseClient, prefix: string) {
     });
     if (error) throw error;
     const page = data || [];
-    todos.push(...page);
+    for (const o of page) fn({ name: o.name, created_at: o.created_at, metadata: o.metadata });
     if (page.length < 1000) break;
     offset += page.length;
   }
-  return todos;
 }
 
 Deno.serve(withCors(async (req) => {
@@ -104,7 +106,7 @@ Deno.serve(withCors(async (req) => {
 
     const corte = Date.now() - DIAS * 24 * 60 * 60 * 1000;
 
-    // Archivos que la cola todavía necesita (mensajes no cerrados).
+    // Archivos que la cola todavía necesita (mensajes que no han cerrado).
     const protegidos = new Set<string>();
     const { data: pendientes } = await supabase
       .from("whatsapp_cola")
@@ -118,34 +120,30 @@ Deno.serve(withCors(async (req) => {
       if (path.startsWith(`${PREFIX}/`) && !path.includes("..")) protegidos.add(path);
     }
 
-    // Subcarpetas de temp-receipts (una por empresa) y archivos sueltos en la raíz.
-    const raiz = await listar(supabase, PREFIX);
-    const subcarpetas = raiz.filter((o) => !o.created_at && o.name).map((o) => o.name);
     const archivos: { path: string; size: number }[] = [];
+    const subcarpetas: string[] = [];
     let revisados = 0;
 
-    const considerar = (name: string, created_at: string | null, size: number, folder: string) => {
-      if (!esArchivoTemporal(name)) return;
+    const considerar = (o: Objeto, folder: string) => {
+      if (!esArchivoTemporal(o.name)) return;
       revisados++;
-      if (!created_at) return;
-      const creado = new Date(created_at).getTime();
+      if (!o.created_at) return;
+      const creado = new Date(o.created_at).getTime();
       if (!Number.isFinite(creado) || creado >= corte) return;
-      const path = `${folder}/${name}`;
+      const path = `${folder}/${o.name}`;
       if (protegidos.has(path)) return;
-      archivos.push({ path, size });
+      archivos.push({ path, size: tamano(o.metadata) });
     };
 
-    for (const o of raiz) {
-      if (o.created_at) considerar(o.name, o.created_at, tamano(o), PREFIX);
-    }
+    // Raíz de temp-receipts: archivos sueltos y subcarpetas (una por empresa).
+    await recorrer(supabase, PREFIX, (o) => {
+      if (o.created_at) considerar(o, PREFIX);
+      else if (o.name && !o.name.includes("..")) subcarpetas.push(o.name);
+    });
 
     for (const sub of subcarpetas) {
-      if (!sub || sub.includes("..")) continue;
       const folder = `${PREFIX}/${sub}`;
-      const objetos = await listar(supabase, folder);
-      for (const o of objetos) {
-        if (o.created_at) considerar(o.name, o.created_at, tamano(o), folder);
-      }
+      await recorrer(supabase, folder, (o) => considerar(o, folder));
     }
 
     let borrados = 0;
@@ -158,13 +156,11 @@ Deno.serve(withCors(async (req) => {
         errores.push(error.message);
         continue;
       }
-      const exitosas = new Set((ok || []).map((f) => f.path ?? f.name));
-      for (const a of lote) {
-        if (exitosas.has(a.path)) {
-          borrados++;
-          liberado += a.size;
-        }
-      }
+      const names = new Set((ok || []).map((f) => String(f.name ?? "")));
+      const matched = lote.filter((a) => names.has(a.path) || names.has(a.path.split("/").pop() ?? ""));
+      const items = matched.length === lote.length ? lote : matched;
+      borrados += Math.min(ok?.length ?? 0, lote.length);
+      liberado += items.reduce((s, a) => s + a.size, 0);
     }
 
     const resumen = {
