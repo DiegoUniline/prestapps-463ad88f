@@ -675,8 +675,6 @@ export type Database = {
           aval_nombre: string | null
           aval_parentesco: string | null
           aval_telefono: string | null
-          apellido_materno: string | null
-          apellido_paterno: string | null
           correo: string | null
           created_at: string | null
           curp: string | null
@@ -709,7 +707,6 @@ export type Database = {
           nombre_completo: string
           nombres: string | null
           notas: string | null
-          nombres: string | null
           razon_social: string | null
           ref1_nombre: string | null
           ref1_parentesco: string | null
@@ -739,8 +736,6 @@ export type Database = {
           aval_nombre?: string | null
           aval_parentesco?: string | null
           aval_telefono?: string | null
-          apellido_materno?: string | null
-          apellido_paterno?: string | null
           correo?: string | null
           created_at?: string | null
           curp?: string | null
@@ -773,7 +768,6 @@ export type Database = {
           nombre_completo: string
           nombres?: string | null
           notas?: string | null
-          nombres?: string | null
           razon_social?: string | null
           ref1_nombre?: string | null
           ref1_parentesco?: string | null
@@ -803,8 +797,6 @@ export type Database = {
           aval_nombre?: string | null
           aval_parentesco?: string | null
           aval_telefono?: string | null
-          apellido_materno?: string | null
-          apellido_paterno?: string | null
           correo?: string | null
           created_at?: string | null
           curp?: string | null
@@ -837,7 +829,6 @@ export type Database = {
           nombre_completo?: string
           nombres?: string | null
           notas?: string | null
-          nombres?: string | null
           razon_social?: string | null
           ref1_nombre?: string | null
           ref1_parentesco?: string | null
