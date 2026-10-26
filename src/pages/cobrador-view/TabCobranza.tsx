@@ -50,9 +50,9 @@ export function TabCobranza({
     <>
       <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-[0_18px_40px_-34px_rgba(15,23,42,.45)] sm:hidden">
         <div className="flex items-end justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary">Cobranza del periodo</p>
-            <p className="mt-1 text-2xl font-bold tracking-tight">{$$(kpis.porCobrar)}</p>
+            <p className="kpi-num mt-1 text-2xl font-bold tracking-tight">{$$(kpis.porCobrar)}</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">{pendientesGrupos.length} clientes pendientes</p>
           </div>
           <div className="text-right">

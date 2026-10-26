@@ -232,7 +232,7 @@ function KPICard({ label, value, icon, positive }: { label: string; value: strin
         {icon}
         <span className="text-[10px] uppercase tracking-wider">{label}</span>
       </div>
-      <p className={cn("text-lg font-bold", positive === true && "text-success", positive === false && "text-destructive")}>
+      <p className={cn("kpi-num text-lg font-bold", positive === true && "text-success", positive === false && "text-destructive")}>
         {value}
       </p>
     </Card>

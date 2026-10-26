@@ -2,9 +2,11 @@ import { createRoot } from "react-dom/client";
 import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import { installErrorReporter } from "./lib/errorReporter";
+import { instalarAjusteKpi } from "./lib/ajusteKpi";
 import "./index.css";
 
 installErrorReporter();
+instalarAjusteKpi();
 
 // Register service worker only in production to avoid dev preview cache/runtime conflicts
 if (import.meta.env.PROD) {

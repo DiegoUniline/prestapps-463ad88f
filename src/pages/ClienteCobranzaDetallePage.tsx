@@ -428,7 +428,7 @@ export default function ClienteCobranzaDetallePage() {
                 <Banknote className="h-3 w-3 text-muted-foreground" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Prestado</span>
               </div>
-              <p className="text-lg font-bold">{$$(totales.totalPrestado)}</p>
+              <p className="kpi-num text-lg font-bold">{$$(totales.totalPrestado)}</p>
               <p className="text-[10px] text-muted-foreground">{totales.cuentas} cuenta{totales.cuentas !== 1 ? "s" : ""} activa{totales.cuentas !== 1 ? "s" : ""}</p>
             </div>
 
@@ -438,7 +438,7 @@ export default function ClienteCobranzaDetallePage() {
                 <Receipt className="h-3 w-3 text-success" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Ha Abonado</span>
               </div>
-              <p className="text-lg font-bold text-success">{$$(totales.totalAbonado)}</p>
+              <p className="kpi-num text-lg font-bold text-success">{$$(totales.totalAbonado)}</p>
               <p className="text-[10px] text-muted-foreground">{(pagos || []).filter((p) => !p.anulado).length} pagos</p>
             </div>
 
@@ -448,7 +448,7 @@ export default function ClienteCobranzaDetallePage() {
                 <DollarSign className="h-3 w-3 text-destructive" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Debe</span>
               </div>
-              <p className="text-lg font-bold text-destructive">{$$(totales.saldo)}</p>
+              <p className="kpi-num text-lg font-bold text-destructive">{$$(totales.saldo)}</p>
               <p className="text-[10px] text-muted-foreground">{totales.cuotasTotales - totales.cuotasPagadas} cuotas restantes</p>
             </div>
 
@@ -458,7 +458,7 @@ export default function ClienteCobranzaDetallePage() {
                 <AlertTriangle className="h-3 w-3 text-destructive" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Mora</span>
               </div>
-              <p className={cn("text-lg font-bold", totales.mora > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(totales.mora)}</p>
+              <p className={cn("kpi-num text-lg font-bold", totales.mora > 0 ? "text-destructive" : "text-muted-foreground")}>{$$(totales.mora)}</p>
               <p className="text-[10px] text-muted-foreground">{totales.cuotasVencidas} vencida{totales.cuotasVencidas !== 1 ? "s" : ""}</p>
             </div>
 
@@ -468,7 +468,7 @@ export default function ClienteCobranzaDetallePage() {
                 <Target className="h-3 w-3 text-warning" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Al Corriente</span>
               </div>
-              <p className={cn("text-lg font-bold", totales.alCorriente > 0 ? "text-warning" : "text-success")}>{totales.alCorriente > 0 ? $$(totales.alCorriente) : "✓ Al día"}</p>
+              <p className={cn("kpi-num text-lg font-bold", totales.alCorriente > 0 ? "text-warning" : "text-success")}>{totales.alCorriente > 0 ? $$(totales.alCorriente) : "✓ Al día"}</p>
               <p className="text-[10px] text-muted-foreground">{totales.alCorriente > 0 ? "para ponerse al día" : "sin atrasos"}</p>
             </div>
 
@@ -478,7 +478,7 @@ export default function ClienteCobranzaDetallePage() {
                 <Zap className="h-3 w-3 text-primary" />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Liquida con</span>
               </div>
-              <p className="text-lg font-bold text-primary">{$$(totales.liquidacion)}</p>
+              <p className="kpi-num text-lg font-bold text-primary">{$$(totales.liquidacion)}</p>
               <p className="text-[10px] text-muted-foreground">solo capital restante</p>
             </div>
           </div>

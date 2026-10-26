@@ -113,12 +113,12 @@ export default function RentabilidadPage() {
       ) : totales && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Capital colocado</p><p className="text-lg font-bold">{$$(totales.totalCapital)}</p></Card>
-            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Capital recuperado</p><p className="text-lg font-bold text-success">{$$(totales.totalRecuperado)}</p></Card>
-            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Intereses ganados</p><p className="text-lg font-bold text-primary">{$$(totales.totalInteres)}</p></Card>
-            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Mora recaudada</p><p className="text-lg font-bold text-warning">{$$(totales.totalMora)}</p></Card>
-            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Utilidad bruta</p><p className="text-lg font-bold text-success">{$$(totales.totalUtilidad)}</p></Card>
-            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">ROI</p><p className="text-lg font-bold text-primary">{totales.roi.toFixed(1)}%</p></Card>
+            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Capital colocado</p><p className="kpi-num text-lg font-bold">{$$(totales.totalCapital)}</p></Card>
+            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Capital recuperado</p><p className="kpi-num text-lg font-bold text-success">{$$(totales.totalRecuperado)}</p></Card>
+            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Intereses ganados</p><p className="kpi-num text-lg font-bold text-primary">{$$(totales.totalInteres)}</p></Card>
+            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Mora recaudada</p><p className="kpi-num text-lg font-bold text-warning">{$$(totales.totalMora)}</p></Card>
+            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Utilidad bruta</p><p className="kpi-num text-lg font-bold text-success">{$$(totales.totalUtilidad)}</p></Card>
+            <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">ROI</p><p className="kpi-num text-lg font-bold text-primary">{totales.roi.toFixed(1)}%</p></Card>
           </div>
 
           <Tabs defaultValue="prestamos">

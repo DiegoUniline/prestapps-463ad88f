@@ -62,9 +62,9 @@ export function PromesaModal({ open, onOpenChange, prestamoId, cuotaNum, cuotaId
 
         <div className="px-5 space-y-4 pb-4">
           <div className="bg-secondary rounded-lg px-4 py-3 flex items-center justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Saldo de la Cuota</p>
-              <p className="text-lg font-semibold">{$$(saldoTotal)}</p>
+              <p className="kpi-num text-lg font-semibold">{$$(saldoTotal)}</p>
             </div>
             <div className="text-right">
               <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Vencimiento</p>

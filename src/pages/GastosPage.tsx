@@ -169,19 +169,19 @@ export default function GastosPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Gastos</p>
-          <p className="text-2xl font-bold mt-1">{$$(totalGastos)}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{$$(totalGastos)}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Gastos del Mes</p>
-          <p className="text-2xl font-bold mt-1 text-destructive">{$$(totalMes)}</p>
+          <p className="kpi-num text-2xl font-bold mt-1 text-destructive">{$$(totalMes)}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Registros</p>
-          <p className="text-2xl font-bold mt-1">{gastosPage?.total ?? 0}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{gastosPage?.total ?? 0}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Categorías</p>
-          <p className="text-2xl font-bold mt-1">{porCategoria.length}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{porCategoria.length}</p>
         </div>
       </div>
 

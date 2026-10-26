@@ -243,19 +243,19 @@ export default function CrmCobranzaPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cuentas</p>
-          <p className="text-xl font-bold">{cartera?.total ?? 0}</p>
+          <p className="kpi-num text-xl font-bold">{cartera?.total ?? 0}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Con mora</p>
-          <p className="text-xl font-bold text-destructive">{cartera?.con_mora ?? 0}</p>
+          <p className="kpi-num text-xl font-bold text-destructive">{cartera?.con_mora ?? 0}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total mora</p>
-          <p className="text-xl font-bold text-destructive">{$$(cartera?.total_mora ?? 0)}</p>
+          <p className="kpi-num text-xl font-bold text-destructive">{$$(cartera?.total_mora ?? 0)}</p>
         </Card>
         <Card className="p-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total adeudado</p>
-          <p className="text-xl font-bold">{$$(cartera?.total_adeudado ?? 0)}</p>
+          <p className="kpi-num text-xl font-bold">{$$(cartera?.total_adeudado ?? 0)}</p>
         </Card>
       </div>
 

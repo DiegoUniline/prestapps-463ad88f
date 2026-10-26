@@ -178,7 +178,7 @@ export default function MapaGPSPage() {
             <Users className="h-4 w-4 text-blue-500" />
             <div>
               <p className="text-[11px] text-muted-foreground uppercase">Clientes</p>
-              <p className="text-lg font-bold">{countByType("cliente")}</p>
+              <p className="kpi-num text-lg font-bold">{countByType("cliente")}</p>
             </div>
           </div>
         </Card>
@@ -187,7 +187,7 @@ export default function MapaGPSPage() {
             <CreditCard className="h-4 w-4 text-green-500" />
             <div>
               <p className="text-[11px] text-muted-foreground uppercase">Préstamos</p>
-              <p className="text-lg font-bold">{countByType("prestamo")}</p>
+              <p className="kpi-num text-lg font-bold">{countByType("prestamo")}</p>
             </div>
           </div>
         </Card>
@@ -196,7 +196,7 @@ export default function MapaGPSPage() {
             <HandCoins className="h-4 w-4 text-red-500" />
             <div>
               <p className="text-[11px] text-muted-foreground uppercase">Pagos</p>
-              <p className="text-lg font-bold">{countByType("pago")}</p>
+              <p className="kpi-num text-lg font-bold">{countByType("pago")}</p>
             </div>
           </div>
         </Card>

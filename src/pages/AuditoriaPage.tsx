@@ -104,11 +104,11 @@ export default function AuditoriaPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</p><p className="text-xl font-bold">{resumen?.total ?? 0}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Pagos</p><p className="text-xl font-bold text-success">{resumen?.pagos ?? 0}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Anulaciones</p><p className="text-xl font-bold text-destructive">{resumen?.anulaciones ?? 0}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Gestiones</p><p className="text-xl font-bold text-primary">{resumen?.gestiones ?? 0}</p></Card>
-        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Promesas</p><p className="text-xl font-bold">{resumen?.promesas ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</p><p className="kpi-num text-xl font-bold">{resumen?.total ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Pagos</p><p className="kpi-num text-xl font-bold text-success">{resumen?.pagos ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Anulaciones</p><p className="kpi-num text-xl font-bold text-destructive">{resumen?.anulaciones ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Gestiones</p><p className="kpi-num text-xl font-bold text-primary">{resumen?.gestiones ?? 0}</p></Card>
+        <Card className="p-3"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Promesas</p><p className="kpi-num text-xl font-bold">{resumen?.promesas ?? 0}</p></Card>
       </div>
 
       <div className="flex gap-3 items-center">

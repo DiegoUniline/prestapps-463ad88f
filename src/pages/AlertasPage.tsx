@@ -262,7 +262,7 @@ function SummaryCard({ label, count, icon: Icon, color }: { label: string; count
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
           <Icon className={cn("h-4 w-4", color)} />
         </div>
-        <p className={cn("text-2xl font-bold", count > 0 ? color : "text-muted-foreground")}>{count}</p>
+        <p className={cn("kpi-num text-2xl font-bold", count > 0 ? color : "text-muted-foreground")}>{count}</p>
       </CardContent>
     </Card>
   );

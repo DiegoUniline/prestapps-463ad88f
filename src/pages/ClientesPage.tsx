@@ -254,15 +254,15 @@ export default function ClientesPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="border rounded-lg p-3 md:p-4">
                 <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Deuda Total</p>
-                <p className="text-xl md:text-2xl font-bold mt-1">{$$(totalDeuda)}</p>
+                <p className="kpi-num text-xl md:text-2xl font-bold mt-1">{$$(totalDeuda)}</p>
               </div>
               <div className="border rounded-lg p-3 md:p-4">
                 <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Saldo Moroso</p>
-                <p className="text-xl md:text-2xl font-bold mt-1 text-destructive">{$$(totalMoroso)}</p>
+                <p className="kpi-num text-xl md:text-2xl font-bold mt-1 text-destructive">{$$(totalMoroso)}</p>
               </div>
               <div className="border rounded-lg p-3 md:p-4">
                 <p className="text-[10px] md:text-xs text-muted-foreground uppercase tracking-wider">Cuotas Vencidas</p>
-                <p className="text-xl md:text-2xl font-bold mt-1">{totalVencidas}</p>
+                <p className="kpi-num text-xl md:text-2xl font-bold mt-1">{totalVencidas}</p>
               </div>
             </div>
 

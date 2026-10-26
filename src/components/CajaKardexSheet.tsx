@@ -192,7 +192,7 @@ export default function CajaKardexSheet({ open, onOpenChange, cajaId, cajaNombre
             <Wallet className="h-4 w-4" />
             {cajaNombre}
           </SheetTitle>
-          <p className="text-2xl font-bold">{$$(saldoActual)}</p>
+          <p className="kpi-num text-2xl font-bold">{$$(saldoActual)}</p>
         </SheetHeader>
 
         <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 overflow-hidden">

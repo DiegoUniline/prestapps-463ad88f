@@ -327,7 +327,7 @@ export default function LiquidarRutaPage() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Pagos</p>
-                      <p className="text-lg font-bold">{pagosRaw.length}</p>
+                      <p className="kpi-num text-lg font-bold">{pagosRaw.length}</p>
                     </div>
                   </div>
                 </Card>
@@ -338,7 +338,7 @@ export default function LiquidarRutaPage() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Total Cobrado</p>
-                      <p className="text-lg font-bold text-success">{$$(totals.total)}</p>
+                      <p className="kpi-num text-lg font-bold text-success">{$$(totals.total)}</p>
                     </div>
                   </div>
                 </Card>
@@ -349,7 +349,7 @@ export default function LiquidarRutaPage() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Efectivo</p>
-                      <p className="text-lg font-bold">{$$(totals.efectivo)}</p>
+                      <p className="kpi-num text-lg font-bold">{$$(totals.efectivo)}</p>
                     </div>
                   </div>
                 </Card>
@@ -360,7 +360,7 @@ export default function LiquidarRutaPage() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Clientes</p>
-                      <p className="text-lg font-bold">{totals.clientes}</p>
+                      <p className="kpi-num text-lg font-bold">{totals.clientes}</p>
                     </div>
                   </div>
                 </Card>
@@ -371,7 +371,7 @@ export default function LiquidarRutaPage() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Préstamos</p>
-                      <p className="text-lg font-bold">{totals.prestamos}</p>
+                      <p className="kpi-num text-lg font-bold">{totals.prestamos}</p>
                     </div>
                   </div>
                 </Card>
@@ -547,7 +547,7 @@ export default function LiquidarRutaPage() {
             <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total cobrado:</span>
-                <span className="font-bold text-lg text-success">{$$(totals.total)}</span>
+                <span className="kpi-num font-bold text-lg text-success">{$$(totals.total)}</span>
               </div>
               <div className="flex justify-between text-sm mt-1">
                 <span className="text-muted-foreground">Efectivo a depositar:</span>

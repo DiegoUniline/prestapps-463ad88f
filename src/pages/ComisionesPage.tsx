@@ -335,19 +335,19 @@ export default function ComisionesPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Comisiones del Mes</p>
-          <p className="text-2xl font-bold mt-1 text-destructive">{$$(totalComisionesMes)}</p>
+          <p className="kpi-num text-2xl font-bold mt-1 text-destructive">{$$(totalComisionesMes)}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Histórico</p>
-          <p className="text-2xl font-bold mt-1">{$$(totalComisionesHistorico)}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{$$(totalComisionesHistorico)}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cobradores Activos</p>
-          <p className="text-2xl font-bold mt-1">{cobradores.length}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{cobradores.length}</p>
         </div>
         <div className="border rounded-lg p-3 bg-card">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Supervisores</p>
-          <p className="text-2xl font-bold mt-1">{supervisores.length}</p>
+          <p className="kpi-num text-2xl font-bold mt-1">{supervisores.length}</p>
         </div>
       </div>
 
@@ -541,7 +541,7 @@ export default function ComisionesPage() {
                 <Separator />
                 <div className="flex items-center justify-between">
                   <span className="font-semibold">Comisión a pagar:</span>
-                  <span className="text-xl font-bold text-primary">{$$(comisionCalculada)}</span>
+                  <span className="kpi-num text-xl font-bold text-primary">{$$(comisionCalculada)}</span>
                 </div>
               </div>
             )}

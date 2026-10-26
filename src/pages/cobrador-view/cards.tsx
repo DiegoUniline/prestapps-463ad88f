@@ -35,7 +35,7 @@ export function KPICard({ label, value, sub, icon: Icon, color }: {
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</span>
           <Icon className={cn("h-3.5 w-3.5", color)} />
         </div>
-        <p className={cn("text-lg font-bold leading-tight", color)}>{value}</p>
+        <p className={cn("kpi-num text-lg font-bold leading-tight", color)}>{value}</p>
         {sub && <p className="text-[11px] text-muted-foreground">{sub}</p>}
       </CardContent>
     </Card>
@@ -353,9 +353,9 @@ export function PrestamoGroupCard({
         </div>
 
         <div className="flex items-end justify-between gap-3 rounded-xl bg-muted/45 px-3 py-2.5">
-          <div>
+          <div className="min-w-0">
             <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Total por cobrar</p>
-            <p className="mt-0.5 text-xl font-bold tracking-tight">{$$(grupo.saldoTotal)}</p>
+            <p className="kpi-num mt-0.5 text-xl font-bold tracking-tight">{$$(grupo.saldoTotal)}</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] text-muted-foreground">Cuota próxima #{grupo.proximaCuota}/{grupo.totalCuotas}</p>

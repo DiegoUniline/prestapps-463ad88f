@@ -627,9 +627,11 @@ BEGIN
           'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ld3V6Z3Vnc2pxdHpubWduZmhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNDQ1NDgsImV4cCI6MjA4ODkyMDU0OH0.sLR4Y7cBqD9bqT4KRc6CUTUxJ2y_BqoQ0l15Avk5BbU'),
         body := jsonb_build_object('action', 'process-queue'),
         timeout_milliseconds := 120000
-      );
+      )
+      WHERE EXISTS (SELECT 1 FROM public.whatsapp_cola
+                     WHERE estado IN ('pendiente', 'enviando') AND proximo_intento <= now());
     $job$);
-    RAISE NOTICE 'Job whatsapp-cola programado cada 5 minutos';
+    RAISE NOTICE 'Job whatsapp-cola programado cada 5 minutos (solo llama si hay mensajes por enviar)';
   EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'No se pudo programar whatsapp-cola: %', SQLERRM;
   END;

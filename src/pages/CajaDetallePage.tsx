@@ -305,7 +305,7 @@ export default function CajaDetallePage() {
               <Wallet className="h-5 w-5 text-primary" />
               {caja.nombre}
             </h1>
-            <p className="text-3xl font-extrabold tracking-tight mt-0.5">{$$(saldoActual)}</p>
+            <p className="kpi-num text-3xl font-extrabold tracking-tight mt-0.5">{$$(saldoActual)}</p>
             {caja.descripcion && <p className="text-sm text-muted-foreground mt-0.5">{caja.descripcion}</p>}
           </div>
         </div>
@@ -328,9 +328,9 @@ export default function CajaDetallePage() {
           <Card key={k.label} className="shadow-[0_1px_3px_0_hsl(0_0%_0%/0.04)]">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
+                <div className="min-w-0 space-y-1">
                   <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{k.label}</p>
-                  <p className="text-lg font-bold tracking-tight">{loadingStats ? "—" : k.value}</p>
+                  <p className="kpi-num text-lg font-bold tracking-tight">{loadingStats ? "—" : k.value}</p>
                 </div>
                 <div className={cn("h-9 w-9 rounded-lg flex items-center justify-center", k.bg)}>
                   <k.icon className={cn("h-4 w-4", k.accent)} />
@@ -434,7 +434,7 @@ export default function CajaDetallePage() {
                   ].map(item => (
                     <div key={item.label}>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{item.label}</p>
-                      <p className={cn("text-lg font-bold mt-0.5", item.color)}>{loadingStats ? "—" : item.value}</p>
+                      <p className={cn("kpi-num text-lg font-bold mt-0.5", item.color)}>{loadingStats ? "—" : item.value}</p>
                     </div>
                   ))}
                 </div>
