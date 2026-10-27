@@ -18,7 +18,7 @@ ROOT="$(cd "$DIR/../.." && pwd)"
 MIGR_DIR="$ROOT/supabase/migrations"
 DB="${PGDATABASE:-prestapp_sql_tests}"
 ADMIN_DB="${SQLTEST_ADMIN_DB:-postgres}"
-MIGR_PATTERNS=("20261012*.sql" "20261013*.sql" "20261026*.sql")
+MIGR_PATTERNS=("20261012*.sql" "20261013*.sql" "20261026*.sql" "20261027*.sql")
 
 if [ -t 1 ]; then RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; RESET=$'\e[0m'; else RED=; GREEN=; YELLOW=; RESET=; fi
 

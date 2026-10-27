@@ -5,7 +5,7 @@ import { invalidateFinanceQueries } from "@/lib/invalidateFinance";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmpresa } from "@/contexts/EmpresaContext";
-import { fetchAllRows } from "@/lib/supabaseQuery";
+import { rpc } from "@/lib/supabaseQuery";
 import { rpcRegistrarMovimientoCaja, rpcTransferirCaja } from "@/lib/rpcIntegridad";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -62,91 +62,17 @@ function useCajas(empresaId: string) {
 }
 
 
-// Stats from prestamos + amortizacion per caja
+type CarteraStats = { activos: number; colocado: number; totalPagar: number; porCobrar: number; gananciaProyectada: number; enMora: number; moraTotal: number };
+const CARTERA_VACIA: CarteraStats = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
+
+// Cartera por caja: el servidor suma préstamos + cuotas (RPC cajas_cartera_stats)
 function usePrestamosByCaja(empresaId?: string) {
   return useQuery({
     queryKey: ["prestamos-by-caja", empresaId],
     queryFn: async () => {
-      let q = supabase
-        .from("prestamos")
-        .select("id, caja_id, monto_solicitado, monto_total_pagar, estado, tipo_mora, valor_mora")
-        .not("estado", "in", '("Cancelado")');
-      if (empresaId) q = q.eq("empresa_id", empresaId);
-      const { data: prestamos, error } = await q;
+      const { data, error } = await rpc<{ global: CarteraStats; byCaja: Record<string, CarteraStats> }>("cajas_cartera_stats");
       if (error) throw error;
-      if (!prestamos || prestamos.length === 0) return { global: { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 }, byCaja: {} as Record<string, { activos: number; colocado: number; totalPagar: number; porCobrar: number; gananciaProyectada: number; enMora: number; moraTotal: number }> };
-
-      const ids = prestamos.map((p) => p.id);
-      const prestamoMap = new Map(prestamos.map((p) => [p.id, p]));
-      const amortData = await fetchAllRows(
-        supabase
-          .from("amortizacion")
-          .select("prestamo_id, saldo_total, saldo_mora, saldo_capital, saldo_interes, capital_interes, mora_pagada, status, fecha_vencimiento")
-          .in("prestamo_id", ids)
-      );
-
-      const today = new Date().toISOString().slice(0, 10);
-
-      // Per-prestamo aggregation
-      const prestamoAgg: Record<string, { saldo: number; mora: number; moraCobrada: number; moraGuardada: number; capital: number; interes: number; tieneAtraso: boolean }> = {};
-      for (const a of amortData) {
-        const p = prestamoMap.get(a.prestamo_id);
-        if (!prestamoAgg[a.prestamo_id]) prestamoAgg[a.prestamo_id] = { saldo: 0, mora: 0, moraCobrada: 0, moraGuardada: 0, capital: 0, interes: 0, tieneAtraso: false };
-
-        const saldoMoraGuardada = Number(a.saldo_mora || 0);
-        const moraPagada = Number(a.mora_pagada || 0);
-        let moraPendiente = saldoMoraGuardada;
-
-        const hayAtraso = !!a.fecha_vencimiento && a.fecha_vencimiento < today;
-        if (hayAtraso && Number(a.saldo_total || 0) > 0 && Number(p?.valor_mora || 0) > 0) {
-          const diasAtraso = Math.max(0, Math.floor((parseLocalDate(today).getTime() - parseLocalDate(a.fecha_vencimiento).getTime()) / 86400000));
-          const baseMora = p?.tipo_mora === "porcentaje"
-            ? Number(a.capital_interes || 0) * (Number(p?.valor_mora || 0) / 100) * diasAtraso
-            : Number(p?.valor_mora || 0) * diasAtraso;
-          moraPendiente = Math.max(saldoMoraGuardada, Math.max(0, baseMora - moraPagada));
-        }
-
-        prestamoAgg[a.prestamo_id].saldo += Number(a.saldo_total || 0);
-        prestamoAgg[a.prestamo_id].capital += Number(a.saldo_capital || 0);
-        prestamoAgg[a.prestamo_id].interes += Number(a.saldo_interes || 0);
-        prestamoAgg[a.prestamo_id].mora += moraPendiente;
-        prestamoAgg[a.prestamo_id].moraCobrada += moraPagada;
-        prestamoAgg[a.prestamo_id].moraGuardada += saldoMoraGuardada;
-        if (hayAtraso && Number(a.saldo_total || 0) > 0) {
-          prestamoAgg[a.prestamo_id].tieneAtraso = true;
-        }
-      }
-
-      // Global + per-caja stats
-      const byCaja: Record<string, { activos: number; colocado: number; totalPagar: number; porCobrar: number; gananciaProyectada: number; enMora: number; moraTotal: number }> = {};
-      const global = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
-
-      for (const p of prestamos) {
-        const cajaKey = p.caja_id || "sin-caja";
-        if (!byCaja[cajaKey]) byCaja[cajaKey] = { activos: 0, colocado: 0, totalPagar: 0, porCobrar: 0, gananciaProyectada: 0, enMora: 0, moraTotal: 0 };
-        const agg = prestamoAgg[p.id] || { saldo: 0, mora: 0, moraCobrada: 0, moraGuardada: 0, capital: 0, interes: 0, tieneAtraso: false };
-        const isActive = p.estado !== "Liquidado";
-        const monto = Number(p.monto_solicitado || 0);
-        const totalPagar = Number(p.monto_total_pagar || 0);
-        // Ganancia = interés original + mora cobrada + mora pendiente
-        const ganancia = (totalPagar - monto) + agg.moraCobrada + agg.mora;
-        // Por cobrar = saldo pendiente real (capital + interes + mora dinámica)
-        const porCobrar = agg.capital + agg.interes + agg.mora;
-
-        if (isActive) {
-          global.activos++; byCaja[cajaKey].activos++;
-        }
-        global.colocado += monto; byCaja[cajaKey].colocado += monto;
-        global.totalPagar += porCobrar; byCaja[cajaKey].totalPagar += porCobrar;
-        global.porCobrar += porCobrar; byCaja[cajaKey].porCobrar += porCobrar;
-        global.gananciaProyectada += ganancia; byCaja[cajaKey].gananciaProyectada += ganancia;
-        if (agg.tieneAtraso) {
-          global.enMora++; byCaja[cajaKey].enMora++;
-          global.moraTotal += agg.mora; byCaja[cajaKey].moraTotal += agg.mora;
-        }
-      }
-
-      return { global, byCaja };
+      return data ?? { global: CARTERA_VACIA, byCaja: {} as Record<string, CarteraStats> };
     },
   });
 }
