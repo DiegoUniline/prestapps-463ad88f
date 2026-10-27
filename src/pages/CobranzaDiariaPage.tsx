@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchAllRows, mapChunks, rpc } from "@/lib/supabaseQuery";
+import { fetchAllRows, rpc } from "@/lib/supabaseQuery";
 import { useEmpresa } from "@/contexts/EmpresaContext";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -142,121 +142,11 @@ function useCobranzaDiaria(fecha: string, empresaId: string) {
   return useQuery({
     queryKey: ["cobranza-diaria", fecha, empresaId],
     queryFn: async () => {
-      // 1) Cuotas: due today, overdue unpaid, OR paid on this date — con su préstamo
-      //    (cliente/ruta/caja) y sus pagos embebidos: sin listas .in() gigantes.
-      const cuotaSelect = `
-          id, prestamo_id, num_cuota, capital_interes, saldo_total, saldo_mora,
-          saldo_capital, saldo_interes, mora_pagada, interes_pagado, capital_pagado,
-          fecha_vencimiento, status, dias_atraso, fecha_pagada,
-          prestamos!amortizacion_prestamo_id_fkey (
-            id, monto_solicitado, num_cuotas, cliente_id, ruta_id, cobrador_id, caja_id, tipo_cuenta,
-            clientes ( nombre_completo, foto_cliente ),
-            rutas ( nombre ),
-            cajas ( nombre )
-          ),
-          pagos!pagos_cuota_id_fkey ( monto_recibido, anulado )
-        `;
-      const cuotas = await fetchAllRows(supabase.from("amortizacion")
-        .select(cuotaSelect)
-        .eq("empresa_id", empresaId)
-        .or(`fecha_vencimiento.eq.${fecha},and(fecha_vencimiento.lt.${fecha},status.neq.Pagada),fecha_pagada.eq.${fecha}`)
-        .order("fecha_vencimiento", { ascending: true }));
-
-      if (!cuotas || cuotas.length === 0) return [];
-
-      // 1b) Also get cuotas with promesas for this date (status=Prometida)
-      const { data: promesas } = await supabase
-        .from("promesas_pago")
-        .select("cuota_id")
-        .eq("empresa_id", empresaId)
-        .eq("fecha_prometida", fecha)
-        .eq("status", "Pendiente");
-
-      const promesaCuotaIds = new Set((promesas || []).map((p) => p.cuota_id));
-
-      // Merge: add any promised cuotas not already in the list
-      const allCuotaIds = new Set(cuotas.map((c) => c.id));
-      const missingPromesaIds = [...promesaCuotaIds].filter((id): id is string => !!id && !allCuotaIds.has(id));
-
-      const extraCuotas = await mapChunks(missingPromesaIds, 200, async (chunk) => {
-        const { data: extra, error } = await supabase.from("amortizacion")
-          .select(cuotaSelect)
-          .in("id", chunk);
-        if (error) throw error;
-        return extra || [];
-      });
-
-      const allCuotas = [...cuotas, ...extraCuotas];
-      type PrestamoEmbebido = NonNullable<(typeof allCuotas)[number]["prestamos"]>;
-
-      // 2) Préstamos (embebidos en cada cuota)
-      const presMap: Record<string, PrestamoEmbebido> = {};
-      for (const c of allCuotas) if (c.prestamos) presMap[c.prestamo_id] = c.prestamos;
-      const prestamoIds = [...new Set(allCuotas.map((c) => c.prestamo_id as string))];
-
-      // 3) Get cobradores names from profiles (pocos ids distintos)
-      const cobIds = [...new Set(Object.values(presMap).map((p) => p.cobrador_id).filter(Boolean))] as string[];
-      const cobMap: Record<string, string> = {};
-      // 5) Gestiones count per prestamo (agregado en SQL; ids en el body del RPC)
-      const [profilesRes, gestionesRes] = await Promise.all([
-        cobIds.length
-          ? supabase.from("profiles").select("id, nombre_completo").in("id", cobIds)
-          : Promise.resolve({ data: [] as { id: string; nombre_completo: string }[], error: null }),
-        rpc<Record<string, { count: number; ultima: string | null }>>("gestiones_resumen", { p_prestamo_ids: prestamoIds }),
-      ]);
-      for (const c of profilesRes.data || []) cobMap[c.id] = c.nombre_completo;
-      if (gestionesRes.error) throw gestionesRes.error;
-      const gestionesByPrestamo = gestionesRes.data || {};
-
-      // 4) Payments for these cuotas (embebidos)
-      const pagosByCuota: Record<string, { total: number }> = {};
-      for (const c of allCuotas) {
-        const pagos = ((c.pagos || []) as { monto_recibido: number; anulado: boolean | null }[]).filter((p) => !p.anulado);
-        if (pagos.length === 0) continue;
-        pagosByCuota[c.id] = { total: pagos.reduce((sum, p) => sum + Number(p.monto_recibido), 0) };
-      }
-
-      return allCuotas.map((c): CuotaDiaria => {
-        const pres: Partial<PrestamoEmbebido> = presMap[c.prestamo_id] || {};
-        const cliente = pres.clientes;
-        const ruta = pres.rutas;
-        const caja = pres.cajas;
-        const pago = pagosByCuota[c.id];
-
-        return {
-          cuotaId: c.id,
-          prestamoId: c.prestamo_id,
-          clienteNombre: cliente?.nombre_completo || "—",
-          clienteFoto: cliente?.foto_cliente || null,
-          clienteId: pres.cliente_id || "",
-          numCuota: c.num_cuota,
-          totalCuotas: pres.num_cuotas || 0,
-          montoSolicitado: Number(pres.monto_solicitado || 0),
-          capitalInteres: Number(c.capital_interes || 0),
-          saldoTotal: Number(c.saldo_total || 0),
-          saldoMora: Number(c.saldo_mora || 0),
-          saldoCapital: Number(c.saldo_capital || 0),
-          saldoInteres: Number(c.saldo_interes || 0),
-          moraPagada: Number(c.mora_pagada || 0),
-          interesPagado: Number(c.interes_pagado || 0),
-          capitalPagado: Number(c.capital_pagado || 0),
-          fechaVencimiento: c.fecha_vencimiento,
-          status: c.status || "Pendiente",
-          diasAtraso: Number(c.dias_atraso || 0),
-          ruta: ruta?.nombre || "Sin ruta",
-          rutaId: pres.ruta_id || null,
-          cobrador: pres.cobrador_id ? (cobMap[pres.cobrador_id] || "—") : "Sin asignar",
-          cobradorId: pres.cobrador_id || null,
-          caja: caja?.nombre || "—",
-          cajaId: pres.caja_id || null,
-          pagada: c.status === "Pagada",
-          montoPagado: pago?.total || 0,
-          fechaPago: c.fecha_pagada || null,
-          gestiones: gestionesByPrestamo[c.prestamo_id]?.count || 0,
-          ultimaGestion: gestionesByPrestamo[c.prestamo_id]?.ultima || null,
-          tipoCuenta: pres.tipo_cuenta || "prestamo",
-        };
-      });
+      // Cuotas del día, vencidas sin pagar, pagadas ese día y con promesa para ese día,
+      // con cliente/ruta/caja/cobrador, pagos y gestiones: todo armado en el servidor.
+      const { data, error } = await rpc<CuotaDiaria[]>("cobranza_diaria", { p_fecha: fecha });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 }
