@@ -31,12 +31,14 @@ interface EditPrestamoModalProps {
     notas: string | null;
     codigo_interno: string | null;
   };
+  /** Fecha de vencimiento de la primera cuota con saldo (null si no hay pendientes). */
+  siguientePago: string | null;
   cajas: { id: string; nombre: string }[];
   rutas: { id: string; nombre: string }[];
   cobradores: { id: string; nombre: string }[];
 }
 
-export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, cobradores }: EditPrestamoModalProps) {
+export function EditPrestamoModal({ open, onOpenChange, prestamo, siguientePago, cajas, rutas, cobradores }: EditPrestamoModalProps) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
 
@@ -49,6 +51,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
   const [cobradorId, setCobradorId] = useState("");
   const [notas, setNotas] = useState("");
   const [codigoInterno, setCodigoInterno] = useState("");
+  const [fechaPago, setFechaPago] = useState("");
   const [quickCreate, setQuickCreate] = useState<EntityType | null>(null);
 
   useEffect(() => {
@@ -62,8 +65,9 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
       setCobradorId(prestamo.cobrador_id ?? "");
       setNotas(prestamo.notas ?? "");
       setCodigoInterno(prestamo.codigo_interno ?? "");
+      setFechaPago(siguientePago ?? "");
     }
-  }, [open, prestamo]);
+  }, [open, prestamo, siguientePago]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -79,6 +83,7 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
         notas: notas || null,
         codigo_interno: codigoInterno || null,
       };
+      if (siguientePago && fechaPago && fechaPago !== siguientePago) updates.fecha_siguiente_pago = fechaPago;
 
       // Una sola transacción: condiciones + rebuild de amortización + traslado del desembolso si cambió la caja
       await rpcEditarPrestamo(prestamo.id, updates);
@@ -198,9 +203,26 @@ export function EditPrestamoModal({ open, onOpenChange, prestamo, cajas, rutas, 
                   onChange={(e) => setValorMora(e.target.value)}
                   className="mt-1 h-9 text-sm"
                 />
+                <p className="text-[11px] text-muted-foreground mt-1">0 = sin mora. La mora de todo el préstamo se recalcula.</p>
               </div>
             </div>
           </div>
+
+          {/* Fecha de pago */}
+          {siguientePago && (
+            <div>
+              <Label className="text-xs">Fecha del siguiente pago</Label>
+              <Input
+                type="date"
+                value={fechaPago}
+                onChange={(e) => setFechaPago(e.target.value)}
+                className="mt-1 h-9 text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Las cuotas siguientes se recorren los mismos días y la mora se recalcula con las fechas nuevas.
+              </p>
+            </div>
+          )}
 
           {/* Código Interno */}
           <div>
