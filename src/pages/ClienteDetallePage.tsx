@@ -306,6 +306,15 @@ export default function ClienteDetallePage() {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
+  if (!isNew && !cliente) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-12 text-center">
+        <p className="text-sm text-muted-foreground">El cliente no existe o fue eliminado.</p>
+        <Button variant="outline" size="sm" onClick={() => navigate("/clientes")}><ArrowLeft className="h-4 w-4 mr-1" />Volver a clientes</Button>
+      </div>
+    );
+  }
+
   const isSaving = createCliente.isPending || updateCliente.isPending;
 
   return (
