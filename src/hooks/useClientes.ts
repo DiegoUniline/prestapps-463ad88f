@@ -80,9 +80,9 @@ export function useCliente(id: string | undefined) {
         .from("clientes")
         .select(CLIENTE_COLUMNS)
         .eq("id", id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
-      return data as unknown as Cliente;
+      return data as unknown as Cliente | null;
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
