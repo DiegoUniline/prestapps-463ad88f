@@ -2617,6 +2617,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _gasto_categoria: { Args: { p_concepto: string }; Returns: string }
       _integ_ajustar_efectivo: {
         Args: { p_delta: number; p_empresa: string; p_id: string }
         Returns: undefined
@@ -2664,6 +2665,27 @@ export type Database = {
         Args: { p: Json; p_empresa: string }
         Returns: undefined
       }
+      _kardex_categoria: {
+        Args: { p_concepto: string; p_tipo: string }
+        Returns: string
+      }
+      _lead_score: {
+        Args: {
+          p_a_tiempo: number
+          p_avg_dias: number
+          p_gracia: number
+          p_liquidados: number
+          p_max_dias: number
+          p_monto_historico: number
+          p_saldo: number
+          p_tarde: number
+          p_total_prestamos: number
+          p_totales: number
+          p_vencidas: number
+        }
+        Returns: Record<string, unknown>
+      }
+      _lower_es: { Args: { p: string }; Returns: string }
       _pagos_promesa: {
         Args: {
           p_cuota_id: string
@@ -2744,6 +2766,25 @@ export type Database = {
           wa_ultimo_estado: string
         }[]
       }
+      atendidos_semana: {
+        Args: {
+          p_cliente_ids?: string[]
+          p_desde: string
+          p_hasta: string
+          p_prestamo_ids?: string[]
+        }
+        Returns: Json
+      }
+      auditoria_listado: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_tipo?: string
+        }
+        Returns: Json
+      }
+      auditoria_resumen: { Args: never; Returns: Json }
       buro_mover_creditos: {
         Args: {
           p_cantidad: number
@@ -2755,6 +2796,42 @@ export type Database = {
         }
         Returns: number
       }
+      caja_detalle_stats: {
+        Args: { p_caja_id: string; p_today?: string }
+        Returns: Json
+      }
+      caja_flujo: { Args: { p_caja_id: string }; Returns: Json }
+      caja_fuentes_resumen: {
+        Args: { p_caja_id: string; p_fuente: string }
+        Returns: Json
+      }
+      caja_kardex: {
+        Args: {
+          p_caja_id: string
+          p_categoria?: string
+          p_limit?: number
+          p_modo?: string
+          p_offset?: number
+        }
+        Returns: {
+          balance: number
+          categoria: string
+          concepto: string
+          created_at: string
+          id: string
+          monto: number
+          tipo: string
+        }[]
+      }
+      caja_kardex_resumen: {
+        Args: { p_caja_id: string }
+        Returns: {
+          categoria: string
+          entradas: number
+          n: number
+          salidas: number
+        }[]
+      }
       caja_saldos: {
         Args: { p_caja_ids: string[] }
         Returns: {
@@ -2762,11 +2839,22 @@ export type Database = {
           saldo: number
         }[]
       }
+      cajas_cartera_stats: { Args: never; Returns: Json }
       cancelar_prestamo: {
         Args: { p_motivo: string; p_prestamo_id: string }
         Returns: Json
       }
       clientes_ultima_visita: { Args: never; Returns: Json }
+      cobrador_cartera: { Args: { p_cobrador: string }; Returns: Json }
+      cobrador_cobranza: {
+        Args: { p_cobrador?: string; p_desde: string; p_hasta: string }
+        Returns: Json
+      }
+      cobrador_resumen_semanal: {
+        Args: { p_cobrador?: string; p_desde: string; p_hasta: string }
+        Returns: Json
+      }
+      cobranza_diaria: { Args: { p_fecha: string }; Returns: Json }
       cobros_equipo_total: {
         Args: { p_desde?: string; p_hasta?: string; p_supervisor_id: string }
         Returns: number
@@ -2777,6 +2865,15 @@ export type Database = {
           p_desembolso?: Json
           p_prestamo: Json
           p_solicitud_id?: string
+        }
+        Returns: Json
+      }
+      crm_cartera_listado: {
+        Args: {
+          p_filtro?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
         }
         Returns: Json
       }
@@ -2800,6 +2897,21 @@ export type Database = {
         Returns: Json
       }
       estados_cuenta_clientes: { Args: never; Returns: Json }
+      estados_cuenta_listado: {
+        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Returns: Json
+      }
+      gastos_listado: {
+        Args: {
+          p_categoria?: string
+          p_limit?: number
+          p_mes_desde?: string
+          p_mes_hasta?: string
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: Json
+      }
       gestiones_resumen: { Args: { p_prestamo_ids: string[] }; Returns: Json }
       get_cobrador_by_user: {
         Args: { p_user_id: string }
@@ -2816,6 +2928,16 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: never; Returns: boolean }
+      lead_scoring_listado: {
+        Args: {
+          p_hoy?: string
+          p_limit?: number
+          p_nivel?: string
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: Json
+      }
       liquidar_prestamo: {
         Args: {
           p_caja_id: string
@@ -2855,6 +2977,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      mapa_puntos: {
+        Args: {
+          p_limit?: number
+          p_max_lat?: number
+          p_max_lng?: number
+          p_min_lat?: number
+          p_min_lng?: number
+          p_search?: string
+          p_tipo?: string
+        }
+        Returns: Json
+      }
+      mapa_totales: {
+        Args: { p_search?: string; p_tipo?: string }
+        Returns: Json
+      }
       next_folio: {
         Args: { p_empresa_id: string; p_tipo: string }
         Returns: string
@@ -2872,6 +3010,10 @@ export type Database = {
       }
       pagos_listado: {
         Args: { p_filtros?: Json; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      prestamos_listado: {
+        Args: { p_cobrador?: string; p_ruta_ids?: string[]; p_today?: string }
         Returns: Json
       }
       prestamos_por_ruta: {
@@ -2912,6 +3054,7 @@ export type Database = {
           monto_mora: number
         }[]
       }
+      promesas_resumen: { Args: never; Returns: Json }
       rebuild_amortizacion: {
         Args: { p_prestamo_id: string }
         Returns: undefined
@@ -2994,6 +3137,10 @@ export type Database = {
           p_prestamo_id: string
           p_resultado: string
         }
+        Returns: Json
+      }
+      renovacion_candidatos: {
+        Args: { p_limit?: number; p_offset?: number }
         Returns: Json
       }
       rentabilidad_resumen: { Args: never; Returns: Json }
