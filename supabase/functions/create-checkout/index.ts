@@ -92,11 +92,30 @@ serve(withCors(async (req) => {
 
     const extraUsers = Math.max(0, num_usuarios - plan.usuarios_incluidos);
 
+    // Clientes existentes conservan su precio anterior (precios nuevos solo para nuevos).
+    const { data: prev } = await supabaseClient
+      .from("suscripciones")
+      .select("precio_base, precio_usuario_extra")
+      .eq("empresa_id", profile.empresa_id)
+      .maybeSingle();
+    const prevBase = Number(prev?.precio_base ?? 0);
+    const prevExtra = Number(prev?.precio_usuario_extra ?? 0);
+    const precioBase = prevBase > 0 && prevBase < Number(plan.precio_base_mes) ? prevBase : Number(plan.precio_base_mes);
+    const precioExtra = prevExtra > 0 && prevExtra < Number(plan.precio_usuario_extra) ? prevExtra : Number(plan.precio_usuario_extra);
+    logStep("Pricing", { precioBase, precioExtra, legacy: precioBase !== Number(plan.precio_base_mes) });
+
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      {
-        price: plan.stripe_price_id,
-        quantity: 1,
-      },
+      precioBase === Number(plan.precio_base_mes)
+        ? { price: plan.stripe_price_id, quantity: 1 }
+        : {
+            price_data: {
+              currency: "mxn",
+              product: plan.stripe_product_id,
+              unit_amount: Math.round(precioBase * 100),
+              recurring: { interval: "month" as const },
+            },
+            quantity: 1,
+          },
     ];
 
     if (extraUsers > 0) {
@@ -104,7 +123,7 @@ serve(withCors(async (req) => {
         price_data: {
           currency: "mxn",
           product: plan.stripe_product_id,
-          unit_amount: Math.round(plan.precio_usuario_extra * 100),
+          unit_amount: Math.round(precioExtra * 100),
           recurring: { interval: "month" as const },
         },
         quantity: extraUsers,
@@ -156,8 +175,8 @@ serve(withCors(async (req) => {
       plan_id: plan_id,
       stripe_customer_id: customerId,
       num_usuarios: num_usuarios,
-      precio_base: plan.precio_base_mes,
-      precio_usuario_extra: plan.precio_usuario_extra,
+      precio_base: precioBase,
+      precio_usuario_extra: precioExtra,
       periodicidad: "mensual",
       estado: "pendiente_pago",
       fecha_inicio: new Date().toISOString().split("T")[0],
